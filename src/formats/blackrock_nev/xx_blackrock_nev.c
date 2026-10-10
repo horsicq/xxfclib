@@ -1,18 +1,18 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/BlackrockNeurotech/NPMK/blob/master/NPMK/openNEV.m */
 #include "xxfclib/formats/blackrock_nev/xx_blackrock_nev.h"
-#include "../xx_ninth_data.h"
+#include "../common/xx_memory_blob.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    uint8_t h[336];nh_blob b={0};bool ok=false;uint32_t header,packet,ext,last=0;uint64_t at;unsigned records=0,i;
+    uint8_t h[336];memory_blob b={0};bool ok=false;uint32_t header,packet,ext,last=0;uint64_t at;unsigned records=0,i;
     if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"NEURALEV",8) || h[8]!=2 || (h[9]!=2 && h[9]!=3)) return false;
     header=xx_data_get_u32(h+12, 4, 0, false);packet=xx_data_get_u32(h+16, 4, 0, false);ext=xx_data_get_u32(h+332, 4, 0, false);
-    NH_NEED(!(xx_data_get_u16(h+10, 2, 0, false)&~1U) && packet>=8 && packet<=65536 && ext<=1024 && header==336+32*ext && xx_data_get_u32(h+20, 4, 0, false) && xx_data_get_u32(h+24, 4, 0, false) && nh_date(h+28));
-    NH_NEED(nh_load(f,&b,pd) && nh_span(&b,0,header) && b.n>header && (b.n-header)%packet==0 && (b.n-header)/packet<=4095);
-    for(i=0;i<ext;++i) NH_NEED(nh_ascii(b.p+336+i*32,8,false));
-    NH_NEED(nh_add(f,s,&b,"header",0,header));at=header;
-    while(at<b.n) {uint32_t time=xx_data_get_u32(b.p+(size_t)at, 4, 0, false);uint16_t id=xx_data_get_u16(b.p+(size_t)at+4, 2, 0, false);NH_NEED(!records || time>=last);NH_NEED(id==0 || (id<=2048 && id>=1));if(id) NH_NEED(b.p[(size_t)at+7]==0);else NH_NEED(packet>=10 && !(b.p[(size_t)at+6]&~0x81U));
-        NH_NEED(nh_add(f,s,&b,id ? "spike":"digital",at,packet));last=time;at+=packet;++records;
+    BLOB_NEED(!(xx_data_get_u16(h+10, 2, 0, false)&~1U) && packet>=8 && packet<=65536 && ext<=1024 && header==336+32*ext && xx_data_get_u32(h+20, 4, 0, false) && xx_data_get_u32(h+24, 4, 0, false) && blob_date(h+28));
+    BLOB_NEED(blob_load(f,&b,pd) && blob_span(&b,0,header) && b.n>header && (b.n-header)%packet==0 && (b.n-header)/packet<=4095);
+    for(i=0;i<ext;++i) BLOB_NEED(blob_ascii(b.p+336+i*32,8,false));
+    BLOB_NEED(blob_add(f,s,&b,"header",0,header));at=header;
+    while(at<b.n) {uint32_t time=xx_data_get_u32(b.p+(size_t)at, 4, 0, false);uint16_t id=xx_data_get_u16(b.p+(size_t)at+4, 2, 0, false);BLOB_NEED(!records || time>=last);BLOB_NEED(id==0 || (id<=2048 && id>=1));if(id) BLOB_NEED(b.p[(size_t)at+7]==0);else BLOB_NEED(packet>=10 && !(b.p[(size_t)at+6]&~0x81U));
+        BLOB_NEED(blob_add(f,s,&b,id ? "spike":"digital",at,packet));last=time;at+=packet;++records;
     }s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

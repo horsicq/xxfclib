@@ -224,5 +224,16 @@ done:sb_close(&p);while(volume_count){--volume_count;xx_io_close(volumes[volume_
  if(p.pd&&xx_pd_is_stopped(p.pd)){p.status=XX_SEVENZIP_BACKEND_CANCELLED;ok=false;}
  if(opts&&opts->status) {*opts->status=p.status; } return ok;
 }
-bool xx_sevenzip_backend_list(xx_io_device *s,int64_t b,int64_t n,const char *h,const xx_sevenzip_backend_options *o,xx_sevenzip_backend_entry_fn cb,void *u){if(!cb)return false;return sb_run(s,b,n,h,0,UINT64_MAX,NULL,o,cb,u);}
-bool xx_sevenzip_backend_read(xx_io_device *s,int64_t b,int64_t n,const char *h,uint32_t i,uint64_t size,xx_io_device *out,const xx_sevenzip_backend_options *o){return sb_run(s,b,n,h,i,size,out,o,NULL,NULL);}
+#ifdef XFU_UPX_LIBRARY
+#include "../upx_engine/xx_upx_library.h"
+#endif
+bool xx_sevenzip_backend_list(xx_io_device *s,int64_t b,int64_t n,const char *h,const xx_sevenzip_backend_options *o,xx_sevenzip_backend_entry_fn cb,void *u){if(!cb)return false;
+#ifdef XFU_UPX_LIBRARY
+ if(h&&!xx_rt_strcmp(h,"UPX"))return upxl_run(s,b,n,0,UINT64_MAX,NULL,o,cb,u);
+#endif
+ return sb_run(s,b,n,h,0,UINT64_MAX,NULL,o,cb,u);}
+bool xx_sevenzip_backend_read(xx_io_device *s,int64_t b,int64_t n,const char *h,uint32_t i,uint64_t size,xx_io_device *out,const xx_sevenzip_backend_options *o){
+#ifdef XFU_UPX_LIBRARY
+ if(h&&!xx_rt_strcmp(h,"UPX"))return upxl_run(s,b,n,i,size,out,o,NULL,NULL);
+#endif
+ return sb_run(s,b,n,h,i,size,out,o,NULL,NULL);}

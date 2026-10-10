@@ -4,11 +4,11 @@
  * Bounded independent carrier/container parser. No payload execution.
  */
 #include "xxfclib/formats/sfx_tgcf/xx_sfx_tgcf.h"
-#include "../sfx_imp/xx_seventh_wrapper_table.h"
+#include "../common/xx_archive_carrier_readers.h"
 
-static bool w7_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {static const uint8_t sig[]={0x54,0x47,0x43,0x46};return w7_carried(f,s,sig,sizeof(sig),0,9,w7_tgcf,"payload.tgcf",pd);}
+static bool archive_carrier_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {static const uint8_t sig[]={0x54,0x47,0x43,0x46};return archive_carrier_carried(f,s,sig,sizeof(sig),0,9,archive_carrier_tgcf,"payload.tgcf",pd);}
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return w7_parse(f,s,pd) && wg_members(s,pd); }
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return archive_carrier_parse(f,s,pd) && carrier_members(s,pd); }
 
 /* The carrier validates a bounded TGCF tail. Reuse its native reader so an
  * SFX listing and extraction expose the contained files in one pass. */
@@ -40,7 +40,7 @@ static bool tgcf_ensure_inner(xx_sfx_tgcf *reader, xx_pd_struct *pd) {
         reader->inner.format.format_size <= 0 ||
         reader->inner.format.format_size > payload->size ||
         !reader->inner.format.number_of_archive_records ||
-        reader->inner.format.number_of_archive_records > W7_COUNT)
+        reader->inner.format.number_of_archive_records > ARCHIVE_CARRIER_COUNT)
         goto discard;
     state = xx_tgcf_create_archive_records_reading(&reader->inner.format,
                                                     NULL, pd);
@@ -48,7 +48,7 @@ static bool tgcf_ensure_inner(xx_sfx_tgcf *reader, xx_pd_struct *pd) {
     valid = true;
     while ((record = xx_tgcf_get_current_archive_record(&reader->inner.format,
                                                          state)) != NULL) {
-        if (wg_stop(pd) || ++count > W7_COUNT || record->compressed_size < 0 ||
+        if (carrier_stop(pd) || ++count > ARCHIVE_CARRIER_COUNT || record->compressed_size < 0 ||
             record->data_offset < payload->offset ||
             record->data_offset > end ||
             record->compressed_size > end - record->data_offset) {

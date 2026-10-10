@@ -11,10 +11,10 @@
 #define SD_TAIL 65536U
 #define SD_WORKSPACE 32768U
 #define SD_DEFAULT_MEMORY (UINT64_C(256)*1024*1024)
-typedef struct sd_item { uint32_t crc; uint8_t date[6]; bool has_crc; } sd_item;
+typedef struct sd_item { uint32_t crc; uint8_t date[6]; bool has_crc,has_manifest,vendor_dat; } sd_item;
 typedef struct sd_index { ue2_index records; sd_item *items; xx_io_device *device; int64_t base; uint64_t name_bytes; } sd_index;
 typedef struct sd_state { ue2_state reading; uint64_t generation; } sd_state;
-typedef struct sd_sink { xx_io_device *output; xx_pd_struct *pd; uint32_t crc; uint64_t size; } sd_sink;
+typedef struct sd_sink { xx_io_device *output; xx_pd_struct *pd; uint32_t crc; uint64_t size; uint8_t first[48];size_t first_count; } sd_sink;
 static bool sd_fail(xx_pd_struct *pd,const char *why) { xx_pd_set_error(pd,1,why);return false; }
 static int sd_compare(const char *a,const char *b) { while(*a&&*b){int x=xx_rt_ascii_tolower((unsigned char)*a++),y=xx_rt_ascii_tolower((unsigned char)*b++);if(x!=y)return x-y;}return (unsigned char)*a-(unsigned char)*b; }
 static void sd_free_index(sd_index *ix) { if(ix){xx_mem_free(ix->items);ue2_index_free(&ix->records);} }
@@ -34,7 +34,7 @@ static int64_t sd_archive_end(Abstractformat *f) {
     if(xx_data_get_u32(p+off+4, 4, 0, false)&&cert>f->base_address&&ue2_range(total,cert,xx_data_get_u32(p+off+4, 4, 0, false)))return cert;
     return total;
 }
-static bool sd_footer(Abstractformat *f,int64_t *location,uint32_t *size,uint32_t *start,uint32_t *count,bool *modern) {
+static bool sd_footer(Abstractformat *f,int64_t *location,uint32_t *size,uint32_t *start,uint32_t *count,unsigned *kind) {
     uint8_t *tail;int64_t end=sd_archive_end(f),at;size_t n,i;bool ok=false;
     if(end<f->base_address||end-f->base_address<33)return false;
     n=end-f->base_address>SD_TAIL?SD_TAIL:(size_t)(end-f->base_address);at=end-(int64_t)n;
@@ -42,17 +42,34 @@ static bool sd_footer(Abstractformat *f,int64_t *location,uint32_t *size,uint32_
     if(!ue2_read(f,at,tail,n))goto done;
     for(i=n-33+1;i-- >0;){const uint8_t *p=tail+i;
         if(xx_rt_memcmp(p,"_SUPERDAT_HEADER\0",17))continue;
-        *size=xx_data_get_u32(p+17, 4, 0, false);*start=xx_data_get_u32(p+21, 4, 0, false);*count=xx_data_get_u32(p+25, 4, 0, false);*modern=*count==0;
-        if(*modern){if(n-i<37)continue;*count=xx_data_get_u32(p+29, 4, 0, false);}
+        *size=xx_data_get_u32(p+17, 4, 0, false);*start=xx_data_get_u32(p+21, 4, 0, false);*count=xx_data_get_u32(p+25, 4, 0, false);*kind=*count==0?1U:0U;
+        if(*kind==1U){if(n-i<37)continue;*count=xx_data_get_u32(p+29, 4, 0, false);}
         if(!*size||!*count||*count>SD_MEMBERS||*start>(uint64_t)(at+(int64_t)i-f->base_address))continue;
         *location=at+(int64_t)i;ok=true;break;
+    }
+    if(!ok && n>=297U && !xx_rt_memcmp(tail+n-297U,"_SUPERDAT_HEADER\0",17) &&
+       xx_data_get_u32(tail+n-280U,4,0,false)==0U) {
+        /* v1.2 keeps a 297-byte signing area, followed by the actual three
+         * footer integers; its manifest entries are 170 bytes. */
+        *size=xx_data_get_u32(tail+n-12U,4,0,false);*start=xx_data_get_u32(tail+n-8U,4,0,false);*count=xx_data_get_u32(tail+n-4U,4,0,false);
+        if(*size&&*count&&*count<SD_MEMBERS&&*start<(uint64_t)(end-f->base_address-297)) {*location=end-297;*kind=2U;ok=true;}
+    }
+    if(!ok && n>=4U) {
+        /* The original producer has no signing/manifest section: a final
+         * u32 measures the complete NAILZHU group after its leading marker. */
+        uint32_t length=xx_data_get_u32(tail+n-4U,4,0,false);
+        if(length>17U && length<=(uint64_t)(end-f->base_address-8)) {
+            uint8_t magic[18];int64_t begin=end-8-(int64_t)length;
+            if(ue2_read(f,begin,magic,sizeof(magic))&&xx_data_get_u32(magic,4,0,false)==0xdeadbeefU&&
+               !xx_rt_memcmp(magic+4,"__NAILZHUFLIB\0",14)) {*location=end-4;*size=length;*start=(uint32_t)(begin-f->base_address);*count=0;*kind=3U;ok=true;}
+        }
     }
 done:xx_mem_free(tail);return ok;
 }
 bool xx_superdat_has_candidate_device(xx_io_device *io,int64_t base) {
-    Abstractformat *f;int64_t at,saved;uint32_t size,start,count;bool modern,ok;
+    Abstractformat *f;int64_t at,saved;uint32_t size,start,count;unsigned kind;bool ok;
     if(!io||base<0) {return false; } f=xx_mem_calloc(1,sizeof(*f));if(!f)return false;f->device=io;f->base_address=base;saved=xx_io_tell(io);
-    ok=sd_footer(f,&at,&size,&start,&count,&modern);
+    ok=sd_footer(f,&at,&size,&start,&count,&kind);
     if(ok){uint8_t h[18];ok=ue2_read(f,base+start,h,sizeof(h))&&xx_data_get_u32(h, 4, 0, false)==0xdeadbeefU&&!xx_rt_memcmp(h+4,"__NAILZHUFLIB\0",14);}
     if(saved>=0&&xx_io_seek64(io,saved,XX_RT_SEEK_SET)) {ok=false; } xx_mem_free(f);return ok;
 }
@@ -66,13 +83,13 @@ static uint64_t sd_memory(const sd_index *ix) {
 }
 static sd_index *sd_parse(Abstractformat *f,xx_pd_struct *pd,uint64_t limit) {
     sd_index *ix=NULL;int64_t footer,at,group_start=0,table,saved;uint32_t declared,start,count;
-    size_t group_first=0,group_count=0,i,j;unsigned groups=0;bool modern,ok=false;uint8_t h[292];
+    size_t group_first=0,group_count=0,i,j;unsigned groups=0,kind=0;bool ok=false;uint8_t h[292];
     if(!f||!f->device||xx_pd_is_stopped(pd))return NULL;
     /* The footer buffer is freed before the member index is allocated. Reserve
      * the fixed decoder workspace throughout parsing, and bound every index
      * growth before calling the allocator (including a moving realloc peak). */
     if(limit<SD_TAIL||limit<SD_WORKSPACE+sizeof(*ix)){sd_fail(pd,"SuperDAT decoder exceeds configured memory limit");return NULL;}saved=xx_io_tell(f->device);
-    if(!sd_footer(f,&footer,&declared,&start,&count,&modern))goto done;
+    if(!sd_footer(f,&footer,&declared,&start,&count,&kind))goto done;
     ix=xx_mem_calloc(1,sizeof(*ix));if(!ix)goto done;ix->device=f->device;ix->base=f->base_address;at=f->base_address+start;
     for(;;){if(++groups>8||!ue2_read(f,at,h,4)||xx_data_get_u32(h, 4, 0, false)!=0xdeadbeefU)goto done;
         group_start=at;group_first=ix->records.count;at+=4;
@@ -101,13 +118,23 @@ static sd_index *sd_parse(Abstractformat *f,xx_pd_struct *pd,uint64_t limit) {
         if(xx_data_get_u32(h, 4, 0, false)!=0xdeadbeefU)break;
     }
     table=at;
-    if(group_count!=count+2U||table-group_start-4!=declared||
-       footer-table!=(int64_t)count*178+(modern?12:0))goto done;
-    for(i=0;i<count;++i){uint8_t record[178];const ue2_member *m=NULL;
-        if(!ue2_read(f,table+(int64_t)i*178,record,sizeof(record))||!sd_name(record,144))goto done;
-        for(j=group_first+2;j<ix->records.count;++j)if(!sd_compare(ix->records.members[j].name,(char*)record)){m=&ix->records.members[j];break;}
-        if(!m||ix->items[j].has_crc||m->original_size!=xx_data_get_u32(record+160, 4, 0, false))goto done;
-        ix->items[j].has_crc=true;ix->items[j].crc=xx_data_get_u32(record+144, 4, 0, false);
+    if(table-group_start-4!=declared)goto done;
+    if(kind==3U) {if(table!=footer)goto done;}
+    else {
+        size_t bootstrap=kind==2U?1U:2U,record_size=kind==2U?170U:178U;
+        if(group_count!=count+bootstrap||footer-table!=(int64_t)count*(int64_t)record_size+(kind==1U?12:0))goto done;
+        for(i=0;i<count;++i){uint8_t record[178];const ue2_member *m=NULL;uint32_t classification=0;
+            xx_mem_zero(record,sizeof(record));
+            if(!ue2_read(f,table+(int64_t)i*(int64_t)record_size,record,record_size)||!sd_name(record,144))goto done;
+            for(j=group_first+bootstrap;j<ix->records.count;++j)if(!sd_compare(ix->records.members[j].name,(char*)record)){m=&ix->records.members[j];break;}
+            if(!m||ix->items[j].has_manifest||m->original_size!=xx_data_get_u32(record+160,4,0,false))goto done;
+            if(kind!=2U)classification=xx_data_get_u32(record+170,4,0,false);
+            /* Modern type2 Olympus DAT metadata records a vendor DAT checksum. It is
+             * not CRC32 over the decoded Olympus member (verified against independent
+             * reference extraction); other types use reflected CRC init0/xorout0.
+             * Keep the declared value in info, without misreporting a failure. */
+            ix->items[j].has_manifest=true;ix->items[j].has_crc=true;ix->items[j].vendor_dat=classification==2U;ix->items[j].crc=xx_data_get_u32(record+144,4,0,false);
+        }
     }
     ix->records.size=xx_io_total_size(f->device)-f->base_address;ok=true;
 done:
@@ -138,7 +165,8 @@ static const xx_archive_record *sd_current(Abstractformat *f,xx_archive_record_s
     if(!r||!state||!ix||!f->base_info_handled||!f->is_valid||ix->device!=f->device||ix->base!=f->base_address||state->reading.index!=&ix->records||state->generation!=((xx_superdat*)f)->generation||state->reading.cursor>=ix->records.count)return NULL;
     item=ix->items+state->reading.cursor;
     if(!xx_archive_record_set_meta_u64(&s->current_record,XX_META_ID_COMPRESSION_METHOD,1))return NULL;
-    if(item->has_crc&&!xx_archive_record_set_meta_u64(&s->current_record,XX_META_ID_CRC32,item->crc))return NULL;
+    if(item->has_crc&&!item->vendor_dat&&!xx_archive_record_set_meta_u64(&s->current_record,XX_META_ID_CRC32,item->crc))return NULL;
+    if(item->has_manifest&&item->vendor_dat){char comment[96];xx_rt_snprintf(comment,sizeof(comment),"Vendor DAT checksum: %08X (Olympus checksum domain not verified)",(unsigned)item->crc);if(!xx_archive_record_set_meta_str(&s->current_record,XX_META_ID_COMMENT,comment))return NULL;}
     if(item->date[3]>=80&&item->date[4]>=1&&item->date[4]<=12&&item->date[5]>=1&&item->date[5]<=31&&item->date[0]<24&&item->date[1]<60&&item->date[2]<60){
         uint32_t date=((uint32_t)item->date[3]-80)*512+item->date[4]*32+item->date[5];
         uint32_t time=item->date[0]*2048+item->date[1]*32+item->date[2]/2;
@@ -148,15 +176,18 @@ static const xx_archive_record *sd_current(Abstractformat *f,xx_archive_record_s
 static bool sd_next(Abstractformat *f,xx_archive_record_state *s,xx_pd_struct *pd) { return sd_current(f,s)&&ue2_next(f,s,pd); }
 static ssize_t sd_write(xx_io_device *d,const void *bytes,size_t n) {
     sd_sink *s=d->priv;size_t at=0;
+    if(s->first_count<sizeof(s->first)){size_t take=n<sizeof(s->first)-s->first_count?n:sizeof(s->first)-s->first_count;xx_rt_memcpy(s->first+s->first_count,bytes,take);s->first_count+=take;}
     if(s->output)while(at<n){ssize_t wrote;if(xx_pd_is_stopped(s->pd))return -1;wrote=xx_io_write(s->output,(const uint8_t*)bytes+at,n-at);if(wrote<=0||(size_t)wrote>n-at)return -1;at+=(size_t)wrote;}
     /* SuperDAT uses reflected CRC32 with init=0 and xorout=0. */
     s->crc=xx_crc32_calc(s->crc^UINT32_C(0xffffffff),bytes,n)^UINT32_C(0xffffffff);s->size+=n;return (ssize_t)n;
 }
 static bool sd_decode(Abstractformat *f,const ue2_member *m,const sd_item *item,xx_io_device *out,xx_pd_struct *pd) {
-    xx_io_device *input,sink;sd_sink work={out,pd,0,0};uint64_t written=0;bool ok;
+    xx_io_device *input,sink;sd_sink work={out,pd,0,0,{0},0};uint64_t written=0;bool ok;
     input=xx_io_sub_open_ro(f->device,m->offset,m->size);if(!input)return false;
     xx_mem_zero(&sink,sizeof(sink));sink.priv=&work;sink.write=sd_write;
-    ok=xx_lzh1_decode_to_device(input,(uint64_t)m->size,&sink,(uint64_t)m->original_size,&written,pd)&&written==(uint64_t)m->original_size&&(!item->has_crc||work.crc==item->crc);
+    ok=xx_lzh1_decode_to_device(input,(uint64_t)m->size,&sink,(uint64_t)m->original_size,&written,pd)&&written==(uint64_t)m->original_size&&(!item->has_crc||work.crc==item->crc||
+       (item->vendor_dat&&work.first_count==48U&&
+        !xx_rt_memcmp(work.first,"Copyright (c) Network Associates Inc.\x1a\0Olympus\0",48U)));
     xx_io_close(input);if(!ok&&!xx_pd_is_stopped(pd))sd_fail(pd,"SuperDAT LH1 data or CRC32 is damaged");return ok;
 }
 static bool sd_unpack(Abstractformat *f,xx_archive_record_state *s,xx_pd_struct *pd) {

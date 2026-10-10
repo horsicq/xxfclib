@@ -1,21 +1,21 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.ncbi.nlm.nih.gov/sra/docs/submitformats/ */
 #include "xxfclib/formats/genomics_fastq/xx_genomics_fastq.h"
-#include "../xx_eleventh_data.h"
+#include "../common/xx_scientific_text.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token h,seq,plus,q;bool ok=false;
-    NH_NEED(nh_load(f,&b,pd) && b.p[0]=='@');c.b=&b;
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token h,seq,plus,q;bool ok=false;
+    BLOB_NEED(blob_load(f,&b,pd) && b.p[0]=='@');c.b=&b;
     while(c.at<b.n) {
-        uint64_t start=c.at,i,n;el_token id;
-        NH_NEED(el_line(&c,&h) && h.n>1 && h.n<=65536 && b.p[(size_t)h.at]=='@');
-        n=1;while(n<h.n && b.p[(size_t)(h.at+n)]!=' ' && b.p[(size_t)(h.at+n)]!='\t') ++n;id=el_slice(h,1,n-1);NH_NEED(el_ident(&b,id));
-        NH_NEED(el_line(&c,&seq) && el_chars(&b,seq,"ACGTRYSWKMBDHVNacgtryswkmbdhvn",true));
-        NH_NEED(el_line(&c,&plus) && plus.n && b.p[(size_t)plus.at]=='+');
-        if(plus.n>1) NH_NEED((plus.n==h.n && !xx_rt_memcmp(b.p+(size_t)plus.at+1,b.p+(size_t)h.at+1,(size_t)plus.n-1)) || (plus.n==id.n+1 && !xx_rt_memcmp(b.p+(size_t)plus.at+1,b.p+(size_t)id.at,(size_t)id.n)));
-        NH_NEED(el_line(&c,&q) && q.n==seq.n);for(i=0;i<q.n;++i) NH_NEED(b.p[(size_t)(q.at+i)]>=33 && b.p[(size_t)(q.at+i)]<=126);
-        NH_NEED(nh_add(f,s,&b,"read-record",start,c.at-start));
+        uint64_t start=c.at,i,n;scientific_text_token id;
+        BLOB_NEED(scientific_text_line(&c,&h) && h.n>1 && h.n<=65536 && b.p[(size_t)h.at]=='@');
+        n=1;while(n<h.n && b.p[(size_t)(h.at+n)]!=' ' && b.p[(size_t)(h.at+n)]!='\t') ++n;id=scientific_text_slice(h,1,n-1);BLOB_NEED(scientific_text_ident(&b,id));
+        BLOB_NEED(scientific_text_line(&c,&seq) && scientific_text_chars(&b,seq,"ACGTRYSWKMBDHVNacgtryswkmbdhvn",true));
+        BLOB_NEED(scientific_text_line(&c,&plus) && plus.n && b.p[(size_t)plus.at]=='+');
+        if(plus.n>1) BLOB_NEED((plus.n==h.n && !xx_rt_memcmp(b.p+(size_t)plus.at+1,b.p+(size_t)h.at+1,(size_t)plus.n-1)) || (plus.n==id.n+1 && !xx_rt_memcmp(b.p+(size_t)plus.at+1,b.p+(size_t)id.at,(size_t)id.n)));
+        BLOB_NEED(scientific_text_line(&c,&q) && q.n==seq.n);for(i=0;i<q.n;++i) BLOB_NEED(b.p[(size_t)(q.at+i)]>=33 && b.p[(size_t)(q.at+i)]<=126);
+        BLOB_NEED(blob_add(f,s,&b,"read-record",start,c.at-start));
     }
-    NH_NEED(s->count);s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(s->count);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

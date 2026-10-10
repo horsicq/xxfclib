@@ -42,7 +42,7 @@
  * integrity statement, so parse runs the complete decode and requires it to
  * produce exactly that many bytes; the structural gate (high bit set, pass
  * count 1..8, first codec byte 1 or 2) is only a cheap pre-filter in front of
- * it.  Verified byte for byte against U3's output for all 20 samples in
+ * it.  Verified byte for byte against the reference reader's output for all 20 samples in
  * F:\ARC\ARC\STUNTS_FT.
  *
  * A bare codec 1/2 header is a single pass: the same u24 plaintext length

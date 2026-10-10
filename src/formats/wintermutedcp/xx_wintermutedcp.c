@@ -3,7 +3,7 @@
  *
  * Wintermute Engine DCP packages (".dcp"), versions 0x100 and 0x200.
  * Ported from XArchive's games/xwintermutedcp.cpp and cross-checked against
- * U3's DCP handler (class zha, VMT 004c2458).
+ * the reference reader's DCP handler (class zha, VMT 004c2458).
  *
  *   header, 128 bytes at offset 0 (132 for version 2):
  *     0x00   8  bytes    magic de ad c0 de "JUNK"

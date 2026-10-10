@@ -47,15 +47,14 @@ extern "C" {
  *   plaintext length and CRC-16/ARC), decoded and verified here.  Container
  *   records also expose each original bounded payload under the virtual
  *   __raw_finear__/ directory, so callers can retain incomplete fragments
- *   and recover the exact bytes exported by U3 without losing decoded files.
- *   The method
- *   word says whether a payload is whole: 0 is a self-contained member, 6 is
+ *   and recover the original compressed bytes without losing decoded files.
+ *   The method word says whether a payload is whole: 0 is self-contained, 6 is
  *   the first fragment of a member that continues on the next volume (FINEAR
  *   header present, body cut off at the end of the volume) and 2 is the
  *   continuation fragment on the following volume.  A fragment cannot be
  *   decoded from one volume, so unpack fails closed for any method but 0.
- *   The version 2 field widths are U3's (FUN_0051cdc0); no version 2 sample
- *   has been seen.
+ *   The version 2 field widths were recovered by reverse-engineering a
+ *   reference decoder; no version 2 sample has been seen.
  *
  * Stream ("LingvoArch"), one compressed file with no stored name or size:
  *

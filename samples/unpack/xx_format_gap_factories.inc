@@ -231,3 +231,47 @@ static Abstractformat *mk_md_raid(xx_io_device *d,int64_t b) { return (Abstractf
 static void rm_md_raid(void *p) { xx_md_raid_free((xx_md_raid *)p); }
 static Abstractformat *mk_windows_ldm(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_windows_ldm_create(d,b); }
 static void rm_windows_ldm(void *p) { xx_windows_ldm_free((xx_windows_ldm *)p); }
+static Abstractformat *mk_parsec_dtc(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_parsec_dtc_create(d,b); }
+static void rm_parsec_dtc(void *p) { xx_parsec_dtc_free((xx_parsec_dtc *)p); }
+static Abstractformat *mk_parsec_dma(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_parsec_dma_create(d,b); }
+static void rm_parsec_dma(void *p) { xx_parsec_dma_free((xx_parsec_dma *)p); }
+static Abstractformat *mk_palladix_mus(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_palladix_mus_create(d,b); }
+static void rm_palladix_mus(void *p) { xx_palladix_mus_free((xx_palladix_mus *)p); }
+static Abstractformat *mk_palladix_snd(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_palladix_snd_create(d,b); }
+static void rm_palladix_snd(void *p) { xx_palladix_snd_free((xx_palladix_snd *)p); }
+static Abstractformat *mk_palladix_pma(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_palladix_pma_create(d,b); }
+static void rm_palladix_pma(void *p) { xx_palladix_pma_free((xx_palladix_pma *)p); }
+static Abstractformat *mk_mdh(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_mdh_create(d,b); }
+static void rm_mdh(void *p) { xx_mdh_free((xx_mdh *)p); }
+static Abstractformat *mk_sm8(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_sm8_create(d,b); }
+static void rm_sm8(void *p) { xx_sm8_free((xx_sm8 *)p); }
+static Abstractformat *mk_der(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_der_create(d,b); }
+static void rm_der(void *p) { xx_der_free((xx_der *)p); }
+static Abstractformat *mk_apks(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_apks_create(d,b); }
+static void rm_apks(void *p) { xx_apks_free((xx_apks *)p); }
+static Abstractformat *mk_text(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_text_create(d,b); }
+static void rm_text(void *p) { xx_text_free((xx_text *)p); }
+static Abstractformat *mk_machofat(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_machofat_create(d,b); }
+static void rm_machofat(void *p) { xx_machofat_free((xx_machofat *)p); }
+static Abstractformat *mk_cfbf(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_cfbf_create(d,b); }
+static void rm_cfbf(void *p) { xx_cfbf_free((xx_cfbf *)p); }
+static Abstractformat *mk_rzip(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_rzip_create(d,b); }
+static void rm_rzip(void *p) { xx_rzip_free((xx_rzip *)p); }
+static Abstractformat *mk_chz(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_chz_create(d,b); }
+static void rm_chz(void *p) { xx_chz_free((xx_chz *)p); }
+static Abstractformat *mk_ecm(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_ecm_create(d,b); }
+static void rm_ecm(void *p) { xx_ecm_free((xx_ecm *)p); }
+static Abstractformat *mk_he_tlkb(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_he_tlkb_create(d,b); }
+static void rm_he_tlkb(void *p) { xx_he_tlkb_free((xx_he_tlkb *)p); }
+static Abstractformat *mk_sar(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_sar_create(d,b); }
+static void rm_sar(void *p) { xx_sar_free((xx_sar *)p); }
+static Abstractformat *mk_is_stored(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_is_stored_create(d,b); }
+static void rm_is_stored(void *p) { xx_is_stored_free((xx_is_stored *)p); }
+static Abstractformat *mk_larc_pfx(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_larc_pfx_create(d,b); }
+static void rm_larc_pfx(void *p) { xx_larc_pfx_free((xx_larc_pfx *)p); }
+static Abstractformat *mk_wii_wad(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_wii_wad_create(d,b); }
+static void rm_wii_wad(void *p) { xx_wii_wad_free((xx_wii_wad *)p); }
+static Abstractformat *mk_binsh_sfx(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_binsh_sfx_create(d,b); }
+static void rm_binsh_sfx(void *p) { xx_binsh_sfx_free((xx_binsh_sfx *)p); }
+static Abstractformat *mk_instalit_data(xx_io_device *d,int64_t b) { return (Abstractformat *)xx_instalit_data_create(d,b); }
+static void rm_instalit_data(void *p) { xx_instalit_data_free((xx_instalit_data *)p); }

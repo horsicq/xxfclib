@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://teem.sourceforge.net/nrrd/format.html */
 #include "xxfclib/formats/nrrd/xx_nrrd.h"
-#include "../xx_sixth_data.h"
+#include "../common/xx_scientific_numbers.h"
 
 static unsigned nrrd_width(const char *p) {
     if(!xx_rt_strcmp(p,"char") || !xx_rt_strcmp(p,"signed char") || !xx_rt_strcmp(p,"int8") || !xx_rt_strcmp(p,"int8_t") || !xx_rt_strcmp(p,"uchar") || !xx_rt_strcmp(p,"unsigned char") || !xx_rt_strcmp(p,"uint8") || !xx_rt_strcmp(p,"uint8_t")) return 1;
@@ -11,22 +11,22 @@ static unsigned nrrd_width(const char *p) {
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     char line[4096],sizes[2048]={0},seen[64][96];unsigned lines=0,fields=0,width=0;uint64_t dim=0,n;bool raw=false,endian=false,ended=false;int64_t available=pm_available(f);
-    fd_cursor c={f,0,available>65536?65536:(available>0?(uint64_t)available:0),pd,0};
-    if(!sd_line(&c,line,sizeof(line)) || xx_rt_strlen(line)!=8 || xx_rt_memcmp(line,"NRRD000",7) || line[7]<'1' || line[7]>'5') return false;
-    while(++lines<=256 && sd_line(&c,line,sizeof(line))) {char *key,*value,*colon;unsigned i;
+    binary_cursor c={f,0,available>65536?65536:(available>0?(uint64_t)available:0),pd,0};
+    if(!scientific_number_line(&c,line,sizeof(line)) || xx_rt_strlen(line)!=8 || xx_rt_memcmp(line,"NRRD000",7) || line[7]<'1' || line[7]>'5') return false;
+    while(++lines<=256 && scientific_number_line(&c,line,sizeof(line))) {char *key,*value,*colon;unsigned i;
         if(!line[0]) {ended=true;break;}if(line[0]=='#') continue;
-        colon=xx_rt_strchr(line,':');if(!colon) return false;if(colon[1]=='=') continue;*colon=0;key=sd_trim(line);value=sd_trim(colon+1);
+        colon=xx_rt_strchr(line,':');if(!colon) return false;if(colon[1]=='=') continue;*colon=0;key=scientific_number_trim(line);value=scientific_number_trim(colon+1);
         for(i=0;key[i];++i) if(key[i]>='A' && key[i]<='Z') key[i]+=32;
         if(!*key || xx_rt_strlen(key)>=96 || fields>=64) return false;
         for(i=0;i<fields;++i) { if(!xx_rt_strcmp(seen[i],key)) return false; } xx_rt_memcpy(seen[fields++],key,xx_rt_strlen(key)+1);
-        if(!xx_rt_strcmp(key,"dimension")) {if(!sd_uint(value,&dim) || !dim || dim>16) return false;}
+        if(!xx_rt_strcmp(key,"dimension")) {if(!scientific_number_uint(value,&dim) || !dim || dim>16) return false;}
         else if(!xx_rt_strcmp(key,"type")) {for(i=0;value[i];++i) if(value[i]>='A' && value[i]<='Z') value[i]+=32;width=nrrd_width(value);if(!width) return false;}
         else if(!xx_rt_strcmp(key,"sizes")) {if(xx_rt_strlen(value)>=sizeof(sizes)) return false;xx_rt_memcpy(sizes,value,xx_rt_strlen(value)+1);}
         else if(!xx_rt_strcmp(key,"encoding")) {for(i=0;value[i];++i) if(value[i]>='A' && value[i]<='Z') value[i]+=32;if(xx_rt_strcmp(value,"raw")) return false;raw=true;}
         else if(!xx_rt_strcmp(key,"endian")) {for(i=0;value[i];++i) if(value[i]>='A' && value[i]<='Z') value[i]+=32;if(xx_rt_strcmp(value,"little") && xx_rt_strcmp(value,"big")) return false;endian=true;}
         else if(!xx_rt_strcmp(key,"data file") || !xx_rt_strcmp(key,"datafile") || !xx_rt_strcmp(key,"line skip") || !xx_rt_strcmp(key,"lineskip") || !xx_rt_strcmp(key,"byte skip") || !xx_rt_strcmp(key,"byteskip") || !xx_rt_strcmp(key,"block size") || !xx_rt_strcmp(key,"blocksize")) return false;
     }
-    if(!ended || !dim || !width || !raw || (width>1 && !endian) || !sd_dims(sizes,(unsigned)dim,&n) || !fd_mul(n,width,&n) || !fd_range(c.at,n,(uint64_t)available)) return false;
+    if(!ended || !dim || !width || !raw || (width>1 && !endian) || !scientific_number_dims(sizes,(unsigned)dim,&n) || !binary_mul(n,width,&n) || !binary_range(c.at,n,(uint64_t)available)) return false;
     if(!pm_add(f,s,"nrrd-header.txt",0,(int64_t)c.at) || !pm_add(f,s,"array-data.bin",(int64_t)c.at,(int64_t)n)) { return false; } s->size=(int64_t)(c.at+n);return true;
 }
 

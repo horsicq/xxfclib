@@ -5,7 +5,7 @@
  */
 #include "xxfclib/formats/sfx_spis/xx_sfx_spis.h"
 #include "xxfclib/formats/spis/xx_spis.h"
-#include "../makeself/xx_fourth_wrapper_table.h"
+#include "../common/xx_carrier_helpers.h"
 #include "xxfclib/algo/lzh/xx_lzh.h"
 
 /* GP-Install also puts a type-0 SPIS stream in a PE resource named
@@ -116,16 +116,16 @@ static bool sp_pe_resource(Abstractformat *f, pm_stream *s,
     uint8_t last = 0U;
     bool ok = false;
 
-    if (wg_stop(pd) || limit < 512 || !pm_read(f, 0, header, 64) ||
+    if (carrier_stop(pd) || limit < 512 || !pm_read(f, 0, header, 64) ||
         xx_rt_memcmp(header, "MZ", 2)) return false;
     pe = xx_data_get_u32(header + 60, 4, 0, false);
-    if (pe < 64U || pe > 1048576U || !wg_range(limit, pe, 24U) ||
+    if (pe < 64U || pe > 1048576U || !carrier_range(limit, pe, 24U) ||
         !pm_read(f, pe, header, 24) || xx_rt_memcmp(header, "PE\0\0", 4))
         return false;
     sections = xx_data_get_u16(header + 6, 2, 0, false); optional_size = xx_data_get_u16(header + 20, 2, 0, false);
     if (!sections || sections > 96U || optional_size < 128U ||
         optional_size > 4096U ||
-        !wg_range(limit, (uint64_t)pe + 24U, optional_size) ||
+        !carrier_range(limit, (uint64_t)pe + 24U, optional_size) ||
         !pm_read(f, (int64_t)pe + 24, header, 64)) return false;
     optional_magic = xx_data_get_u16(header, 2, 0, false);
     if (optional_magic != 0x10bU && optional_magic != 0x20bU) return false;
@@ -136,17 +136,17 @@ static bool sp_pe_resource(Abstractformat *f, pm_stream *s,
                  header, 8)) return false;
     resource_rva = xx_data_get_u32(header, 4, 0, false); resource_size = xx_data_get_u32(header + 4, 4, 0, false);
     if (resource_size < 16U || resource_size > SP_RESOURCE_MAX_SIZE ||
-        !wg_range(limit, (uint64_t)pe + 24U + optional_size,
+        !carrier_range(limit, (uint64_t)pe + 24U + optional_size,
                   (uint64_t)sections * 40U)) return false;
     for (i = 0U; i < sections; ++i) {
         uint32_t rva, raw, bytes;
-        if (wg_stop(pd) || !pm_read(f, (int64_t)pe + 24 + optional_size +
+        if (carrier_stop(pd) || !pm_read(f, (int64_t)pe + 24 + optional_size +
                                     (int64_t)i * 40, entry, 40)) return false;
         rva = xx_data_get_u32(entry + 12, 4, 0, false); bytes = xx_data_get_u32(entry + 16, 4, 0, false);
         raw = xx_data_get_u32(entry + 20, 4, 0, false);
         if (resource_rva < rva || resource_rva - rva > bytes ||
             resource_size > bytes - (resource_rva - rva)) continue;
-        if (section_file >= 0 || !wg_range(limit, raw, bytes)) return false;
+        if (section_file >= 0 || !carrier_range(limit, raw, bytes)) return false;
         section_file = raw; section_rva = rva; section_size = bytes;
     }
     if (section_file < 0) return false;
@@ -190,7 +190,7 @@ static bool sp_pe_resource(Abstractformat *f, pm_stream *s,
     if (out != raw_size || plain[0] != 'B' || plain[1] != 'M' ||
         xx_data_get_u32(plain + 2, 4, 0, false) != raw_size) goto done;
     for (i = 0U; i < out; ++i) sum += plain[i];
-    if (sum != xx_data_get_u32(blob + 13, 4, 0, false) || wg_stop(pd) ||
+    if (sum != xx_data_get_u32(blob + 13, 4, 0, false) || carrier_stop(pd) ||
         !pm_add(f, s, "MAINICON.bmp", leaf_at + 21, packed_size)) goto done;
     s->items[s->count - 1U].memory = plain;
     s->items[s->count - 1U].size = raw_size;
@@ -220,7 +220,7 @@ static bool sp_installus_members(Abstractformat *f, pm_stream *s,
         uint8_t *packed = NULL, *plain = NULL;
         size_t written = 0U, i;
         bool okay;
-        if (wg_stop(pd)) return false;
+        if (carrier_stop(pd)) return false;
         if (end - at >= 21 && pm_read(f, at, header, 21) &&
             !xx_rt_memcmp(header, "SPIS\x1a", 5)) {
             if (segment_count && summed != declared) return false;
@@ -246,7 +246,7 @@ static bool sp_installus_members(Abstractformat *f, pm_stream *s,
             packed_size > SP_RESOURCE_MAX_SIZE ||
             (method == 0U && raw_size != packed_size) ||
             (!!raw_size != !!packed_size) ||
-            !wg_range(end, (uint64_t)at + 25U,
+            !carrier_range(end, (uint64_t)at + 25U,
                       (uint64_t)name_size + packed_size) ||
             raw_size > declared - summed) return false;
         if (!pm_read(f, at + 25, name_bytes, name_size)) return false;
@@ -284,7 +284,7 @@ static bool sp_installus_members(Abstractformat *f, pm_stream *s,
         } else if (checksum != 0U) {
             xx_mem_free(plain); return false;
         }
-        if (wg_stop(pd) || !pm_add(f, s, (const char *)name_bytes,
+        if (carrier_stop(pd) || !pm_add(f, s, (const char *)name_bytes,
                                   at + 25 + name_size, packed_size)) {
             xx_mem_free(plain); return false;
         }
@@ -303,10 +303,10 @@ static bool sp_blob(Abstractformat *f,int64_t at,int64_t end,xx_pd_struct *pd) {
     uint8_t h[25]; uint64_t total=0,declared; bool single; int64_t p=at+21;
     if(end-at<21 || !pm_read(f,at,h,21) || xx_rt_memcmp(h,"SPIS\x1a",5) || (xx_rt_memcmp(h+5,"NON",3) && xx_rt_memcmp(h+5,"RLE",3) && xx_rt_memcmp(h+5,"LZH",3) && xx_rt_memcmp(h+5,"CUS",3) && xx_rt_memcmp(h+5,"LH5",3)) || h[12]>1 || xx_data_get_u32(h+17, 4, 0, false)>2) return false;
     declared=xx_data_get_u32(h+8, 4, 0, false); single=h[12]==0;
-    if(single) { if(!xx_rt_memcmp(h+5,"NON",3) && !xx_data_get_u32(h+17, 4, 0, false) && (declared!=(uint64_t)(end-p) || (xx_data_get_u32(h+13, 4, 0, false) && !wg_sum(f,p,end-p,xx_data_get_u32(h+13, 4, 0, false),pd)))) return false; return p<end || !declared; }
-    while(p<end) { uint16_t name; uint32_t packed,raw; if(wg_stop(pd) || end-p<25 || !pm_read(f,p,h,25)) return false;
+    if(single) { if(!xx_rt_memcmp(h+5,"NON",3) && !xx_data_get_u32(h+17, 4, 0, false) && (declared!=(uint64_t)(end-p) || (xx_data_get_u32(h+13, 4, 0, false) && !carrier_sum(f,p,end-p,xx_data_get_u32(h+13, 4, 0, false),pd)))) return false; return p<end || !declared; }
+    while(p<end) { uint16_t name; uint32_t packed,raw; if(carrier_stop(pd) || end-p<25 || !pm_read(f,p,h,25)) return false;
         name=xx_data_get_u16(h, 2, 0, false); raw=xx_data_get_u32(h+8, 4, 0, false); packed=xx_data_get_u32(h+12, 4, 0, false); if(!name || name>4096 || h[16]>4 || xx_data_get_u32(h+21, 4, 0, false)>2 || (uint64_t)25+name+packed>(uint64_t)(end-p) || (!h[16] && raw!=packed)) return false;
-        if(!h[16] && !xx_data_get_u32(h+21, 4, 0, false) && xx_data_get_u32(h+17, 4, 0, false) && !wg_sum(f,p+25+name,packed,xx_data_get_u32(h+17, 4, 0, false),pd)) { return false; } total+=raw; if(total>declared) return false; p+=25+name+packed;
+        if(!h[16] && !xx_data_get_u32(h+21, 4, 0, false) && xx_data_get_u32(h+17, 4, 0, false) && !carrier_sum(f,p+25+name,packed,xx_data_get_u32(h+17, 4, 0, false),pd)) { return false; } total+=raw; if(total>declared) return false; p+=25+name+packed;
     } return p==end && total==declared;
 }
 
@@ -341,44 +341,44 @@ static bool sp_pe_payload_end(Abstractformat *f, int64_t overlay,
     offset = xx_data_get_u32(h, 4, 0, false); bytes = xx_data_get_u32(h + 4, 4, 0, false);
     if (!offset && !bytes) return true;
     if (!offset || bytes < 8U || (offset & 7U) || offset < overlay ||
-        !wg_range(limit, offset, bytes) || (uint64_t)offset + bytes != (uint64_t)limit)
+        !carrier_range(limit, offset, bytes) || (uint64_t)offset + bytes != (uint64_t)limit)
         return false;
     at = offset;
     while (at < limit) {
         uint32_t length;
         uint64_t aligned;
         size_t pad;
-        if (wg_stop(pd) || limit - at < 8 || !pm_read(f, at, h, 8)) return false;
+        if (carrier_stop(pd) || limit - at < 8 || !pm_read(f, at, h, 8)) return false;
         length = xx_data_get_u32(h, 4, 0, false);
         /* The supported signed layout carries PKCS#7, revision 2.0. */
         if (length < 8U || xx_data_get_u16(h + 4, 2, 0, false) != 0x200U ||
             xx_data_get_u16(h + 6, 2, 0, false) != 2U) return false;
         aligned = ((uint64_t)length + 7U) & ~UINT64_C(7);
-        if (!wg_range(limit, (uint64_t)at, aligned)) return false;
+        if (!carrier_range(limit, (uint64_t)at, aligned)) return false;
         pad = (size_t)(aligned - length);
         if (pad && (!pm_read(f, at + length, padding, pad) ||
-                    !wg_zero(padding, pad))) return false;
+                    !carrier_zero(padding, pad))) return false;
         at += (int64_t)aligned;
     }
     *end = offset;
     *certificate = true;
     return at == limit;
 }
-static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
+static bool carrier_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     static const char prologue[]="\x00\x07""Can&cel\x42""PreSetup will prepare the temporary files needed for installation.\x34""Setup needs to run on Win-32. Installation may fail";
     int64_t overlay,cab,cabend,physical=pm_available(f),limit=physical,at=-1; uint8_t h[128]; unsigned count=0;
     bool certificate = false;
     if (sp_pe_resource(f, s, pd)) return true;
-    if(wg_pe(f,&overlay,&cab,&cabend,pd)) {
+    if(carrier_pe(f,&overlay,&cab,&cabend,pd)) {
         if (!sp_pe_payload_end(f, overlay, &limit, &certificate, pd)) return false;
         at=overlay;
-        if (wg_range(limit, (uint64_t)at, sizeof(h)) &&
+        if (carrier_range(limit, (uint64_t)at, sizeof(h)) &&
             pm_read(f, at, h, sizeof(h)) &&
             !xx_rt_memcmp(h, prologue, sizeof(h))) goto installus;
         while(at<limit) { uint32_t bytes; char name[48];
             if (certificate && limit - at <= 7 && pm_read(f, at, h, (size_t)(limit - at)) &&
-                wg_zero(h, (size_t)(limit - at))) { at = limit; break; }
-            if(wg_stop(pd) || !wg_range(limit, (uint64_t)at, 4U) || !pm_read(f,at,h,4) || (bytes=xx_data_get_u32(h, 4, 0, false))<21 || !wg_range(limit,at+4,bytes) || !sp_blob(f,at+4,at+4+bytes,pd)) return false;
+                carrier_zero(h, (size_t)(limit - at))) { at = limit; break; }
+            if(carrier_stop(pd) || !carrier_range(limit, (uint64_t)at, 4U) || !pm_read(f,at,h,4) || (bytes=xx_data_get_u32(h, 4, 0, false))<21 || !carrier_range(limit,at+4,bytes) || !sp_blob(f,at+4,at+4+bytes,pd)) return false;
             xx_rt_snprintf(name,sizeof(name),"payload-%u.spis",count++); if(!pm_add(f,s,name,at+4,bytes)) return false; at+=4+bytes; if(count>4096) return false;
         } if(!count) return false; s->size=physical; return true;
     }
@@ -406,7 +406,7 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
                 size_t absolute = position + index;
                 char byte = (char)buffer[index];
                 if (absolute < 64U) continue;
-                if (wg_stop(pd)) { ok = false; break; }
+                if (carrier_stop(pd)) { ok = false; break; }
                 while (matched && byte != prologue[matched]) matched = prefix[matched - 1U];
                 if (byte == prologue[matched]) ++matched;
                 if (matched == sizeof(prefix)) {
@@ -420,11 +420,11 @@ static bool wg_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if (!ok || !found) return false;
     }
 installus:
-    { unsigned i; uint64_t sizes[2]={0,0}; unsigned blobs=1; int64_t first; for(i=0;i<9;++i) { if(!pm_read(f,at,h,1) || !wg_range(limit,at+1,h[0])) return false; at+=1+h[0]; }
+    { unsigned i; uint64_t sizes[2]={0,0}; unsigned blobs=1; int64_t first; for(i=0;i<9;++i) { if(!pm_read(f,at,h,1) || !carrier_range(limit,at+1,h[0])) return false; at+=1+h[0]; }
         if(!pm_read(f,at,h,5)) return false;
-        if(xx_rt_memcmp(h,"SPIS\x1a",5)) { blobs=2; for(i=0;i<2;++i) { uint8_t digits[10]; if(!pm_read(f,at,h,1) || !h[0] || h[0]>10 || !pm_read(f,at+1,digits,h[0]) || !wg_decimal((const char *)digits,h[0],&sizes[i])) return false; at+=1+h[0]; } }
+        if(xx_rt_memcmp(h,"SPIS\x1a",5)) { blobs=2; for(i=0;i<2;++i) { uint8_t digits[10]; if(!pm_read(f,at,h,1) || !h[0] || h[0]>10 || !pm_read(f,at+1,digits,h[0]) || !carrier_decimal((const char *)digits,h[0],&sizes[i])) return false; at+=1+h[0]; } }
         else { if(limit-at<25) return false; sizes[0]=(uint64_t)(limit-at-4); }
-        first=at; if(sizes[0]>INT64_MAX-sizes[1] || !wg_range(limit,first,sizes[0]+sizes[1]+4) || (uint64_t)(limit-first)!=sizes[0]+sizes[1]+4) return false;
+        first=at; if(sizes[0]>INT64_MAX-sizes[1] || !carrier_range(limit,first,sizes[0]+sizes[1]+4) || (uint64_t)(limit-first)!=sizes[0]+sizes[1]+4) return false;
         for(i=0;i<blobs;++i) {
             char name[48];
             if (sizes[i] < 21) return false;
@@ -442,11 +442,11 @@ installus:
     } s->size=physical; return true;
 }
 static bool sp_member_extents(pm_stream *s, xx_pd_struct *pd) {
-    wg_extent *ranges;
+    carrier_extent *ranges;
     size_t i, count = 0U;
     bool valid;
     if (s->count < 2U) return true;
-    ranges = (wg_extent *)xx_mem_alloc(s->count * sizeof(*ranges));
+    ranges = (carrier_extent *)xx_mem_alloc(s->count * sizeof(*ranges));
     if (!ranges) return false;
     for (i = 0U; i < s->count; ++i) {
         const pm_member *item = &s->items[i];
@@ -460,11 +460,11 @@ static bool sp_member_extents(pm_stream *s, xx_pd_struct *pd) {
             ranges[count++].hi = item->offset + item->packed_size;
         }
     }
-    valid = wg_extents(ranges, count, pd);
+    valid = carrier_extents(ranges, count, pd);
     xx_mem_free(ranges);
     return valid;
 }
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return wg_parse(f,s,pd) && sp_member_extents(s,pd); }
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return carrier_parse(f,s,pd) && sp_member_extents(s,pd); }
 
 /* PE GP-Install overlays contain several independently framed SPIS volumes.
  * Each view has its own EOF; the native reader must never see the following
@@ -626,7 +626,7 @@ static bool spis_ensure_inner(xx_sfx_spis *reader, xx_pd_struct *pd) {
         valid = true;
         while ((record = xx_spis_get_current_archive_record(
                     &inner->archive.format, state)) != NULL) {
-            if (wg_stop(pd) || ++count > SP_DIRECT_MAX_RECORDS ||
+            if (carrier_stop(pd) || ++count > SP_DIRECT_MAX_RECORDS ||
                 record->compressed_size < 0 || record->data_offset < 0 ||
                 record->data_offset > payload->size ||
                 record->compressed_size >
@@ -763,7 +763,7 @@ static bool spis_next(Abstractformat *f, xx_archive_record_state *state,
     sp_inner *inner;
     if (!direct) return pm_next(f, state, pd);
     if (!state || state->format != f || !state->has_record || !records->active ||
-        wg_stop(pd)) return false;
+        carrier_stop(pd)) return false;
     inner = &direct->volumes[records->volume];
     if (xx_spis_archive_record_move_to_next(&inner->archive.format,
                                              records->active, pd)) {

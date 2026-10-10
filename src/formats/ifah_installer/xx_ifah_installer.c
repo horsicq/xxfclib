@@ -7,7 +7,7 @@
  * Written from the format's structure as measured on the two known setup
  * files (76 records each, every one inflating to its declared size with a
  * matching CRC-32, the chain ending at the header's file size).  The header
- * checks U3's "SFX IFAH" handler makes (signature, positive size and count,
+ * checks the reference reader's "SFX IFAH" handler makes (signature, positive size and count,
  * non-negative sizes, non-empty name) are a subset of the ones here; no code
  * was taken from it.
  *

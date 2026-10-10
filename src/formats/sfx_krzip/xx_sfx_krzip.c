@@ -5,7 +5,7 @@
  * layout.
  *
  * Written from the file structure.  The marker test and the record walk
- * follow what U3's "SFX KRZIP" handler checks (a name length of 1..0x400,
+ * follow what the reference reader's "SFX KRZIP" handler checks (a name length of 1..0x400,
  * signed sizes, records until fewer than five bytes remain, then a u32
  * check); the keystream is Delphi's Random(256) from RandSeed 0, and the
  * two data encodings were identified from the files themselves.

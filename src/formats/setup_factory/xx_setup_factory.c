@@ -7,8 +7,8 @@
  * The installer is located the way XArchive's installers/xsetupfactory.cpp
  * (MIT, same author) does it: end of the last section's raw data, then the
  * E0..E7 marker and the engine chain.  The CFileInfo field order follows
- * what U3's Setup Factory handler reads, checked against the one real
- * installer in the corpus and against synthetic installers that U3 itself
+ * what the reference reader's Setup Factory handler reads, checked against the one real
+ * installer in the corpus and against synthetic installers that the reference reader itself
  * extracts.  The DCL decoder below streams the same bit format as the
  * library's src/algo/dcl/xx_dcl.c (MIT, this library) -- same fixed trees,
  * same checks -- but reads from the device and writes through a small
@@ -1044,7 +1044,7 @@ static bool sf_parse(Abstractformat *format, sf_archive *archive,
             break;
         }
     }
-    /* U3 looks for the list this way in Setup Factory 6 manifests but reads
+    /* The reference reader looks for the list this way in Setup Factory 6 manifests but reads
      * the older (short layout) ones from their first byte; so does this. */
     if (!have || (archive->locate.layout == XX_SETUP_FACTORY_LAYOUT_SHORT &&
                   found != 0U))

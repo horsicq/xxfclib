@@ -6,9 +6,7 @@
  *  @brief "EMT" compressed diskette image (EMT4OS2 / EMT4PM / EMT4PMW).
  */
 
-/* WHERE THE LAYOUT COMES FROM.  U3's recognition predicate (FUN_006716d0,
- * reached from VMT slot 0 at 0x00671a70) is four byte tests, and all four are
- * reproduced here exactly:
+/* FORMAT RECOGNITION.  Reverse-engineering established four byte tests:
  *
  *   byte @ 0x00 == '\\' (0x5c)
  *   byte @ 0x02 == 'z'  (0x7a)
@@ -23,7 +21,7 @@
  *   0x0d  ..   EBCDIC text, mostly 0x40 (space) padding
  *   0x40  16   EBCDIC product banner: " EMT4OS2 V.2.32 ",
  *              " EMT4PM  V.1.11 ", " EMT4PMW V.1.24 "
- *   0x50  ..   binary, including the two fields U3 tests at 0x58 and 0x5c
+ *   0x50  ..   binary, including the checked fields at 0x58 and 0x5c
  *
  * The banner is decoded here and published as the format version, which is
  * the one genuinely descriptive thing the header carries.
@@ -45,7 +43,7 @@
  * reference floppy image. The track scheme also appears in XArchive's
  * xlegacystorearchive.cpp and xdecompress.cpp under the same MIT license.
  *
- * DISPATCH NOTE.  Two of U3's four tests live at offsets 0x58 and 0x5c, past
+ * DISPATCH NOTE.  Two of the four tests live at offsets 0x58 and 0x5c, past
  * the end of a 64-byte magic window, so a prefilter can only use the first
  * six bytes - 5c ?? 7a plus EBCDIC "EMT".  The reader itself checks all four.
  */

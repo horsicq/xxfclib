@@ -48,10 +48,10 @@
  * planar de-interleave, i.e. a reconstruction, and this reader does not
  * reconstruct anything it cannot verify.
  *
- * The .txt and .bmp members are numbered the way U3 numbers them and match
+ * The .txt and .bmp members are numbered the way the reference reader numbers them and match
  * its output byte for byte over the whole corpus; the .wmf and .bin members
  * carry their record index instead, so adding them cannot renumber the
- * members U3 also produces.
+ * members the reference reader also produces.
  */
 
 #include "xxfclib/rt/xx_rt.h"

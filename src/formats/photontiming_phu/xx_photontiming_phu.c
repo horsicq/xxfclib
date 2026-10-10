@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/PicoQuant/PicoQuant-Time-Tagged-File-Format-Demos */
 #include "xxfclib/formats/photontiming_phu/xx_photontiming_phu.h"
-#include "../xx_eighth_data.h"
+#include "../common/xx_binary_records.h"
 
 typedef struct pq_item {char name[32];int32_t index;uint32_t type;uint64_t value;} pq_item;
 static bool pq_header(Abstractformat *f,const char *magic,pq_item *items,unsigned *count,uint64_t *end,xx_pd_struct *pd) {
     uint8_t h[48];uint64_t at=16,total=(uint64_t)pm_available(f);unsigned i,j;bool nul=false;
     if(total>67108864 || !pm_read(f,0,h,16) || xx_rt_memcmp(h,magic,8) || h[8]<'1' || h[8]>'3' || h[9]!='.') return false;
     for(i=8;i<16;++i) {if(!h[i]) nul=true;else if(nul || (h[i]!='.' && (h[i]<'0' || h[i]>'9'))) return false;}if(!nul) return false;
-    for(i=0;i<1024;++i) {pq_item *v=items+i;uint64_t n=0;if(at>4194256 || !eh_take(f,&at,total,h,48,pd)) return false;
+    for(i=0;i<1024;++i) {pq_item *v=items+i;uint64_t n=0;if(at>4194256 || !record_take(f,&at,total,h,48,pd)) return false;
         for(j=0;j<32 && h[j];++j) { if(h[j]<32 || h[j]>126) return false; } if(!j || j==32) return false;
         xx_rt_memcpy(v->name,h,32);v->index=(int32_t)xx_data_get_u32(h+32, 4, 0, false);v->type=xx_data_get_u32(h+36, 4, 0, false);v->value=xx_data_get_u64(h+40, 8, 0, false);
         if(v->index < -1 || v->index>=4096) return false;
@@ -17,10 +17,10 @@ static bool pq_header(Abstractformat *f,const char *magic,pq_item *items,unsigne
         case 0xffff0008U:if(v->value) return false;break;
         case 0x00000008U:break;
         case 0x10000008U:case 0x11000008U:case 0x12000008U:break;
-        case 0x20000008U:case 0x21000008U:if(!sv_finite64(v->value)) return false;break;
+        case 0x20000008U:case 0x21000008U:if(!numeric_finite64(v->value)) return false;break;
         case 0x2001ffffU:case 0x4001ffffU:case 0x4002ffffU:case 0xffffffffU:
-            n=v->value;if(n>1048576 || !eh_span(at,n,total) || at+n>4194304) return false;
-            if(v->type==0x2001ffffU && !eh_float_array(f,at,n,8,false,pd)) return false;
+            n=v->value;if(n>1048576 || !record_span(at,n,total) || at+n>4194304) return false;
+            if(v->type==0x2001ffffU && !record_float_array(f,at,n,8,false,pd)) return false;
             if(v->type==0x4001ffffU && (!n || !pm_read(f,(int64_t)(at+n-1),h,1) || h[0])) return false;
             if(v->type==0x4002ffffU && (n<2 || (n&1) || !pm_read(f,(int64_t)(at+n-2),h,2) || h[0] || h[1])) return false;
             at+=n;break;
@@ -38,7 +38,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!items) return false;
     if(!pq_header(f,"PQHISTO\0",items,&n,&at,pd) || !pq_int(items,n,"HistoResult_NumberOfCurves",-1,&curves) || !curves || curves>128 || !pm_add(f,s,"phu-header.bin",0,(int64_t)at)) goto done;
     for(i=0;i<curves;++i) {uint64_t bins,index,bytes,offset;unsigned j;bool has_offset=false;
-        if(fd_stop(pd) || !pq_int(items,n,"HistResDscr_CurveIndex",(int32_t)i,&index) || index!=i || !pq_int(items,n,"HistResDscr_HistogramBins",(int32_t)i,&bins) || !bins || bins>16777216 || !fd_mul(bins,4,&bytes) || !eh_span(at,bytes,total)) goto done;
+        if(binary_stop(pd) || !pq_int(items,n,"HistResDscr_CurveIndex",(int32_t)i,&index) || index!=i || !pq_int(items,n,"HistResDscr_HistogramBins",(int32_t)i,&bins) || !bins || bins>16777216 || !binary_mul(bins,4,&bytes) || !record_span(at,bytes,total)) goto done;
         for(j=0;j<n;++j) if(items[j].index==(int32_t)i && !xx_rt_strcmp(items[j].name,"HistResDscr_DataOffset")) has_offset=true;
         if(has_offset && (!pq_int(items,n,"HistResDscr_DataOffset",(int32_t)i,&offset) || offset!=at)) goto done;
         xx_rt_snprintf(label,sizeof(label),"histogram-%u.bin",i);if(!pm_add(f,s,label,(int64_t)at,(int64_t)bytes)) goto done;at+=bytes;

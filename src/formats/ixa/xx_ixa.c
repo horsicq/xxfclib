@@ -2,10 +2,10 @@
  * SPDX-License-Identifier: MIT
  *
  * IXALANCE archives (".ixa").  XArchive has no module for this one.  The
- * layout was recovered from U3's IXA handler -- class uva, VMT 005b7e68,
+ * layout was recovered from the reference reader's IXA handler -- class uva, VMT 005b7e68,
  * recognition predicate decompiled/functions/005b/005b84b0.c, which
  * tail-calls decompiled/functions/005b/005b7ee0.c -- and then confirmed
- * against the corpus and against U3's own listing output.
+ * against the corpus and against reference listing output.
  *
  *   header:
  *     0x00   9  char[9]  "IXALANCE " (the predicate tests only "IXALANCE")
@@ -22,18 +22,18 @@
  *     +0x04  4  u32 LE   packed size
  *     +0x08  4  u32 LE   plain size
  *
- *   a slot whose packed and plain sizes are both zero is an unused hole; U3
+ *   a slot whose packed and plain sizes are both zero is an unused hole; the reference reader
  *   skips those when it lists, and so does this reader.  Payloads run back to
  *   back from (table end + auxiliary size) and finish exactly on end-of-file.
  *
- * U3's predicate is only the magic plus the two constants at 0x28 and 0x2c.
+ * The reference reader's predicate is only the magic plus the two constants at 0x28 and 0x2c.
  * This reader adds the structural requirements that make a false positive
  * essentially impossible: the table end must be exactly 0x40 + slots*12, the
  * first payload must start at table end plus the auxiliary size, every
  * payload must follow the previous one exactly, and the last must land on
  * end-of-file.
  *
- * Slots carry no names.  U3 synthesises "<index>.<ext>" with the extension
+ * Slots carry no names.  The reference reader synthesises "<index>.<ext>" with the extension
  * sniffed from the DECOMPRESSED bytes; this reader cannot sniff what it
  * cannot decode, so it files each slot under a zero-padded index and ".bin".
  *
@@ -41,7 +41,7 @@
  * The two stages are bounded by the table's declared final size.
  *
  * All 4 corpus samples in F:\ARC\ARC\IXA parse, for 18 live members, which
- * matches U3's own listing member for member.
+ * matches reference listings member for member.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -204,7 +204,7 @@ static bool xx_ixa_add(xx_ixa_stream *stream,
 }
 
 /* Slots carry no names; they are filed under a zero-padded index, the width
- * taken from the slot count the way U3's listing does it. */
+ * taken from the slot count the way the reference reader's listing does it. */
 static char *xx_ixa_slot_name(uint32_t index, uint32_t width) {
     char text[32];
     size_t length = 0U;
@@ -263,7 +263,7 @@ static xx_ixa_stream *xx_ixa_parse(Abstractformat *self,
     if (!xx_ixa_read_at(self, self->base_address, head, sizeof(head))) {
         return NULL;
     }
-    /* U3's predicate: the magic plus the two header constants. */
+    /* The reference reader's predicate: the magic plus the two header constants. */
     if (xx_rt_memcmp(head, "IXALANCE", 8U) != 0 ||
         xx_data_get_u32(head + 0x28, 4, 0, false) != XX_IXA_MAGIC_CHECK_A ||
         xx_data_get_u32(head + 0x2c, 4, 0, false) != XX_IXA_MAGIC_CHECK_B) {

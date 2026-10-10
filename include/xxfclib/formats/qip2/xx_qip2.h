@@ -8,8 +8,7 @@
 
 /* WHERE THE LAYOUT COMES FROM.  Two independent sources agree.
  *
- * U3's recognition predicate for its QIP2 handler (FUN_0053a0b0, reached from
- * VMT slot 0 at 0x0053a540) pins the header exactly:
+ * Reverse-engineering established these exact header checks:
  *
  *   u16 @ 0x00 == 0x5051      ("QP")
  *   u16 @ 0x02 != 0           member count

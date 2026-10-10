@@ -12,19 +12,9 @@
  * SYTOS.LOG and one OPPLUS.HLP - and their first byte is already the first
  * LZS token.
  *
- * HOW U3 RECOGNISES IT, AND WHY THIS READER DOES NOT COPY THAT.  U3's Raw
- * STAC predicate (FUN_0060bdb0 -> FUN_0060bb90 -> FUN_0060bb40) is a loop of
- * exactly three 16-byte comparisons against a table at 0x00827fd4: it knows
- * three specific files by their first sixteen bytes and nothing else.  That
- * matches this corpus exactly - it contains exactly three distinct 16-byte
- * prefixes - which is strong evidence that the table really is three
- * hard-coded prefixes rather than a rule.  A table of three literals is not a
- * format test; it recognises three files and rejects every other raw LZS
- * stream in the world, and it cannot be ported as a "detection rule" without
- * pretending to knowledge nobody has.
- *
- * So the detector here is the DECODE ITSELF, which is both more general and
- * much harder to fool:
+ * DETECTION.  The corpus contains only three distinct 16-byte prefixes;
+ * matching those literals would recognise specific files instead of the
+ * underlying format.  The detector therefore validates the LZS decode:
  *
  *   - the stream must parse as LZS from bit 0 with no token left over;
  *   - it must terminate on the LZS end marker (1 1 0000000), not by running

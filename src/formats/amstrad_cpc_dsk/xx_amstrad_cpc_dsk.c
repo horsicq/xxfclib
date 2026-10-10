@@ -9,28 +9,28 @@
  * offset per sector in every formatted track. Preserve the complete trailer.
  */
 #include "xxfclib/formats/amstrad_cpc_dsk/xx_amstrad_cpc_dsk.h"
-#include "../vice_x64/xx_ninth_retro.h"
+#include "../common/xx_retro_disk_components.h"
 #include "xxfclib/data/xx_data.h"
 
 /* The shared retro helper stops at 4096 members, while one legal CPC image
  * can contain 84 * 2 tracks with 29 sectors each. Include the disk header,
  * every track descriptor, and one possible trailer in the local bound. */
 #define CPC_MAX_MEMBERS (1U + 84U * 2U * (1U + 29U) + 1U)
-static bool cpc_emit(Abstractformat *f,pm_stream *s,const nh_blob *b,
+static bool cpc_emit(Abstractformat *f,pm_stream *s,const retro_disk_blob *b,
                      const char *name,uint32_t at,uint32_t size) {
- return s->count<CPC_MAX_MEMBERS && nh_poll(b) && nh_range(b,at,size) &&
+ return s->count<CPC_MAX_MEMBERS && retro_disk_poll(b) && retro_disk_range(b,at,size) &&
         pm_add(f,s,name,at,size);
 }
 
-static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
+static bool parse_blob(Abstractformat *f,pm_stream *s,retro_disk_blob *b) {
  uint32_t tracks,sides,at=256,i,nonempty=0,offset_entries=0; bool ext; char name[48];
- if(!nh_range(b,0,256)) return false;
+ if(!retro_disk_range(b,0,256)) return false;
  ext=!xx_rt_memcmp(b->p,"EXTENDED CPC DSK File\r\nDisk-Info\r\n",34);
  if((!ext && xx_rt_memcmp(b->p,"MV - CPCEMU Disk-File\r\nDisk-Info\r\n",34)) || !(tracks=b->p[48]) || tracks>84 || !(sides=b->p[49]) || sides>2 || (!ext && xx_data_get_u16(b->p+50, 2, 0, false)<256) || !cpc_emit(f,s,b,"disk-descriptor.bin",0,256)) return false;
  for(i=0;i<tracks*sides;++i) {
   uint32_t z=ext ? (uint32_t)b->p[52+i]*256U : xx_data_get_u16(b->p+50, 2, 0, false),j,pos,ns; const uint8_t *p; uint8_t ids[256]={0};
   if(!z) continue;
-  if(z<256 || !nh_range(b,at,z) || xx_rt_memcmp(b->p+at,"Track-Info\r\n",12)) { return false; } p=b->p+at;
+  if(z<256 || !retro_disk_range(b,at,z) || xx_rt_memcmp(b->p+at,"Track-Info\r\n",12)) { return false; } p=b->p+at;
   if(p[16]!=i/sides || p[17]!=i%sides || p[20]>7 || (ns=p[21])>29) return false;
   if(ext) offset_entries+=1U+ns;
   xx_rt_snprintf(name,sizeof(name),"track-%u-descriptor.bin",i); if(!cpc_emit(f,s,b,name,at,256)) return false; pos=256;
@@ -67,7 +67,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
  s->size=b->n; return true;
 }
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { retro_disk_blob b; bool ok; if(!retro_disk_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }
 
 void xx_amstrad_cpc_dsk_init(xx_amstrad_cpc_dsk *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_AMSTRAD_CPC_DSK,"dsk"); } }
 xx_amstrad_cpc_dsk *xx_amstrad_cpc_dsk_create(xx_io_device *d,int64_t b) { xx_amstrad_cpc_dsk *r=(xx_amstrad_cpc_dsk *)xx_mem_alloc(sizeof(*r)); if(r) xx_amstrad_cpc_dsk_init(r,d,b); return r; }

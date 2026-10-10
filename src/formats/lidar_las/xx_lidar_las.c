@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/laspy/laspy/master/laspy/header.py */
 #include "xxfclib/formats/lidar_las/xx_lidar_las.h"
-#include "../xx_seventh_data.h"
+#include "../common/xx_numeric_values.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     static const unsigned widths[]={20,28,26,34};uint8_t h[227],b[54];uint64_t at,data,n,points,header;unsigned vlrs,fmt,i;int64_t available=pm_available(f);
-    if(fd_stop(pd) || available<227 || !pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"LASF",4) || h[24]!=1 || h[25]!=2 || (xx_data_get_u16(h+6, 2, 0, false)&~1U)) return false;
+    if(binary_stop(pd) || available<227 || !pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"LASF",4) || h[24]!=1 || h[25]!=2 || (xx_data_get_u16(h+6, 2, 0, false)&~1U)) return false;
     header=xx_data_get_u16(h+94, 2, 0, false);data=xx_data_get_u32(h+96, 4, 0, false);vlrs=xx_data_get_u32(h+100, 4, 0, false);fmt=h[104];points=xx_data_get_u32(h+107, 4, 0, false);
-    if(header<227 || header>65535 || data<header || vlrs>1024 || fmt>3 || xx_data_get_u16(h+105, 2, 0, false)<widths[fmt] || !points || points>1000000 || !fd_mul(points,xx_data_get_u16(h+105, 2, 0, false),&n) || !fd_range(data,n,(uint64_t)available)) return false;
-    for(i=0;i<3;++i) if(!sv_positive64(xx_data_get_u64(h+131+8*i, 8, 0, false))) return false;
-    for(i=155;i<227;i+=8) if(!sv_finite64(xx_data_get_u64(h+i, 8, 0, false))) return false;
-    for(i=0;i<3;++i) if(sv_ordered64(xx_data_get_u64(h+187+16*i, 8, 0, false))>sv_ordered64(xx_data_get_u64(h+179+16*i, 8, 0, false))) return false;
+    if(header<227 || header>65535 || data<header || vlrs>1024 || fmt>3 || xx_data_get_u16(h+105, 2, 0, false)<widths[fmt] || !points || points>1000000 || !binary_mul(points,xx_data_get_u16(h+105, 2, 0, false),&n) || !binary_range(data,n,(uint64_t)available)) return false;
+    for(i=0;i<3;++i) if(!numeric_positive64(xx_data_get_u64(h+131+8*i, 8, 0, false))) return false;
+    for(i=155;i<227;i+=8) if(!numeric_finite64(xx_data_get_u64(h+i, 8, 0, false))) return false;
+    for(i=0;i<3;++i) if(numeric_ordered64(xx_data_get_u64(h+187+16*i, 8, 0, false))>numeric_ordered64(xx_data_get_u64(h+179+16*i, 8, 0, false))) return false;
     if(!pm_add(f,s,"las-header.bin",0,(int64_t)header)) { return false; } at=header;
-    for(i=0;i<vlrs;++i) {uint64_t z;char label[64];if(fd_stop(pd) || !fd_range(at,54,data) || !pm_read(f,(int64_t)at,b,54)) return false;
-        z=54U+xx_data_get_u16(b+20, 2, 0, false);if(!fd_range(at,z,data)) return false;
+    for(i=0;i<vlrs;++i) {uint64_t z;char label[64];if(binary_stop(pd) || !binary_range(at,54,data) || !pm_read(f,(int64_t)at,b,54)) return false;
+        z=54U+xx_data_get_u16(b+20, 2, 0, false);if(!binary_range(at,z,data)) return false;
         xx_rt_snprintf(label,sizeof(label),"vlr-%u.bin",i);if(!pm_add(f,s,label,(int64_t)at,(int64_t)z)) return false;at+=z;
     }
     if(at<data && !pm_add(f,s,"point-padding.bin",(int64_t)at,(int64_t)(data-at))) return false;

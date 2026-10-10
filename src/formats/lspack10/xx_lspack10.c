@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * LSPack 1.0 archives (".LSP"), the Clarion-era packer.  XArchive has no
- * module for this one.  The layout was recovered from U3's "LSPack 10"
+ * module for this one.  The layout was recovered from the reference reader's "LSPack 10"
  * handler -- class zza, VMT 005fb008, recognition predicate
  * decompiled/functions/005f/005fba10.c, which tail-calls
  * decompiled/functions/005f/005fb080.c -- and then confirmed against the
@@ -29,7 +29,7 @@
  *   then the file name, then the backslash-separated directory path, then the
  *   compressed payload.
  *
- * U3's predicate is exactly: the magic; both size fields non-negative; the
+ * The reference reader's predicate is exactly: the magic; both size fields non-negative; the
  * four reserved fields at 0x1a, 0x1c, 0x1e and 0x20 all zero; and a non-zero
  * name length.  This reader keeps all of that, applies it to EVERY member
  * rather than just the first, and additionally requires the chain to land
@@ -268,7 +268,7 @@ static xx_lspack10_stream *xx_lspack10_parse(Abstractformat *self,
             header[3] != 0x04U) {
             goto fail;
         }
-        /* U3's reserved-field gate, applied to every member. */
+        /* The reference reader's reserved-field gate, applied to every member. */
         if (xx_data_get_u16(header + 0x1a, 2, 0, false) != 0U ||
             xx_data_get_u16(header + 0x1c, 2, 0, false) != 0U ||
             xx_data_get_u16(header + 0x1e, 2, 0, false) != 0U ||

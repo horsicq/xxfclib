@@ -6,28 +6,28 @@
  * the original name with the last character of the extension replaced by
  * '#' (SAMPLE.ICO -> SAMPLE.IC#, GPFDLL21.DLL -> GPFDLL21.DL#).
  *
- * Undocumented, but U3 recognises it and both halves are recovered in
- * F:\utils\U3\src (FORMAT_INDEX.md "archive / 243 GPFPACK", class nsa, VMT
+ * Undocumented, but the reference reader recognises it and both halves are recovered in
+ * recovered decoder analysis (FORMAT_INDEX.md "archive / 243 GPFPACK", class nsa, VMT
  * 0x0056d318; slot 0 -> FUN_0056d390, slot 1 -> FUN_0056d440).  The layout
  * is FUN_0056d390 transcribed and holds for all 51 samples in
  * F:\ARC\ARC\GPFPACK:
  *
  *   0x00  u32      0x000000C0 - format constant
  *   0x04  char[8]  "GPFPACK" and its NUL
- *   0x0C  u16      1 - version, which U3 requires to be exactly 1
+ *   0x0C  u16      1 - version, which the reference reader requires to be exactly 1
  *   0x0E  char[14] name field: the original name, NUL terminated and NUL
  *                  padded out to a fixed 14 bytes
  *   0x1C  ...      the payload: a chain of packed blocks
  *
  * Each block is introduced by a little-endian u32 giving the block's length
  * IN BITS; the block's bytes are the next (bits + 7) / 8 of the file, and
- * the next block's count follows immediately.  U3 reads that field as a
+ * the next block's count follows immediately.  The reference reader reads that field as a
  * SIGNED int and refuses a value below 1 (FUN_0056d3d0), and its decoder
  * spends the count as a bit budget - which is what proves it is a bit count
  * and not a byte count.  Walking the chain from 0x1C lands exactly on EOF in
  * all 51 samples.
  *
- * THE CODEC IS LZW, read out of U3's per-block decoder FUN_0056cf30.  It is
+ * THE CODEC IS LZW, read out of the reference reader's per-block decoder FUN_0056cf30.  It is
  * the same TIFF-shaped dialect the WinLink reader uses, one bit narrower and
  * with a different end-of-stream convention:
  *
@@ -38,7 +38,7 @@
  *     one.  Widening one code later, as GIF does, desynchronises at once;
  *   - 0x100 is CLEAR and the first assignable code is 0x102; the table stops
  *     growing at 0x2000 entries;
- *   - there is NO end code.  0x101 is never emitted and U3 treats it as an
+ *   - there is NO end code.  0x101 is never emitted and the reference reader treats it as an
  *     error; a block ends when its bit budget is spent, tested before each
  *     code is read;
  *   - a CLEAR resets the width and the next-assignable code but not the bit
@@ -51,7 +51,7 @@
  * running the chain once with no output buffer and then decoding into a
  * buffer of exactly that size.
  *
- * Verified byte for byte against U3's own output for all 51 samples.
+ * Verified byte for byte against reference output for all 51 samples.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -82,7 +82,7 @@
 /* Only guards against a pathological file made of a huge number of empty
  * blocks; a real container has tens of them. */
 #define XX_GPFPACK_MAX_BLOCKS UINT64_C(16777216)
-/* U3 reads the per-block bit count as a signed int and rejects anything
+/* The reference reader reads the per-block bit count as a signed int and rejects anything
  * below 1; this is the other end of the same field. */
 #define XX_GPFPACK_MAX_BLOCK_BITS UINT32_C(0x7fffffff)
 
@@ -235,7 +235,7 @@ static xx_gpfpack_stream *xx_gpfpack_parse(Abstractformat *self,
     if (xx_rt_memcmp(header + XX_GPFPACK_TAG_OFFSET, "GPFPACK",
                      XX_GPFPACK_TAG_SIZE) != 0)
         return NULL;
-    /* U3 requires the version word to be exactly 1, and every sample is. */
+    /* The reference reader requires the version word to be exactly 1, and every sample is. */
     if (xx_data_get_u16(header + XX_GPFPACK_VERSION_OFFSET, 2, 0, false) !=
         XX_GPFPACK_VERSION)
         return NULL;

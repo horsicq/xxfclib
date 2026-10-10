@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Novell NetWare "BAGF" bag file: a 112-byte header naming one stored member,
- * then the member's bytes.  The signature and version test is U3's own
+ * then the member's bytes.  The signature and version test is the reference reader's own
  * recognition predicate (FUN_006742a0); the field table and the "stored, not
  * compressed" finding are in xx_bagf.h.
  */
@@ -105,7 +105,7 @@ static bool bagf_parse(Abstractformat *format, bagf_stream **result,
         return false;
     if (xx_rt_memcmp(header, XX_BAGF_SIGNATURE, XX_BAGF_SIGNATURE_SIZE) != 0)
         return false;
-    /* U3's version test, byte for byte. */
+    /* The reference reader's version test, byte for byte. */
     if (header[4] != XX_BAGF_VERSION || header[5] != 0U) return false;
     if (xx_data_get_u32(header + 8, 4, 0, false) == 0U ||
         (xx_data_get_u32(header + 8, 4, 0, false) & 0x80000000U) != 0U)

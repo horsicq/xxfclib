@@ -4,7 +4,7 @@
  * id Software VSWAP chunk files -- the wall/sprite/sound pool shipped with
  * Wolfenstein 3D, Spear of Destiny and the Blake Stone games (VSWAP.WL1,
  * VSWAP.BS1, ...).  Ported from XArchive's games/xwolfvswap.cpp and
- * cross-checked against U3's Wolf_FT handler (class ygb, VMT 00669648).
+ * cross-checked against the reference reader's Wolf_FT handler (class ygb, VMT 00669648).
  *
  *   header, 6 bytes at offset 0:
  *     0x00   2  u16 LE   chunk count
@@ -252,7 +252,7 @@ static char *xx_wolfft_chunk_name(uint32_t index, uint32_t sprite_start,
     return xx_str_dup(text);
 }
 
-/* U3 names rendered images and sounds by their global VSWAP slot number. */
+/* The reference reader names rendered images and sounds by their global VSWAP slot number. */
 static char *xx_wolfft_rendered_name(uint32_t index, const char *extension) {
     char name[32];
     int written = snprintf(name, sizeof(name), "%03u.%s", index, extension);
@@ -326,7 +326,7 @@ static bool xx_wolfft_sprite_valid(Abstractformat *self, int64_t at,
 static bool xx_wolfft_wall_valid(Abstractformat *self, int64_t at,
                                  int64_t size) {
     uint8_t raw[4096];
-    /* A wall is a full 64x64 palette-index plane. U3 renders index 255 as
+    /* A wall is a full 64x64 palette-index plane. The reference reader renders index 255 as
      * magenta here, unlike the sprite run's transparent marker. */
     return size == 4096 && xx_wolfft_read_at(self, at, raw, sizeof(raw));
 }
@@ -368,7 +368,7 @@ static bool xx_wolfft_convert_sounds(Abstractformat *self,
 
         if (relative >= stream->chunk_count - stream->sound_start ||
             page >= info_index) goto done;
-        /* Unused start pages are suppressed by U3.  Each matching ordinal
+        /* Unused start pages are suppressed by the reference extractor.  Each matching ordinal
          * still determines the rendered WAV's global-slot filename. */
         if (xx_wolfft_chunk_offset(stream, page) == 0U &&
             xx_wolfft_chunk_length(stream, page) == 0U) continue;
@@ -611,7 +611,7 @@ static void xx_wolfft_wav_header(uint8_t *output, uint32_t data_size) {
     uint32_t file_size = XX_WOLFFT_WAV_HEADER_SIZE + data_size;
     xx_mem_zero(output, XX_WOLFFT_WAV_HEADER_SIZE);
     xx_rt_memcpy(output, "RIFF", 4U);
-    /* U3's RIFF length includes the eight-byte RIFF header itself. */
+    /* The reference reader's RIFF length includes the eight-byte RIFF header itself. */
     xx_data_set_u32(output + 4U, 4, 0, file_size, false);
     xx_rt_memcpy(output + 8U, "WAVEfmt ", 8U);
     xx_data_set_u32(output + 16U, 4, 0, 18U, false);
@@ -626,7 +626,7 @@ static void xx_wolfft_wav_header(uint8_t *output, uint32_t data_size) {
 }
 
 /* Every source page was bounded by the structural parse.  Render recognized
- * pages as U3's 32-bit BMP or 7 kHz unsigned PCM WAV; retain the original
+ * pages as the reference reader's 32-bit BMP or 7 kHz unsigned PCM WAV; retain the original
  * bytes for any page whose media structure was not recognized. */
 static bool xx_wolfft_decode(Abstractformat *self,
                              const xx_wolfft_stream *stream,

@@ -6,9 +6,8 @@
  *  @brief Stac Electronics LZS single-stream container ("sTaC").
  */
 
-/* WHERE THE LAYOUT COMES FROM.  U3's recognition predicate for its "STAC"
- * handler (FUN_005d0a00, reached from VMT slot 0 at 0x005d0c80) is a single
- * test: the little-endian u32 at offset 0 equals 0x43615473, i.e. the four
+/* FORMAT RECOGNITION.  The little-endian u32 at offset 0 equals
+ * 0x43615473, i.e. the four
  * ASCII bytes "sTaC".  There is nothing else in the header - no length, no
  * name, no checksum - and the LZS bit stream starts immediately at offset 4.
  *
@@ -46,9 +45,8 @@
  * decoded stream and decodes it for real.  The decoded length is not stored
  * anywhere in the file, so it is measured by a first, output-free pass of the
  * same decoder that then produces the bytes; the two can therefore never
- * disagree.  The member has no name in the container - U3 falls back to the
- * archive's own file name for it - so this reader publishes the neutral name
- * "stac.bin" rather than inventing one from the host file.
+ * disagree.  The member has no name in the container, so this reader
+ * publishes the neutral name "stac.bin".
  */
 
 #ifndef XXFCLIB_FORMAT_STAC_H

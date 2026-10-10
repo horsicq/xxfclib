@@ -7,12 +7,9 @@
  */
 
 /* WHERE THE LAYOUT COMES FROM.  There is no published specification for this
- * format.  The container and the codec below were both recovered from the
- * original unpacker's own code (U3, decompiled: format "PerFORM", class
- * `oza`, VMT 0x005f0d28; recognition FUN_005f0da0, open/unpack FUN_005f0de0,
- * codec FUN_004c5260 / FUN_004c55f0 with its helpers FUN_004c5490 read-code,
- * FUN_004c52e0 get-bits and FUN_004c53d0 block-align) and then verified
- * against all 782 samples in F:\ARC\ARC\PerFORM.
+ * format.  The container and codec below were recovered by reverse-engineering
+ * a reference unpacker and then verified against all 782 samples in
+ * F:\ARC\ARC\PerFORM.
  *
  *   off  size  what                                       evidence
  *   0    33    "PerFORM compressed database 1.00 "        identical, 782/782

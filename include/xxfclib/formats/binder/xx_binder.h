@@ -5,6 +5,9 @@
 #define XXFCLIB_FORMAT_BINDER_H
 
 #include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* OLE2 / CFBF (Compound File Binary Format) compound files.  One parser,
  * two faces that split compound files between them without overlap:
@@ -78,6 +81,9 @@ XXFC_API bool xx_cfbf_archive_record_move_to_next(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_cfbf_free_archive_records_reading(
     Abstractformat *self, xx_archive_record_state *state);
+#ifdef __cplusplus
+}
+#endif
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #ifdef __cplusplus

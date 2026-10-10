@@ -16,6 +16,94 @@
  */
 
 #include "xxfc_readers.h"
+#include "xxfclib/formats/zxml/xx_zxml.h"
+#include "xxfclib/formats/zisofs/xx_zisofs.h"
+#include "xxfclib/formats/nvp/xx_nvp.h"
+#include "xxfclib/formats/sqze/xx_sqze.h"
+#include "xxfclib/formats/zip_psc/xx_zip_psc.h"
+#include "xxfclib/formats/crx_native/xx_crx_native.h"
+#include "xxfclib/formats/dcs/xx_dcs.h"
+#include "xxfclib/formats/mskn1/xx_mskn1.h"
+#include "xxfclib/formats/mskn2/xx_mskn2.h"
+#include "xxfclib/formats/mskn3/xx_mskn3.h"
+#include "xxfclib/formats/csq/xx_csq.h"
+#include "xxfclib/formats/zoot1/xx_zoot1.h"
+#include "xxfclib/formats/rdfz/xx_rdfz.h"
+#include "xxfclib/formats/zbeos/xx_zbeos.h"
+#include "xxfclib/formats/solarispkg_zip/xx_solarispkg_zip.h"
+#include "xxfclib/formats/gta_img/xx_gta_img.h"
+#include "xxfclib/formats/pbo/xx_pbo.h"
+#include "xxfclib/formats/pam_pak/xx_pam_pak.h"
+#include "xxfclib/formats/pfpk/xx_pfpk.h"
+#include "xxfclib/formats/birdies/xx_birdies.h"
+#include "xxfclib/formats/xuiz/xx_xuiz.h"
+#include "xxfclib/formats/titan_quest/xx_titan_quest.h"
+#include "xxfclib/formats/sbpak/xx_sbpak.h"
+#include "xxfclib/formats/cgjp/xx_cgjp.h"
+#include "xxfclib/formats/pirs/xx_pirs.h"
+#include "xxfclib/formats/px/xx_px.h"
+#include "xxfclib/formats/binsh_starkit/xx_binsh_starkit.h"
+#include "xxfclib/formats/evd/xx_evd.h"
+#include "xxfclib/formats/desksoft/xx_desksoft.h"
+#include "xxfclib/formats/metaproducts/xx_metaproducts.h"
+#include "xxfclib/formats/visualware/xx_visualware.h"
+#include "xxfclib/formats/lyme_sfx/xx_lyme_sfx.h"
+#include "xxfclib/formats/audials/xx_audials.h"
+#include "xxfclib/formats/psa_disk/xx_psa_disk.h"
+#include "xxfclib/formats/webexe/xx_webexe.h"
+#include "xxfclib/formats/asd/xx_asd.h"
+#include "xxfclib/formats/cfd/xx_cfd.h"
+#include "xxfclib/formats/rdc/xx_rdc.h"
+#include "xxfclib/formats/fox_sqz/xx_fox_sqz.h"
+#include "xxfclib/formats/skf/xx_skf.h"
+#include "xxfclib/formats/osl2000/xx_osl2000.h"
+#include "xxfclib/formats/lds/xx_lds.h"
+#include "xxfclib/formats/dcp_disk/xx_dcp_disk.h"
+#include "xxfclib/formats/sony_image/xx_sony_image.h"
+static void rm_zxml(void *p) { xx_zxml_free((Abstractformat *)p); }
+static void rm_zisofs(void *p) { xx_zisofs_free((Abstractformat *)p); }
+static void rm_nvp(void *p) { xx_nvp_free((Abstractformat *)p); }
+static void rm_sqze(void *p) { xx_sqze_free((Abstractformat *)p); }
+static void rm_zip_psc(void *p) { xx_zip_psc_free((Abstractformat *)p); }
+static void rm_crx_native(void *p) { xx_crx_native_free((Abstractformat *)p); }
+static void rm_dcs(void *p) { xx_dcs_free((Abstractformat *)p); }
+static void rm_mskn1(void *p) { xx_mskn1_free((Abstractformat *)p); }
+static void rm_mskn2(void *p) { xx_mskn2_free((Abstractformat *)p); }
+static void rm_mskn3(void *p) { xx_mskn3_free((Abstractformat *)p); }
+static void rm_csq(void *p) { xx_csq_free((Abstractformat *)p); }
+static void rm_zoot1(void *p) { xx_zoot1_free((Abstractformat *)p); }
+static void rm_rdfz(void *p) { xx_rdfz_free((Abstractformat *)p); }
+static void rm_zbeos(void *p) { xx_zbeos_free((Abstractformat *)p); }
+static void rm_solarispkg_zip(void *p) { xx_solarispkg_zip_free((Abstractformat *)p); }
+static void rm_gta_img(void *p) { xx_gta_img_free((Abstractformat *)p); }
+static void rm_pbo(void *p) { xx_pbo_free((Abstractformat *)p); }
+static void rm_pam_pak(void *p) { xx_pam_pak_free((Abstractformat *)p); }
+static void rm_pfpk(void *p) { xx_pfpk_free((Abstractformat *)p); }
+static void rm_birdies(void *p) { xx_birdies_free((Abstractformat *)p); }
+static void rm_xuiz(void *p) { xx_xuiz_free((Abstractformat *)p); }
+static void rm_titan_quest(void *p) { xx_titan_quest_free((Abstractformat *)p); }
+static void rm_sbpak(void *p) { xx_sbpak_free((Abstractformat *)p); }
+static void rm_cgjp(void *p) { xx_cgjp_free((Abstractformat *)p); }
+static void rm_pirs(void *p) { xx_pirs_free((Abstractformat *)p); }
+static void rm_px(void *p) { xx_px_free((Abstractformat *)p); }
+static void rm_binsh_starkit(void *p) { xx_binsh_starkit_free((Abstractformat *)p); }
+static void rm_evd(void *p) { xx_evd_free((Abstractformat *)p); }
+static void rm_desksoft(void *p) { xx_desksoft_free((Abstractformat *)p); }
+static void rm_metaproducts(void *p) { xx_metaproducts_free((Abstractformat *)p); }
+static void rm_visualware(void *p) { xx_visualware_free((Abstractformat *)p); }
+static void rm_lyme_sfx(void *p) { xx_lyme_sfx_free((Abstractformat *)p); }
+static void rm_audials(void *p) { xx_audials_free((Abstractformat *)p); }
+static void rm_psa_disk(void *p) { xx_psa_disk_free((Abstractformat *)p); }
+static void rm_webexe(void *p) { xx_webexe_free((Abstractformat *)p); }
+static void rm_asd(void *p) { xx_asd_free((Abstractformat *)p); }
+static void rm_cfd(void *p) { xx_cfd_free((Abstractformat *)p); }
+static void rm_rdc(void *p) { xx_rdc_free((Abstractformat *)p); }
+static void rm_fox_sqz(void *p) { xx_fox_sqz_free((Abstractformat *)p); }
+static void rm_skf(void *p) { xx_skf_free((Abstractformat *)p); }
+static void rm_osl2000(void *p) { xx_osl2000_free((Abstractformat *)p); }
+static void rm_lds(void *p) { xx_lds_free((Abstractformat *)p); }
+static void rm_dcp_disk(void *p) { xx_dcp_disk_free((Abstractformat *)p); }
+static void rm_sony_image(void *p) { xx_sony_image_free((Abstractformat *)p); }
 #include <xxfclib/formats/pdf/xxpdf.h>
 #include <xxfclib/formats/sevenzip_engine/xx_sevenzip_engine.h>
 #include <xxfclib/formats/ue2_documents/xx_ue2_documents.h>
@@ -5298,10 +5386,9 @@ static Abstractformat *mk_spirv(xx_io_device *d, int64_t b) {
 }
 static void rm_spirv(void *p) { xx_spirv_free((xx_spirv *)p); }
 static Abstractformat *mk_crx(xx_io_device *d, int64_t b) {
-    xx_crx *r = xx_crx_create(d, b);
-    return r ? &r->format : NULL;
+    return xx_crx_native_create(d,b);
 }
-static void rm_crx(void *p) { xx_crx_free((xx_crx *)p); }
+static void rm_crx(void *p) { xx_crx_native_free((Abstractformat *)p); }
 static Abstractformat *mk_sfx_arc(xx_io_device *d, int64_t b) {
     xx_sfx_arc *r = xx_sfx_arc_create(d, b);
     return r ? &r->format : NULL;
@@ -9265,6 +9352,50 @@ static void rm_rvz(void *p) { xx_rvz_free((xx_rvz *)p); }
 static void rm_sevenzip_engine(void *p) { xx_sevenzip_engine_free((Abstractformat *)p); }
 #include "xx_sevenzip_factories.inc"
 static xxfc_reader_entry g_readers[] = {
+    { "zxml", xx_zxml_create, rm_zxml, XX_FILE_TYPE_ZXML },
+    { "zisofs", xx_zisofs_create, rm_zisofs, XX_FILE_TYPE_ZISOFS },
+    { "nvp", xx_nvp_create, rm_nvp, XX_FILE_TYPE_NVP },
+    { "sqze", xx_sqze_create, rm_sqze, XX_FILE_TYPE_SQZE },
+    { "zip_psc", xx_zip_psc_create, rm_zip_psc, XX_FILE_TYPE_ZIP_PSC },
+    { "crx_native", xx_crx_native_create, rm_crx_native, XX_FILE_TYPE_CRX },
+    { "dcs", xx_dcs_create, rm_dcs, XX_FILE_TYPE_DCS },
+    { "mskn1", xx_mskn1_create, rm_mskn1, XX_FILE_TYPE_MSKN1 },
+    { "mskn2", xx_mskn2_create, rm_mskn2, XX_FILE_TYPE_MSKN2 },
+    { "mskn3", xx_mskn3_create, rm_mskn3, XX_FILE_TYPE_MSKN3 },
+    { "csq", xx_csq_create, rm_csq, XX_FILE_TYPE_CSQ },
+    { "zoot1", xx_zoot1_create, rm_zoot1, XX_FILE_TYPE_ZOOT1 },
+    { "rdfz", xx_rdfz_create, rm_rdfz, XX_FILE_TYPE_RDFZ },
+    { "zbeos", xx_zbeos_create, rm_zbeos, XX_FILE_TYPE_ZBEOS },
+    { "solarispkg_zip", xx_solarispkg_zip_create, rm_solarispkg_zip, XX_FILE_TYPE_SOLARISPKG_ZIP },
+    { "gta_img", xx_gta_img_create, rm_gta_img, XX_FILE_TYPE_GTA_IMG },
+    { "pbo", xx_pbo_create, rm_pbo, XX_FILE_TYPE_PBO },
+    { "pam_pak", xx_pam_pak_create, rm_pam_pak, XX_FILE_TYPE_PAM_PAK },
+    { "pfpk", xx_pfpk_create, rm_pfpk, XX_FILE_TYPE_PFPK },
+    { "birdies", xx_birdies_create, rm_birdies, XX_FILE_TYPE_BIRDIES },
+    { "xuiz", xx_xuiz_create, rm_xuiz, XX_FILE_TYPE_XUIZ },
+    { "titan_quest", xx_titan_quest_create, rm_titan_quest, XX_FILE_TYPE_TITAN_QUEST },
+    { "sbpak", xx_sbpak_create, rm_sbpak, XX_FILE_TYPE_SBPAK },
+    { "cgjp", xx_cgjp_create, rm_cgjp, XX_FILE_TYPE_CGJP },
+    { "pirs", xx_pirs_create, rm_pirs, XX_FILE_TYPE_PIRS },
+    { "px", xx_px_create, rm_px, XX_FILE_TYPE_PX },
+    { "binsh_starkit", xx_binsh_starkit_create, rm_binsh_starkit, XX_FILE_TYPE_BINSH_STARKIT },
+    { "evd", xx_evd_create, rm_evd, XX_FILE_TYPE_EVD },
+    { "desksoft", xx_desksoft_create, rm_desksoft, XX_FILE_TYPE_DESKSOFT },
+    { "metaproducts", xx_metaproducts_create, rm_metaproducts, XX_FILE_TYPE_METAPRODUCTS },
+    { "visualware", xx_visualware_create, rm_visualware, XX_FILE_TYPE_VISUALWARE },
+    { "lyme_sfx", xx_lyme_sfx_create, rm_lyme_sfx, XX_FILE_TYPE_LYME_SFX },
+    { "audials", xx_audials_create, rm_audials, XX_FILE_TYPE_AUDIALS },
+    { "psa_disk", xx_psa_disk_create, rm_psa_disk, XX_FILE_TYPE_PSA_DISK },
+    { "webexe", xx_webexe_create, rm_webexe, XX_FILE_TYPE_WEBEXE },
+    { "asd", xx_asd_create, rm_asd, XX_FILE_TYPE_ASD },
+    { "cfd", xx_cfd_create, rm_cfd, XX_FILE_TYPE_CFD },
+    { "rdc", xx_rdc_create, rm_rdc, XX_FILE_TYPE_RDC },
+    { "fox_sqz", xx_fox_sqz_create, rm_fox_sqz, XX_FILE_TYPE_FOX_SQZ },
+    { "skf", xx_skf_create, rm_skf, XX_FILE_TYPE_SKF },
+    { "osl2000", xx_osl2000_create, rm_osl2000, XX_FILE_TYPE_OSL2000 },
+    { "lds", xx_lds_create, rm_lds, XX_FILE_TYPE_LDS },
+    { "dcp_disk", xx_dcp_disk_create, rm_dcp_disk, XX_FILE_TYPE_DCP_DISK },
+    { "sony_image", xx_sony_image_create, rm_sony_image, XX_FILE_TYPE_SONY_IMAGE },
 #define MEDIA_ENTRY(name,type) { "media_" #name,mk_media_##name,rm_sevenzip_engine,type },
     MEDIA_ENTRY(gif,XX_FILE_TYPE_GIF)
     MEDIA_ENTRY(png,XX_FILE_TYPE_PNG)

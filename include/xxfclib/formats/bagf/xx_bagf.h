@@ -6,9 +6,8 @@
  *  @brief Novell NetWare "BAGF" bag file (.XDC, .RPC).
  */
 
-/* WHERE THE LAYOUT COMES FROM.  U3's recognition predicate for its BAGF
- * handler (FUN_006742a0, reached from VMT slot 0 at 0x00674620) supplies the
- * signature and the version:
+/* FORMAT RECOGNITION.  Reverse-engineering established these signature
+ * and version checks:
  *
  *   u32 @ 0x00 == 0x46474142  ("BAGF")
  *   u8  @ 0x04 == 2   and   u8 @ 0x05 == 0   (a little-endian version 2)
@@ -47,8 +46,8 @@
  * but cannot be verified from five files that all have one member; 0x20/0x24
  * are (2,0) for the .XDC pair and (0,1) for the .RPC trio, so they encode
  * some kind of content class.  All three are surfaced as opaque values and
- * none of them is used as a length or as a validity test beyond U3's own
- * "i32 at 0x08 is positive": a field that cannot be verified must not decide
+ * none is used as a length or validity test beyond requiring a positive
+ * i32 at 0x08: a field that cannot be verified must not decide
  * whether a file is accepted.
  */
 

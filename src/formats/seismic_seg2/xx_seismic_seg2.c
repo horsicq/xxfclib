@@ -1,27 +1,27 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/obspy/obspy/blob/master/obspy/io/seg2/seg2.py */
 #include "xxfclib/formats/seismic_seg2/xx_seismic_seg2.h"
-#include "../xx_ninth_data.h"
+#include "../common/xx_memory_blob.h"
 
-static bool freeform(nh_blob *b,uint64_t at,uint64_t end,bool be,const uint8_t *h,bool need_interval) {
+static bool freeform(memory_blob *b,uint64_t at,uint64_t end,bool be,const uint8_t *h,bool need_interval) {
     bool interval=false;unsigned strings=0;while(at<end) {uint16_t n;uint64_t text;unsigned term=h[8];
-        if(!eh_span(at,2,end) || ++strings>512) { return false; } n=xx_data_get_u16(b->p+(size_t)at, 2, 0, be);if(!n) return (!need_interval || interval) && nh_zero(b,at,end-at);
-        if(n<2+term || n>1024 || !eh_span(at,n,end)) { return false; } text=at+2;
-        if(xx_rt_memcmp(b->p+(size_t)(at+n-term),h+9,term) || !nh_ascii(b->p+(size_t)text,n-2-term,false)) return false;
-        if(n>18+term && !xx_rt_memcmp(b->p+(size_t)text,"SAMPLE_INTERVAL ",16)) {char value[1024];size_t len=n-18-term;if(interval) return false;xx_rt_memcpy(value,b->p+(size_t)text+16,len);value[len]=0;if(!sd_positive_float(value)) return false;interval=true;}
+        if(!record_span(at,2,end) || ++strings>512) { return false; } n=xx_data_get_u16(b->p+(size_t)at, 2, 0, be);if(!n) return (!need_interval || interval) && blob_zero(b,at,end-at);
+        if(n<2+term || n>1024 || !record_span(at,n,end)) { return false; } text=at+2;
+        if(xx_rt_memcmp(b->p+(size_t)(at+n-term),h+9,term) || !blob_ascii(b->p+(size_t)text,n-2-term,false)) return false;
+        if(n>18+term && !xx_rt_memcmp(b->p+(size_t)text,"SAMPLE_INTERVAL ",16)) {char value[1024];size_t len=n-18-term;if(interval) return false;xx_rt_memcpy(value,b->p+(size_t)text+16,len);value[len]=0;if(!scientific_number_positive_float(value)) return false;interval=true;}
         at+=n;
     }return !need_interval || interval;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    uint8_t h[32];nh_blob b={0};bool be,ok=false;uint32_t count,pointers,i;uint64_t at,next;
+    uint8_t h[32];memory_blob b={0};bool be,ok=false;uint32_t count,pointers,i;uint64_t at,next;
     if(!pm_read(f,0,h,32)) { return false; } if(xx_data_get_u16(h, 2, 0, false)==0x3a55) be=false;else if(xx_data_get_u16(h, 2, 0, true)==0x3a55) be=true;else return false;
     count=xx_data_get_u16(h+6, 2, 0, be);pointers=xx_data_get_u16(h+4, 2, 0, be);
-    NH_NEED(xx_data_get_u16(h+2, 2, 0, be)==1 && count && count<=1024 && pointers==count*4 && (h[8]==1 || h[8]==2) && (h[11]==1 || h[11]==2) && nh_load(f,&b,pd) && nh_span(&b,32,pointers));
-    at=32+pointers;next=xx_data_get_u32(b.p+32, 4, 0, be);NH_NEED(next>=at && nh_span(&b,at,next-at) && freeform(&b,at,next,be,h,false) && nh_add(f,s,&b,"header",0,next));
+    BLOB_NEED(xx_data_get_u16(h+2, 2, 0, be)==1 && count && count<=1024 && pointers==count*4 && (h[8]==1 || h[8]==2) && (h[11]==1 || h[11]==2) && blob_load(f,&b,pd) && blob_span(&b,32,pointers));
+    at=32+pointers;next=xx_data_get_u32(b.p+32, 4, 0, be);BLOB_NEED(next>=at && blob_span(&b,at,next-at) && freeform(&b,at,next,be,h,false) && blob_add(f,s,&b,"header",0,next));
     for(i=0;i<count;++i) {uint32_t header,bytes,samples,width,code;uint64_t end=i+1<count ? xx_data_get_u32(b.p+36+i*4, 4, 0, be):b.n;const uint8_t *p;
-        NH_NEED(xx_data_get_u32(b.p+32+i*4, 4, 0, be)==next && nh_span(&b,next,32) && end>next && end<=b.n);p=b.p+(size_t)next;header=xx_data_get_u16(p+2, 2, 0, be);bytes=xx_data_get_u32(p+4, 4, 0, be);samples=xx_data_get_u32(p+8, 4, 0, be);code=p[12];width=code==1 ? 2:code==2 || code==4 ? 4:code==5 ? 8:0;
-        NH_NEED(xx_data_get_u16(p, 2, 0, be)==0x4422 && header>=34 && samples && width && bytes==(uint64_t)samples*width && (uint64_t)header+bytes==end-next && freeform(&b,next+32,next+header,be,h,true));
-        if(code>=4) {NH_NEED(nh_floats(&b,next+header,bytes,width,be));}NH_NEED(nh_add(f,s,&b,"trace-header",next,header) && nh_add(f,s,&b,"samples",next+header,bytes));next=end;
+        BLOB_NEED(xx_data_get_u32(b.p+32+i*4, 4, 0, be)==next && blob_span(&b,next,32) && end>next && end<=b.n);p=b.p+(size_t)next;header=xx_data_get_u16(p+2, 2, 0, be);bytes=xx_data_get_u32(p+4, 4, 0, be);samples=xx_data_get_u32(p+8, 4, 0, be);code=p[12];width=code==1 ? 2:code==2 || code==4 ? 4:code==5 ? 8:0;
+        BLOB_NEED(xx_data_get_u16(p, 2, 0, be)==0x4422 && header>=34 && samples && width && bytes==(uint64_t)samples*width && (uint64_t)header+bytes==end-next && freeform(&b,next+32,next+header,be,h,true));
+        if(code>=4) {BLOB_NEED(blob_floats(&b,next+header,bytes,width,be));}BLOB_NEED(blob_add(f,s,&b,"trace-header",next,header) && blob_add(f,s,&b,"samples",next+header,bytes));next=end;
     }s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

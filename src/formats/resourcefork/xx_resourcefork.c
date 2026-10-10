@@ -132,7 +132,7 @@ static const uint16_t rsrc_mac_roman[128] = {
     0x00AF, 0x02D8, 0x02D9, 0x02DA, 0x00B8, 0x02DD, 0x02DB, 0x02C7
 };
 
-/* U3 displays the four raw type bytes through Windows-1252, while it decodes
+/* The reference reader displays the four raw type bytes through Windows-1252, while it decodes
  * Pascal resource names as Mac Roman. The hexadecimal prefix still preserves
  * the exact bytes when a display character is unavailable. */
 static const uint16_t rsrc_cp1252_controls[32] = {

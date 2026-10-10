@@ -3,13 +3,13 @@
  * Extracts encoded audio, including encrypted audio as stored.
  */
 #include "xxfclib/formats/cri_ahx/xx_cri_ahx.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 #ifndef CRI_AHX
 #define XX_FILE_TYPE_CRI_AHX ((xx_file_type_t)1509)
 #endif
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     uint8_t h[24],mark[6],tail[10]; uint32_t start,rate,samples; int64_t n; bool trailer=false;
-    if(fd_stop(pd) || (n=pm_available(f))<28 || !pm_read(f,0,h,sizeof(h)) ||
+    if(binary_stop(pd) || (n=pm_available(f))<28 || !pm_read(f,0,h,sizeof(h)) ||
        h[0]!=0x80 || h[1]!=0 || (h[4]!=0x10 && h[4]!=0x11) ||
        h[5] || h[6] || h[7]!=1 || h[18]!=6) return false;
     start=(uint32_t)xx_data_get_u16(h+2, 2, 0, true)+4U; rate=xx_data_get_u32(h+8, 4, 0, true); samples=xx_data_get_u32(h+12, 4, 0, true);

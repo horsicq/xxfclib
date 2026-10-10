@@ -4,7 +4,7 @@
  * Compaq SoftPaq v1 self-extractors.  xx_sfx_compaq_softpaq.h carries the
  * layout.  The code is written from the file structure; the stub signatures
  * and the way the closing directory record is searched for were taken from
- * observing the behaviour of the U3 extractor on the corpus files.
+ * observing the behaviour of the reference extractor on the corpus files.
  *
  * The DOS extractor stub is only compared against fixed header bytes; it is
  * never decompressed, executed or emulated.  The payload is a flat table of

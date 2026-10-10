@@ -13,8 +13,8 @@
  *
  * WHERE THE LAYOUT COMES FROM.  Two sources agree, and both were used.
  *
- * U3's recognition predicate (FUN_005b5860, reached from VMT slot 0 at
- * 0x005b6540) reads: byte 0 is 0x1a; byte 1 is a method in a bitmap indexed
+ * Reverse-engineering established these checks: byte 0 is 0x1a; byte 1
+ * is a method in a bitmap indexed
  * by (method + 0x80) & 0xff; i32 at 0x0f (the packed size) is >= 0 and
  * smaller than the file; for method 0x82 the size at 0x19 must equal the one
  * at 0x0f, and when both are zero the byte at 0x29 must be 0x1a - which is

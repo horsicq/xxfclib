@@ -159,7 +159,7 @@ static bool xx_fss_add(xx_fss_stream *stream,
 }
 
 /* Slots carry no names; they are filed under a zero-padded index, the width
- * taken from the slot count the way U3's listing does it. */
+ * taken from the slot count the way the reference reader's listing does it. */
 static XXFC_MAYBE_UNUSED char *xx_fss_slot_name(uint32_t index, uint32_t width) {
     char text[32];
     size_t length = 0U;

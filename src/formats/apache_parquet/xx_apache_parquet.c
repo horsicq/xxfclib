@@ -5,7 +5,7 @@
  */
 #include "xxfclib/formats/apache_parquet/xx_apache_parquet.h"
 #include "xxfclib/algo/crc/xx_crc.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 #include "xxfclib/global/xx_global.h"
 
 typedef struct pq_cursor { const uint8_t *p; size_t at,end; unsigned *work; xx_pd_struct *pd;
@@ -16,19 +16,19 @@ typedef struct pq_info { char names[64][128]; int64_t types[64]; uint64_t values
 /* The compact page-header budget is semantic; its I/O staging may be one byte. */
 static bool pq_copy(pq_cursor *c,void *target,size_t n) {
     uint8_t *out=(uint8_t *)target;
-    if(n>c->end-c->at || fd_stop(c->pd)) return false;
+    if(n>c->end-c->at || binary_stop(c->pd)) return false;
     if(c->p) { xx_rt_memcpy(out,c->p+c->at,n); c->at+=n; return true; }
     while(n) { size_t part;
         if(c->at<c->begin || c->at-c->begin>=c->count) {
             c->count=c->end-c->at>c->capacity ? c->capacity:c->end-c->at;
-            if(fd_stop(c->pd) || !pm_read(c->f,(int64_t)(c->base+c->at),c->buffer,c->count)) return false;
+            if(binary_stop(c->pd) || !pm_read(c->f,(int64_t)(c->base+c->at),c->buffer,c->count)) return false;
             c->begin=c->at;
         }
         part=c->count-(c->at-c->begin); if(part>n) part=n;
         xx_rt_memcpy(out,c->buffer+c->at-c->begin,part); out+=part;c->at+=part;n-=part;
     } return true;
 }
-static bool pq_byte(pq_cursor *c,uint8_t *v) { if(fd_stop(c->pd) || c->at==c->end || ++*c->work>2000000) return false; return pq_copy(c,v,1); }
+static bool pq_byte(pq_cursor *c,uint8_t *v) { if(binary_stop(c->pd) || c->at==c->end || ++*c->work>2000000) return false; return pq_copy(c,v,1); }
 static bool pq_var(pq_cursor *c,uint64_t *v) {
     unsigned i; uint64_t n=0; uint8_t b;
     for(i=0;i<10;++i) { if(!pq_byte(c,&b) || (i==9 && b>1)) return false; n|=(uint64_t)(b&127)<<(7*i); if(!(b&128)) { *v=n; return true; } } return false;
@@ -55,7 +55,7 @@ static bool pq_binary(pq_cursor *c,unsigned type,char *text,size_t cap) {
 }
 static bool pq_skip(pq_cursor *c,unsigned type,unsigned depth) {
     uint64_t n,i,u; uint8_t b; int id,last=0; unsigned t; uint32_t seen=0;
-    if(depth>32 || fd_stop(c->pd)) return false;
+    if(depth>32 || binary_stop(c->pd)) return false;
     switch(type) {
     case 1: case 2:return true;
     case 3:return pq_byte(c,&b);
@@ -140,21 +140,21 @@ static bool pq_crc(Abstractformat *f,uint64_t at,uint64_t bytes,uint32_t expecte
     if(!bytes) return expected==0U;
     if(capacity>(SIZE_MAX>>1)) { capacity=SIZE_MAX>>1; } if(bytes<capacity) capacity=(size_t)bytes;
     b=(uint8_t *)xx_mem_alloc(capacity); if(!b) return false;
-    while(bytes) { size_t n=bytes>capacity ? capacity:(size_t)bytes; if(fd_stop(pd) || !pm_read(f,(int64_t)at,b,n)) goto done;
+    while(bytes) { size_t n=bytes>capacity ? capacity:(size_t)bytes; if(binary_stop(pd) || !pm_read(f,(int64_t)at,b,n)) goto done;
         crc=xx_crc32_calc(crc,b,n); at+=n; bytes-=n;
     } ok=crc==expected;
 done: xx_mem_free(b); return ok;
 }
 static bool pq_pages(Abstractformat *f,const pq_column *col,uint64_t footer,pq_info *info,xx_pd_struct *pd) {
     uint64_t at=(uint64_t)(col->dictionary>=0 ? col->dictionary:col->data),end,values=0,raw=0; bool dictionary=false,data=false,ok=false; uint8_t *buffer; size_t capacity=xx_get_file_buffer_size();
-    if(!fd_range(at,(uint64_t)col->packed,footer)) { return false; } end=at+(uint64_t)col->packed;
+    if(!binary_range(at,(uint64_t)col->packed,footer)) { return false; } end=at+(uint64_t)col->packed;
     if(capacity>65536) { capacity=65536; } buffer=(uint8_t *)xx_mem_alloc(capacity); if(!buffer) return false;
     while(at<end) { pq_cursor c; pq_page p; size_t n=end-at>65536 ? 65536U:(size_t)(end-at); uint64_t header;
-        if(++info->pages>65536 || fd_stop(pd)) goto done;
+        if(++info->pages>65536 || binary_stop(pd)) goto done;
         xx_mem_zero(&c,sizeof(c));c.at=0;c.end=n;c.pd=pd;c.work=&info->work;
         c.f=f;c.base=at;c.buffer=buffer;c.capacity=capacity;
         if(!pq_page_header(&c,&p,col)) { goto done; } header=c.at;
-        if(!fd_range(at,header+(uint64_t)p.packed,end) || (uint64_t)p.raw>UINT64_MAX-header-raw) { goto done; } raw+=header+(uint64_t)p.raw;
+        if(!binary_range(at,header+(uint64_t)p.packed,end) || (uint64_t)p.raw>UINT64_MAX-header-raw) { goto done; } raw+=header+(uint64_t)p.raw;
         if(p.type==2) { if(dictionary || data || col->dictionary<0 || at!=(uint64_t)col->dictionary) goto done; dictionary=true; }
         else if(p.type==0 || p.type==3) { if(!data && at!=(uint64_t)col->data) goto done; data=true; if((uint64_t)p.values>UINT64_MAX-values) goto done; values+=(uint64_t)p.values; }
         if(p.checksum) { if((uint64_t)p.packed>67108864-info->crc_bytes) goto done; info->crc_bytes+=(uint64_t)p.packed;
@@ -176,7 +176,7 @@ static bool pq_chunk(pq_cursor *c,unsigned type,Abstractformat *f,pm_stream *s,u
     if((seen&4)!=4 || !metadata || !pq_pages(f,&col,footer,info,c->pd)) { return false; } info->values[ordinal]=(uint64_t)col.values;
     { char label[64]; uint64_t start=(uint64_t)(col.dictionary>=0 ? col.dictionary:col.data); size_t i;
         if((uint64_t)col.raw>UINT64_MAX-*raw || (uint64_t)col.packed>UINT64_MAX-*packed) { return false; } *raw+=(uint64_t)col.raw; *packed+=(uint64_t)col.packed;
-        for(i=0;i<s->count;++i) { uint64_t prior=(uint64_t)(s->items[i].offset-f->base_address); if(fd_stop(c->pd) || (start<prior+(uint64_t)s->items[i].size && prior<start+(uint64_t)col.packed)) return false; }
+        for(i=0;i<s->count;++i) { uint64_t prior=(uint64_t)(s->items[i].offset-f->base_address); if(binary_stop(c->pd) || (start<prior+(uint64_t)s->items[i].size && prior<start+(uint64_t)col.packed)) return false; }
         xx_rt_snprintf(label,sizeof(label),"column-chunk-%u.bin",info->chunks-1); return pm_add(f,s,label,(int64_t)start,col.packed);
     }
 }
@@ -196,7 +196,7 @@ static bool pq_rowgroups(pq_cursor *c,unsigned type,Abstractformat *f,pm_stream 
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint64_t end=(uint64_t)pm_available(f),footer; uint8_t tail[8],*bytes=NULL; uint32_t length,seen=0; pq_info *info=NULL; pq_cursor c,schema,groups; int id,last=0; unsigned type; int64_t rows=-1,version=0; bool ok=false,have_schema=false,have_groups=false;
-    if(end<16 || !fd_equal(f,0,"PAR1",4) || !pm_read(f,(int64_t)end-8,tail,8) || xx_rt_memcmp(tail+4,"PAR1",4) || !(length=xx_data_get_u32(tail, 4, 0, false)) || length>8388608 || length>end-12) { return false; } footer=end-8-length;
+    if(end<16 || !binary_equal(f,0,"PAR1",4) || !pm_read(f,(int64_t)end-8,tail,8) || xx_rt_memcmp(tail+4,"PAR1",4) || !(length=xx_data_get_u32(tail, 4, 0, false)) || length>8388608 || length>end-12) { return false; } footer=end-8-length;
     bytes=(uint8_t *)xx_mem_alloc(length);info=(pq_info *)xx_mem_alloc(sizeof(*info)); if(!bytes || !info || !pm_read(f,(int64_t)footer,bytes,length)) goto done; xx_rt_memset(info,0,sizeof(*info));
     xx_mem_zero(&c,sizeof(c));c.p=bytes;c.at=0;c.end=length;c.pd=pd;c.work=&info->work;
     for(;;) { if(!pq_field(&c,&last,&id,&type,&seen)) goto done; if(!id) break;

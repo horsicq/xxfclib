@@ -10,7 +10,7 @@
  * accepted only when every record fits and the command block closes it.
  * Where XArchive searches up to 64 KiB for the member count, this reader
  * computes its position from the install-directory flag, which is how the
- * stub and U3 read it, and it also accepts the older layout without the
+ * stub and the reference reader read it, and it also accepts the older layout without the
  * unpacked sizes.  The code is written from the file structure.
  *
  * The stub executable is parsed only as far as its section table; nothing
@@ -50,7 +50,7 @@
 #define PIMP_TEXT_FIELD 0x80U
 /* Title, description and the two u32 that may follow them. */
 #define PIMP_FIXED_BLOCK (2U * PIMP_TEXT_FIELD + 8U)
-/* The stub and U3 both cap the count below 0xFFFF and a name at 0x400. */
+/* The stub and reference extractor both cap the count below 0xFFFF and a name at 0x400. */
 #define PIMP_MAX_COUNT 0xFFFEU
 #define PIMP_MIN_NAME 2U
 #define PIMP_MAX_NAME 0x400U

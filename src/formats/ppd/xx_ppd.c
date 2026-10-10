@@ -7,7 +7,7 @@
  *
  * The decompressor was recovered from the original Rewind.exe (routine at
  * VA 0x408410) and independently checked against all 133 VPITROD members:
- * 25,236,862 decoded bytes matched the U3 extraction byte for byte.  All
+ * 25,236,862 decoded bytes matched the reference extraction byte for byte.  All
  * 187 Rewind members also decoded to their declared sizes and consumed their
  * exact packed spans.  Its bit grammar resembles aPack but differs from a
  * generic aPLib stream: the first byte is a tag, and gamma bits are read as

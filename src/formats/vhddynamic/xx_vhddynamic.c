@@ -49,7 +49,7 @@
  * images, 511-byte footers, the 32-bit 0xFFFFFFFF data offset the
  * specification text gives for fixed disks, and a front footer copy that
  * may differ from the tail one in fields that do not describe the layout
- * (time stamp, saved-state flag).  U3 implements the dynamic variant as
+ * (time stamp, saved-state flag).  The reference reader implements the dynamic variant as
  * archive/12 (class mfa, VMT 0x0049bef8).
  */
 #include "xxfclib/rt/xx_rt.h"

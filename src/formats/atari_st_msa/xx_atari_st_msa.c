@@ -6,32 +6,32 @@
  * MSA 1-36 sectors per track, one/two sides, tracks 0-85; validates and decompresses exact E5 RLE tracks; exports decoded track bytes.
  */
 #include "xxfclib/formats/atari_st_msa/xx_atari_st_msa.h"
-#include "../vice_x64/xx_ninth_retro.h"
+#include "../common/xx_retro_disk_components.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
+static bool parse_blob(Abstractformat *f,pm_stream *s,retro_disk_blob *b) {
  uint32_t sectors,heads,start,end,at=10,t,h,raw; char name[48];
- if(!nh_range(b,0,10) || xx_data_get_u16(b->p, 2, 0, true)!=0x0e0f || !(sectors=xx_data_get_u16(b->p+2, 2, 0, true)) || sectors>36 || xx_data_get_u16(b->p+4, 2, 0, true)>1 || (start=xx_data_get_u16(b->p+6, 2, 0, true))>(end=xx_data_get_u16(b->p+8, 2, 0, true)) || end>85 || !nh_emit(f,s,b,"disk-descriptor.bin",0,10)) return false;
+ if(!retro_disk_range(b,0,10) || xx_data_get_u16(b->p, 2, 0, true)!=0x0e0f || !(sectors=xx_data_get_u16(b->p+2, 2, 0, true)) || sectors>36 || xx_data_get_u16(b->p+4, 2, 0, true)>1 || (start=xx_data_get_u16(b->p+6, 2, 0, true))>(end=xx_data_get_u16(b->p+8, 2, 0, true)) || end>85 || !retro_disk_emit(f,s,b,"disk-descriptor.bin",0,10)) return false;
  heads=xx_data_get_u16(b->p+4, 2, 0, true)+1U; raw=sectors*512U;
  for(t=start;t<=end;++t) for(h=0;h<heads;++h) {
   uint32_t packed,p=0,w=0; uint8_t *data;
-  if(!nh_range(b,at,2) || !(packed=xx_data_get_u16(b->p+at, 2, 0, true)) || packed>raw || !nh_range(b,at+2,packed)) { return false; } at+=2;
+  if(!retro_disk_range(b,at,2) || !(packed=xx_data_get_u16(b->p+at, 2, 0, true)) || packed>raw || !retro_disk_range(b,at+2,packed)) { return false; } at+=2;
   xx_rt_snprintf(name,sizeof(name),"track-%u-side-%u.bin",t,h);
-  if(packed==raw) { if(!nh_emit(f,s,b,name,at,raw)) return false; }
+  if(packed==raw) { if(!retro_disk_emit(f,s,b,name,at,raw)) return false; }
   else {
    data=(uint8_t *)xx_mem_alloc(raw); if(!data) return false;
-   while(p<packed) { uint32_t count=1; uint8_t v=b->p[at+p++]; if(!nh_poll(b)) { xx_mem_free(data); return false; }
+   while(p<packed) { uint32_t count=1; uint8_t v=b->p[at+p++]; if(!retro_disk_poll(b)) { xx_mem_free(data); return false; }
     if(v==0xe5) { if(packed-p<3) { xx_mem_free(data); return false; } v=b->p[at+p]; count=xx_data_get_u16(b->p+at+p+1, 2, 0, true); p+=3; }
     if(!count || count>raw-w) { xx_mem_free(data); return false; } xx_rt_memset(data+w,v,count); w+=count;
    }
-   if(w!=raw) { xx_mem_free(data); return false; } if(!nh_memory(f,s,b,name,at,data,raw)) return false;
+   if(w!=raw) { xx_mem_free(data); return false; } if(!retro_disk_memory(f,s,b,name,at,data,raw)) return false;
   }
   at+=packed;
  }
  s->size=at; return true;
 }
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { retro_disk_blob b; bool ok; if(!retro_disk_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }
 
 void xx_atari_st_msa_init(xx_atari_st_msa *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_ATARI_ST_MSA,"msa"); } }
 xx_atari_st_msa *xx_atari_st_msa_create(xx_io_device *d,int64_t b) { xx_atari_st_msa *r=(xx_atari_st_msa *)xx_mem_alloc(sizeof(*r)); if(r) xx_atari_st_msa_init(r,d,b); return r; }

@@ -4,7 +4,7 @@
  * DS2 and ENC recognition follows Detect It Easy; payload remains encoded.
  */
 #include "xxfclib/formats/olympus_dss/xx_olympus_dss.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 #ifndef OLYMPUS_DSS
 #define XX_FILE_TYPE_OLYMPUS_DSS ((xx_file_type_t)1511)
 #endif
@@ -19,7 +19,7 @@ static bool timestamp(const uint8_t*p) {
 }
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     uint8_t h[0x44]; uint32_t header; int64_t n; bool dss;
-    if(fd_stop(pd)||(n=pm_available(f))<0x401 || !pm_read(f,0,h,sizeof(h)) ||
+    if(binary_stop(pd)||(n=pm_available(f))<0x401 || !pm_read(f,0,h,sizeof(h)) ||
        (h[0]!=2 && h[0]!=3))return false;
     dss=!xx_rt_memcmp(h+1,"dss",3);
     if(!dss && xx_rt_memcmp(h+1,"ds2",3) && xx_rt_memcmp(h+1,"enc",3))return false;

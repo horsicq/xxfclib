@@ -6,7 +6,7 @@
  * are required to recover their exact byte streams.
  */
 #include "xxfclib/formats/sfx_vms_dcx/xx_sfx_vms_dcx.h"
-#include "../makeself/xx_fourth_wrapper_table.h"
+#include "../common/xx_carrier_helpers.h"
 
 #define VD_SCAN_MAX (1024U * 1024U)
 #define VD_INPUT_MAX (128U * 1024U * 1024U)
@@ -32,7 +32,7 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
     int64_t limit = pm_available(f);
     bool okay = false;
     xx_mem_zero(table, sizeof(*table));
-    if (!wg_range(limit, (uint64_t)at, sizeof(header)) ||
+    if (!carrier_range(limit, (uint64_t)at, sizeof(header)) ||
         !pm_read(f, at, header, sizeof(header))) return false;
     size = xx_data_get_u32(header, 4, 0, false);
     count = xx_data_get_u16(header + 16, 2, 0, false);
@@ -40,7 +40,7 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
         xx_data_get_u32(header + 4, 4, 0, false) || xx_data_get_u32(header + 8, 4, 0, false) != 0x5bf5a3a7U ||
         xx_data_get_u32(header + 12, 4, 0, false) || xx_data_get_u16(header + 18, 2, 0, false) != 20U ||
         size < 20U + (uint32_t)count * 12U ||
-        !wg_range(limit, (uint64_t)at, size)) return false;
+        !carrier_range(limit, (uint64_t)at, size)) return false;
     data = (uint8_t *)xx_mem_alloc(size);
     table->slots = (uint8_t *)xx_mem_calloc((size_t)count, VD_SLOT_SIZE);
     if (!data || !table->slots || !pm_read(f, at, data, size)) goto done;
@@ -50,7 +50,7 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
         unsigned first, last;
         size_t node_end, nodes, symbols;
         uint8_t *slot = table->slots + i * VD_SLOT_SIZE;
-        if (wg_stop(pd) || size - cursor < 12U) goto done;
+        if (carrier_stop(pd) || size - cursor < 12U) goto done;
         block = xx_data_get_u16(data + cursor, 2, 0, false);
         first = data[cursor + 2U]; last = data[cursor + 3U];
         node_at = xx_data_get_u16(data + cursor + 8U, 2, 0, false);
@@ -77,7 +77,7 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table,
     for (i = 0U; i < count; ++i) {
         uint8_t *slot = table->slots + i * VD_SLOT_SIZE;
         unsigned symbol;
-        if (wg_stop(pd)) goto done;
+        if (carrier_stop(pd)) goto done;
         for (symbol = 0U; symbol < 256U; ++symbol) {
             if (xx_data_get_u16(slot + VD_MAP_OFFSET + symbol * 2U, 2, 0, false) >= count)
                 goto done;
@@ -102,7 +102,7 @@ static bool vd_decode(const vd_table *table, const uint8_t *packed,
     unsigned node = 0U, bits = 0U, accumulator = 0U;
     while (true) {
         unsigned symbol, next;
-        if ((in & 4095U) == 0U && wg_stop(pd)) return false;
+        if ((in & 4095U) == 0U && carrier_stop(pd)) return false;
         if (!bits) {
             if (in >= packed_size) return false;
             accumulator = packed[in++];
@@ -146,7 +146,7 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
     bool okay = false;
     xx_mem_zero(&first, sizeof(first));
     xx_mem_zero(&second, sizeof(second));
-    if (!wg_range(limit, (uint64_t)banner, sizeof(header)) ||
+    if (!carrier_range(limit, (uint64_t)banner, sizeof(header)) ||
         !pm_read(f, banner, header, sizeof(header)) ||
         xx_rt_memcmp(header, "OpenVMS DCX FTSV Compressed File", 32) ||
         xx_rt_memcmp(header + 34, "\x11\x11\x22\x22", 4)) return false;
@@ -155,15 +155,15 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
     if (!fdl_raw || xx_data_get_u32(header + 42, 4, 0, false) != fdl_table_size ||
         !vd_table_open(f, banner + 42, &first, pd)) goto done;
     at = first.end;
-    if (!wg_range(limit, (uint64_t)at, 8U) ||
+    if (!carrier_range(limit, (uint64_t)at, 8U) ||
         !pm_read(f, at, row, 8U) ||
         xx_rt_memcmp(row, group_head, sizeof(group_head))) goto done;
     fdl_packed = xx_data_get_u16(row + 4, 2, 0, false);
     if (!fdl_packed || xx_data_get_u16(row + 6, 2, 0, false) != fdl_raw ||
-        !wg_range(limit, (uint64_t)at + 8U, fdl_packed)) goto done;
+        !carrier_range(limit, (uint64_t)at + 8U, fdl_packed)) goto done;
     first_data = at + 8;
     first_end = first_data + fdl_packed;
-    if (!wg_range(limit, (uint64_t)first_end, sizeof(next_head) + 8U) ||
+    if (!carrier_range(limit, (uint64_t)first_end, sizeof(next_head) + 8U) ||
         !pm_read(f, first_end, row, sizeof(row)) ||
         xx_rt_memcmp(row, next_head, sizeof(next_head))) goto done;
     sav_table_size = xx_data_get_u32(row + 8, 4, 0, false);
@@ -171,16 +171,16 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
         !pm_read(f, first_end + 12, row, 4U) ||
         xx_data_get_u32(row, 4, 0, false) != sav_table_size) goto done;
     at = second.end;
-    if (!wg_range(limit, (uint64_t)at, 2U) ||
+    if (!carrier_range(limit, (uint64_t)at, 2U) ||
         !pm_read(f, at, row, 2U) ||
         row[0] != 0x33U || row[1] != 0x33U) goto done;
     at += 2;
     sav_start = at + 6;
     while (at <= limit - 4) {
         uint16_t member_packed, member_raw;
-        if (wg_stop(pd)) goto done;
+        if (carrier_stop(pd)) goto done;
         if (at == limit - 4) break;
-        if (!wg_range(limit, (uint64_t)at, 6U) ||
+        if (!carrier_range(limit, (uint64_t)at, 6U) ||
             !pm_read(f, at, row, 6U) ||
             row[0] != 0x44U || row[1] != 0x44U) goto done;
         member_packed = xx_data_get_u16(row + 2, 2, 0, false);
@@ -188,7 +188,7 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
         if (!member_packed || !member_raw ||
             ++frames > VD_MAX_FRAMES ||
             sav_raw > VD_OUTPUT_MAX - member_raw ||
-            !wg_range(limit - 4, (uint64_t)at + 6U, member_packed))
+            !carrier_range(limit - 4, (uint64_t)at + 6U, member_packed))
             goto done;
         sav_raw += member_raw;
         at += 6 + member_packed;
@@ -208,7 +208,7 @@ static bool vd_candidate(Abstractformat *f, pm_stream *stream,
     end = 0;
     while (at < tail) {
         uint16_t member_packed, member_raw;
-        if (wg_stop(pd) || !pm_read(f, at, row, 6U)) goto done;
+        if (carrier_stop(pd) || !pm_read(f, at, row, 6U)) goto done;
         member_packed = xx_data_get_u16(row + 2, 2, 0, false);
         member_raw = xx_data_get_u16(row + 4, 2, 0, false);
         if ((uint64_t)end + member_raw > sav_raw ||
@@ -253,7 +253,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream,
     uint8_t *scan;
     unsigned candidates = 0U;
     bool okay = false;
-    if (limit < 128 || limit > VD_INPUT_MAX || wg_stop(pd)) return false;
+    if (limit < 128 || limit > VD_INPUT_MAX || carrier_stop(pd)) return false;
     size = (size_t)(limit > VD_SCAN_MAX ? VD_SCAN_MAX : limit);
     scan = (uint8_t *)xx_mem_alloc(size);
     if (!scan || !pm_read(f, 0, scan, size)) {
@@ -261,7 +261,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream,
         return false;
     }
     for (i = 0U; i + sizeof(banner) - 1U <= size; ++i) {
-        if ((i & 4095U) == 0U && wg_stop(pd)) break;
+        if ((i & 4095U) == 0U && carrier_stop(pd)) break;
         if (xx_rt_memcmp(scan + i, banner, sizeof(banner) - 1U)) continue;
         if (++candidates > 8U) break;
         if (vd_candidate(f, stream, (int64_t)i, pd)) {

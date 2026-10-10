@@ -499,6 +499,35 @@ static bool dclraw_scan_stream(dclraw_scanner *scanner, int64_t start,
 }
 #undef DCLRAW_TAKE
 
+bool xx_dclraw_measure_stream(xx_io_device *device, int64_t base_address,
+                             int64_t packed_size, size_t max_output,
+                             int64_t *consumed, size_t *produced,
+                             xx_pd_struct *pd) {
+    dclraw_scanner scanner;
+    int64_t cursor, total, measured = 0;
+    size_t raw_size = 0U;
+    bool valid;
+    if (consumed) *consumed = 0;
+    if (produced) *produced = 0U;
+    if (!device || base_address < 0 || packed_size < DCLRAW_MIN_STREAM ||
+        max_output == 0U || (pd && xx_pd_is_stopped(pd))) return false;
+    cursor = xx_io_tell(device);
+    total = xx_io_total_size(device);
+    if (cursor < 0 || total < base_address || packed_size > total - base_address)
+        return false;
+    valid = dclraw_scanner_open(&scanner, device, pd, base_address, packed_size) &&
+            dclraw_scan_stream(&scanner, 0, max_output, &measured, &raw_size) &&
+            measured >= DCLRAW_MIN_STREAM && measured <= packed_size &&
+            raw_size <= max_output && !(pd && xx_pd_is_stopped(pd));
+    dclraw_scanner_close(&scanner);
+    if (xx_io_seek64(device, cursor, SEEK_SET) != 0) valid = false;
+    if (valid) {
+        if (consumed) *consumed = measured;
+        if (produced) *produced = raw_size;
+    }
+    return valid;
+}
+
 static bool dclraw_parse(Abstractformat *format, xx_pd_struct *pd,
                          dclraw_stream **result) {
     uint8_t prelude[2];

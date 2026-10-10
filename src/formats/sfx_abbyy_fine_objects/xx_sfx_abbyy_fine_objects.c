@@ -5,8 +5,8 @@
  * xx_sfx_abbyy_fine_objects.h carries the payload layout.
  *
  * The layout was recovered from the corpus sample (Lingvo5a.exe, five
- * members); its name and size tables are the ones U3's "SFX Lingvo" handler
- * checks, and U3 lists the same five members.  U3 copies the member streams
+ * members); its name and size tables are the ones the reference reader's "SFX Lingvo" handler
+ * checks, and the reference reader lists the same five members.  The reference reader copies the member streams
  * out raw; here they are decoded, because every member is a complete FINEAR
  * stream (the format of xxfclib's finear reader) whose stored plaintext size
  * and CRC-16/ARC anchor the decode.  The code is written from the file

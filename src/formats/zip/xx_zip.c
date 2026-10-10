@@ -2038,6 +2038,32 @@ static bool xx_zip_verify_unencrypted_record(
            !xx_pd_is_stopped(pd);
 }
 
+/* Some ZIP writers encode an empty directory with an empty Deflate stream
+ * (typically 03 00). Its compressed length is therefore nonzero. Authenticate
+ * that stream before publishing a directory, just as TEST authenticates files.
+ * An exact zero-byte sink rejects any hidden/nonempty directory payload. */
+static bool xx_zip_verify_directory_record(
+    Abstractformat *format, const xx_archive_record *record, xx_pd_struct *pd) {
+    xx_io_device destination,verified;
+    xx_zip_limit_sink sink;
+    xx_zip_verify_sink checksum;
+    uint16_t method;
+    int64_t consumed=0;
+    if(!format || !format->device || !record || xx_pd_is_stopped(pd) ||
+       record->data_offset<0 || record->compressed_size<0 ||
+       xx_archive_record_get_meta_u64(record,XX_META_ID_UNCOMPRESSED_SIZE,UINT64_MAX)!=0U ||
+       xx_archive_record_get_meta_u64(record,XX_META_ID_CRC32,UINT64_MAX)!=0U ||
+       xx_archive_record_get_meta_bool(record,XX_META_ID_IS_ENCRYPTED,false)) return false;
+    if(record->compressed_size==0) return true;
+    method=(uint16_t)xx_archive_record_get_meta_u64(record,XX_META_ID_COMPRESSION_METHOD,UINT16_MAX);
+    if(method!=8U && method!=9U) return false;
+    if(!xx_zip_init_verify_sink(&verified,&checksum)) return false;
+    xx_zip_init_limit_sink(&destination,&sink,&verified,0U,pd);
+    return xx_deflate_unpack_device_ex(format->device,record->data_offset,
+        record->compressed_size,&destination,method==9U,0U,NULL,0U,&consumed,pd) &&
+        consumed==record->compressed_size && sink.position==0U && !xx_pd_is_stopped(pd);
+}
+
 static void xx_zip_normalize_record_path(char *path) {
     if (!path) {
         return;
@@ -2754,8 +2780,7 @@ bool xx_zip_unpack_current_archive_record_to_device(
     if (!xx_zip_check_unencrypted_allocation_budget(
             self, &state->options, record, pd)) return false;
     if (is_folder) {
-        return record->compressed_size == 0 && declared_size == 0U &&
-               expected_crc == 0U && !is_encrypted;
+        return xx_zip_verify_directory_record(self,record,pd);
     }
     if (record->data_offset < 0 || record->compressed_size < 0) return false;
     method = (uint16_t)xx_archive_record_get_meta_u64(
@@ -2828,11 +2853,7 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
     if (!xx_zip_check_unencrypted_allocation_budget(
             self, &state->options, rec, pd)) return false;
 
-    if (is_folder &&
-        (rec->compressed_size != 0 ||
-         declared_size != 0U ||
-         xx_archive_record_get_meta_bool(
-             rec, XX_META_ID_IS_ENCRYPTED, false))) {
+    if (is_folder && !xx_zip_verify_directory_record(self,rec,pd)) {
         return false;
     }
 

@@ -114,7 +114,7 @@ static bool xx_lha_legacy_decode_native(uint32_t method,
     if (method == XX_LHA_LEGACY_LZ5) {
         /* GEMDOS/LArc writers in the SFX corpus count one zero alignment
          * byte in the packed size after the final flag group.  Four clean
-         * U3-OK fixtures decode byte-for-byte and stop at precisely this
+         * reference-validated fixtures decode byte-for-byte and stop at precisely this
          * byte.  Keep every other trailing byte or longer tail invalid. */
         if (source != input_size &&
             !(input_size - source == 1U && input[source] == 0U))

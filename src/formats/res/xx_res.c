@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * ".RES" game resource files (the Fuzzy's World / SPF-ANI family).
- * XArchive has no module for this one.  The layout was recovered from U3's
+ * XArchive has no module for this one.  The layout was recovered from the reference reader's
  * RES handler -- class pdb, VMT 00623e78, recognition predicate
  * decompiled/functions/0062/00624250.c, which tail-calls
  * decompiled/functions/0062/00623ef0.c -- and then confirmed byte for byte
@@ -20,7 +20,7 @@
  *
  *   payloads follow the table back to back in table order, stored verbatim.
  *
- * U3's predicate is exactly: count > 1; entry 0's offset equals 2 + count*22
+ * The reference reader's predicate is exactly: count > 1; entry 0's offset equals 2 + count*22
  * (the header's own size); entry 1's offset equals entry 0's offset plus its
  * size; both sizes are positive; and both name lengths are in 1..12 (its
  * `(1 << len) & 0x1ffe` test).  This reader keeps all of that and adds the
@@ -214,7 +214,7 @@ static xx_res_stream *xx_res_parse(Abstractformat *self,
         return NULL;
     }
 
-    /* U3's predicate refuses a single-member file outright: two entries are
+    /* The reference reader's predicate refuses a single-member file outright: two entries are
      * what the identifying arithmetic needs. */
     count = xx_data_get_u16(head, 2, 0, false);
     if (count < 2U || count > XX_RES_MAX_MEMBERS) return NULL;
@@ -242,7 +242,7 @@ static xx_res_stream *xx_res_parse(Abstractformat *self,
         xx_res_member member;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        /* U3 gates the name length with (1 << len) & 0x1ffe, i.e. 1..12, and
+        /* The reference reader gates the name length with (1 << len) & 0x1ffe, i.e. 1..12, and
          * the rest of the 12-byte buffer is zero padding in every sample --
          * a cheap extra bit of evidence for a format with no magic. */
         if (name_size < 1U || name_size > XX_RES_NAME_SIZE) goto fail;
@@ -252,7 +252,7 @@ static xx_res_stream *xx_res_parse(Abstractformat *self,
                 if (entry[1 + pad] != 0x00U) goto fail;
             }
         }
-        /* The whole-file form of U3's two-entry check: every payload starts
+        /* The whole-file form of the reference reader's two-entry check: every payload starts
          * exactly where the previous one ended, so a corrupt table cannot
          * describe a plausible file, and a size is bounded against what is
          * left before it moves the cursor. */

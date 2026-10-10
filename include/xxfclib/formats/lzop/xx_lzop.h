@@ -45,7 +45,7 @@
  *
  * The reader publishes one archive record per stream, named after the file
  * name that stream's header stores.  A path (as `lzop -P` stores it) is kept
- * as a safe relative path, the way U3 extracts it: '/' and '\' separate
+ * as a safe relative path: '/' and '\' separate
  * components and the record name uses '/'; empty, "." and ".." components, a
  * leading "\\?\" or "\\.\", leading separators and a leading drive
  * ("C:") are dropped, so "../x.txt" is "x.txt" and "/etc/passwd" is
@@ -61,7 +61,7 @@
  * holds entries (it could be the short name of one of them).  The first such
  * component gets "_<stream number>" appended, or "_<stream number>_<k>" if an
  * earlier record already holds that spelling; directories that do not clash
- * are shared.  This is the model of `lzop -c a b > ab.lzo` / `lzop -x`, of U3
+ * are shared.  This is the model of `lzop -c a b > ab.lzo` / `lzop -x`
  * and of the gz reader.
  * xx_lzop_unpack_to_device() writes the concatenation of every stream, which
  * is what `lzop -dc` produces.  An empty stream (no blocks) is a valid, empty

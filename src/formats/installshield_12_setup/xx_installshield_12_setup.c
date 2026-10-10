@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * InstallShield 12..2012 single-file setup.exe ("SFX IS18" in U3's naming):
+ * InstallShield 12..2012 single-file setup.exe ("SFX IS18" in the reference reader's naming):
  * the whole Disk1 media folder rides in the PE overlay of the launcher.
  *
  *   overlay+0  u32 LE  number of files
@@ -50,7 +50,7 @@
 #define IS12_MAX_SECTIONS 96U
 #define IS12_DIRECTORY_SECURITY 4U
 
-/* The launcher writes a u32 count; U3 accepts 1..0xFFFF and so does this. */
+/* The launcher writes a u32 count; the reference reader accepts 1..0xFFFF and so does this. */
 #define IS12_MAX_COUNT 65535U
 /* String limits, in UTF-16 code units, without the terminator. */
 #define IS12_MAX_NAME_UNITS 512U

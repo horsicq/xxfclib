@@ -8,7 +8,8 @@ extern "C" {
 #endif
 /** Network Associates/McAfee/Trellix SuperDAT LH1 packages. Reads member names,
  * sizes, dates and manifest CRC32 values; streams decoding with bounded RAM.
- * Supports the classic one-group and modern resource-plus-payload layouts.
+ * Supports original/v1.2 signing/footer variants and modern resource-plus-payload
+ * layouts. Vendor DAT checksums with unknown domain appear as info comments.
  * Never executes the installer. Other archive generations fail explicitly. */
 typedef struct xx_superdat { Abstractformat format; void *index; uint64_t generation; } xx_superdat;
 XXFC_API void xx_superdat_init(xx_superdat *, xx_io_device *, int64_t);

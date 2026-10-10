@@ -4,7 +4,7 @@
  * O'Setup95 / O'Setup for Windows self-installing package.  xx_o_setup.h
  * carries the field table and the member-name rules.
  *
- * Written from the format's structure as measured on real packages.  U3's
+ * Written from the format's structure as measured on real packages.  The reference reader's
  * "SFX OSetup" handler (record walk from the trailer's count, 44-byte
  * headers, Unix times) was read for understanding only; no code is taken
  * from it.

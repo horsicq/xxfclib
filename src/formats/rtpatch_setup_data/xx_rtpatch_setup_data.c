@@ -5,7 +5,7 @@
  * the Pocket Soft RTPatch distribution setup expands.  xx_rtpatch_setup_data.h
  * carries the field table.
  *
- * Written from the format's structure as measured on real volumes.  U3's
+ * Written from the format's structure as measured on real volumes.  The reference reader's
  * "RTPatch Setup" handler (16-byte record header, name length 2..13 ending
  * in NUL, the 0xB59C stream magic behind the name) was read for
  * understanding only; no code is taken from it.  Members are expanded with

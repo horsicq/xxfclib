@@ -4,7 +4,7 @@
  * Bounded independent carrier/container parser. No payload execution.
  */
 #include "xxfclib/formats/sfx_rtpatch/xx_sfx_rtpatch.h"
-#include "../sfx_arc/xx_fifth_wrapper_table.h"
+#include "../common/xx_sfx_carrier.h"
 
 #include "xxfclib/formats/rtpatch/xx_rtpatch.h"
 static Abstractformat *nested_open(xx_io_device *d,int64_t at) { xx_rtpatch *r=xx_rtpatch_create(d,at); return r ? &r->format : NULL; }
@@ -43,12 +43,12 @@ static bool rt_list(const uint8_t *bytes, size_t size, size_t start,
     *directory = paths;
     return true;
 }
-static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
+static bool sfx_carrier_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
     static const uint8_t magic[] = {'K', '*'};
     uint8_t mz[64], ne[2];
     int64_t low, limit = pm_available(f), candidate;
     unsigned attempts = 0U;
-    if (!w5_carrier(f, false, &low, pd) ||
+    if (!sfx_carrier_carrier(f, false, &low, pd) ||
         !pm_read(f, 0, mz, sizeof(mz)) ||
         xx_data_get_u32(mz + 60, 4, 0, false) < 64U ||
         !pm_read(f, xx_data_get_u32(mz + 60, 4, 0, false), ne, sizeof(ne)) ||
@@ -65,13 +65,13 @@ static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
         candidate = xx_io_find_bytes_buffer_optimize_ex(
             f->device, f->base_address + low, limit - low,
             magic, sizeof(magic), xx_get_file_buffer_size(), pd);
-        if (candidate < 0 || wg_stop(pd)) return false;
+        if (candidate < 0 || carrier_stop(pd)) return false;
         low = candidate - f->base_address + 1;
         nested = nested_open(f->device, candidate);
         if (!nested) return false;
         if (!xx_format_handle_base_info(nested, pd) ||
             nested->format_size < 26 ||
-            !wg_range(limit, (uint64_t)(candidate - f->base_address),
+            !carrier_range(limit, (uint64_t)(candidate - f->base_address),
                       (uint64_t)nested->format_size)) {
             nested_close(nested);
             continue;
@@ -98,7 +98,7 @@ static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
                     plain[out++] = '\r'; plain[out++] = '\n';
                     at += length;
                 }
-                if (out == second_raw && at == second_end && !wg_stop(pd) &&
+                if (out == second_raw && at == second_end && !carrier_stop(pd) &&
                     pm_add(f, s, "Comments.txt",
                            candidate - f->base_address + (int64_t)first_end,
                            (int64_t)(second_end - first_end))) {
@@ -120,14 +120,14 @@ static bool w5_comments(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
     }
     return false;
 }
-static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={0x4b,0x2a}; int64_t low;
-    if (w5_comments(f, s, pd)) return true;
-    if(!w5_carrier(f,false,&low,pd)) { return false; } low=64;
-    return w5_embedded(f,s,low,sig,sizeof(sig),0,nested_open,nested_close,"payload.rtp",pd);
+static bool sfx_carrier_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={0x4b,0x2a}; int64_t low;
+    if (sfx_carrier_comments(f, s, pd)) return true;
+    if(!sfx_carrier_carrier(f,false,&low,pd)) { return false; } low=64;
+    return sfx_carrier_embedded(f,s,low,sig,sizeof(sig),0,nested_open,nested_close,"payload.rtp",pd);
 }
 
 static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd) {
-    return w5_parse(f, s, pd) && wg_members(s, pd);
+    return sfx_carrier_parse(f, s, pd) && carrier_members(s, pd);
 }
 
 /* The 4.00 PE stubs put the complete package exactly at the PE overlay.
@@ -143,7 +143,7 @@ static bool rt_nested_probe(xx_sfx_rtpatch *archive, xx_pd_struct *pd) {
     limit = pm_available(f);
     if (limit < 64) return false;
     cursor = xx_io_tell(f->device);
-    if (!wg_pe(f, &overlay, &cabinet, &cabinet_end, pd) ||
+    if (!carrier_pe(f, &overlay, &cabinet, &cabinet_end, pd) ||
         overlay < 64 || overlay > limit - (int64_t)sizeof(header) ||
         !pm_read(f, overlay, header, sizeof(header)) ||
         xx_rt_memcmp(header, "K*", 2U) ||

@@ -126,7 +126,10 @@ static uint32_t sim_checksum(const uint8_t *p,size_t n) {
 static bool sim_cab(Abstractformat *f,pm_stream *s,const uint8_t *raw,size_t n,const char *prefix,sim_string *names,size_t name_count,unsigned cp,sim_budget *b) {
     uint16_t nf,nfiles,flags;uint8_t fr=0,dr=0;size_t at,files_at,i,j;sim_folder *folders=NULL;bool ok=false;
     if(n<32||xx_data_get_u32(raw, 4, 0, false)||xx_data_get_u32(raw+8, 4, 0, false)||xx_data_get_u32(raw+16, 4, 0, false)||xx_data_get_u32(raw+4, 4, 0, false)!=(uint64_t)n+4||raw[20]!=3||raw[21]!=1)return false;
-    nf=xx_data_get_u16(raw+22, 2, 0, false);nfiles=xx_data_get_u16(raw+24, 2, 0, false);flags=xx_data_get_u16(raw+26, 2, 0, false);files_at=xx_data_get_u32(raw+12, 4, 0, false);if(!nf||nf>4096||!nfiles||(flags&3)||flags>4||files_at<4||files_at-4>=n)return false;files_at-=4;at=32;
+    nf=xx_data_get_u16(raw+22, 2, 0, false);nfiles=xx_data_get_u16(raw+24, 2, 0, false);flags=xx_data_get_u16(raw+26, 2, 0, false);files_at=xx_data_get_u32(raw+12, 4, 0, false);
+    /* SIM writes a valid header-only CAB when no runtime files are bundled. */
+    if(!nf&&!nfiles) return !flags&&n==32U&&files_at==36U;
+    if(!nf||nf>4096||!nfiles||(flags&3)||flags>4||files_at<4||files_at-4>=n)return false;files_at-=4;at=32;
     if(flags&4) {size_t reserve;if(!sim_range(n,at,4))return false;reserve=xx_data_get_u16(raw+at, 2, 0, false);fr=raw[at+2];dr=raw[at+3];at+=4;if(!sim_range(n,at,reserve))return false;at+=reserve;}
     if(!sim_take(b,nf*sizeof(*folders))) {return false; } folders=(sim_folder *)xx_mem_calloc(nf,sizeof(*folders));if(!folders)return false;
     for(i=0;i<nf;++i) {if(!sim_range(n,at,8+fr))goto done;folders[i].at=xx_data_get_u32(raw+at, 4, 0, false);folders[i].blocks=xx_data_get_u16(raw+at+4, 2, 0, false);folders[i].type=xx_data_get_u16(raw+at+6, 2, 0, false);if(folders[i].at<4||!folders[i].blocks||(folders[i].type&15)>3)goto done;folders[i].at-=4;at+=8+fr;}
@@ -157,6 +160,94 @@ folder_done:
     }
     ok=true;
 done:xx_mem_free(folders);if(ok)b->used-=nf*sizeof(*folders);return ok;
+}
+
+/* A SIM installer stores a cabinet set as fixed-size chunks without each
+ * cabinet's MSCF magic. Join the CAB directory and split CFDATA fragments in
+ * RAM, then use the same bounded codecs and member checks as a single cabinet.
+ * This preserves LZX history across the cabinet boundary. Continuation file
+ * records are checked against the earlier declaration, never emitted twice. */
+typedef struct sim_cab_part {const uint8_t *p;size_t n,folders,files;uint16_t nf,nfiles,flags,index,set;bool from_previous;} sim_cab_part;
+typedef struct sim_cab_file {uint8_t record[16];uint16_t folder;bool seen;} sim_cab_file;
+static void sim_put16(uint8_t *p,uint16_t n){p[0]=(uint8_t)n;p[1]=(uint8_t)(n>>8);}
+static void sim_put32(uint8_t *p,uint32_t n){p[0]=(uint8_t)n;p[1]=(uint8_t)(n>>8);p[2]=(uint8_t)(n>>16);p[3]=(uint8_t)(n>>24);}
+static bool sim_cab_set(Abstractformat *f,pm_stream *s,const uint8_t *input,size_t n,
+                        uint32_t chunks,uint32_t chunk_size,uint32_t rest,
+                        sim_string *names,size_t name_count,unsigned cp,sim_budget *b) {
+    sim_cab_part parts[64];sim_cab_file *files=NULL;uint8_t *merged=NULL;
+    size_t part_count=(size_t)chunks+(rest!=0U),offset=0U,total_folders=0U,unique=0U;
+    size_t k,i,j,folder_count=0U,at,capacity,output,charged=0U,pending=0U,pending_at=0U;
+    uint16_t folder_types[4096],folder_blocks[4096];bool ok=false;
+    if(part_count<2U||part_count>64U||!chunks||!chunk_size||!name_count||name_count>65535U||n>SIM_CAP-65536U) return false;
+    xx_mem_zero(parts,sizeof(parts));xx_mem_zero(folder_types,sizeof(folder_types));xx_mem_zero(folder_blocks,sizeof(folder_blocks));
+    for(k=0U;k<part_count;++k) {
+        sim_cab_part *part=parts+k;sim_reader rd;size_t z=k<chunks?chunk_size:rest;
+        if(sim_stop(b)||!sim_range(n,offset,z)||z<32U)goto done;
+        part->p=input+offset;part->n=z;offset+=z;
+        if(xx_data_get_u32(part->p,4,0,false)||xx_data_get_u32(part->p+4,4,0,false)!=(uint64_t)z+4U||
+           xx_data_get_u32(part->p+8,4,0,false)||xx_data_get_u32(part->p+16,4,0,false)||part->p[20]!=3U||part->p[21]!=1U)goto done;
+        part->nf=xx_data_get_u16(part->p+22,2,0,false);part->nfiles=xx_data_get_u16(part->p+24,2,0,false);
+        part->flags=xx_data_get_u16(part->p+26,2,0,false);part->set=xx_data_get_u16(part->p+28,2,0,false);part->index=xx_data_get_u16(part->p+30,2,0,false);
+        if(!part->nf||part->nf>4096U||!part->nfiles||part->flags!=(uint16_t)((k?1U:0U)|(k+1U<part_count?2U:0U))||
+           part->index!=k||(k&&part->set!=parts[0].set))goto done;
+        at=xx_data_get_u32(part->p+12,4,0,false);if(at<4U||at-4U>=z)goto done;part->files=at-4U;
+        rd.p=part->p;rd.n=z;rd.at=32U;
+        for(i=0U;i<(size_t)((k?2U:0U)+(k+1U<part_count?2U:0U));++i){sim_string link;if(!sim_string_read(&rd,&link))goto done;}
+        part->folders=rd.at;if(!sim_range(z,rd.at,(size_t)part->nf*8U)||rd.at+(size_t)part->nf*8U>part->files)goto done;
+        rd.at=part->files;
+        for(i=0U;i<part->nfiles;++i){sim_string name;uint16_t fi;
+            if(!sim_range(z,rd.at,16U))goto done;fi=xx_data_get_u16(part->p+rd.at+8U,2,0,false);rd.at+=16U;
+            if(!sim_string_read(&rd,&name))goto done;
+            if(fi==0xfffdU||fi==0xffffU)part->from_previous=true;
+            else if(fi!=0xfffeU&&fi>=part->nf)goto done;
+        }
+        if((k==0U&&part->from_previous)||part->nf>4096U-total_folders)goto done;
+        total_folders+=part->nf-(part->from_previous?1U:0U);
+        for(i=0U;i<part->nf;++i){size_t data=xx_data_get_u32(part->p+part->folders+i*8U,4,0,false);if(data<4U||data-4U<rd.at||data-4U>=z)goto done;}
+    }
+    if(offset!=n||!total_folders||total_folders>4096U)goto done;
+    capacity=n+65536U;
+    if(!sim_take(b,name_count*sizeof(*files)+capacity))goto done;charged=name_count*sizeof(*files)+capacity;
+    files=(sim_cab_file *)xx_mem_calloc(name_count,sizeof(*files));merged=(uint8_t *)xx_mem_alloc(capacity);if(!files||!merged)goto done;
+    at=32U+total_folders*8U;output=at;
+    /* Reserve the unique numeric file table before appending compressed data. */
+    for(i=0U;i<name_count;++i){char numeric[16];int length=xx_rt_snprintf(numeric,sizeof(numeric),"%u",(unsigned)i);if(length<1||!sim_range(capacity,output,17U+(size_t)length))goto done;output+=17U+(size_t)length;}
+    xx_mem_zero(merged,output);sim_put32(merged+12U,(uint32_t)(at+4U));merged[20]=3U;merged[21]=1U;
+    sim_put16(merged+22U,(uint16_t)total_folders);sim_put16(merged+24U,(uint16_t)name_count);
+    for(k=0U;k<part_count;++k){sim_cab_part *part=parts+k;size_t first=folder_count-(part->from_previous?1U:0U);sim_reader rd={part->p,part->n,part->files};
+        for(i=0U;i<part->nfiles;++i){sim_string name;uint32_t numeric;uint16_t fi,gfi;const uint8_t *record=part->p+rd.at;
+            fi=xx_data_get_u16(record+8U,2,0,false);rd.at+=16U;if(!sim_string_read(&rd,&name)||!sim_number(name,&numeric)||numeric>=name_count)goto done;
+            if(fi==0xfffdU)gfi=(uint16_t)first;
+            else if(fi==0xfffeU)gfi=(uint16_t)(first+part->nf-1U);
+            else if(fi==0xffffU){if(part->nf!=1U)goto done;gfi=(uint16_t)first;}
+            else gfi=(uint16_t)(first+fi);
+            if(gfi>=total_folders)goto done;
+            if(files[numeric].seen){if(fi!=0xfffdU&&fi!=0xffffU)goto done;if(files[numeric].folder!=gfi||xx_rt_memcmp(files[numeric].record,record,8U)||xx_rt_memcmp(files[numeric].record+10U,record+10U,6U))goto done;}
+            else {if(fi==0xfffdU||fi==0xffffU)goto done;files[numeric].seen=true;files[numeric].folder=gfi;xx_rt_memcpy(files[numeric].record,record,16U);++unique;}
+        }
+        for(i=0U;i<part->nf;++i){const uint8_t *folder=part->p+part->folders+i*8U;size_t global=first+i,pos=xx_data_get_u32(folder,4,0,false)-4U;uint16_t blocks=xx_data_get_u16(folder+4U,2,0,false),type=xx_data_get_u16(folder+6U,2,0,false);
+            if(!blocks||(type&15U)>3U||(i==0U&&part->from_previous&&folder_types[global]!=type))goto done;
+            if(!(i==0U&&part->from_previous)){if(pending)goto done;folder_types[global]=type;sim_put32(merged+32U+global*8U,(uint32_t)(output+4U));sim_put16(merged+38U+global*8U,type);}
+            for(j=0U;j<blocks;++j){uint32_t checksum;uint16_t packed,plain;
+                if(sim_stop(b)||!sim_range(part->n,pos,8U))goto done;
+                checksum=xx_data_get_u32(part->p+pos,4,0,false);packed=xx_data_get_u16(part->p+pos+4U,2,0,false);plain=xx_data_get_u16(part->p+pos+6U,2,0,false);pos+=8U;
+                if(!packed||plain>32768U||!sim_range(part->n,pos,packed)||(!plain&&(j+1U!=blocks||i+1U!=part->nf||k+1U==part_count)))goto done;
+                if(checksum&&checksum!=(sim_checksum(part->p+pos,packed)^((uint32_t)plain<<16U|packed)))goto done;
+                if(!pending){pending_at=output;if(!sim_range(capacity,output,8U))goto done;output+=8U;}
+                if(packed>65535U-pending||!sim_range(capacity,output,packed))goto done;
+                xx_rt_memcpy(merged+output,part->p+pos,packed);output+=packed;pending+=packed;pos+=packed;
+                if(plain){if(folder_blocks[global]==65535U)goto done;++folder_blocks[global];sim_put16(merged+pending_at+4U,(uint16_t)pending);sim_put16(merged+pending_at+6U,plain);sim_put32(merged+pending_at,sim_checksum(merged+pending_at+8U,pending)^((uint32_t)plain<<16U|(uint32_t)pending));pending=0U;}
+            }
+            if(pos>part->n || (i+1U<part->nf && pos>xx_data_get_u32(part->p+part->folders+(i+1U)*8U,4,0,false)-4U))goto done;
+        }
+        folder_count=first+part->nf;
+    }
+    if(pending||unique!=name_count||folder_count!=total_folders)goto done;
+    for(i=0U;i<name_count;++i){char numeric[16];int length=xx_rt_snprintf(numeric,sizeof(numeric),"%u",(unsigned)i);if(!files[i].seen)goto done;xx_rt_memcpy(merged+at,files[i].record,16U);sim_put16(merged+at+8U,files[i].folder);at+=16U;xx_rt_memcpy(merged+at,numeric,(size_t)length+1U);at+=(size_t)length+1U;}
+    for(i=0U;i<total_folders;++i)sim_put16(merged+36U+i*8U,folder_blocks[i]);
+    sim_put32(merged+4U,(uint32_t)output+4U);
+    ok=sim_cab(f,s,merged,output,"content",names,name_count,cp,b);
+done:xx_mem_free(files);xx_mem_free(merged);if(charged)b->used-=charged;return ok;
 }
 static uint64_t sim_option_bytes(const xx_list_s *o) {
     uint64_t n=0;size_t i;if(!o)return 0;if(o->count>1024)return UINT64_MAX;
@@ -194,7 +285,9 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     else {sim_reader runtime={image+(size_t)ro,(size_t)rl,0};for(i=0;i<image[end+33];++i) {sim_string name,z;uint32_t size;char *path;if(!sim_string_read(&runtime,&name)||!sim_string_read(&runtime,&z)||!sim_number(z,&size)||!sim_range(runtime.n,runtime.at,size))goto done;path=sim_path(name,cp,"runtime",true,&b);if(!path||!sim_add(f,s,path,f->base_address+(int64_t)ro+(int64_t)runtime.at,NULL,size,0,&b))goto done;runtime.at+=size;}if(runtime.at!=runtime.n)goto done;}
     if(rl!=co-ro)goto done;
     if(!chunks&&!rest) {at=(size_t)co;for(i=0;i<name_count;++i) {uint32_t size;char *path;if(!sim_range(end,at,24))goto done;size=xx_data_get_u32(image+at+4, 4, 0, false);at+=24;if(!sim_range(end,at,size))goto done;path=sim_path(names[i],cp,"data",false,&b);if(!path||!sim_add(f,s,path,f->base_address+(int64_t)at,NULL,size,0,&b))goto done;at+=size;}if(at!=end)goto done;}
-    else {uint64_t span=(uint64_t)chunks*chunk_size+rest;if(span!=end-co||chunks>1||(chunks&&rest)||!span)goto done;if(!sim_cab(f,s,image+(size_t)co,(size_t)span,"content",names,name_count,cp,&b))goto done;}
+    else {uint64_t span=(uint64_t)chunks*chunk_size+rest;if(span!=end-co||!span)goto done;
+        if(chunks>1U||(chunks&&rest)){if(!sim_cab_set(f,s,image+(size_t)co,(size_t)span,chunks,chunk_size,rest,names,name_count,cp,&b))goto done;}
+        else if(!sim_cab(f,s,image+(size_t)co,(size_t)span,"content",names,name_count,cp,&b))goto done;}
     b.used-=(uint64_t)length+name_count*sizeof(*names);for(i=0;i<s->count;++i)((sim_context *)s->items[i].context)->retained=b.used;s->size=length;ok=true;
 done:xx_mem_free(names);xx_mem_free(image);if(!ok&&!xx_pd_is_stopped(pd))xx_pd_set_error(pd,XXFC_ERR_GENERIC,"Unsupported, malformed or over-budget Smart Install Maker package");return ok;
 }

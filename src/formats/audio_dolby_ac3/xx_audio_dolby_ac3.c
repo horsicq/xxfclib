@@ -5,27 +5,27 @@
  * File limit64MiB, member limit4096. No payload or external resource is executed.
  */
 #include "xxfclib/formats/audio_dolby_ac3/xx_audio_dolby_ac3.h"
-#include "../audio_dolby_ac3/xx_ninth_media.h"
-static bool ng_quick(Abstractformat *f,uint64_t n) { uint8_t h[7];return ng_probe(f,n,h,7)&&h[0]==0x0b&&h[1]==0x77&&(h[5]>>3)==8&&(h[4]>>6)<3&&(h[4]&63)<38; }
-static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
+#include "../common/xx_audiovisual_components.h"
+static bool audiovisual_quick(Abstractformat *f,uint64_t n) { uint8_t h[7];return audiovisual_probe(f,n,h,7)&&h[0]==0x0b&&h[1]==0x77&&(h[5]>>3)==8&&(h[4]>>6)<3&&(h[4]&63)<38; }
+static bool audiovisual_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  static const uint16_t rates[19]={32,40,48,56,64,80,96,112,128,160,192,224,256,320,384,448,512,576,640};
  static const uint16_t words441[19]={69,87,104,121,139,174,208,243,278,348,417,487,557,696,835,975,1114,1253,1393};
  uint64_t at=0;unsigned frames=0,sr=99,mode=99;char label[40];
- while(at<n){uint32_t v,acmod,lfe,code,rate,words,bytes,split,i;ng_bits q;
-  if(ng_stop(pd)||!ng_span(at,7,n)||b[at]!=0x0b||b[at+1]!=0x77||(b[at+5]>>3)!=8||(rate=b[at+4]>>6)>=3||(code=b[at+4]&63)>=38)return false;
+ while(at<n){uint32_t v,acmod,lfe,code,rate,words,bytes,split,i;audiovisual_bits q;
+  if(audiovisual_stop(pd)||!audiovisual_span(at,7,n)||b[at]!=0x0b||b[at+1]!=0x77||(b[at+5]>>3)!=8||(rate=b[at+4]>>6)>=3||(code=b[at+4]&63)>=38)return false;
   words=rate==0?rates[code/2]*2U:rate==2?rates[code/2]*3U:words441[code/2]+(code&1);bytes=words*2;split=((bytes>>2)+(bytes>>4))*2;
-  if(!ng_span(at,bytes,n)||ng_crc16(b+at+2,split-2)||ng_crc16(b+at+split,bytes-split))return false;
+  if(!audiovisual_span(at,bytes,n)||audiovisual_crc16(b+at+2,split-2)||audiovisual_crc16(b+at+split,bytes-split))return false;
   q.b=b+at;q.bit=48;q.end=(uint64_t)split*8;
-  if(!ng_bits_get(&q,3,&acmod))return false;
-  if((acmod&1)&&acmod!=1&&!ng_bits_skip(&q,2))return false;
-  if((acmod&4)&&!ng_bits_skip(&q,2))return false;
-  if(acmod==2&&!ng_bits_skip(&q,2))return false;
-  if(!ng_bits_get(&q,1,&lfe))return false;
+  if(!audiovisual_bits_get(&q,3,&acmod))return false;
+  if((acmod&1)&&acmod!=1&&!audiovisual_bits_skip(&q,2))return false;
+  if((acmod&4)&&!audiovisual_bits_skip(&q,2))return false;
+  if(acmod==2&&!audiovisual_bits_skip(&q,2))return false;
+  if(!audiovisual_bits_get(&q,1,&lfe))return false;
   if(sr==99){sr=rate;mode=acmod|(lfe<<3);}else if(sr!=rate||mode!=(acmod|(lfe<<3)))return false;
-  for(i=0;i<(acmod?1U:2U);++i){if(!ng_bits_skip(&q,5)||!ng_bits_get(&q,1,&v)||(v&&!ng_bits_skip(&q,8))||!ng_bits_get(&q,1,&v)||(v&&!ng_bits_skip(&q,8))||!ng_bits_get(&q,1,&v)||(v&&!ng_bits_skip(&q,7)))return false;}
-  if(!ng_bits_skip(&q,2)||!ng_bits_get(&q,1,&v)||(v&&!ng_bits_skip(&q,14))||!ng_bits_get(&q,1,&v)||(v&&!ng_bits_skip(&q,14))||!ng_bits_get(&q,1,&v))return false;
-  if(v){if(!ng_bits_get(&q,6,&v)||!ng_bits_skip(&q,((uint64_t)v+1)*8))return false;}
-  xx_rt_snprintf(label,sizeof(label),"frame-%u.ac3",frames++);if(!ng_emit(f,s,label,at,bytes,n))return false;at+=bytes;
+  for(i=0;i<(acmod?1U:2U);++i){if(!audiovisual_bits_skip(&q,5)||!audiovisual_bits_get(&q,1,&v)||(v&&!audiovisual_bits_skip(&q,8))||!audiovisual_bits_get(&q,1,&v)||(v&&!audiovisual_bits_skip(&q,8))||!audiovisual_bits_get(&q,1,&v)||(v&&!audiovisual_bits_skip(&q,7)))return false;}
+  if(!audiovisual_bits_skip(&q,2)||!audiovisual_bits_get(&q,1,&v)||(v&&!audiovisual_bits_skip(&q,14))||!audiovisual_bits_get(&q,1,&v)||(v&&!audiovisual_bits_skip(&q,14))||!audiovisual_bits_get(&q,1,&v))return false;
+  if(v){if(!audiovisual_bits_get(&q,6,&v)||!audiovisual_bits_skip(&q,((uint64_t)v+1)*8))return false;}
+  xx_rt_snprintf(label,sizeof(label),"frame-%u.ac3",frames++);if(!audiovisual_emit(f,s,label,at,bytes,n))return false;at+=bytes;
  }
  s->size=(int64_t)at;return frames>0;
 }

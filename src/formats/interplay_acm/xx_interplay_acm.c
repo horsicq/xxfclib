@@ -3,13 +3,13 @@
  * Preserves encoded bytes; this reader does not decode subband audio.
  */
 #include "xxfclib/formats/interplay_acm/xx_interplay_acm.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 #ifndef INTERPLAY_ACM
 #define XX_FILE_TYPE_INTERPLAY_ACM ((xx_file_type_t)1508)
 #endif
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     uint8_t h[14]; uint32_t samples; uint16_t ch,rate,shape; unsigned levels,subblocks; int64_t n;
-    if(fd_stop(pd) || (n=pm_available(f))<=14 || !pm_read(f,0,h,sizeof(h)) ||
+    if(binary_stop(pd) || (n=pm_available(f))<=14 || !pm_read(f,0,h,sizeof(h)) ||
        xx_data_get_u32(h, 4, 0, false)!=UINT32_C(0x01032897)) return false;
     samples=xx_data_get_u32(h+4, 4, 0, false); ch=xx_data_get_u16(h+8, 2, 0, false); rate=xx_data_get_u16(h+10, 2, 0, false); shape=xx_data_get_u16(h+12, 2, 0, false);
     levels=shape&15U; subblocks=shape>>4;

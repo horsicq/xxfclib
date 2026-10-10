@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/openjdk/jdk/master/src/java.base/share/classes/jdk/internal/jmod/JmodFile.java */
 #include "xxfclib/formats/java_jmod/xx_java_jmod.h"
-#include "../xx_seventh_data.h"
-#include "../makeself/xx_fourth_wrapper_table.h"
+#include "../common/xx_numeric_values.h"
+#include "../common/xx_carrier_helpers.h"
 
 static bool jmod_origin(Abstractformat *f,int64_t end,xx_pd_struct *pd) {
     uint8_t h[22];int64_t at=end-22,low=end>65561?end-65557:4;
-    for(;at>=low;--at) {if(fd_stop(pd) || !pm_read(f,at,h,4)) return false;
+    for(;at>=low;--at) {if(binary_stop(pd) || !pm_read(f,at,h,4)) return false;
         if(xx_rt_memcmp(h,"PK\5\6",4) || !pm_read(f,at,h,22) || at+22+xx_data_get_u16(h+20, 2, 0, false)!=end) continue;
         return (uint64_t)xx_data_get_u32(h+12, 4, 0, false)+xx_data_get_u32(h+16, 4, 0, false)+4U==(uint64_t)at;
     }return false;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     int64_t available=pm_available(f);uint8_t h[8];
-    if(fd_stop(pd) || available<34 || available>67108864 || !pm_read(f,0,h,8) || xx_rt_memcmp(h,"JM\1\0PK\3\4",8) || !jmod_origin(f,available,pd) || !wg_zip(f,4,available,pd)) return false;
+    if(binary_stop(pd) || available<34 || available>67108864 || !pm_read(f,0,h,8) || xx_rt_memcmp(h,"JM\1\0PK\3\4",8) || !jmod_origin(f,available,pd) || !carrier_zip(f,4,available,pd)) return false;
     if(!pm_add(f,s,"module.zip",4,available-4)) { return false; } s->size=available;return true;
 }
 

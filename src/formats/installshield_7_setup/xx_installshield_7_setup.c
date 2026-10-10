@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * InstallShield "Setup Player 2K2" All-in-One single-exe (U3 "SFX IS14").
+ * InstallShield "Setup Player 2K2" All-in-One single-exe (also called "SFX IS14").
  * xx_installshield_7_setup.h carries the record layout.
  *
  * The acceptance rules -- payload at the PE overlay, four NUL-terminated

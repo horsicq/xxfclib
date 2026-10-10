@@ -10,7 +10,7 @@ xx_list_t *xx_format_get_supported_file_types(void)
 {
     xx_list_t *types = xx_list_create(sizeof(xx_file_type_t), NULL);
     int value;
-    const int last = XX_FILE_TYPE_DOTNET;
+    const int last = XX_FILE_TYPE_SONY_IMAGE;
 
     if (!types) return NULL;
     for (value = XX_FILE_TYPE_BINARY; value <= last; ++value) {

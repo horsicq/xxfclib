@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html */
 #include "xxfclib/formats/numpy_npy/xx_numpy_npy.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 
 typedef struct np_text { const uint8_t *p; size_t at,n; } np_text;
 static void np_space(np_text *t) { while(t->at<t->n && (t->p[t->at]==' ' || t->p[t->at]=='\t' || t->p[t->at]=='\n' || t->p[t->at]=='\r')) ++t->at; }
@@ -21,7 +21,7 @@ static bool np_dtype(const char *p,uint64_t *size) { size_t at=0; char kind; uin
     else if(kind=='i' || kind=='u') { if(n!=1 && n!=2 && n!=4 && n!=8) return false; }
     else if(kind=='f') { if(n!=2 && n!=4 && n!=8 && n!=16) return false; }
     else if(kind=='c') { if(n!=8 && n!=16 && n!=32) return false; }
-    else if(kind=='U') { if(!fd_mul(n,4,&n)) return false; }
+    else if(kind=='U') { if(!binary_mul(n,4,&n)) return false; }
     else if(kind!='S' && kind!='V') return false;
     if(p[0]=='|' && kind!='b' && kind!='?' && kind!='S' && kind!='V' && n!=1) return false;
     *size=n; return true;
@@ -31,16 +31,16 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!pm_read(f,0,h,10) || xx_rt_memcmp(h,"\x93NUMPY",6) || h[7] || h[6]<1 || h[6]>3) return false;
     prefix=h[6]==1 ? 10:12; if(prefix==12 && !pm_read(f,0,h,12)) return false;
     len=prefix==10 ? xx_data_get_u16(h+8, 2, 0, false):xx_data_get_u32(h+8, 4, 0, false);
-    if(!len || len>65536 || !fd_range(prefix,len,(uint64_t)pm_available(f)) || (prefix+len)%16) return false;
+    if(!len || len>65536 || !binary_range(prefix,len,(uint64_t)pm_available(f)) || (prefix+len)%16) return false;
     header=(uint8_t *)xx_mem_alloc(len); if(!header || !pm_read(f,prefix,header,len) || header[len-1]!='\n') goto done;
     t.p=header; t.at=0; t.n=len; if(!np_char(&t,'{')) goto done;
     for(;;) { char key[32],dtype[64]; unsigned bit;
-        if(fd_stop(pd) || !np_string(&t,key,sizeof(key)) || !np_char(&t,':')) goto done;
+        if(binary_stop(pd) || !np_string(&t,key,sizeof(key)) || !np_char(&t,':')) goto done;
         if(!xx_rt_strcmp(key,"descr")) { bit=1; if(!np_string(&t,dtype,sizeof(dtype)) || !np_dtype(dtype,&item)) goto done; }
         else if(!xx_rt_strcmp(key,"fortran_order")) { bit=2; if(!np_word(&t,"False") && !np_word(&t,"True")) goto done; }
         else if(!xx_rt_strcmp(key,"shape")) { bit=4; if(!np_char(&t,'(')) goto done; np_space(&t);
             if(t.at<t.n && t.p[t.at]==')') ++t.at;
-            else for(;;) { uint64_t n; if(++dim>32 || !np_number(&t,&n) || !fd_mul(elements,n,&elements)) goto done;
+            else for(;;) { uint64_t n; if(++dim>32 || !np_number(&t,&n) || !binary_mul(elements,n,&elements)) goto done;
                 if(!np_char(&t,',')) { if(dim==1 || !np_char(&t,')')) goto done; break; }
                 np_space(&t); if(t.at<t.n && t.p[t.at]==')') { ++t.at; break; }
             }
@@ -49,7 +49,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         if(t.at<t.n && t.p[t.at]=='}') { ++t.at; break; }
         if(!np_char(&t,',')) { goto done; } np_space(&t); if(t.at<t.n && t.p[t.at]=='}') { ++t.at; break; }
     }
-    np_space(&t); if(t.at!=t.n || keys!=7 || !fd_mul(elements,item,&bytes) || !fd_range(prefix+len,bytes,(uint64_t)pm_available(f))) goto done;
+    np_space(&t); if(t.at!=t.n || keys!=7 || !binary_mul(elements,item,&bytes) || !binary_range(prefix+len,bytes,(uint64_t)pm_available(f))) goto done;
     if(!pm_add(f,s,"npy-header.txt",prefix,len) || !pm_add(f,s,"array-data.bin",prefix+len,(int64_t)bytes)) goto done;
     s->size=prefix+len+(int64_t)bytes; result=true;
 done: if(header) xx_mem_free(header); return result;

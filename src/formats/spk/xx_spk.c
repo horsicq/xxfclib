@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * !Spark / SparkFS: the sequential ARC member chain with RISC OS extensions.
- * The header test is U3's own recognition predicate (FUN_005b5860); the
+ * The header test is the recovered recognition predicate (FUN_005b5860); the
  * method table and the directory rule come from deark's Spark module.
  * xx_spk.h has the field table and the corpus evidence.
  *
@@ -100,7 +100,7 @@ static char *spk_component(const uint8_t *raw, size_t size, bool strict) {
     size_t index, length = 0U;
     while (length < size && raw[length] != 0U) ++length;
     if (length == 0U) return NULL;
-    /* U3 requires printable ASCII, but only of the FIRST member header,
+    /* The reference reader requires printable ASCII, but only of the FIRST member header,
      * where it stands in for a magic number.  Later members legitimately
      * carry RISC OS Latin-1 names - this corpus has "!<e9>lite" and several
      * "<a0>"-separated ones - so they are sanitised, not rejected. */
@@ -213,10 +213,10 @@ static bool spk_walk(Abstractformat *format, spk_stream *stream,
             limit - offset - (int64_t)XX_SPK_HEADER_SIZE)
             return false;
         if ((int64_t)original_size > SPK_MAX_ORIGINAL_SIZE) return false;
-        /* U3's own rule for the stored method: the two sizes must agree. */
+        /* The reference reader's own rule for the stored method: the two sizes must agree. */
         if (method == SPK_METHOD_STORED && packed_size != original_size)
             return false;
-        /* U3 rejects a member whose every field is zero; such a "member" is
+        /* The reference reader rejects a member whose every field is zero; such a "member" is
          * indistinguishable from padding. */
         if (packed_size == 0U && original_size == 0U &&
             xx_data_get_u16(header + 0x13, 2, 0, false) == 0U && xx_data_get_u16(header + 0x15, 2, 0, false) == 0U &&

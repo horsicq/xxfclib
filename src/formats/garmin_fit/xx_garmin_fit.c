@@ -1,31 +1,31 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://developer.garmin.com/fit/protocol/ */
 #include "xxfclib/formats/garmin_fit/xx_garmin_fit.h"
-#include "../xx_ninth_data.h"
+#include "../common/xx_memory_blob.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};uint8_t h[12];uint32_t sizes[16]={0};bool stamp[16]={0},ok=false;uint64_t at,end;unsigned records=0;
+    memory_blob b={0};uint8_t h[12];uint32_t sizes[16]={0};bool stamp[16]={0},ok=false;uint64_t at,end;unsigned records=0;
     if(!pm_read(f,0,h,sizeof(h)) || (h[0]!=12 && h[0]!=14) || xx_rt_memcmp(h+8,".FIT",4)) return false;
-    NH_NEED(nh_load(f,&b,pd));end=(uint64_t)h[0]+xx_data_get_u32(h+4, 4, 0, false);
-    NH_NEED(end+2==b.n && h[1]>=16 && h[1]<64 && nh_crc16(b.p,(size_t)b.n)==0);
-    if(h[0]==14) NH_NEED(nh_crc16(b.p,14)==0);
-    NH_NEED(nh_add(f,s,&b,"header",0,h[0]));at=h[0];
+    BLOB_NEED(blob_load(f,&b,pd));end=(uint64_t)h[0]+xx_data_get_u32(h+4, 4, 0, false);
+    BLOB_NEED(end+2==b.n && h[1]>=16 && h[1]<64 && blob_crc16(b.p,(size_t)b.n)==0);
+    if(h[0]==14) BLOB_NEED(blob_crc16(b.p,14)==0);
+    BLOB_NEED(blob_add(f,s,&b,"header",0,h[0]));at=h[0];
     while(at<end) {uint64_t start=at;uint8_t code=b.p[(size_t)at++];unsigned local=code&15;
-        NH_NEED(++records<=4094 && !fd_stop(pd));
-        if(code&128) {local=(code>>5)&3;NH_NEED(sizes[local]>=4 && stamp[local] && eh_span(at,sizes[local]-4,end));at+=sizes[local]-4;}
+        BLOB_NEED(++records<=4094 && !binary_stop(pd));
+        if(code&128) {local=(code>>5)&3;BLOB_NEED(sizes[local]>=4 && stamp[local] && record_span(at,sizes[local]-4,end));at+=sizes[local]-4;}
         else if(code&64) {unsigned i,count;uint32_t bytes=0;uint8_t used[256]={0};static const uint8_t widths[]={1,1,1,2,2,4,4,1,4,8,1,2,4,1,8,8,8};
-            NH_NEED(!(code&16) && eh_span(at,5,end) && b.p[(size_t)at]==0 && b.p[(size_t)at+1]<=1);
-            count=b.p[(size_t)at+4];at+=5;stamp[local]=false;NH_NEED(count && eh_span(at,(uint64_t)count*3,end));
+            BLOB_NEED(!(code&16) && record_span(at,5,end) && b.p[(size_t)at]==0 && b.p[(size_t)at+1]<=1);
+            count=b.p[(size_t)at+4];at+=5;stamp[local]=false;BLOB_NEED(count && record_span(at,(uint64_t)count*3,end));
             for(i=0;i<count;++i) {uint8_t field=b.p[(size_t)at],n=b.p[(size_t)at+1],type=b.p[(size_t)at+2]&31;
-                NH_NEED(!used[field] && n && type<sizeof(widths) && !(b.p[(size_t)at+2]&96) && n%widths[type]==0);used[field]=1;bytes+=n;
+                BLOB_NEED(!used[field] && n && type<sizeof(widths) && !(b.p[(size_t)at+2]&96) && n%widths[type]==0);used[field]=1;bytes+=n;
                 if(!i && field==253 && n==4 && type==6) { stamp[local]=true; } at+=3;
             }
-            if(code&32) {NH_NEED(at<end);count=b.p[(size_t)at++];NH_NEED(eh_span(at,(uint64_t)count*3,end));for(i=0;i<count;++i) {NH_NEED(b.p[(size_t)at+1]);bytes+=b.p[(size_t)at+1];at+=3;}}
+            if(code&32) {BLOB_NEED(at<end);count=b.p[(size_t)at++];BLOB_NEED(record_span(at,(uint64_t)count*3,end));for(i=0;i<count;++i) {BLOB_NEED(b.p[(size_t)at+1]);bytes+=b.p[(size_t)at+1];at+=3;}}
             sizes[local]=bytes;
-        }else {NH_NEED(!(code&48) && sizes[local] && eh_span(at,sizes[local],end));at+=sizes[local];}
-        NH_NEED(nh_add(f,s,&b,(code&64) && !(code&128) ? "definition":"data",start,at-start));
+        }else {BLOB_NEED(!(code&48) && sizes[local] && record_span(at,sizes[local],end));at+=sizes[local];}
+        BLOB_NEED(blob_add(f,s,&b,(code&64) && !(code&128) ? "definition":"data",start,at-start));
     }
-    NH_NEED(records && nh_add(f,s,&b,"crc16",end,2));s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(records && blob_add(f,s,&b,"crc16",end,2));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

@@ -6,18 +6,18 @@
  * C64 TAP versions 0/1; validates full pulse framing and exports descriptor and original pulse train. No cassette demodulation.
  */
 #include "xxfclib/formats/commodore_tap/xx_commodore_tap.h"
-#include "../vice_x64/xx_ninth_retro.h"
+#include "../common/xx_retro_disk_components.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b) {
+static bool parse_blob(Abstractformat *f,pm_stream *s,retro_disk_blob *b) {
  uint32_t at=20,end;
- if(!nh_range(b,0,20) || xx_rt_memcmp(b->p,"C64-TAPE-RAW",12) || b->p[12]>1 || b->p[13] || b->p[14]>3 || b->p[15] || !xx_data_get_u32(b->p+16, 4, 0, false) || !nh_range(b,20,xx_data_get_u32(b->p+16, 4, 0, false))) return false;
+ if(!retro_disk_range(b,0,20) || xx_rt_memcmp(b->p,"C64-TAPE-RAW",12) || b->p[12]>1 || b->p[13] || b->p[14]>3 || b->p[15] || !xx_data_get_u32(b->p+16, 4, 0, false) || !retro_disk_range(b,20,xx_data_get_u32(b->p+16, 4, 0, false))) return false;
  end=20+xx_data_get_u32(b->p+16, 4, 0, false);
- while(at<end) { if(!(at&4095U) && !nh_poll(b)) return false; if(!b->p[at++] && b->p[12]==1) { if(end-at<3 || !xx_data_get_u24(b->p+at, 3, 0, false)) return false; at+=3; } }
- if(!nh_emit(f,s,b,"tape-descriptor.bin",0,20) || !nh_emit(f,s,b,"pulses.tapdata",20,end-20)) { return false; } s->size=end; return true;
+ while(at<end) { if(!(at&4095U) && !retro_disk_poll(b)) return false; if(!b->p[at++] && b->p[12]==1) { if(end-at<3 || !xx_data_get_u24(b->p+at, 3, 0, false)) return false; at+=3; } }
+ if(!retro_disk_emit(f,s,b,"tape-descriptor.bin",0,20) || !retro_disk_emit(f,s,b,"pulses.tapdata",20,end-20)) { return false; } s->size=end; return true;
 }
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { nh_blob b; bool ok; if(!nh_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { retro_disk_blob b; bool ok; if(!retro_disk_load(f,&b,pd)) return false; ok=parse_blob(f,s,&b); xx_mem_free(b.p); return ok; }
 
 void xx_commodore_tap_init(xx_commodore_tap *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_COMMODORE_TAP,"tap"); } }
 xx_commodore_tap *xx_commodore_tap_create(xx_io_device *d,int64_t b) { xx_commodore_tap *r=(xx_commodore_tap *)xx_mem_alloc(sizeof(*r)); if(r) xx_commodore_tap_init(r,d,b); return r; }

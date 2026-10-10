@@ -138,12 +138,37 @@ static bool pm_record(xx_archive_record_state *st) {
     }
     return true;
 }
+typedef struct pm_option_scope { xx_list_s saved; bool active; } pm_option_scope;
+/* Parsers and logical readers share the format-wide resolver. Temporarily
+ * expose an owned merged view, preserving the original options byte-for-byte.
+ * First entries win, matching xx_format_resolve_extra_parameter(). */
+static bool pm_options_begin(Abstractformat *f,const xx_list_s *opts,pm_option_scope *scope) {
+    Abstractformat temporary;const xx_list_s *sources[2];size_t source,i;
+    xx_mem_zero(scope,sizeof(*scope));
+    if(!f)return false;
+    if(!opts || !opts->count)return true;
+    xx_mem_zero(&temporary,sizeof(temporary));sources[0]=&f->list_extra_parameters;sources[1]=opts;
+    for(source=0;source<2U;++source) {
+        i=sources[source]->count;
+        while(i) {
+            const xx_meta *meta=(const xx_meta *)xx_list_at(sources[source],--i);
+            if(meta && !xx_format_set_extra_parameter(&temporary,meta->meta_id,&meta->var)) {
+                xx_format_cleanup_extra_parameters(&temporary);return false;
+            }
+        }
+    }
+    scope->saved=f->list_extra_parameters;f->list_extra_parameters=temporary.list_extra_parameters;scope->active=true;
+    return true;
+}
+static void pm_options_end(Abstractformat *f,pm_option_scope *scope) {
+    if(scope->active) {xx_list_cleanup(&f->list_extra_parameters);f->list_extra_parameters=scope->saved;scope->active=false;}
+}
 static xx_archive_record_state *pm_create_records(Abstractformat *f, const xx_list_s *opts, xx_pd_struct *pd) {
-    pm_stream *s=pm_open(f,pd); xx_archive_record_state *st; size_t i;
-    if(!s) return NULL;
+    pm_stream *s; xx_archive_record_state *st; size_t i;pm_option_scope scope;
+    if(!f || (pd && xx_pd_is_stopped(pd)))return NULL;
     st=(xx_archive_record_state *)xx_mem_alloc(sizeof(*st));
-    if(!st) { pm_free_stream(s); return NULL; }
-    xx_archive_record_state_init(st,f); st->internal_state=s; st->free_internal=pm_free_stream; st->total_records=s->count;
+    if(!st) return NULL;
+    xx_archive_record_state_init(st,f);
     for(i=0;opts && i<opts->count;++i) {
         const xx_meta *m=(const xx_meta *)xx_list_at(opts,i); xx_meta copy;
         if(!m) { continue; } xx_meta_init(&copy,m->meta_id);
@@ -151,6 +176,10 @@ static xx_archive_record_state *pm_create_records(Abstractformat *f, const xx_li
             xx_meta_cleanup(&copy); xx_archive_record_state_free(st); return NULL;
         }
     }
+    if(!pm_options_begin(f,&st->options,&scope)) {xx_archive_record_state_free(st);return NULL;}
+    s=pm_open(f,pd);pm_options_end(f,&scope);
+    if(!s) {xx_archive_record_state_free(st);return NULL;}
+    st->internal_state=s;st->free_internal=pm_free_stream;st->total_records=s->count;
     st->has_record=s->count!=0 && pm_record(st);
     if(s->count && !st->has_record) { xx_archive_record_state_free(st); return NULL; }
     return st;
@@ -204,12 +233,14 @@ static bool pm_unpack(Abstractformat *f, xx_archive_record_state *st, xx_pd_stru
     pm_stream *s; pm_member *m; const xx_var *v; char *path=NULL,*owned=NULL,*stage=NULL;
     const char *base=NULL; bool result=false,overwrite=false; int64_t cursor;
     xx_io_device *output=NULL;
+    pm_option_scope scope;
     if(!f || !st || st->format!=f || !st->has_record || (pd && xx_pd_is_stopped(pd))) return false;
+    if(!pm_options_begin(f,&st->options,&scope))return false;
     s=(pm_stream *)st->internal_state; m=&s->items[s->index];
     v=xx_format_resolve_extra_parameter(f,&st->options,XX_META_ID_OPT_MAX_MEMBER_SIZE);
-    if(v && (uint64_t)m->size>xx_var_get_u64(v)) return false;
+    if(v && (uint64_t)m->size>xx_var_get_u64(v)) goto done;
     v=xx_format_resolve_extra_parameter(f,&st->options,XX_META_ID_OPT_MEMORY_LIMIT);
-    if(v && m->memory && (uint64_t)m->size>xx_var_get_u64(v)) return false;
+    if(v && m->memory && (uint64_t)m->size>xx_var_get_u64(v)) goto done;
     v=xx_format_resolve_extra_parameter(f,&st->options,XX_META_ID_OPT_UNPACK_PATH);
     if(v) {
         if(v->type==XX_VAR_TYPE_STRING || v->type==XX_VAR_TYPE_STRING_VIEW) base=xx_var_get_str(v);
@@ -275,7 +306,7 @@ done:
         if(!result) (void)xx_io_file_remove_a(stage);
         xx_str_free(stage);
     }
-    if(path) { xx_str_free(path); } if(owned) xx_str_free(owned); return result;
+    if(path) { xx_str_free(path); } if(owned) xx_str_free(owned);pm_options_end(f,&scope); return result;
 }
 static void pm_free_records(Abstractformat *f, xx_archive_record_state *st) { (void)f; xx_archive_record_state_free(st); }
 static void pm_init(Abstractformat *f, xx_io_device *d, int64_t b, xx_file_type_t type, const char *ext) {

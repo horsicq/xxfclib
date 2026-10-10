@@ -13,7 +13,7 @@
  *
  * Record model: one archive record per lzop stream, named after the file name
  * that stream's header stores (a relative path when `lzop -P` stored one).
- * This is what `lzop -c a b > ab.lzo` creates and what `lzop -x` / U3
+ * This is what `lzop -c a b > ab.lzo` creates and what `lzop -x` and the reference extractor
  * extract, and it matches the gz reader's one-record-per-member model.
  * xx_lzop_unpack_to_device() still produces the concatenation of every
  * stream, which is what `lzop -dc` writes.
@@ -445,7 +445,7 @@ static bool xx_lzopfmt_is_separator(uint8_t ch) {
     return ch == '/' || ch == '\\';
 }
 
-/* Characters Win32 cannot put in a file name.  U3 writes '_' for them, and so
+/* Characters Win32 cannot put in a file name.  The reference reader writes '_' for them, and so
  * does this reader. */
 static bool xx_lzopfmt_is_reserved_char(uint8_t ch) {
     return ch == '<' || ch == '>' || ch == ':' || ch == '"' || ch == '|' ||
@@ -509,7 +509,7 @@ static bool xx_lzopfmt_safe_path(const char *name) {
  * ASCII) is kept; anything else is taken as Latin-1, lzop's F_CS_LATIN1 /
  * Windows ANSI default.
  *
- * `lzop -P` stores a path, which is kept as a safe relative path the way U3
+ * `lzop -P` stores a path, which is kept as a safe relative path the way the reference reader
  * extracts it ("dir/sub/file.txt" stays, "../x.txt" becomes "x.txt",
  * "/etc/passwd" becomes "etc/passwd"):
  *   - '/' and '\' both separate components; the result uses '/';

@@ -7,7 +7,7 @@
  * must tile the payload, so no arbitrary embedded-byte carving is needed.
  */
 #include "xxfclib/formats/sfx_softpaq4/xx_sfx_softpaq4.h"
-#include "../makeself/xx_fourth_wrapper_table.h"
+#include "../common/xx_carrier_helpers.h"
 #include "xxfclib/io/xx_io.h"
 
 #include <limits.h>
@@ -101,7 +101,7 @@ static bool sp4_zip_legacy(Abstractformat *f, int64_t start, int64_t end,
     if (!view) goto done;
     xx_mem_zero(&nested, sizeof(nested));
     nested.device = view;
-    okay = wg_zip(&nested, 0, (int64_t)size, pd);
+    okay = carrier_zip(&nested, 0, (int64_t)size, pd);
 done:
     if (view) (void)xx_io_close(view);
     xx_mem_free(bytes);
@@ -208,7 +208,7 @@ static bool sp4_candidate(Abstractformat *f, pm_stream *stream, int64_t marker,
     if (xx_str_len(names[1]) < 4U ||
         xx_str_icmp(names[1] + xx_str_len(names[1]) - 4U, ".ZIP") ||
         data_size[1] < 22 ||
-        !(wg_zip(f, data_at[1], data_at[1] + data_size[1], pd) ||
+        !(carrier_zip(f, data_at[1], data_at[1] + data_size[1], pd) ||
           sp4_zip_legacy(f, data_at[1], data_at[1] + data_size[1], pd)))
         return false;
 
@@ -220,7 +220,7 @@ static bool sp4_candidate(Abstractformat *f, pm_stream *stream, int64_t marker,
                        "%s", names[i]);
     }
     stream->size = limit;
-    return wg_members(stream, pd);
+    return carrier_members(stream, pd);
 }
 
 static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {

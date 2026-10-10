@@ -4,7 +4,7 @@
  * Native reader for the MCC registration container (.REG files shipped by
  * the mid-1990s "MCC" registration tool).  XArchive has no module for it and
  * the format is undocumented; the layout below was derived from the 17
- * corpus samples and cross-checked against F:\ARC\U3.exe, whose member list
+ * corpus samples and cross-checked against the reference extractor, whose member list
  * and stored-member bytes this reader reproduces exactly.
  *
  * Every member is a 34-byte header followed immediately by its payload; the
@@ -28,8 +28,8 @@
  *   0x16  12   file name, space padded
  *
  * Method 1 is a plain LZW stream that has been XORed byte-wise with the key
- * at 0x0C.  The LZW parameters come from U3's decompiled decoder
- * (F:\utils\U3\src, class `cra` at VMT 0x0055d5a8: slot 1 -> FUN_0055d9f0
+ * at 0x0C.  The LZW parameters come from the recovered decoder
+ * (recovered decoder analysis, class `cra` at VMT 0x0055d5a8: slot 1 -> FUN_0055d9f0
  * lists, FUN_0055d740 unpacks, which wraps the source in the XOR filter
  * class `dfa` -- FUN_0049ae80 is literally `b ^= key` -- and then calls the
  * shared LZW engine FUN_004c55f0 configured by
@@ -130,13 +130,13 @@ static char *mcc_copy_name(const uint8_t *field, size_t length) {
 }
 
 /* CRC-16/BUYPASS: poly 0x8005, init 0, no reflection, no final xor.  This is
- * the checksum U3 computes over the plaintext of every member, and it is the
+ * the checksum the reference reader computes over the plaintext of every member, and it is the
  * only thing that distinguishes a correct decode from a plausible one. */
 static uint16_t mcc_crc16(const uint8_t *data, size_t size) {
     return xx_crc16(XX_CRC_TYPE_CRC16_BUYPASS, data, size);
 }
 
-/* LZW geometry, from U3's shared engine as configured for MCC. */
+/* LZW geometry, from the reference reader's shared engine as configured for MCC. */
 #define MCC_LZW_MAX_BITS 13U
 #define MCC_LZW_MAX_CODES (1U << MCC_LZW_MAX_BITS)
 #define MCC_LZW_CLEAR 0x100U

@@ -26,7 +26,7 @@
  * names live in the "(listfile)" member, which is itself usually compressed.
  * Members are therefore published by block index.
  *
- * Ported from XArchive games/xmpq.cpp; U3 implements the same format as
+ * Ported from XArchive games/xmpq.cpp; the reference reader implements the same format as
  * archive/509 (class qdb, VMT 0x00626298).
  */
 #include "xxfclib/rt/xx_rt.h"

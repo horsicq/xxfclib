@@ -4,12 +4,12 @@
  * Stored encoded components only; no rendering or external-resource access.
  */
 #include "xxfclib/formats/adobe_aco/xx_adobe_aco.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 
 static bool sm_utf16(Abstractformat *f,uint64_t at,uint32_t units,uint64_t end,bool nul,xx_pd_struct *pd) {
     uint8_t b[2048]; uint32_t i; bool high=false;
-    if(!units || units>1024 || !fd_range(at,(uint64_t)units*2,end) || !pm_read(f,(int64_t)at,b,(size_t)units*2)) return false;
-    for(i=0;i<units;++i) { uint16_t v=xx_data_get_u16(b+i*2, 2, 0, true); if(fd_stop(pd)) return false;
+    if(!units || units>1024 || !binary_range(at,(uint64_t)units*2,end) || !pm_read(f,(int64_t)at,b,(size_t)units*2)) return false;
+    for(i=0;i<units;++i) { uint16_t v=xx_data_get_u16(b+i*2, 2, 0, true); if(binary_stop(pd)) return false;
         if(nul && i==units-1) return !high && !v;
         if(!v) return false;
         if(high) { if(v<0xdc00 || v>0xdfff) return false; high=false; }
@@ -26,13 +26,13 @@ static bool sm_color(const uint8_t *p) {
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[4],b[14],old[10]; uint32_t count,i,units; uint64_t at,end=(uint64_t)pm_available(f); char label[48];
-    if(!pm_read(f,0,h,4) || xx_data_get_u16(h, 2, 0, true)!=1 || !(count=xx_data_get_u16(h+2, 2, 0, true)) || count>4096 || !fd_range(4,(uint64_t)count*10+4,end) || !pm_add(f,s,"aco-v1-header.bin",0,4)) return false;
+    if(!pm_read(f,0,h,4) || xx_data_get_u16(h, 2, 0, true)!=1 || !(count=xx_data_get_u16(h+2, 2, 0, true)) || count>4096 || !binary_range(4,(uint64_t)count*10+4,end) || !pm_add(f,s,"aco-v1-header.bin",0,4)) return false;
     at=4;
-    for(i=0;i<count;++i) { if(fd_stop(pd) || !pm_read(f,(int64_t)at,b,10) || !sm_color(b)) return false;
+    for(i=0;i<count;++i) { if(binary_stop(pd) || !pm_read(f,(int64_t)at,b,10) || !sm_color(b)) return false;
         xx_rt_snprintf(label,sizeof(label),"aco-v1-color-%u.bin",i); if(!pm_add(f,s,label,(int64_t)at,10)) return false; at+=10; }
     if(!pm_read(f,(int64_t)at,h,4) || xx_data_get_u16(h, 2, 0, true)!=2 || xx_data_get_u16(h+2, 2, 0, true)!=count || !pm_add(f,s,"aco-v2-header.bin",(int64_t)at,4)) { return false; } at+=4;
     for(i=0;i<count;++i) { uint64_t stop;
-        if(fd_stop(pd) || !fd_range(at,14,end) || !pm_read(f,(int64_t)at,b,14) || !pm_read(f,4+(int64_t)i*10,old,10) || xx_rt_memcmp(old,b,10)) return false;
+        if(binary_stop(pd) || !binary_range(at,14,end) || !pm_read(f,(int64_t)at,b,14) || !pm_read(f,4+(int64_t)i*10,old,10) || xx_rt_memcmp(old,b,10)) return false;
         units=xx_data_get_u32(b+10, 4, 0, true); if(!sm_utf16(f,at+14,units,end,true,pd)) return false; stop=at+14+(uint64_t)units*2;
         xx_rt_snprintf(label,sizeof(label),"aco-v2-color-%u.bin",i); if(!pm_add(f,s,label,(int64_t)at,(int64_t)(stop-at))) return false; at=stop;
     } s->size=(int64_t)at; return true;

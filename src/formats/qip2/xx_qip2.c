@@ -5,7 +5,7 @@
  * contiguous index of 16-byte entries, each carrying the ABSOLUTE offset of a
  * 32-byte (generation 1) or 36-byte (generation 2) "QD" member record;
  * the packed bytes follow that record inline.
- * Members are PKWARE DCL streams.  The header test is U3's own recognition
+ * Members are PKWARE DCL streams.  The header test is the reference reader's own recognition
  * predicate; the record layout is XArchive's QIP1 record plus one u32.
  * xx_qip2.h has the field table and the corpus evidence.
  */
@@ -128,7 +128,7 @@ static bool qip2_parse(Abstractformat *format, qip2_stream **result,
     count = xx_data_get_u16(header + 2, 2, 0, false);
     declared_table = xx_data_get_u32(header + 4, 4, 0, false);
     if (count == 0U) return false;
-    /* U3's own four tests on the index size.  The last one ties it to the
+    /* The reference reader's own four tests on the index size.  The last one ties it to the
      * count, which is what makes this two-byte magic usable at all. */
     if (declared_table == 0U || (declared_table & 0x80000000U) != 0U) return false;
     if ((declared_table & 0xfU) != 0U) return false;

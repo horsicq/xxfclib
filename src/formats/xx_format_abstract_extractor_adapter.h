@@ -26,6 +26,11 @@
                            bool is_mapped) {                                        \
     return xx_format_search_size(&(descriptor), device, base_address, is_mapped);     \
   }                                                                                  \
+  static char *xx_##name##_abstract_get_version(                                     \
+      xx_io_device *device, int64_t base_address, bool is_mapped) {                  \
+    return xx_format_search_get_version(&(descriptor), device, base_address,         \
+                                        is_mapped);                                  \
+  }                                                                                  \
   static xx_format_search_state *xx_##name##_abstract_create_format_search(          \
       Abstractextractor *self, xx_io_device *device, const xx_list_s *options,       \
       xx_pd_struct *pd) {                                                            \
@@ -51,6 +56,7 @@
       .file_type = xx_##name##_file_type,                                             \
       .fast_detect = xx_##name##_fast_detect,                                         \
       .size = xx_##name##_size,                                                       \
+      .get_version = xx_##name##_abstract_get_version,                                \
       .create_format_search = xx_##name##_abstract_create_format_search,             \
       .get_current_format_info = xx_##name##_abstract_get_current_format_info,       \
       .format_search_find_next = xx_##name##_abstract_format_search_find_next,       \

@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/dpryan79/libBigWig */
 #include "xxfclib/formats/ucsc_bigwig/xx_ucsc_bigwig.h"
-#include "../xx_tenth_data.h"
-#define TB_BIGBED 0
-#include "../xx_tenth_bbi.h"
+#include "../common/xx_phylogenetic_text.h"
+#define BBI_BIGBED 0
+#include "../common/xx_ucsc_bbi.h"
 
 void xx_ucsc_bigwig_init(xx_ucsc_bigwig *r,xx_io_device *d,int64_t b) { if(r) { xx_mem_zero(r,sizeof(*r)); pm_init(&r->format,d,b,XX_FILE_TYPE_UCSC_BIGWIG,"ucsc_bigwig"); } }
 xx_ucsc_bigwig *xx_ucsc_bigwig_create(xx_io_device *d,int64_t b) { xx_ucsc_bigwig *r=(xx_ucsc_bigwig *)xx_mem_alloc(sizeof(*r)); if(r) xx_ucsc_bigwig_init(r,d,b); return r; }

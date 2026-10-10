@@ -7,7 +7,7 @@
  * Deflate support members use the stub password. Every member is CRC-checked.
  */
 #include "xxfclib/formats/sfx_ad01/xx_sfx_ad01.h"
-#include "../makeself/xx_fourth_wrapper_table.h"
+#include "../common/xx_carrier_helpers.h"
 #include "xxfclib/algo/zipcrypto/xx_zipcrypto.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -37,7 +37,7 @@ static bool ad_sections(Abstractformat *f, int64_t *data_at,
     uint32_t pe;
     uint16_t count, optional, i;
     if (limit < 512 || limit > AD_INPUT_MAX ||
-        !wg_pe(f, &overlay, &cabinet, &cabinet_end, pd) ||
+        !carrier_pe(f, &overlay, &cabinet, &cabinet_end, pd) ||
         !pm_read(f, 0, header, sizeof(header))) return false;
     pe = xx_data_get_u32(header + 60, 4, 0, false);
     if (!pm_read(f, pe, header, 24)) return false;
@@ -46,7 +46,7 @@ static bool ad_sections(Abstractformat *f, int64_t *data_at,
     *data_at = *ad_at = -1;
     for (i = 0U; i < count; ++i) {
         uint32_t size, raw;
-        if (wg_stop(pd) ||
+        if (carrier_stop(pd) ||
             !pm_read(f, (int64_t)pe + 24 + optional + (int64_t)i * 40,
                      section, sizeof(section))) return false;
         size = xx_data_get_u32(section + 16, 4, 0, false);
@@ -99,13 +99,13 @@ static bool ad_directory(Abstractformat *f, int64_t start, int64_t end,
      * the whole graph to absolute file offsets. Require a single origin for
      * the directory and every local member; never repair individual offsets. */
     if ((bias != 0 && bias != start) ||
-        !wg_zip(f, start, end, pd)) return false;
+        !carrier_zip(f, start, end, pd)) return false;
     at = directory;
     for (i = 0U; i < count; ++i) {
         uint16_t names, extra, comment, local_names, local_extra;
         int64_t local_at, record_bytes, data;
         ad_member *m = &members[i];
-        if (wg_stop(pd) || at > end - 22 - 46 ||
+        if (carrier_stop(pd) || at > end - 22 - 46 ||
             !pm_read(f, at, central, sizeof(central)) ||
             xx_rt_memcmp(central, "PK\1\2", 4)) return false;
         names = xx_data_get_u16(central + 28, 2, 0, false);
@@ -181,7 +181,7 @@ static bool ad_decode(Abstractformat *f, const ad_member *m,
     size_t size, consumed = 0U;
     bool okay = false;
     *output = NULL;
-    if (wg_stop(pd)) return false;
+    if (carrier_stop(pd)) return false;
     envelope = (uint8_t *)xx_mem_alloc(m->packed);
     plain = (uint8_t *)xx_mem_alloc(m->raw);
     if (!envelope || !plain ||
@@ -209,7 +209,7 @@ static bool ad_decode(Abstractformat *f, const ad_member *m,
                                                     &consumed, false, pd) ||
             consumed != size || xx_io_tell(sink) != m->raw) goto done;
     } else goto done;
-    if (xx_crc32_calc(0U, plain, m->raw) != m->crc || wg_stop(pd)) goto done;
+    if (xx_crc32_calc(0U, plain, m->raw) != m->crc || carrier_stop(pd)) goto done;
     *output = plain;
     plain = NULL;
     okay = true;
@@ -237,7 +237,7 @@ static bool ad_password(Abstractformat *f, int64_t data_at,
     if (!section || !pm_read(f, data_at, section, data_size)) goto done;
     for (i = 0U; i < data_size;) {
         size_t end = i;
-        if (wg_stop(pd)) goto done;
+        if (carrier_stop(pd)) goto done;
         if (i && section[i - 1U] != 0U) { ++i; continue; }
         while (end < data_size && end - i <= 64U &&
                section[end] >= 32U && section[end] <= 126U) ++end;
@@ -334,7 +334,7 @@ static bool ad_adx_cab_password(const uint8_t *adx, size_t size,
         }
     }
     while (ad_adx_line(adx, size, &cursor, &line, &length)) {
-        if (wg_stop(pd)) return false;
+        if (carrier_stop(pd)) return false;
         if (length < 13U || line[12] != '=') continue;
         if (!xx_rt_memcmp(line, encoded_keys[0], 12)) {
             if (seen_mode || length != 14U ||
@@ -397,7 +397,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
                 goto done;
             adx_index = i;
         }
-        if (wg_stop(pd) || !ad_decode(f, &members[i], encrypted, password,
+        if (carrier_stop(pd) || !ad_decode(f, &members[i], encrypted, password,
                                      password_size, &decoded[i], pd)) goto done;
     }
     if (encrypted) {
@@ -413,7 +413,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *stream, xx_pd_struct *pd) {
     }
     for (i = 0U; i < count; ++i) {
         pm_member *added;
-        if (wg_stop(pd)) goto done;
+        if (carrier_stop(pd)) goto done;
         if (!pm_add(f, stream, members[i].name, members[i].data,
                     members[i].packed)) goto done;
         added = &stream->items[stream->count - 1U];

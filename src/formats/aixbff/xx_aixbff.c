@@ -337,7 +337,7 @@ static bool xx_bff_safe_name(const char *name) {
 
 /* AIX members may differ only by case. Windows folds those names onto the
  * same destination, so preserve the later member with the same numbered
- * prefix that U3's auto-rename extraction uses. */
+ * prefix that the reference reader's auto-rename extraction uses. */
 static bool xx_bff_earlier_member_collides(const xx_bff_stream *stream) {
     size_t i;
     const xx_bff_member *current = &stream->items[stream->index];

@@ -30,7 +30,7 @@
  * rtype-0 records skipped and the last record truncated to fit.
  *
  * Ported from XArchive Algos/xvmssavesetdecoder.cpp and
- * packages/xvmssavesetarchive.cpp; U3 implements the same format as
+ * packages/xvmssavesetarchive.cpp; the reference reader implements the same format as
  * archive/581 (class ghb, VMT 0x0066e658).
  */
 #include "xxfclib/rt/xx_rt.h"

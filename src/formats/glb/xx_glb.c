@@ -6,7 +6,7 @@
 #include "xxfclib/formats/glb/xx_glb.h"
 #include "xxfclib/json/xx_json.h"
 #include "../xx_payload_members.h"
-#include "../xx_fourth_utf8.h"
+#include "../common/xx_utf8_validation.h"
 #include "xxfclib/data/xx_data.h"
 
 /* The shared JSON API returns C strings without their decoded byte length.
@@ -39,7 +39,7 @@ static bool glb_json(Abstractformat *f,int64_t at,uint32_t size,xx_pd_struct *pd
     const xx_var *budget=xx_format_resolve_extra_parameter(f,NULL,XX_META_ID_OPT_MEMORY_LIMIT);
     if(!size || size>4U*1024U*1024U || (budget && (uint64_t)size*3U+256U>xx_var_get_u64(budget))) return false;
     data=(uint8_t *)xx_mem_alloc(size); if(!data) return false;
-    if(!pm_read(f,at,data,size) || !fourth_utf8(data,size,pd)) goto done;
+    if(!pm_read(f,at,data,size) || !bounded_utf8(data,size,pd)) goto done;
     xx_json_init(&j,data,size); if(!xx_json_object_begin(&j) || xx_json_object_empty(&j)) goto done;
     for(;;) {
         char *key=NULL; bool valid; size_t begin=j.position;

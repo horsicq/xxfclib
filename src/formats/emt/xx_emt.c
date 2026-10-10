@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * "EMT" compressed diskette image.  The four header tests are U3's own
+ * "EMT" compressed diskette image.  The four header tests are the reference reader's own
  * recognition predicate (FUN_006716d0) reproduced exactly; the EBCDIC banner
  * at 0x40 is decoded for display. Track RLE and floppy geometry are checked
  * before publishing one disk-image member.
@@ -30,7 +30,7 @@
 #define XX_EMT_FILE_TYPE XX_FILE_TYPE_UNKNOWN
 #endif
 
-/* The u32 U3 requires at 0x5c, written out as bytes so the test does not
+/* The u32 the reference reader requires at 0x5c, written out as bytes so the test does not
  * depend on the host's byte order. */
 static const uint8_t xx_emt_marker[4] = {0x6cU, 0x02U, 0x6eU, 0x34U};
 
@@ -121,7 +121,7 @@ static bool emt_parse(Abstractformat *format, emt_parsed *parsed,
                      sizeof(header)))
         return false;
 
-    /* U3's four tests, in its own order. */
+    /* The reference reader's four tests, in its own order. */
     if (header[0x00] != '\\') return false;
     if (header[0x02] != 'z') return false;
     if (header[0x58] != '1') return false;

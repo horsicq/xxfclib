@@ -7,6 +7,7 @@
  * a search decides what counts as a find. */
 
 #include "xx_format_extractor_engine.h"
+#include "xx_format_fast_detect_rules.h"
 
 #include "xxfclib/data/xx_pd.h"
 #include "xxfclib/global/xx_global.h"
@@ -165,9 +166,61 @@ done:
     return type;
 }
 
+char *xx_format_search_get_version(const xx_format_search_desc *desc,
+                                   xx_io_device *device,
+                                   int64_t base_address, bool is_mapped) {
+    xx_io_volume volume;
+    xx_io_device *window;
+    Abstractformat *format;
+    int64_t saved_position;
+    int64_t total;
+    char *version = NULL;
+
+    if (!desc || !desc->types || !desc->type_count || !desc->open ||
+        !desc->close || !device || base_address < 0)
+        return NULL;
+    saved_position = xx_io_tell(device);
+    if (saved_position < 0) return NULL;
+    total = xx_io_total_size(device);
+    if (base_address >= total) goto done;
+
+    volume.device = device;
+    volume.offset = base_address;
+    volume.size = total - base_address;
+    window = xx_io_multivolume_open(&volume, 1U, false);
+    if (!window) goto done;
+    format = desc->open(window);
+    if (format) {
+        xx_format_set_mapped(format, is_mapped);
+        if (xx_format_is_valid(format, NULL) &&
+            xx_format_handle_base_info(format, NULL) &&
+            xx_format_search_type_matches(desc, format->file_type)) {
+            const char *borrowed = xx_format_get_version(format);
+            /* Reader accessors can point into their own metadata buffers. */
+            version = xx_str_dup(borrowed ? borrowed : "");
+        }
+        desc->close(format);
+    }
+    xx_io_close(window);
+
+done:
+    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) {
+        xx_str_free(version);
+        version = NULL;
+    }
+    return version;
+}
+
 bool xx_format_search_fast_detect(const xx_format_search_desc *desc,
                                   xx_io_device *device, int64_t base_address,
                                   bool is_mapped) {
+    int signature;
+    if (!desc) return false;
+    signature=xx_format_fast_detect_rules(desc->types,desc->type_count,
+                                          device,base_address,is_mapped);
+    if (signature>=0) return signature==1;
+    /* Headerless formats and content-defined container subtypes still need
+     * the existing structural classifier. Size and carving always validate. */
     return xx_format_search_probe_direct(desc, device, base_address,
                                          is_mapped, false, NULL);
 }
@@ -409,6 +462,50 @@ xx_format_extractor *xx_format_extractor_at(size_t index, xx_file_type_t *type) 
  * that share one search implementation also share their abstract adapters. */
 #include "xx_format_abstract_extractor_list.inc"
 #include "xx_format_reader_only_decls.inc"
+#include "xxfclib/formats/zxml/xx_zxml.h"
+#include "xxfclib/formats/zisofs/xx_zisofs.h"
+#include "xxfclib/formats/nvp/xx_nvp.h"
+#include "xxfclib/formats/sqze/xx_sqze.h"
+#include "xxfclib/formats/zip_psc/xx_zip_psc.h"
+#include "xxfclib/formats/crx_native/xx_crx_native.h"
+#include "xxfclib/formats/dcs/xx_dcs.h"
+#include "xxfclib/formats/mskn1/xx_mskn1.h"
+#include "xxfclib/formats/mskn2/xx_mskn2.h"
+#include "xxfclib/formats/mskn3/xx_mskn3.h"
+#include "xxfclib/formats/csq/xx_csq.h"
+#include "xxfclib/formats/zoot1/xx_zoot1.h"
+#include "xxfclib/formats/rdfz/xx_rdfz.h"
+#include "xxfclib/formats/zbeos/xx_zbeos.h"
+#include "xxfclib/formats/solarispkg_zip/xx_solarispkg_zip.h"
+#include "xxfclib/formats/gta_img/xx_gta_img.h"
+#include "xxfclib/formats/pbo/xx_pbo.h"
+#include "xxfclib/formats/pam_pak/xx_pam_pak.h"
+#include "xxfclib/formats/pfpk/xx_pfpk.h"
+#include "xxfclib/formats/birdies/xx_birdies.h"
+#include "xxfclib/formats/xuiz/xx_xuiz.h"
+#include "xxfclib/formats/titan_quest/xx_titan_quest.h"
+#include "xxfclib/formats/sbpak/xx_sbpak.h"
+#include "xxfclib/formats/cgjp/xx_cgjp.h"
+#include "xxfclib/formats/pirs/xx_pirs.h"
+#include "xxfclib/formats/px/xx_px.h"
+#include "xxfclib/formats/binsh_starkit/xx_binsh_starkit.h"
+#include "xxfclib/formats/evd/xx_evd.h"
+#include "xxfclib/formats/desksoft/xx_desksoft.h"
+#include "xxfclib/formats/metaproducts/xx_metaproducts.h"
+#include "xxfclib/formats/visualware/xx_visualware.h"
+#include "xxfclib/formats/lyme_sfx/xx_lyme_sfx.h"
+#include "xxfclib/formats/audials/xx_audials.h"
+#include "xxfclib/formats/psa_disk/xx_psa_disk.h"
+#include "xxfclib/formats/webexe/xx_webexe.h"
+#include "xxfclib/formats/asd/xx_asd.h"
+#include "xxfclib/formats/cfd/xx_cfd.h"
+#include "xxfclib/formats/rdc/xx_rdc.h"
+#include "xxfclib/formats/fox_sqz/xx_fox_sqz.h"
+#include "xxfclib/formats/skf/xx_skf.h"
+#include "xxfclib/formats/osl2000/xx_osl2000.h"
+#include "xxfclib/formats/lds/xx_lds.h"
+#include "xxfclib/formats/dcp_disk/xx_dcp_disk.h"
+#include "xxfclib/formats/sony_image/xx_sony_image.h"
 
 static const struct {
     xx_file_type_t type;
@@ -422,6 +519,8 @@ static Abstractextractor *xx_abstract_extractor_from_legacy(
     const xx_format_extractor *legacy) {
     size_t i;
     if (!legacy) return NULL;
+    if (legacy == xx_format_extractor_get(XX_FILE_TYPE_CRX))
+        return xx_crx_native_get_abstract_extractor();
     for (i = 0; i < sizeof(g_xx_abstract_extractor_getters) /
                         sizeof(g_xx_abstract_extractor_getters[0]); ++i) {
         if (g_xx_abstract_extractor_getters[i].legacy == legacy)
@@ -442,10 +541,16 @@ Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type) {
     return NULL;
 }
 
+static bool xx_abstract_reader_only_visible(size_t index) {
+    /* CRX replaces the old adapter at its existing catalog position. */
+    return g_xx_reader_only_abstract_extractors[index].type != XX_FILE_TYPE_CRX ||
+           xx_format_extractor_get(XX_FILE_TYPE_CRX) == NULL;
+}
 size_t xx_abstract_extractor_count(void) {
-    return xx_format_extractor_count() +
-           sizeof(g_xx_reader_only_abstract_extractors) /
-               sizeof(g_xx_reader_only_abstract_extractors[0]);
+    size_t count=xx_format_extractor_count(),i;
+    for(i=0;i<sizeof(g_xx_reader_only_abstract_extractors)/sizeof(g_xx_reader_only_abstract_extractors[0]);++i)
+        if(xx_abstract_reader_only_visible(i))++count;
+    return count;
 }
 
 Abstractextractor *xx_abstract_extractor_at(size_t index,
@@ -455,17 +560,19 @@ Abstractextractor *xx_abstract_extractor_at(size_t index,
         return xx_abstract_extractor_from_legacy(
             xx_format_extractor_at(index, type));
     index -= legacy_count;
-    if (index >= sizeof(g_xx_reader_only_abstract_extractors) /
-                     sizeof(g_xx_reader_only_abstract_extractors[0]))
-        return NULL;
-    if (type) *type = g_xx_reader_only_abstract_extractors[index].type;
-    return g_xx_reader_only_abstract_extractors[index].get();
+    for(size_t i=0;i<sizeof(g_xx_reader_only_abstract_extractors)/sizeof(g_xx_reader_only_abstract_extractors[0]);++i) {
+        if(!xx_abstract_reader_only_visible(i))continue;
+        if(index--==0){if(type)*type=g_xx_reader_only_abstract_extractors[i].type;return g_xx_reader_only_abstract_extractors[i].get();}
+    }
+    return NULL;
 }
 
 static Abstractdetector *xx_abstract_detector_from_legacy(
     const xx_format_extractor *legacy) {
     size_t i;
     if (!legacy) return NULL;
+    if (legacy == xx_format_extractor_get(XX_FILE_TYPE_CRX))
+        return xx_crx_native_get_abstract_detector();
     for (i = 0; i < sizeof(g_xx_abstract_extractor_getters) /
                         sizeof(g_xx_abstract_extractor_getters[0]); ++i) {
         if (g_xx_abstract_extractor_getters[i].legacy == legacy)
@@ -497,9 +604,9 @@ Abstractdetector *xx_abstract_detector_at(size_t index,
         return xx_abstract_detector_from_legacy(
             xx_format_extractor_at(index, type));
     index -= legacy_count;
-    if (index >= sizeof(g_xx_reader_only_abstract_extractors) /
-                     sizeof(g_xx_reader_only_abstract_extractors[0]))
-        return NULL;
-    if (type) *type = g_xx_reader_only_abstract_extractors[index].type;
-    return g_xx_reader_only_abstract_extractors[index].get_detector();
+    for(size_t i=0;i<sizeof(g_xx_reader_only_abstract_extractors)/sizeof(g_xx_reader_only_abstract_extractors[0]);++i) {
+        if(!xx_abstract_reader_only_visible(i))continue;
+        if(index--==0){if(type)*type=g_xx_reader_only_abstract_extractors[i].type;return g_xx_reader_only_abstract_extractors[i].get_detector();}
+    }
+    return NULL;
 }

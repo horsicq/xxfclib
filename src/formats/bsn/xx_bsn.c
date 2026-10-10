@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * BSA archives (".BSN"), the DOS-era Russian archiver.  Ported from
- * XArchive's games/xbsn.cpp and cross-checked against U3's BSN handler
+ * XArchive's games/xbsn.cpp and cross-checked against the reference reader's BSN handler
  * (class sla, VMT 0051da58).  All multi-byte fields are BIG endian.
  *
  *   archive header, 6 bytes at offset 0:

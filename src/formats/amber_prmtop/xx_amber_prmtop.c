@@ -1,29 +1,29 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/ParmEd/ParmEd/blob/master/parmed/amber/_amberparm.py */
 #include "xxfclib/formats/amber_prmtop/xx_amber_prmtop.h"
-#include "../xx_twelfth_root.h"
+#include "../common/xx_molecular_text.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,names[256];unsigned flags=0;uint64_t budget=8388608,pointers[32]={0},np=0,counts[8]={0};bool seen[8]={false},ok=false;
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,names[256];unsigned flags=0;uint64_t budget=8388608,pointers[32]={0},np=0,counts[8]={0};bool seen[8]={false},ok=false;
     static const char *const core[]={"ATOM_NAME","CHARGE","MASS","ATOM_TYPE_INDEX","NUMBER_EXCLUDED_ATOMS","RESIDUE_LABEL","RESIDUE_POINTER","ATOMIC_NUMBER"};
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;NH_NEED(el_line(&c,&line) && el_prefix(&b,line,"%VERSION  VERSION_STAMP = V0001.000") && nh_add(f,s,&b,"topology-version",0,c.at));
-    while(c.at<b.n) {uint64_t begin=c.at,items=0,last_res=0;el_token name,format;unsigned width,perline,coreid=8;bool real=false,chars=false,ptr;
-        NH_NEED(el_line(&c,&line) && el_prefix(&b,line,"%FLAG ") && flags<256);name=el_trim(&b,el_slice(line,6,line.n-6));NH_NEED(tw_name(&b,name) && el_unique(&b,name,names,flags,&budget));names[flags++]=name;ptr=el_eq(&b,name,"POINTERS");
-        for(coreid=0;coreid<8;++coreid) if(el_eq(&b,name,core[coreid])) break;
-        NH_NEED(el_line(&c,&format));format=el_trim(&b,format);if(el_eq(&b,format,"%FORMAT(20a4)") || el_eq(&b,format,"%FORMAT(20A4)")) {width=4;perline=20;chars=true;}else if(el_eq(&b,format,"%FORMAT(1a80)") || el_eq(&b,format,"%FORMAT(1A80)")) {width=80;perline=1;chars=true;}else if(el_eq(&b,format,"%FORMAT(10I8)") || el_eq(&b,format,"%FORMAT(1I8)")) {width=8;perline=el_eq(&b,format,"%FORMAT(1I8)") ? 1:10;}else {NH_NEED(el_eq(&b,format,"%FORMAT(5E16.8)"));width=16;perline=5;real=true;}
-        NH_NEED(!ptr || (!chars && !real));if(coreid<8) NH_NEED((coreid==0 || coreid==5) ? chars:(coreid==1 || coreid==2) ? real:(!chars && !real));
-        while(c.at<b.n && b.p[(size_t)c.at]!='%') {uint64_t j;unsigned words;NH_NEED(el_line(&c,&line));if(!line.n) continue;NH_NEED(line.n%width==0 && line.n<=width*perline);words=(unsigned)(line.n/width);
-            for(j=0;j<words;++j) {el_token v=el_trim(&b,el_slice(line,j*width,width));uint64_t u=0;if(!v.n) {uint64_t rest;for(rest=j+1;rest<words;++rest) NH_NEED(!el_trim(&b,el_slice(line,rest*width,width)).n);break;}
-                NH_NEED(++items<=1000000);if(chars) NH_NEED(nh_ascii(b.p+(size_t)v.at,(size_t)v.n,false));else if(real) {NH_NEED(el_float(&b,v));if(coreid==2) NH_NEED(tw_value(&b,v)>=0);}else {NH_NEED(el_integer(&b,v));if(ptr || coreid==3 || coreid==4 || coreid==6 || coreid==7) NH_NEED(el_uint(&b,v,&u));}
-                if(ptr) {NH_NEED(np<32 && u<=INT32_MAX);pointers[np++]=u;}
-                if(coreid==3) { NH_NEED(np>=31 && u>=1 && u<=pointers[1]); } if(coreid==4) NH_NEED(np>=31 && u<=pointers[0]);
-                if(coreid==6) {NH_NEED(np>=31 && u>=1 && u<=pointers[0] && u>last_res && (items!=1 || u==1));last_res=u;}
-                if(coreid==7) NH_NEED(u>=1 && u<=118);
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;BLOB_NEED(scientific_text_line(&c,&line) && scientific_text_prefix(&b,line,"%VERSION  VERSION_STAMP = V0001.000") && blob_add(f,s,&b,"topology-version",0,c.at));
+    while(c.at<b.n) {uint64_t begin=c.at,items=0,last_res=0;scientific_text_token name,format;unsigned width,perline,coreid=8;bool real=false,chars=false,ptr;
+        BLOB_NEED(scientific_text_line(&c,&line) && scientific_text_prefix(&b,line,"%FLAG ") && flags<256);name=scientific_text_trim(&b,scientific_text_slice(line,6,line.n-6));BLOB_NEED(molecular_name(&b,name) && scientific_text_unique(&b,name,names,flags,&budget));names[flags++]=name;ptr=scientific_text_eq(&b,name,"POINTERS");
+        for(coreid=0;coreid<8;++coreid) if(scientific_text_eq(&b,name,core[coreid])) break;
+        BLOB_NEED(scientific_text_line(&c,&format));format=scientific_text_trim(&b,format);if(scientific_text_eq(&b,format,"%FORMAT(20a4)") || scientific_text_eq(&b,format,"%FORMAT(20A4)")) {width=4;perline=20;chars=true;}else if(scientific_text_eq(&b,format,"%FORMAT(1a80)") || scientific_text_eq(&b,format,"%FORMAT(1A80)")) {width=80;perline=1;chars=true;}else if(scientific_text_eq(&b,format,"%FORMAT(10I8)") || scientific_text_eq(&b,format,"%FORMAT(1I8)")) {width=8;perline=scientific_text_eq(&b,format,"%FORMAT(1I8)") ? 1:10;}else {BLOB_NEED(scientific_text_eq(&b,format,"%FORMAT(5E16.8)"));width=16;perline=5;real=true;}
+        BLOB_NEED(!ptr || (!chars && !real));if(coreid<8) BLOB_NEED((coreid==0 || coreid==5) ? chars:(coreid==1 || coreid==2) ? real:(!chars && !real));
+        while(c.at<b.n && b.p[(size_t)c.at]!='%') {uint64_t j;unsigned words;BLOB_NEED(scientific_text_line(&c,&line));if(!line.n) continue;BLOB_NEED(line.n%width==0 && line.n<=width*perline);words=(unsigned)(line.n/width);
+            for(j=0;j<words;++j) {scientific_text_token v=scientific_text_trim(&b,scientific_text_slice(line,j*width,width));uint64_t u=0;if(!v.n) {uint64_t rest;for(rest=j+1;rest<words;++rest) BLOB_NEED(!scientific_text_trim(&b,scientific_text_slice(line,rest*width,width)).n);break;}
+                BLOB_NEED(++items<=1000000);if(chars) BLOB_NEED(blob_ascii(b.p+(size_t)v.at,(size_t)v.n,false));else if(real) {BLOB_NEED(scientific_text_float(&b,v));if(coreid==2) BLOB_NEED(molecular_value(&b,v)>=0);}else {BLOB_NEED(scientific_text_integer(&b,v));if(ptr || coreid==3 || coreid==4 || coreid==6 || coreid==7) BLOB_NEED(scientific_text_uint(&b,v,&u));}
+                if(ptr) {BLOB_NEED(np<32 && u<=INT32_MAX);pointers[np++]=u;}
+                if(coreid==3) { BLOB_NEED(np>=31 && u>=1 && u<=pointers[1]); } if(coreid==4) BLOB_NEED(np>=31 && u<=pointers[0]);
+                if(coreid==6) {BLOB_NEED(np>=31 && u>=1 && u<=pointers[0] && u>last_res && (items!=1 || u==1));last_res=u;}
+                if(coreid==7) BLOB_NEED(u>=1 && u<=118);
             }
         }
-        if(coreid<8) {seen[coreid]=true;counts[coreid]=items;}NH_NEED(nh_add(f,s,&b,"topology-section",begin,c.at-begin));
+        if(coreid<8) {seen[coreid]=true;counts[coreid]=items;}BLOB_NEED(blob_add(f,s,&b,"topology-section",begin,c.at-begin));
     }
-    NH_NEED(np>=31 && pointers[0]>=1 && pointers[0]<=100000 && pointers[1]>=1 && pointers[1]<=100000 && pointers[11]>=1 && pointers[11]<=pointers[0]);
-    {unsigned i;for(i=0;i<7;++i) NH_NEED(seen[i] && counts[i]==((i==5 || i==6) ? pointers[11]:pointers[0]));if(seen[7]) NH_NEED(counts[7]==pointers[0]);}
+    BLOB_NEED(np>=31 && pointers[0]>=1 && pointers[0]<=100000 && pointers[1]>=1 && pointers[1]<=100000 && pointers[11]>=1 && pointers[11]<=pointers[0]);
+    {unsigned i;for(i=0;i<7;++i) BLOB_NEED(seen[i] && counts[i]==((i==5 || i==6) ? pointers[11]:pointers[0]));if(seen[7]) BLOB_NEED(counts[7]==pointers[0]);}
     s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }

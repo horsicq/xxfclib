@@ -6,7 +6,7 @@
  * xx_sfxstart.h.
  *
  * Sources.  The layout was worked out from the five corpus kits (all five
- * carry the same 18,944-byte stub); U3's parser for "SFX SFXSTART" (tag
+ * carry the same 18,944-byte stub); the reference reader's parser for "SFX SFXSTART" (tag
  * check, count + 1 records, name length 1..255, the "->" 0xF0 separator)
  * was read for understanding and served as the extraction oracle.  The code
  * is original.  The member-name rules follow the ones the library's
@@ -258,7 +258,7 @@ static bool sfs_walk(xx_io_device *device, int64_t base, sfs_layout *layout,
     return true;
 }
 
-/* The trailer is optional for the overlay route (U3 does not need it
+/* The trailer is optional for the overlay route (the reference reader does not need it
  * either); it is recorded only when it is complete, fills the rest of the
  * payload exactly and points back at the header. */
 static bool sfs_read_trailer(xx_io_device *device, int64_t base,

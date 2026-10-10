@@ -5,6 +5,9 @@
 #define XXFCLIB_FORMAT_DCLRAW_H
 
 #include "xxfclib/formats/xx_format.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Two or more raw PKWARE Data Compression Library (implode) streams laid back
  * to back with nothing between them (an installer data volume). One record
@@ -37,6 +40,17 @@ XXFC_API bool xx_dclraw_archive_record_move_to_next(
     Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_dclraw_free_archive_records_reading(
     Abstractformat *self, xx_archive_record_state *state);
+
+/* Measure exactly one complete strict DCL stream within a bounded device
+ * range. Additional bytes remain unconsumed. Uses a 64 KiB input window,
+ * checks cancellation, restores the cursor and clears outputs on failure. */
+XXFC_API bool xx_dclraw_measure_stream(xx_io_device *device, int64_t base_address,
+                                     int64_t packed_size, size_t max_output,
+                                     int64_t *consumed, size_t *produced,
+                                     xx_pd_struct *pd);
+#ifdef __cplusplus
+}
+#endif
 
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #ifdef __cplusplus

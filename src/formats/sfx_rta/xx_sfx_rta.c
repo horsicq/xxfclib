@@ -4,17 +4,17 @@
  * Bounded independent carrier/container parser. No payload execution.
  */
 #include "xxfclib/formats/sfx_rta/xx_sfx_rta.h"
-#include "../sfx_arc/xx_fifth_wrapper_table.h"
+#include "../common/xx_sfx_carrier.h"
 
 #include "xxfclib/formats/rta/xx_rta.h"
 static Abstractformat *nested_open(xx_io_device *d,int64_t at) { xx_rta *r=xx_rta_create(d,at); return r ? &r->format : NULL; }
 static void nested_close(Abstractformat *f) { xx_rta_free((xx_rta *)f); }
-static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={0x4b,0x4a,0x64,0x00}; int64_t low;
-    if(!w5_carrier(f,false,&low,pd)) return false; 
-    return w5_embedded(f,s,low,sig,sizeof(sig),0,nested_open,nested_close,"payload.rta",pd);
+static bool sfx_carrier_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={0x4b,0x4a,0x64,0x00}; int64_t low;
+    if(!sfx_carrier_carrier(f,false,&low,pd)) return false; 
+    return sfx_carrier_embedded(f,s,low,sig,sizeof(sig),0,nested_open,nested_close,"payload.rta",pd);
 }
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return w5_parse(f,s,pd) && wg_members(s,pd); }
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return sfx_carrier_parse(f,s,pd) && carrier_members(s,pd); }
 static bool sfx_handle(Abstractformat *f,xx_pd_struct *pd) {
     xx_sfx_rta *r=(xx_sfx_rta *)f;
     pm_stream *s;

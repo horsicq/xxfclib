@@ -2,11 +2,11 @@
  * SPDX-License-Identifier: MIT
  *
  * Tcl Starkits -- a Metakit v4 datafile holding the mk4vfs filesystem.
- * XArchive has no module for this one.  The container was recovered from U3's
+ * XArchive has no module for this one.  The container was recovered from the reference reader's
  * Starkit handler (class fmb, VMT 006cf978; recognition predicate
  * decompiled/functions/006c/006cfd80.c -> 006cfc80 -> 006cfa10) plus a
  * byte-level reconstruction against the corpus, and the result is checked
- * against U3's own listing: file count and total uncompressed size agree
+ * against reference listings: file count and total uncompressed size agree
  * exactly on all three samples.
  *
  *   file header, 8 bytes at offset 0:
@@ -69,7 +69,7 @@
  *
  * All 3 corpus samples in F:\ARC\ARC\STARKIT parse: 841, 841 and 497
  * members, and every member decodes to exactly its declared size -- the same
- * counts and the same byte totals U3 reports.
+ * counts and the same byte totals the reference reader reports.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -767,7 +767,7 @@ static xx_starkit_stream *xx_starkit_parse(Abstractformat *self,
     }
 
     /* The subview block must be consumed to the byte as well. */
-    if (views.at != views.size || stream->count == 0U) goto fail;
+    if (views.at != views.size) goto fail;
 
     xx_starkit_free_paths(paths, directories);
     xx_mem_free(subviews);
@@ -1081,6 +1081,7 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
     xx_starkit_stream *stream;
     const xx_starkit_member *member;
     const xx_var *path_option;
+    const xx_var *overwrite_option;
     const char *base_path = NULL;
     char *converted_path = NULL;
     char *target_path = NULL;
@@ -1088,6 +1089,7 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
     size_t plain_size = 0U;
     bool result = false;
     bool created = false;
+    bool overwrite = false;
 
     if (!self || !state || state->format != self || !state->has_record ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -1097,6 +1099,9 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     if (!xx_starkit_path_safe(member->name)) return false;
+    overwrite_option = xx_format_resolve_extra_parameter(
+        self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = overwrite_option && xx_var_get_bool(overwrite_option);
 
     path_option =
         xx_starkit_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
@@ -1140,7 +1145,8 @@ bool xx_starkit_unpack_current_archive_record(Abstractformat *self,
         return false;
     }
     {
-        xx_io_device *output = xx_io_file_open(target_path, "wb");
+        xx_io_device *output =
+            xx_io_file_open(target_path, overwrite ? "wb" : "wbx");
         created = output != NULL;
         size_t completed = 0U;
 

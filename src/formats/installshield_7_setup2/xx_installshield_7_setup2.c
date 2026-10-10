@@ -1,12 +1,12 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * InstallShield 7.x setup.boot (U3 "IS7 BOOT").  xx_installshield_7_setup2.h
+ * InstallShield 7.x setup.boot (also called "IS7 BOOT").  xx_installshield_7_setup2.h
  * carries the record layout.
  *
  * Written from the file structure: four NUL-terminated strings per record
  * (short name, long name, version, decimal size) followed by a complete
- * SZDD file.  U3's handler was consulted only to learn which field names
+ * SZDD file.  The reference reader's handler was consulted only to learn which field names
  * the output (the long name).  The name conversion, the duplicate handling
  * and the device-name check follow this library's installshield_7_setup
  * reader (MIT, same project).  The SZDD LZSS decoder here is a streaming

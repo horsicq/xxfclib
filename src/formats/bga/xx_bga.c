@@ -11,7 +11,7 @@
  * Deliberate differences from QBga32:
  *   - the gzip header is parsed (FEXTRA, FNAME, FCOMMENT, FHCRC) instead of
  *     skipping a fixed 10 bytes, and the CRC-32 and ISIZE trailer is checked
- *     (U3 checks the CRC too);
+ *     (the reference reader checks the CRC too);
  *   - a member must decode to exactly its original size (QBga32 truncates
  *     longer output and keeps shorter output);
  *   - the walk starts at the base address only: QBga32 also searches the

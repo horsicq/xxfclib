@@ -15,8 +15,8 @@ extern "C" {
 #endif
 
 /**
- * @brief An InstallShield "All-in-One" single-file setup.exe (U3 "SFX IS14",
- * XArchive FT_IS14_SFX, IsXunpack "All-in-One modification").
+ * @brief An InstallShield "All-in-One" single-file setup.exe
+ * (XArchive FT_IS14_SFX, IsXunpack "All-in-One modification").
  *
  * The file is an ordinary PE32 loader stub.  The payload is the PE overlay:
  * it starts right behind the raw data of the last section and holds a chain

@@ -263,7 +263,7 @@ static char *xx_sw_make_name(const uint8_t *raw, size_t length) {
         xx_str_free(name);
         return NULL;
     }
-    /* Windows reserves CON even when followed by an extension.  U3 writes
+    /* Windows reserves CON even when followed by an extension.  The reference reader writes
      * these five corpus GIF names with an underscore; avoid a device path
      * while leaving ordinary names such as conic.gif unchanged. */
     for (index = 0U; index < usable; ++index) {

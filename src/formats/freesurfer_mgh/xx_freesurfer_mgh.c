@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/freesurfer/freesurfer/dev/matlab/load_mgh.m */
 #include "xxfclib/formats/freesurfer_mgh/xx_freesurfer_mgh.h"
-#include "../xx_sixth_data.h"
+#include "../common/xx_scientific_numbers.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[284];uint64_t n=1;unsigned i,width,t;int64_t available=pm_available(f);
-    if(fd_stop(pd) || available<284 || !pm_read(f,0,h,sizeof(h)) || xx_data_get_u32(h, 4, 0, true)!=1 || xx_data_get_u16(h+28, 2, 0, true)>1) return false;
+    if(binary_stop(pd) || available<284 || !pm_read(f,0,h,sizeof(h)) || xx_data_get_u32(h, 4, 0, true)!=1 || xx_data_get_u16(h+28, 2, 0, true)>1) return false;
     t=xx_data_get_u32(h+20, 4, 0, true);switch(t) {case 0:width=1;break;case 1:case 3:width=4;break;case 4:case 10:width=2;break;default:return false;}
-    for(i=0;i<4;++i) {uint32_t d=xx_data_get_u32(h+4+i*4, 4, 0, true);if(!d || d>INT32_MAX || !fd_mul(n,d,&n)) return false;}
-    if(!fd_mul(n,width,&n) || !fd_range(284,n,(uint64_t)available) || !pm_add(f,s,"mgh-header.bin",0,284) || !pm_add(f,s,"voxels.bin",284,(int64_t)n)) return false;
+    for(i=0;i<4;++i) {uint32_t d=xx_data_get_u32(h+4+i*4, 4, 0, true);if(!d || d>INT32_MAX || !binary_mul(n,d,&n)) return false;}
+    if(!binary_mul(n,width,&n) || !binary_range(284,n,(uint64_t)available) || !pm_add(f,s,"mgh-header.bin",0,284) || !pm_add(f,s,"voxels.bin",284,(int64_t)n)) return false;
     s->size=284+(int64_t)n;return true;
 }
 

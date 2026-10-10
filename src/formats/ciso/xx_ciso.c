@@ -18,7 +18,7 @@
  * stored; otherwise it is RAW Deflate with no zlib wrapper.
  *
  * Ported from XArchive diskimages/xcisoimage.cpp and
- * Algos/xdiskimagedecoder.cpp::decodeCiso; U3 implements the same format as
+ * Algos/xdiskimagedecoder.cpp::decodeCiso; the reference reader implements the same format as
  * archive/657 (class qga, VMT 0x0049e528).
  */
 #include "xxfclib/rt/xx_rt.h"

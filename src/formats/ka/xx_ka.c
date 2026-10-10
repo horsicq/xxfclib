@@ -5,7 +5,7 @@
  * leaf name, little-endian absolute data offset, little-endian data size.
  * Table order need not be payload order.  The selected CMD.ARC corpus has
  * one truncated entry (EXIT.CMD), which is omitted while the five bounded
- * entries remain extractable. Their bytes agree exactly with U3 output.
+ * entries remain extractable. Their bytes agree exactly with the reference reader output.
  */
 #include "xxfclib/formats/ka/xx_ka.h"
 #include "../xx_payload_members.h"

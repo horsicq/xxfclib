@@ -3,8 +3,8 @@
  * Bounded PE carrier parser; embedded ACE bytes are never executed.
  */
 #include "xxfclib/formats/sfx_ace/xx_sfx_ace.h"
-#include "../sfx_arcv2/xx_sixth_wrapper_table.h"
-#include "../sfx_arcv2/xx_pe_resource_locator.h"
+#include "../common/xx_executable_carrier.h"
+#include "../common/xx_pe_resource_locator.h"
 #include "xxfclib/formats/ace/xx_ace.h"
 #include "xxfclib/io/xx_io.h"
 
@@ -28,7 +28,7 @@ static sfx_ace_inner *sfx_inner_open(Abstractformat *format, int64_t absolute,
     sfx_ace_inner *inner;
     if (!format || size <= 0 || (uint64_t)size > SIZE_MAX ||
         absolute < format->base_address ||
-        !wg_range(pm_available(format), absolute - format->base_address,
+        !carrier_range(pm_available(format), absolute - format->base_address,
                   (uint64_t)size)) return NULL;
     inner = (sfx_ace_inner *)xx_mem_calloc(1, sizeof(*inner));
     if (!inner) return NULL;
@@ -41,7 +41,7 @@ static sfx_ace_inner *sfx_inner_open(Abstractformat *format, int64_t absolute,
     inner->ace = xx_ace_create(inner->device, 0);
     if (!inner->ace ||
         !xx_ace_handle_base_info(&inner->ace->format, pd)) goto fail;
-    /* U3 places PE resource archive members beneath resource ID 1. The
+    /* The reference reader places PE resource archive members beneath resource ID 1. The
      * resource tree must actually reference this byte range; arbitrary bytes
      * inside .rsrc do not receive that prefix. */
     inner->resource_member = size <= UINT32_MAX &&
@@ -54,7 +54,7 @@ fail:
     return NULL;
 }
 
-static bool w6_at_parse(Abstractformat *format, pm_stream *stream,
+static bool executable_carrier_at_parse(Abstractformat *format, pm_stream *stream,
                         int64_t at, xx_pd_struct *pd) {
     uint8_t header[65539];
     int64_t cursor = at, limit = pm_available(format);
@@ -66,12 +66,12 @@ static bool w6_at_parse(Abstractformat *format, pm_stream *stream,
         uint16_t flags;
         uint64_t packed = 0;
         uint32_t crc;
-        if (wg_stop(pd) || !pm_read(format, cursor, header, 7)) return false;
+        if (carrier_stop(pd) || !pm_read(format, cursor, header, 7)) return false;
         size = xx_data_get_u16(header + 2, 2, 0, false);
-        if (size < 3 || !wg_range(limit, cursor, (uint64_t)size + 4U) ||
+        if (size < 3 || !carrier_range(limit, cursor, (uint64_t)size + 4U) ||
             blocks >= 4096U || header_bytes + size > 4194304U) break;
         if (!pm_read(format, cursor, header, size + 4U)) return false;
-        crc = w6_crc(header + 4, size) ^ UINT32_MAX;
+        crc = executable_carrier_crc(header + 4, size) ^ UINT32_MAX;
         if ((crc & 65535U) != xx_data_get_u16(header, 2, 0, false)) break;
         flags = xx_data_get_u16(header + 5, 2, 0, false);
         if (flags & 1U) {
@@ -80,12 +80,12 @@ static bool w6_at_parse(Abstractformat *format, pm_stream *stream,
             packed = width == 8U ? xx_data_get_u64(header + 7, 8, 0, false)
                                  : xx_data_get_u32(header + 7, 4, 0, false);
         }
-        if (!wg_range(limit, cursor + (int64_t)size + 4, packed)) break;
+        if (!carrier_range(limit, cursor + (int64_t)size + 4, packed)) break;
         cursor += (int64_t)size + 4 + (int64_t)packed;
         header_bytes += size;
         ++blocks;
     }
-    if (wg_stop(pd) || blocks < 2U || cursor <= at) return false;
+    if (carrier_stop(pd) || blocks < 2U || cursor <= at) return false;
     inner = sfx_inner_open(format, format->base_address + at,
                            cursor - at, pd);
     if (!inner) return false;
@@ -95,14 +95,14 @@ static bool w6_at_parse(Abstractformat *format, pm_stream *stream,
         return false;
     }
     sfx_inner_free(inner);
-    return w6_component(format, stream, at, cursor - at, "payload.ace");
+    return executable_carrier_component(format, stream, at, cursor - at, "payload.ace");
 }
 
 static bool pm_parse(Abstractformat *format, pm_stream *stream,
                      xx_pd_struct *pd) {
     static const uint8_t signature[] = {'*', '*', 'A', 'C', 'E', '*', '*'};
-    return w6_scan(format, stream, signature, sizeof(signature), -7,
-                   true, false, w6_at_parse, pd) && wg_members(stream, pd);
+    return executable_carrier_scan(format, stream, signature, sizeof(signature), -7,
+                   true, false, executable_carrier_at_parse, pd) && carrier_members(stream, pd);
 }
 
 static bool sfx_prefix_record(xx_archive_record_state *state) {

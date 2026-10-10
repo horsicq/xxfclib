@@ -5,7 +5,7 @@
  * layout: the whole file is nibble-swapped and XORed with an 8-byte key, and
  * the plain text is a headerless run of {name NUL, decimal size NUL, data}.
  * The key and the record rules were read from the file structure of real
- * skins and confirmed against U3's handler for "IS ISN" (key table at VA
+ * skins and confirmed against the reference reader's handler for "IS ISN" (key table at VA
  * 0x7CB018, name characters 0x20..0x7F, decimal size, records to EOF).
  *
  * There is no signature, so the probe is the record chain itself: every

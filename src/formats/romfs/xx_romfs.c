@@ -477,7 +477,7 @@ static bool xx_romfs_walk(Abstractformat *self, xx_romfs_private *parsed,
         if (!full_name) return false;
         if (type == XX_ROMFS_TYPE_REGULAR ||
             type == XX_ROMFS_TYPE_SYMLINK) {
-            /* U3 exposes a symbolic link as a regular file containing its
+            /* The reference reader exposes a symbolic link as a regular file containing its
              * stored target path.  This also avoids creating host symlinks
              * whose destinations could escape the extraction directory. */
             if (!xx_romfs_range_within(parsed->archive_end, data_offset, size)) {
@@ -539,7 +539,7 @@ static bool xx_romfs_walk(Abstractformat *self, xx_romfs_private *parsed,
                    type == XX_ROMFS_TYPE_CHAR_DEVICE ||
                    type == XX_ROMFS_TYPE_SOCKET ||
                    type == XX_ROMFS_TYPE_FIFO) {
-            /* Device numbers live in spec; there is no byte payload.  U3
+            /* Device numbers live in spec; there is no byte payload.  The reference reader
              * publishes these names as empty files on ordinary filesystems. */
             xx_mem_zero(&entry, sizeof(entry));
             entry.name = full_name;

@@ -73,6 +73,13 @@ xx_file_type_t xx_format_search_file_type(const xx_format_search_desc *desc,
                                          xx_io_device *device,
                                          int64_t base_address, bool is_mapped);
 
+/** Read a validated reader's version at an absolute offset. Returns an owned
+ * UTF-8 string (xx_str_free), empty when unversioned, or NULL on failure.
+ * Preserves the device cursor and closes the temporary reader and view. */
+char *xx_format_search_get_version(const xx_format_search_desc *desc,
+                                   xx_io_device *device,
+                                   int64_t base_address, bool is_mapped);
+
 /** Validate and classify one absolute offset without scanning for candidates.
  * Preserves the device cursor; returns false if it cannot be restored. */
 bool xx_format_search_fast_detect(const xx_format_search_desc *desc,

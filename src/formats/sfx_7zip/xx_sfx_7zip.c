@@ -4,21 +4,21 @@
  * Bounded independent carrier/container parser. No payload execution.
  */
 #include "xxfclib/formats/sfx_7zip/xx_sfx_7zip.h"
-#include "../sfx_arcv2/xx_sixth_wrapper_table.h"
+#include "../common/xx_executable_carrier.h"
 
 #include "xxfclib/formats/7zip/xx_7zip.h"
-static bool w6_at_parse(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
-    xx_7zip *r; bool ok; int64_t size; uint8_t h[32],kind;uint64_t off,n;if(!pm_read(f,at,h,32) || (n=xx_data_get_u64(h+20, 8, 0, false))>4194304 || !(off=xx_data_get_u64(h+12, 8, 0, false)) || !wg_range(pm_available(f),at+32,off) || !wg_range(pm_available(f),at+32+(int64_t)off,n) || !pm_read(f,at+32+(int64_t)off,&kind,1) || (kind!=1 && kind!=23)) return false;
-    if(wg_stop(pd)) { return false; } r=xx_7zip_create(f->device,f->base_address+at); if(!r) return false;
+static bool executable_carrier_at_parse(Abstractformat *f,pm_stream *s,int64_t at,xx_pd_struct *pd) {
+    xx_7zip *r; bool ok; int64_t size; uint8_t h[32],kind;uint64_t off,n;if(!pm_read(f,at,h,32) || (n=xx_data_get_u64(h+20, 8, 0, false))>4194304 || !(off=xx_data_get_u64(h+12, 8, 0, false)) || !carrier_range(pm_available(f),at+32,off) || !carrier_range(pm_available(f),at+32+(int64_t)off,n) || !pm_read(f,at+32+(int64_t)off,&kind,1) || (kind!=1 && kind!=23)) return false;
+    if(carrier_stop(pd)) { return false; } r=xx_7zip_create(f->device,f->base_address+at); if(!r) return false;
     ok=xx_format_handle_base_info(&r->format,pd);size=r->format.format_size;
-    ok=ok && !wg_stop(pd) && r->format.number_of_archive_records>0 && r->format.number_of_archive_records<=4096 && wg_range(pm_available(f),at,(uint64_t)size);xx_7zip_free(r);
-    return ok && w6_component(f,s,at,size,"payload.7z");
+    ok=ok && !carrier_stop(pd) && r->format.number_of_archive_records>0 && r->format.number_of_archive_records<=4096 && carrier_range(pm_available(f),at,(uint64_t)size);xx_7zip_free(r);
+    return ok && executable_carrier_component(f,s,at,size,"payload.7z");
 }
-static bool w5_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={55,122,188,175,39,28};return w6_scan(f,s,sig,sizeof(sig),0,false,false,w6_at_parse,pd); }
+static bool sfx_carrier_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { static const uint8_t sig[]={55,122,188,175,39,28};return executable_carrier_scan(f,s,sig,sizeof(sig),0,false,false,executable_carrier_at_parse,pd); }
 
 
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return w5_parse(f,s,pd) && wg_members(s,pd); }
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) { return sfx_carrier_parse(f,s,pd) && carrier_members(s,pd); }
 
 /* Keep the SFX carrier reader as the outer format, but delegate its archive
  * records to the authenticated 7z payload.  That avoids returning an opaque

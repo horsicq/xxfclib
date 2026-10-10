@@ -11,7 +11,7 @@
  * ported from XArchive Algos/xcreateinstalldecoder.cpp and
  * installers/xcreateinstallsfx.cpp (MIT, Copyright (c) 2019-2026
  * hors<horsicq@gmail.com>).  The code below is a C rewrite that streams from
- * the device instead of loading the overlay; U3 served as the extraction
+ * the device instead of loading the overlay; the reference reader served as the extraction
  * oracle only.
  *
  * Only the PE headers are parsed, to find the overlay; nothing in the stub is

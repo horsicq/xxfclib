@@ -4,7 +4,7 @@
  * WRZL wraps independently compressed LZRW1/KH blocks. The algorithm was
  * published by Kurt Haenen in the SWAG Pascal archive (ARCHIVES/0041.PAS);
  * the block rules were checked against all six local corpus files. The
- * selected DUMMY.DA$ output matches U3 byte-for-byte.
+ * selected DUMMY.DA$ output matches the reference reader byte-for-byte.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -242,7 +242,7 @@ static bool wrzl_parse(Abstractformat *format, wrzl_stream **result,
         return false;
 
     unpacked_size = xx_data_get_u32(header + 4, 4, 0, false);
-    /* U3 reads this as a signed int and requires it to be non-negative. */
+    /* The reference reader reads this as a signed int and requires it to be non-negative. */
     if ((unpacked_size & 0x80000000U) != 0U) return false;
     if ((int64_t)unpacked_size > XX_WRZL_MAX_UNCOMPRESSED_SIZE) return false;
     if (!wrzl_scan_chunks(format, span, unpacked_size, &first_length,

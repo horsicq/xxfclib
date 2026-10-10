@@ -6,7 +6,7 @@
  * here rather than shared with the "sTaC" reader so that neither module can
  * fail to build or link because the other was not registered yet.
  *
- * Detection is the decode: see xx_rawstac.h for why U3's three hard-coded
+ * Detection is the decode: see xx_rawstac.h for why the reference reader's three hard-coded
  * 16-byte prefixes were not ported as a rule.
  */
 

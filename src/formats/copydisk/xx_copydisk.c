@@ -8,7 +8,7 @@
  *   +0x0a  22   geometry hints the flat image does not need
  *   +0x20  the raw sector image, to end of file
  *
- * Recovered from U3's recognition predicate FUN_004a3b40 (archive/494,
+ * Derived from the recognition predicate FUN_004a3b40 (archive/494,
  * class mga, VMT 0x0049e008, slot 0 at 0x004a3b70), which tests exactly the
  * signature and the 0x0200 word, and from its open handler FUN_004a3b90,
  * which hands the rest of the file to the generic raw-image reader after

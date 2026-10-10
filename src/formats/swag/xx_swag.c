@@ -350,7 +350,7 @@ fail:
  * parse turns that pair into these two values. */
 
 /* SWAG's Pascal snippets retain the DOS text EOF/padding in their decoded
- * LZHUF stream and CRC. The reader used by U3 writes only the source text:
+ * LZHUF stream and CRC. The reader used by the reference extractor writes only the source text:
  * either the first Ctrl-Z before a space-padded final Ctrl-Z, or the text
  * before terminal blank CRLF lines and a single Ctrl-Z. Keep the full decode
  * for header-size validation and change only the bytes written to disk. */

@@ -3,7 +3,7 @@
  *
  * CCT filesystem 2.0 resource containers (".RES"), the data files of the
  * Polish demoscene/shareware titles SINNER, BUDYN, Slonecznik and Digital
- * Orgasm.  Neither XArchive nor Deark carries a module for it and U3 does not
+ * Orgasm.  Neither XArchive nor Deark carries a module for it; the reference extractor does not
  * unpack it, so the layout below was derived from the 8 samples in
  * F:\ARC\ARC\SINNER.
  *

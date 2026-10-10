@@ -5,14 +5,14 @@
  * File limit64MiB, member limit4096. No payload or external resource is executed.
  */
 #include "xxfclib/formats/interplay_mve/xx_interplay_mve.h"
-#include "../audio_dolby_ac3/xx_ninth_media.h"
+#include "../common/xx_audiovisual_components.h"
 static const uint8_t mve_magic[]={0x49,0x6e,0x74,0x65,0x72,0x70,0x6c,0x61,0x79,0x20,0x4d,0x56,0x45,0x20,0x46,0x69,0x6c,0x65,0x1a,0x00,0x1a,0x00,0x00,0x01,0x33,0x11};
-static bool ng_quick(Abstractformat *f,uint64_t n) {uint8_t h[26];return ng_probe(f,n,h,sizeof(h))&&pm_tag(h,(const char *)mve_magic,26);}
-static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
+static bool audiovisual_quick(Abstractformat *f,uint64_t n) {uint8_t h[26];return audiovisual_probe(f,n,h,sizeof(h))&&pm_tag(h,(const char *)mve_magic,26);}
+static bool audiovisual_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t at=26;uint32_t width=0,height=0,audio=0,channels=0,bps=0,frames=0;bool shutdown=false,eos=false,ended=false;
- if(!ng_emit(f,s,"mve_header.bin",0,26,n))return false;
- while(at<n){uint64_t q,end;uint32_t size,type;bool last=false;if(ng_stop(pd)||!ng_span(at,4,n)||ended)return false;size=xx_data_get_u16(b+at, 2, 0, false);type=xx_data_get_u16(b+at+2, 2, 0, false);q=at+4;if(type>5||!ng_span(q,size,n))return false;end=q+size;if(shutdown&&type!=5)return false;
-  while(q<end){uint32_t len,op,v;uint64_t p;if(!ng_span(q,4,end)||last)return false;len=xx_data_get_u16(b+q, 2, 0, false);op=b[q+2];v=b[q+3];p=q+4;if(!ng_span(p,len,end)||op>21)return false;
+ if(!audiovisual_emit(f,s,"mve_header.bin",0,26,n))return false;
+ while(at<n){uint64_t q,end;uint32_t size,type;bool last=false;if(audiovisual_stop(pd)||!audiovisual_span(at,4,n)||ended)return false;size=xx_data_get_u16(b+at, 2, 0, false);type=xx_data_get_u16(b+at+2, 2, 0, false);q=at+4;if(type>5||!audiovisual_span(q,size,n))return false;end=q+size;if(shutdown&&type!=5)return false;
+  while(q<end){uint32_t len,op,v;uint64_t p;if(!audiovisual_span(q,4,end)||last)return false;len=xx_data_get_u16(b+q, 2, 0, false);op=b[q+2];v=b[q+3];p=q+4;if(!audiovisual_span(p,len,end)||op>21)return false;
    switch(op){
     case 0:if(v||len||type!=4)return false;eos=true;break;
     case 1:if(v||len)return false;last=true;break;
@@ -34,7 +34,7 @@ static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,
    }q=p+len;
   }
   if(type==4){if(!eos||!last)return false;shutdown=true;}if(type==5){if(!shutdown||size)return false;ended=true;}
-  if(!ng_emit(f,s,"mve_encoded_chunk.bin",at,end-at,n)) {return false; } at=end;
+  if(!audiovisual_emit(f,s,"mve_encoded_chunk.bin",at,end-at,n)) {return false; } at=end;
  }
  if(!frames||!ended) {return false; } s->size=(int64_t)n;return true;
 }

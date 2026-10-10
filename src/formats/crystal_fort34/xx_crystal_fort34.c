@@ -1,18 +1,18 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.ase-lib.org/_modules/ase/io/crystal.html */
 #include "xxfclib/formats/crystal_fort34/xx_crystal_fort34.h"
-#include "../xx_thirteenth_root.h"
+#include "../common/xx_scientific_structure.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[16],cell[3][3];unsigned nt,j;uint64_t dimension,operators,atoms,i,z,head,sym,coords;bool ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;
-    NH_NEED(th_words(&c,&line,t,16,&nt,"#") && (nt==3 || nt==8) && el_uint(&b,t[0],&dimension) && dimension<=3 && el_eq(&b,t[1],"1") && el_eq(&b,t[2],"1"));
-    if(nt==8) NH_NEED(el_eq(&b,t[3],"E") && el_float(&b,t[4]) && el_eq(&b,t[5],"DE") && t[6].n>1 && b.p[(size_t)(t[6].at+t[6].n-1)]=='(' && el_float(&b,el_slice(t[6],0,t[6].n-1)) && el_eq(&b,t[7],"1)"));
-    for(j=0;j<3;++j) {NH_NEED(th_words(&c,&line,t,16,&nt,"#") && nt==3);xx_rt_memcpy(cell[j],t,3*sizeof(el_token));}NH_NEED(th_cell(&b,cell));head=c.at;
-    NH_NEED(th_words(&c,&line,t,16,&nt,"#") && nt==1 && el_uint(&b,t[0],&operators) && operators==1);
-    for(j=0;j<4;++j) {unsigned k;NH_NEED(th_words(&c,&line,t,16,&nt,"#") && nt==3 && th_floats(&b,t,3));for(k=0;k<3;++k) NH_NEED(tw_value(&b,t[k])==(j==k ? 1.0:0.0));}sym=c.at;
-    NH_NEED(th_words(&c,&line,t,16,&nt,"#") && nt==1 && el_uint(&b,t[0],&atoms) && atoms && atoms<=100000);coords=c.at;
-    for(i=0;i<atoms;++i) NH_NEED(th_words(&c,&line,t,16,&nt,"#") && nt==4 && el_uint(&b,t[0],&z) && z && z<=118 && th_floats(&b,t+1,3));
-    NH_NEED(tw_trailing(&c) && nh_add(f,s,&b,"geometry-cell",0,head) && nh_add(f,s,&b,"symmetry",head,sym-head) && nh_add(f,s,&b,"atom-count",sym,coords-sym) && nh_add(f,s,&b,"atoms",coords,b.n-coords));s->size=(int64_t)b.n;ok=true;
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[16],cell[3][3];unsigned nt,j;uint64_t dimension,operators,atoms,i,z,head,sym,coords;bool ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;
+    BLOB_NEED(structure_words(&c,&line,t,16,&nt,"#") && (nt==3 || nt==8) && scientific_text_uint(&b,t[0],&dimension) && dimension<=3 && scientific_text_eq(&b,t[1],"1") && scientific_text_eq(&b,t[2],"1"));
+    if(nt==8) BLOB_NEED(scientific_text_eq(&b,t[3],"E") && scientific_text_float(&b,t[4]) && scientific_text_eq(&b,t[5],"DE") && t[6].n>1 && b.p[(size_t)(t[6].at+t[6].n-1)]=='(' && scientific_text_float(&b,scientific_text_slice(t[6],0,t[6].n-1)) && scientific_text_eq(&b,t[7],"1)"));
+    for(j=0;j<3;++j) {BLOB_NEED(structure_words(&c,&line,t,16,&nt,"#") && nt==3);xx_rt_memcpy(cell[j],t,3*sizeof(scientific_text_token));}BLOB_NEED(structure_cell(&b,cell));head=c.at;
+    BLOB_NEED(structure_words(&c,&line,t,16,&nt,"#") && nt==1 && scientific_text_uint(&b,t[0],&operators) && operators==1);
+    for(j=0;j<4;++j) {unsigned k;BLOB_NEED(structure_words(&c,&line,t,16,&nt,"#") && nt==3 && structure_floats(&b,t,3));for(k=0;k<3;++k) BLOB_NEED(molecular_value(&b,t[k])==(j==k ? 1.0:0.0));}sym=c.at;
+    BLOB_NEED(structure_words(&c,&line,t,16,&nt,"#") && nt==1 && scientific_text_uint(&b,t[0],&atoms) && atoms && atoms<=100000);coords=c.at;
+    for(i=0;i<atoms;++i) BLOB_NEED(structure_words(&c,&line,t,16,&nt,"#") && nt==4 && scientific_text_uint(&b,t[0],&z) && z && z<=118 && structure_floats(&b,t+1,3));
+    BLOB_NEED(molecular_trailing(&c) && blob_add(f,s,&b,"geometry-cell",0,head) && blob_add(f,s,&b,"symmetry",head,sym-head) && blob_add(f,s,&b,"atom-count",sym,coords-sym) && blob_add(f,s,&b,"atoms",coords,b.n-coords));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

@@ -3,7 +3,7 @@
  *
  * Native reader for the ".CPX" distribution container.  XArchive has no module
  * for it, so the layout below was derived from the corpora under
- * F:\ARC\ARC\CPX and F:\ARC\ARC\CPX4 with U3 as the plaintext oracle.
+ * F:\ARC\ARC\CPX and F:\ARC\ARC\CPX4 with the reference reader as the plaintext oracle.
  *
  * Four bytes of stamp open every file: one version byte then "\x16\x27\x93".
  * The version byte selects one of two container shapes.

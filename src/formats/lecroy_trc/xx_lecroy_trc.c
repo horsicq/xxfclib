@@ -1,18 +1,18 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.teledynelecroy.com/support/knowledgebase.aspx?docid=556 */
 #include "xxfclib/formats/lecroy_trc/xx_lecroy_trc.h"
-#include "../xx_ninth_data.h"
+#include "../common/xx_memory_blob.h"
 
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    uint8_t h[346];nh_blob b={0};bool be,ok=false;uint64_t at=0;uint32_t sizes[8],count,width;unsigned i;
+    uint8_t h[346];memory_blob b={0};bool be,ok=false;uint64_t at=0;uint32_t sizes[8],count,width;unsigned i;
     if(!pm_read(f,0,h,sizeof(h)) || xx_rt_memcmp(h,"WAVEDESC",8) || xx_rt_memcmp(h+16,"LECROY_2_3",10)) return false;
     if(h[34]==1 && h[35]==0) be=false;else if(!h[34] && !h[35]) be=true;else return false;
-    NH_NEED(xx_data_get_u16(h+32, 2, 0, be)<=1 && !xx_data_get_u32(h+44, 4, 0, be) && !xx_data_get_u32(h+56, 4, 0, be) && !xx_data_get_u32(h+68, 4, 0, be) && !xx_data_get_u32(h+72, 4, 0, be));width=xx_data_get_u16(h+32, 2, 0, be)+1;count=xx_data_get_u32(h+116, 4, 0, be);
+    BLOB_NEED(xx_data_get_u16(h+32, 2, 0, be)<=1 && !xx_data_get_u32(h+44, 4, 0, be) && !xx_data_get_u32(h+56, 4, 0, be) && !xx_data_get_u32(h+68, 4, 0, be) && !xx_data_get_u32(h+72, 4, 0, be));width=xx_data_get_u16(h+32, 2, 0, be)+1;count=xx_data_get_u32(h+116, 4, 0, be);
     sizes[0]=xx_data_get_u32(h+36, 4, 0, be);sizes[1]=xx_data_get_u32(h+40, 4, 0, be);sizes[2]=xx_data_get_u32(h+48, 4, 0, be);sizes[3]=xx_data_get_u32(h+52, 4, 0, be);sizes[4]=xx_data_get_u32(h+60, 4, 0, be);sizes[5]=xx_data_get_u32(h+64, 4, 0, be);
-    NH_NEED(sizes[0]>=346 && sizes[0]<=65536 && count && sizes[4]==(uint64_t)count*width && (!sizes[5] || sizes[5]==sizes[4]) && sizes[2]%16==0 && sizes[3]%8==0 && xx_data_get_u32(h+144, 4, 0, be) && nh_load(f,&b,pd));
-    NH_NEED(nh_floats(&b,156,8,4,be) && nh_floats(&b,176,4,4,be) && nh_floats(&b,180,16,8,be));
-    for(i=0;i<6;++i) {static const char *labels[]={"descriptor","user-text","trigger-times","ris-times","wave1","wave2"};if(sizes[i]) {NH_NEED(nh_span(&b,at,sizes[i]));if(i==2 || i==3) NH_NEED(nh_floats(&b,at,sizes[i],8,be));NH_NEED(nh_add(f,s,&b,labels[i],at,sizes[i]));}at+=sizes[i];}
-    NH_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(sizes[0]>=346 && sizes[0]<=65536 && count && sizes[4]==(uint64_t)count*width && (!sizes[5] || sizes[5]==sizes[4]) && sizes[2]%16==0 && sizes[3]%8==0 && xx_data_get_u32(h+144, 4, 0, be) && blob_load(f,&b,pd));
+    BLOB_NEED(blob_floats(&b,156,8,4,be) && blob_floats(&b,176,4,4,be) && blob_floats(&b,180,16,8,be));
+    for(i=0;i<6;++i) {static const char *labels[]={"descriptor","user-text","trigger-times","ris-times","wave1","wave2"};if(sizes[i]) {BLOB_NEED(blob_span(&b,at,sizes[i]));if(i==2 || i==3) BLOB_NEED(blob_floats(&b,at,sizes[i],8,be));BLOB_NEED(blob_add(f,s,&b,labels[i],at,sizes[i]));}at+=sizes[i];}
+    BLOB_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

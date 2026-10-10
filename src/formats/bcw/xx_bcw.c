@@ -19,8 +19,8 @@
  * yields both the packed extent and the exact plaintext length cheaply, and
  * refuses the file if any stream is malformed.
  *
- * The codec is the LZW engine U3 shares between several of its formats
- * (F:\utils\U3\src, class `aqa` at VMT 0x005521d8: slot 1 -> FUN_00552410
+ * The codec is the LZW engine the reference reader shares between several of its formats
+ * (recovered decoder analysis, class `aqa` at VMT 0x005521d8: slot 1 -> FUN_00552410
  * walks the records, FUN_005522c0 unpacks one, configuring the engine with
  * FUN_004c5260(cfg, 0x0C, 0, 1, 1, 0, 0, 1, 1, 0) and then calling
  * FUN_004c55f0).  That configuration means:
@@ -33,7 +33,7 @@
  *
  * Verified over F:\ARC\ARC\BCW: 12 of 12 archives parse, every stream ends
  * on its end code, the record chain lands exactly on end of file, and all
- * 564 extracted files are byte-identical to U3's own output.
+ * 564 extracted files are byte-identical to reference output.
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/global/xx_global.h"
@@ -215,7 +215,7 @@ static bool bcw_add_member(bcw_stream *stream, const bcw_member *member) {
 #define BCW_KIND_ENTER 2U
 #define BCW_KIND_LEAVE 3U
 
-/* LZW geometry, from U3's shared engine as configured for BCW. */
+/* LZW geometry, from the reference reader's shared engine as configured for BCW. */
 #define BCW_LZW_MAX_BITS 12U
 #define BCW_LZW_MAX_CODES (1U << BCW_LZW_MAX_BITS)
 /* The early-change rule lets the width reach one bit past the nominal
@@ -497,7 +497,7 @@ static bool bcw_parse_buffered(Abstractformat *format, bcw_stream **result, uint
             /* Date first, then time; republished in the packed order the
              * other DOS-era readers here use, with the time in the low
              * half.  SBLOCK.DLL carries 1991-06-25 12:53:00, which is the
-             * stamp U3 puts on the file it writes. */
+             * stamp the reference reader puts on the file it writes. */
             member.dos_time = ((uint32_t)xx_data_get_u16(stamp, 2, 0, false) << 16U) |
                               xx_data_get_u16(stamp + 2U, 2, 0, false);
             member.folder = false;

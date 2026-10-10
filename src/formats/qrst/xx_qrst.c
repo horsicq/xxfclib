@@ -4,7 +4,7 @@
  * Native reader for the Compaq QRST diskette-set container (the ._01 / ._02
  * files shipped with Compaq SoftPaq driver sets).  XArchive has no module
  * for it and the format is undocumented; everything below was derived from
- * the 13 corpus samples and confirmed against F:\ARC\U3.exe, whose
+ * the 13 corpus samples and confirmed against the reference extractor, whose
  * Image1.img / Image2.img output this reader reproduces byte for byte.
  *
  * A file is one or more concatenated sections, each holding one floppy
@@ -51,7 +51,7 @@
  * producer stops after the last written sector - so the decoded length is
  * whatever the stream yields, not the nominal disk size.
  *
- * This was read out of U3's own handler (F:\utils\U3\src, format 543
+ * This was read out of the reference reader's own handler (recovered decoder analysis, format 543
  * "QRST": FUN_0064e990 recognition, FUN_0064eea0 walk, FUN_0064ed90 image,
  * FUN_0043e3d0 the codec, whose bit grammar - one flag bit, a 7-bit length
  * prefix code with a 0x207 end symbol, a 14-bit distance prefix code and a

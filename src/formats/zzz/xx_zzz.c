@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * ".ZZZ" archives.  Ported from XArchive's archives/xzzzarchive.cpp and
- * cross-checked against U3's ZZZ handler (class lza, VMT 005efeb8).
+ * cross-checked against the reference reader's ZZZ handler (class lza, VMT 005efeb8).
  *
  *   there is no archive-level header; the file is a chain of members, each
  *   a 24-byte header immediately followed by its payload:

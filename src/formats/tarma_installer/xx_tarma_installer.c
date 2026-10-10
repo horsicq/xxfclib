@@ -7,9 +7,9 @@
  * Only the PE headers are parsed, to find the overlay; nothing in the
  * executable is run or emulated.  The section test ("tiz3" at +0x10 and the
  * two dwords at +0x40 whose XOR is 0x35BC6F82), the optional 16-byte
- * separator and the "tzf3" block walk follow what U3's "SFX Tarma 3" handler
+ * separator and the "tzf3" block walk follow what the reference reader's "SFX Tarma 3" handler
  * reads and what the loader itself checks; both corpus installers were
- * compared member by member with U3's output.
+ * compared member by member with the reference reader's output.
  *
  * The LZMA decoder below is a pull decoder: it keeps the range coder, the
  * model and a pending match between calls, so members are delivered one
@@ -872,7 +872,7 @@ static const xx_var *tz_option(const xx_list_s *options, uint32_t id) {
     return NULL;
 }
 
-/* Members are numbered in stream order, as U3 names them. */
+/* Members are numbered in stream order, as the reference reader names them. */
 static void tz_member_name(uint64_t number, char *name) {
     char digits[TZ_NAME_MAX];
     size_t count = 0U, index;

@@ -25,7 +25,7 @@
  *                  name, u32 packed size, u32 unpacked size, and a zlib
  *                  stream (RFC 1950, Adler-32 trailer) of the packed size
  *
- * Layout 1 (older packages, as U3 reads them; no known sample):
+ * Layout 1 (older packages, reverse-engineered; no known sample):
  *   B+0x100 4      member count
  *   B+0x104        members: u32 name size, name, u32 packed size, zlib
  *   With no stored size, a layout-1 member is refused past 64 MiB of

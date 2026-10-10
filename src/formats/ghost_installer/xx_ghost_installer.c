@@ -9,7 +9,7 @@
  * Written from the structure of the two corpus packages and from the
  * Microsoft Cabinet format specification ([MS-CAB]).  The chain walk (a
  * 26-byte or a 34-byte trailer after each cabinet, a missing trailer ends
- * the chain) matches what U3's Ghost Installer handler accepts; no code was
+ * the chain) matches what the reference reader's Ghost Installer handler accepts; no code was
  * taken from it or from any cabinet library.  The codecs are the library's
  * own LZX, Quantum and Deflate decoders.
  *

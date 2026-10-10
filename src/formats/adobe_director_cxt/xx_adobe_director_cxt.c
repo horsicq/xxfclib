@@ -3,7 +3,7 @@
  * Exposes stored cast and sound chunks without deprotecting them.
  */
 #include "xxfclib/formats/adobe_director_cxt/xx_adobe_director_cxt.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 #ifndef ADOBE_DIRECTOR_CXT
 #define XX_FILE_TYPE_ADOBE_DIRECTOR_CXT ((xx_file_type_t)1510)
 #endif
@@ -16,7 +16,7 @@ static bool is_form(const uint8_t*p,bool be) {
 }
 static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     uint8_t h[12],c[8];uint64_t p,total;unsigned chunks=0,seen=0;bool be;int64_t n;
-    if(fd_stop(pd)||(n=pm_available(f))<12 || !pm_read(f,0,h,12))return false;
+    if(binary_stop(pd)||(n=pm_available(f))<12 || !pm_read(f,0,h,12))return false;
     if(!xx_rt_memcmp(h,"RIFX",4))be=true;
     else if(!xx_rt_memcmp(h,"XFIR",4))be=false;
     else return false;
@@ -26,7 +26,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     p=12;
     while(p<total) {
         uint32_t size;uint64_t next;char label[48],tag[5];unsigned i;
-        if(fd_stop(pd)||++chunks>4096 || !fd_range(p,8,total) ||
+        if(binary_stop(pd)||++chunks>4096 || !binary_range(p,8,total) ||
            !pm_read(f,(int64_t)p,c,8))return false;
         size=xx_data_get_u32(c+4, 4, 0, be);next=p+8U+(uint64_t)size+(size&1U);
         if(next>total)return false;

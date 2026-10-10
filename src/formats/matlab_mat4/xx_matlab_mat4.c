@@ -1,20 +1,20 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.mathworks.com/help/pdf_doc/matlab/matfile_format.pdf */
 #include "xxfclib/formats/matlab_mat4/xx_matlab_mat4.h"
-#include "../xx_seventh_data.h"
+#include "../common/xx_numeric_values.h"
 
 static unsigned width(unsigned p) {static const unsigned w[]={8,4,4,2,2,1};return p<6?w[p]:0;}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint64_t at=0;int64_t available=pm_available(f);unsigned index=0;uint8_t h[20],name[256];
-    if(fd_stop(pd) || available<22 || available>67108864) return false;
+    if(binary_stop(pd) || available<22 || available>67108864) return false;
     while(at<(uint64_t)available) {uint32_t type,rows,cols,imag,names;uint64_t count,n;unsigned w,i;bool be;char label[64];
-        if(fd_stop(pd) || ++index>1024 || !fd_range(at,20,(uint64_t)available) || !pm_read(f,(int64_t)at,h,20)) return false;
+        if(binary_stop(pd) || ++index>1024 || !binary_range(at,20,(uint64_t)available) || !pm_read(f,(int64_t)at,h,20)) return false;
         type=xx_data_get_u32(h, 4, 0, false);be=type>1999;if(be) type=xx_data_get_u32(h, 4, 0, true);
         if(type>1999 || type/1000!=(be?1U:0U) || (type/100)%10 || type%10>1 || !(w=width((type/10)%10))) return false;
         rows=xx_data_get_u32(h+4, 4, 0, be);cols=xx_data_get_u32(h+8, 4, 0, be);imag=xx_data_get_u32(h+12, 4, 0, be);names=xx_data_get_u32(h+16, 4, 0, be);
-        if(!rows || rows>1000000 || !cols || cols>1000000 || imag>1 || (type%10==1 && imag) || names<2 || names>sizeof(name) || !fd_range(at+20,names,(uint64_t)available) || !pm_read(f,(int64_t)(at+20),name,names) || name[names-1]) return false;
+        if(!rows || rows>1000000 || !cols || cols>1000000 || imag>1 || (type%10==1 && imag) || names<2 || names>sizeof(name) || !binary_range(at+20,names,(uint64_t)available) || !pm_read(f,(int64_t)(at+20),name,names) || name[names-1]) return false;
         for(i=0;i<names-1;++i) if(!((name[i]>='a' && name[i]<='z') || (name[i]>='A' && name[i]<='Z') || name[i]=='_' || (i && name[i]>='0' && name[i]<='9'))) return false;
-        if(!fd_mul(rows,cols,&count) || count>1000000 || !fd_mul(count,w,&n) || !fd_range(at+20+names,n*(1+imag),(uint64_t)available)) return false;
+        if(!binary_mul(rows,cols,&count) || count>1000000 || !binary_mul(count,w,&n) || !binary_range(at+20+names,n*(1+imag),(uint64_t)available)) return false;
         xx_rt_snprintf(label,sizeof(label),"matrix-%u-header.bin",index-1);if(!pm_add(f,s,label,(int64_t)at,20+names)) return false;at+=20+names;
         xx_rt_snprintf(label,sizeof(label),"matrix-%u-real.bin",index-1);if(!pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;at+=n;
         if(imag) {xx_rt_snprintf(label,sizeof(label),"matrix-%u-imag.bin",index-1);if(!pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;at+=n;}

@@ -522,7 +522,7 @@ static bool aodos_parse(Abstractformat *format, aodos_stream **result) {
                             AODOS_BLOCK_SIZE;
             uint32_t data_size = raw[index].byte_size;
             /* On MKDOS media a full final sector can wrap the 16-bit byte
-             * count.  U3 exposes the preceding complete sectors. */
+             * count.  The reference reader exposes the preceding complete sectors. */
             if (!ao_style && span > UINT16_MAX &&
                 data_size == (span & UINT16_MAX))
                 data_size = span - AODOS_BLOCK_SIZE;

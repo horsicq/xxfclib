@@ -7,22 +7,22 @@
  * with MS-DOS era packers the packed copy keeps the original name with the
  * first character of the extension replaced by '_'.
  *
- * There is no published description of the container, but U3 recognises it
- * and both halves are recovered in F:\utils\U3\src (FORMAT_INDEX.md
+ * There is no published description of the container, but the reference reader recognises it
+ * and both halves are recovered during decoder analysis (FORMAT_INDEX.md
  * "archive / 357 WinLink", class vxa, VMT 0x005d6418; slot 0 ->
  * FUN_005d6490, slot 1 -> FUN_005d64e0).  The layout below is FUN_005d6490
  * transcribed, and it holds for all 140 samples in F:\ARC\ARC\WinLink:
  *
- *   0x00  u16   2                 - format constant (U3 tests the word)
+ *   0x00  u16   2                 - format constant (the reference reader tests the word)
  *   0x02  u8    0                 - and this byte separately
  *   0x03  u16   MS-DOS packed time
  *   0x05  u16   MS-DOS packed date
  *   0x07  char[13]  the original 8.3 name, NUL terminated and NUL padded to
- *                   the full 13 bytes (U3's FUN_00425390)
+ *                   the full 13 bytes (the reference reader's FUN_00425390)
  *   0x14  u32   0xFFFFFFFF sentinel
  *   0x18  ...   the packed payload, running to the end of the file
  *
- * THE CODEC IS LZW, and it was read out of U3's decoder FUN_0053fdf0 (the
+ * THE CODEC IS LZW, and it was read out of the recovered decoder FUN_0053fdf0 (the
  * unpack path is FUN_005d64e0 -> FUN_0053fdf0 over the extent from 0x18 to
  * end-of-file).  It is the TIFF dialect widened by two bits:
  *
@@ -45,7 +45,7 @@
  * decoding into a buffer of exactly that size.  Reaching the explicit END
  * code is required for both passes; all 140 samples do.
  *
- * Verified byte for byte against U3's own output for all 140 samples.
+ * Verified byte for byte against reference output for all 140 samples.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -130,7 +130,7 @@ static bool xx_winlink_date_sane(uint16_t date) {
     return month >= 1U && month <= 12U && day >= 1U && day <= 31U;
 }
 
-/* U3's own 8.3 test (FUN_00425390): a printable first character that is not
+/* The reference reader's own 8.3 test (FUN_00425390): a printable first character that is not
  * '.', one to eight name characters, a mandatory '.', up to three extension
  * characters, the terminating NUL, and then nothing but NULs to the end of
  * the fixed field.  Requiring the dot is what turns a field of printable
@@ -370,7 +370,7 @@ static bool xx_winlink_lzw_run(const uint8_t *input, size_t input_size,
             finished = true;
             break;
         }
-        /* U3 writes the low byte of whatever opens a segment; a code that is
+        /* The reference reader writes the low byte of whatever opens a segment; a code that is
          * not a literal there means the stream is not this codec's, so it is
          * refused instead of guessed at. */
         if (code > 0xffU) goto done;

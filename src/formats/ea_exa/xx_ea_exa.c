@@ -3,7 +3,7 @@
  * Exports original stream blocks, leaving their coded samples unchanged.
  */
 #include "xxfclib/formats/ea_exa/xx_ea_exa.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 #ifndef EA_EXA
 #define XX_FILE_TYPE_EA_EXA ((xx_file_type_t)1512)
 #endif
@@ -15,10 +15,10 @@ static bool scan(Abstractformat*f,bool be,xx_pd_struct*pd,uint64_t*length,unsign
     int64_t n=pm_available(f);uint64_t p=0;unsigned blocks=0,data=0;bool end=false;
     while(p<(uint64_t)n && !end) {
         uint8_t h[16];uint32_t size;
-        if(fd_stop(pd)||++blocks>4096 || !fd_range(p,8,(uint64_t)n) ||
+        if(binary_stop(pd)||++blocks>4096 || !binary_range(p,8,(uint64_t)n) ||
            !pm_read(f,(int64_t)p,h,8) || !known(h))return false;
         size=xx_data_get_u32(h+4, 4, 0, be);
-        if(size<8 || !fd_range(p,size,(uint64_t)n))return false;
+        if(size<8 || !binary_range(p,size,(uint64_t)n))return false;
         if(blocks==1) {
             if(xx_rt_memcmp(h,"SCHl",4)||size<16 || !pm_read(f,(int64_t)p+8,h,8) ||
                (xx_rt_memcmp(h,"GSTR",4) && xx_rt_memcmp(h,"PT",2) &&
@@ -41,7 +41,7 @@ static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {
     }
     for(i=0;i<count;++i) {
         uint8_t h[8];uint32_t size;char label[40],tag[5];
-        if(fd_stop(pd)||!pm_read(f,(int64_t)p,h,8))return false;
+        if(binary_stop(pd)||!pm_read(f,(int64_t)p,h,8))return false;
         size=xx_data_get_u32(h+4, 4, 0, be);
         xx_rt_memcpy(tag,h,4);tag[4]=0;
         xx_rt_snprintf(label,sizeof(label),"%s-block.bin",tag);

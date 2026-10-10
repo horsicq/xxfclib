@@ -14,7 +14,7 @@
  * length and no checksum the only statement the file makes about itself is
  * that it decodes: validation therefore runs a bounded trial decode rather
  * than trusting two bytes of magic, and correctness was established against
- * U3's own extraction of the corpus.  Do not confuse this with compress(1),
+ * reference extraction of the corpus.  Do not confuse this with compress(1),
  * 0x1F 0x9D, which is handled by the unixcompress reader.
  */
 
@@ -137,7 +137,7 @@ static bool xx_unixcompact_scan(Abstractformat *self, int64_t *stream_offset,
  * A new byte splits the LAST slot -- the lightest one -- into an internal
  * node holding the old occupant and the new byte at weight zero.
  *
- * This was recovered from the U3 handler: initial tree 0x006d8040, update
+ * This was recovered from the reference handler: initial tree 0x006d8040, update
  * 0x006d7d00, slot relink 0x006d7c70, new symbol 0x006d7b70, decode loop
  * 0x006d8220.
  */

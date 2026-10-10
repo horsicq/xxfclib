@@ -27,7 +27,7 @@
  *   never carries a name or a payload. The archive ends there, and anything
  *   after it is overlay (PAK 2.x appends its 0xFE extended records -- remarks,
  *   original directories, a security envelope -- there; they are not read,
- *   and members are extracted flat, as ARC, PAK without /PATH, unar and U3
+ *   and members are extracted flat, as ARC, PAK without /PATH, unar and the reference extractor
  *   all do).
  *
  * Compression methods, each decoded here:

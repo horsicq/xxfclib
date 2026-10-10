@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://ase-lib.org/_modules/ase/io/xyz.html */
 #include "xxfclib/formats/molecule_xyz/xx_molecule_xyz.h"
-#include "../xx_twelfth_root.h"
+#include "../common/xx_molecular_text.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[8];unsigned n,frames=0;uint64_t atoms,i,at;bool ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;
-    while(c.at<b.n) {at=c.at;NH_NEED(el_line(&c,&line) && el_uint(&b,line,&atoms) && atoms && atoms<=100000 && ++frames<=4096 && el_line(&c,&line));
-        for(i=0;i<atoms;++i) NH_NEED(tw_words(&c,&line,t,8,&n) && n==4 && tw_element(&b,t[0]) && tw_floats(&b,t,1,4));
-        NH_NEED(nh_add(f,s,&b,"molecular-frame",at,c.at-at));
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[8];unsigned n,frames=0;uint64_t atoms,i,at;bool ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;
+    while(c.at<b.n) {at=c.at;BLOB_NEED(scientific_text_line(&c,&line) && scientific_text_uint(&b,line,&atoms) && atoms && atoms<=100000 && ++frames<=4096 && scientific_text_line(&c,&line));
+        for(i=0;i<atoms;++i) BLOB_NEED(molecular_words(&c,&line,t,8,&n) && n==4 && molecular_element(&b,t[0]) && molecular_floats(&b,t,1,4));
+        BLOB_NEED(blob_add(f,s,&b,"molecular-frame",at,c.at-at));
     }
-    NH_NEED(frames);s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(frames);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

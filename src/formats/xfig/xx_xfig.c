@@ -4,13 +4,13 @@
  * Stored encoded components only; no rendering or external-resource access.
  */
 #include "xxfclib/formats/xfig/xx_xfig.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 
 typedef struct sm_line { const uint8_t *p; size_t n,begin,stop; } sm_line;
 typedef struct sm_text { const uint8_t *p; size_t n,at; unsigned lines; xx_pd_struct *pd; } sm_text;
 typedef struct sm_token { const uint8_t *p; size_t n; } sm_token;
 static bool sm_line_read(sm_text *r,sm_line *line) {
-    size_t begin=r->at,end; if(fd_stop(r->pd) || begin>=r->n || ++r->lines>262144) return false;
+    size_t begin=r->at,end; if(binary_stop(r->pd) || begin>=r->n || ++r->lines>262144) return false;
     while(r->at<r->n && r->p[r->at]!='\n') { uint8_t b=r->p[r->at]; if((b<32 && b!='\t' && b!='\r') || b>126 || r->at-begin>=4096) return false; ++r->at; }
     if(r->at==r->n) { return false; } end=r->at++; if(end>begin && r->p[end-1]=='\r') --end;
     line->p=r->p+begin; line->n=end-begin; line->begin=begin; line->stop=r->at; return true;

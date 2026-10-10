@@ -10,19 +10,19 @@
  * That is the whole container: two bytes. What follows is byte for byte the
  * block-structured Huffman stream LHA writes for -lh5-, with a 13-bit window
  * (8 KiB), fourteen position codes and a four-bit position-table count. The
- * layout was recovered from the U3 handler for this format: its recogniser
+ * layout was recovered from the reference handler for this format: its recogniser
  * (0x004e52e0) tests the two magic bytes and a zero final word, and its
  * unpacker (0x004e5330) seeks to offset 2 and hands the rest to the shared
  * LHA decoder (0x004e5000) with dicbit 13 and pbit 4.
  *
  * There is no stored plaintext length and no checksum. A -lh5- stream
  * normally stops when the declared output size is reached; with no such size
- * the stream ends the way U3 ends it, on a block whose symbol count is zero.
+ * the stream ends the way the reference reader ends it, on a block whose symbol count is zero.
  * That is the two zero bytes every sample in the corpus finishes with, and
  * check_is_valid requires them.
  *
  * Because nothing in the file asserts the plaintext, correctness here was
- * established against U3's own extraction of the corpus rather than against
+ * established against reference extraction of the corpus rather than against
  * anything the file says about itself.
  */
 
@@ -107,7 +107,7 @@ static bool xx_sco_scan(Abstractformat *self, uint32_t *header_word,
     /* An LHA archive whose first member header happens to be 31 bytes long
      * with a checksum of 0xA0 opens with these same two bytes. It is a real
      * collision -- the corpus contains one -- and the method tag behind it
-     * settles the question. The U3 recogniser carries an exclusion in this
+     * settles the question. The reference recogniser carries an exclusion in this
      * same spot for the same reason, for a file starting 1F A0 45 A0 6B A0,
      * and that one is kept too. */
     if (header[4] == (uint8_t)'-' && header[7] == (uint8_t)'-' &&
@@ -171,7 +171,7 @@ static bool xx_sco_scan(Abstractformat *self, uint32_t *header_word,
 #define XX_SCO_PT_SIZE 19
 #define XX_SCO_MAX_BITS 16
 #define XX_SCO_WINDOW_BITS 13
-/* dicbit + 1, which is what the U3 handler passes as the position count. */
+/* dicbit + 1, which is what the reference handler passes as the position count. */
 #define XX_SCO_PT_COUNT (XX_SCO_WINDOW_BITS + 1)
 #define XX_SCO_PT_COUNT_BITS 4
 /* What a reference reaching back past the start of output resolves to: LHA

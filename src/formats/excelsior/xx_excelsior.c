@@ -138,30 +138,54 @@ static ei_index *ei_parse(Abstractformat *f, const xx_list_s *opts, xx_pd_struct
     ei_index *ix = NULL;
     int64_t at, total = xx_io_total_size(f->device), saved = xx_io_tell(f->device), base = f->base_address;
     uint64_t index_at, table_size = 0, count, records, data, datasize, dictionary, stream, packed, i, names_at, budget=ei_budget(f,opts);
+    size_t prefix=0, stride;
     at = ei_header_device(f->device, f->base_address);
     if (at < 0 || !ue2_read(f, at, h, 40)) goto done;
     index_at = xx_data_get_u64(h + 16, 8, 0, false);
     if (index_at > (uint64_t)(total - base) || index_at < (uint64_t)(at - base + 40) ||
         xx_data_get_u32(h + 24, 4, 0, false) > EI_TABLE_LIMIT || xx_data_get_u32(h + 28, 4, 0, false) > EI_LIMIT) goto done;
     table = ei_decode(f, base + (int64_t)index_at, total, budget, &table_size, pd);
-    if (!table || table_size != xx_data_get_u32(h + 24, 4, 0, false) || table_size < 0x128 ||
-        xx_rt_memcmp(table, "ExcelsiorII1", 12) || xx_data_get_u32(table + 12, 4, 0, false) != 0x01000001 ||
-        xx_data_get_u32(table + 20, 4, 0, false) != 1 || xx_data_get_u64(table + 24, 8, 0, false) != (UINT64_C(1) << 32)) goto done;
-    stream = xx_data_get_u64(table + 32, 8, 0, false); packed = xx_data_get_u64(table + 40, 8, 0, false);
-    count = xx_data_get_u64(table + 80, 8, 0, false); data = xx_data_get_u64(table + 88, 8, 0, false); datasize = xx_data_get_u64(table + 96, 8, 0, false); records = xx_data_get_u64(table + 104, 8, 0, false);
-    if (!count || count > 100000 || records < 0x128 || records > table_size || count > (table_size - records) / 32 ||
-        stream != xx_data_get_u64(h + 32, 8, 0, false) || stream >= index_at || packed != index_at - stream ||
+    if (!table || table_size != xx_data_get_u32(h + 24, 4, 0, false) || table_size < 104 ||
+        xx_rt_memcmp(table, "ExcelsiorII1", 12)) goto done;
+    /* Older Win32 producers have a 24-byte settings prefix; later producers
+     * use 32 bytes. Settings contain version-dependent flags, not a fixed
+     * magic. Identify the layout using both exact stream offsets and sizes. */
+    for(i=24;i<=32;i+=8) {
+        uint64_t candidate=xx_data_get_u64(table+(size_t)i,8,0,false);
+        if(candidate==xx_data_get_u64(h+32,8,0,false) && candidate<index_at &&
+           xx_data_get_u64(table+(size_t)i+8,8,0,false)==index_at-candidate) {prefix=(size_t)i;break;}
+    }
+    if(!prefix || table_size<prefix+80)goto done;
+    stream = xx_data_get_u64(table + prefix, 8, 0, false); packed = xx_data_get_u64(table + prefix + 8, 8, 0, false);
+    count = xx_data_get_u64(table + prefix + 48, 8, 0, false); data = xx_data_get_u64(table + prefix + 56, 8, 0, false);
+    datasize = xx_data_get_u64(table + prefix + 64, 8, 0, false); records = xx_data_get_u64(table + prefix + 72, 8, 0, false);
+    if (!count || count > 100000 || records < prefix+80 || records > table_size || count > (table_size - records) / 24 ||
         !ei_stream_header(f, base + (int64_t)stream, base + (int64_t)index_at, dh, &dictionary) ||
-        data > xx_data_get_u64(dh, 8, 0, false) || datasize > xx_data_get_u64(dh, 8, 0, false) - data || data != (uint64_t)xx_data_get_u32(h + 28, 4, 0, false) + xx_data_get_u64(table + 64, 8, 0, false)) goto done;
-    names_at = records + count * 32;
+        data > xx_data_get_u64(dh, 8, 0, false) || datasize > xx_data_get_u64(dh, 8, 0, false) - data ||
+        data != (uint64_t)xx_data_get_u32(h + 28, 4, 0, false) + xx_data_get_u64(table + prefix + 32, 8, 0, false)) goto done;
+    /* Win32 entries are name offset/u32 time/u64 size/u64 reserved. Native
+     * entries widen the first two fields. Names begin after the entire table. */
+    stride=0;
+    for(i=32;i>=24;i-=8){uint64_t j,sum=0,name_floor;
+        if(count>(table_size-records)/i)continue;name_floor=records+count*i;
+        for(j=0;j<count;++j){const uint8_t *r=table+(size_t)records+(size_t)(j*i);
+            uint64_t name=i==24?xx_data_get_u32(r,4,0,false):xx_data_get_u64(r,8,0,false);
+            uint64_t size=xx_data_get_u64(r+(i==24?8:16),8,0,false);
+            if(name<name_floor||name>=table_size||(name&1U))break;
+            if(size!=UINT64_MAX){if(size>datasize-sum)break;sum+=size;}
+        }
+        if(j==count&&sum==datasize){stride=(size_t)i;break;}
+    }
+    if(!stride)goto done;
+    names_at = records + count * stride;
     if (table_size > budget || sizeof(*ix) > budget - table_size) goto done;
     ix = (ei_index *)xx_mem_calloc(1, sizeof(*ix));
     if (!ix) goto done;
     ix->records.size = total - base; ix->stream = base + (int64_t)stream; ix->packed = (int64_t)packed;
     ix->unpacked = xx_data_get_u64(dh, 8, 0, false); ix->dictionary = dictionary; ix->owned = sizeof(*ix);ix->source_device=f->device;ix->source_base=f->base_address;
     for (i = 0; i < count; ++i) {
-        const uint8_t *r = table + (size_t)records + (size_t)i * 32;
-        uint64_t size = xx_data_get_u64(r + 16, 8, 0, false), name_at = xx_data_get_u64(r, 8, 0, false);
+        const uint8_t *r = table + (size_t)records + (size_t)i * stride;
+        uint64_t size = xx_data_get_u64(r + (stride==24?8:16), 8, 0, false), name_at = stride==24?xx_data_get_u32(r,4,0,false):xx_data_get_u64(r,8,0,false);
         char *name; uint64_t temporary, name_bytes; size_t old_capacity=ix->records.capacity, new_capacity=old_capacity;
         if ((pd && xx_pd_is_stopped(pd)) || name_at < names_at || ix->owned > budget - table_size ||
             !(name = ei_name(table, (size_t)table_size, name_at, budget - table_size - ix->owned, &temporary))) goto bad;
@@ -170,7 +194,7 @@ static ei_index *ei_parse(Abstractformat *f, const xx_list_s *opts, xx_pd_struct
         if (temporary > budget-table_size-ix->owned || name_bytes > budget-table_size-ix->owned-temporary ||
             (new_capacity!=old_capacity && new_capacity*sizeof(ue2_member)>budget-table_size-ix->owned-temporary-name_bytes)) {xx_str_free(name);goto bad;}
         if (size != UINT64_MAX && size > datasize) { xx_str_free(name); goto bad; }
-        if (!ue2_add(&ix->records, name, (int64_t)data, size == UINT64_MAX ? 0 : (int64_t)size, xx_data_get_u64(r + 8, 8, 0, false))) { xx_str_free(name); goto bad; }
+        if (!ue2_add(&ix->records, name, (int64_t)data, size == UINT64_MAX ? 0 : (int64_t)size, (stride==24?xx_data_get_u32(r+4,4,0,false):xx_data_get_u64(r+8,8,0,false)))) { xx_str_free(name); goto bad; }
         ix->owned += name_bytes+(new_capacity-old_capacity)*sizeof(ue2_member); xx_str_free(name);
         ix->records.members[ix->records.count - 1].is_folder = size == UINT64_MAX;
         if (size != UINT64_MAX) { data += size; datasize -= size; }

@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: MIT. Original music framing derived independently from primary AdPlug loader. */
 #include "xxfclib/formats/rdos_raw/xx_rdos_raw.h"
-#include "../xx_sixteenth_media.h"
+#include "../common/xx_music_components.h"
 #include "xxfclib/data/xx_data.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
- m16_blob b={0};uint64_t at=10,start;bool stop=false,ok=false;
- M16_NEED(m16_load(f,&b,pd)&&m16_tag(&b,0,"RAWADATA",8)&&m16_span(&b,0,12)&&xx_data_get_u16(b.p+8, 2, 0, false)&&m16_emit(f,s,&b,"descriptor.raw",0,10));
- while(at<b.n){uint8_t value,command;M16_NEED(m16_span(&b,at,2)&&m16_work(&b,1));value=b.p[(size_t)at];command=b.p[(size_t)at+1];at+=2;if(value==255&&command==255){stop=true;break;}if(command==2){if(!value){M16_NEED(m16_span(&b,at,2)&&xx_data_get_u16(b.p+(size_t)at, 2, 0, false));at+=2;}else M16_NEED(value<=2);}}
- M16_NEED(stop&&m16_emit(f,s,&b,"opl-commands.raw",10,at-10));if(at<b.n){start=at;M16_NEED(b.p[(size_t)at++]==26&&m16_z(&b,&at,b.n,40));if(at<b.n&&b.p[(size_t)at]==27){++at;M16_NEED(m16_z(&b,&at,b.n,40));}if(at<b.n&&b.p[(size_t)at]==28){++at;M16_NEED(m16_z(&b,&at,b.n,1023));}M16_NEED(at==b.n&&m16_emit(f,s,&b,"metadata.raw",start,at-start));}
- M16_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;
+ music_blob b={0};uint64_t at=10,start;bool stop=false,ok=false;
+ MUSIC_NEED(music_load(f,&b,pd)&&music_tag(&b,0,"RAWADATA",8)&&music_span(&b,0,12)&&xx_data_get_u16(b.p+8, 2, 0, false)&&music_emit(f,s,&b,"descriptor.raw",0,10));
+ while(at<b.n){uint8_t value,command;MUSIC_NEED(music_span(&b,at,2)&&music_work(&b,1));value=b.p[(size_t)at];command=b.p[(size_t)at+1];at+=2;if(value==255&&command==255){stop=true;break;}if(command==2){if(!value){MUSIC_NEED(music_span(&b,at,2)&&xx_data_get_u16(b.p+(size_t)at, 2, 0, false));at+=2;}else MUSIC_NEED(value<=2);}}
+ MUSIC_NEED(stop&&music_emit(f,s,&b,"opl-commands.raw",10,at-10));if(at<b.n){start=at;MUSIC_NEED(b.p[(size_t)at++]==26&&music_ascii_zstring(&b,&at,b.n,40));if(at<b.n&&b.p[(size_t)at]==27){++at;MUSIC_NEED(music_ascii_zstring(&b,&at,b.n,40));}if(at<b.n&&b.p[(size_t)at]==28){++at;MUSIC_NEED(music_ascii_zstring(&b,&at,b.n,1023));}MUSIC_NEED(at==b.n&&music_emit(f,s,&b,"metadata.raw",start,at-start));}
+ MUSIC_NEED(at==b.n);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 void xx_rdos_raw_init(xx_rdos_raw *r,xx_io_device *d,int64_t b) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_RDOS_RAW,"rdos_raw");}}

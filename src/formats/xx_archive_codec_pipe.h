@@ -9,6 +9,9 @@
 #include <limits.h>
 #include <wchar.h>
 #include "xxfclib/data/xx_data.h"
+#ifdef XFU_SPECIALIZED_LIBRARY
+#include "specialized_bridge.h"
+#endif
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -101,6 +104,9 @@ done:if(child_read)CloseHandle(child_read);if(child_write)CloseHandle(child_writ
 failed:if(in[0]>=0)close(in[0]);if(in[1]>=0)close(in[1]);if(out[0]>=0)close(out[0]);if(out[1]>=0)close(out[1]);return false;
 #endif
 }
+#ifdef XFU_SPECIALIZED_LIBRARY
+static bool af_library_cancelled(void *context) { return !af_live((af_process *)context); }
+#endif
 static XXFC_MAYBE_UNUSED bool af_decode(ac_blob *b,unsigned kind,uint8_t *out,uint32_t size) {
  af_process p;uint8_t h[32];uint64_t received=0,worker;bool ok=false;
  xx_mem_zero(&p,sizeof(p));p.status=AF_FORMAT;p.start=af_clock();p.timeout=60000U;p.pd=b->pd;
@@ -109,6 +115,18 @@ static XXFC_MAYBE_UNUSED bool af_decode(ac_blob *b,unsigned kind,uint8_t *out,ui
 #endif
  if(b->used>b->limit || (worker=b->limit-b->used)<65536U)return ac_error(b,"decoder workspace exceeds archive memory limit");
  if(worker>UINT64_C(1024)*1024U*1024U)worker=UINT64_C(1024)*1024U*1024U;
+#ifdef XFU_SPECIALIZED_LIBRARY
+ if(kind==1U || kind==2U || kind==3U || kind==5U || kind==6U) {
+  char error[512]={0};
+  int result=xfu_specialized_decode(kind,b->p,b->n,out,size,(size_t)worker,
+      af_library_cancelled,&p,error,sizeof(error));
+  if(!result && af_live(&p))return true;
+  if(!b->pd || !xx_pd_is_stopped(b->pd))
+   ac_error(b,p.status==AF_TIMEOUT?"archive codec timed out":
+       (error[0]?error:"library codec rejected damaged or unsupported stream"));
+  return false;
+ }
+#endif
  if(!af_live(&p))goto done;
  if(!af_start(&p,NULL,worker)){p.status=AF_UNAVAILABLE;goto done;}
  xx_rt_memcpy(h,"AFC1",4);xx_data_set_u32(h+4, 4, 0, kind, false);xx_data_set_u64(h+8, 8, 0, b->n, false);xx_data_set_u64(h+16, 8, 0, size, false);xx_data_set_u64(h+24, 8, 0, worker, false);

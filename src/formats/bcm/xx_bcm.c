@@ -204,11 +204,6 @@ static uint32_t bcm_decode_symbol(bcm_model *m, bcm_decoder *rc) {
     const uint16_t *second = m->order1[m->prev2];
     uint16_t (*sse)[17];
     uint32_t ctx = 1U;
-    if (m->prev1 == m->prev2) {
-        if (m->run < 3U) ++m->run;  /* only "> 2" is ever tested */
-    } else {
-        m->run = 0U;
-    }
     sse = m->sse[m->run > 2U ? 1 : 0];
     while (ctx < 256U) {
         /* Both mixes stay within 0..65535, so j + 1 <= 16. */
@@ -233,6 +228,11 @@ static uint32_t bcm_decode_symbol(bcm_model *m, bcm_decoder *rc) {
     }
     m->prev2 = m->prev1;
     m->prev1 = ctx & 0xFFU;
+    if (m->prev1 == m->prev2) {
+        if (m->run < 3U) ++m->run;
+    } else {
+        m->run = 0U;
+    }
     return ctx & 0xFFU;
 }
 

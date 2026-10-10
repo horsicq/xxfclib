@@ -80,7 +80,7 @@ struct xx_format_search_state;
 struct xx_format_search_info;
 
 /**
- * @brief Callbacks for detecting, sizing, and streaming searches for a format.
+ * @brief Callbacks for detecting, sizing, querying, and searching a format.
  *
  * The search callbacks follow the xx_format_extractor streaming contract:
  * create positions the state on the first match, current returns a borrowed
@@ -121,9 +121,17 @@ struct Abstractextractor {
    * no supported type matches. The device cursor is preserved.
    */
   xx_file_type_t (*file_type)(xx_io_device *device, int64_t base_address, bool is_mapped);
+
+  /** Read the format version at an absolute device offset.
+   * Returns an owned UTF-8 string; release it with xx_str_free(). A valid
+   * format without version metadata returns an allocated empty string.
+   * Returns NULL on invalid input, parse/allocation failure, or failure to
+   * restore the device cursor. The returned string outlives this call and
+   * later extractor calls. */
+  char *(*get_version)(xx_io_device *device, int64_t base_address, bool is_mapped);
 };
 
-/** Return the detection, size, and streaming callbacks for a supported file type.
+/** Return the detection, size, version, and streaming callbacks for a file type.
  * Multiple file types may share one extractor. Returns NULL for a name-only
  * type, an unknown type, or one without a compiled implementation. */
 XXFC_API Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type);

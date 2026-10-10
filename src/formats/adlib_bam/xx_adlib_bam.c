@@ -1,21 +1,21 @@
 /* SPDX-License-Identifier: MIT. Validated original encoded music components; no playback. */
 #include "xxfclib/formats/adlib_bam/xx_adlib_bam.h"
-#include "../xx_fifteenth_media.h"
+#include "../common/xx_music_components.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
- m15_blob b={0};uint64_t at=4,run=4;uint16_t labels=1,refs=0;bool end=false,ok=false;
- M15_NEED(m15_load(f,&b,pd)&&m15_tag(&b,0,"CBMF",4)&&m15_emit(f,s,&b,"descriptor.bam",0,4));
- while(at<b.n){uint64_t start=at;uint8_t c,op,ch;M15_NEED(m15_work(&b,1));c=b.p[(size_t)at++];op=c&240;ch=c&15;
+ music_blob b={0};uint64_t at=4,run=4;uint16_t labels=1,refs=0;bool end=false,ok=false;
+ MUSIC_NEED(music_load(f,&b,pd)&&music_tag(&b,0,"CBMF",4)&&music_emit(f,s,&b,"descriptor.bam",0,4));
+ while(at<b.n){uint64_t start=at;uint8_t c,op,ch;MUSIC_NEED(music_work(&b,1));c=b.p[(size_t)at++];op=c&240;ch=c&15;
   if(c>=128)continue;
-  if(op==0){M15_NEED(at==b.n);end=true;break;}
-  if(op==16){M15_NEED(ch<9&&m15_span(&b,at,1)&&b.p[(size_t)at]<128);++at;}
-  else if(op==32)M15_NEED(ch<9);
-  else if(op==48){M15_NEED(ch<9&&m15_span(&b,at,11));if(start>run)M15_NEED(m15_emit(f,s,&b,"commands.bam",run,start-run));M15_NEED(m15_emit(f,s,&b,"instrument.bam",start,12));at+=11;run=at;}
+  if(op==0){MUSIC_NEED(at==b.n);end=true;break;}
+  if(op==16){MUSIC_NEED(ch<9&&music_span(&b,at,1)&&b.p[(size_t)at]<128);++at;}
+  else if(op==32)MUSIC_NEED(ch<9);
+  else if(op==48){MUSIC_NEED(ch<9&&music_span(&b,at,11));if(start>run)MUSIC_NEED(music_emit(f,s,&b,"commands.bam",run,start-run));MUSIC_NEED(music_emit(f,s,&b,"instrument.bam",start,12));at+=11;run=at;}
   else if(op==80)labels|=(uint16_t)(1U<<ch);
-  else if(op==96){M15_NEED(m15_span(&b,at,1)&&(labels&(uint16_t)(1U<<ch)));refs|=(uint16_t)(1U<<ch);++at;}
-  else if(op==112)M15_NEED(ch==0);
-  else M15_NEED(false);
+  else if(op==96){MUSIC_NEED(music_span(&b,at,1)&&(labels&(uint16_t)(1U<<ch)));refs|=(uint16_t)(1U<<ch);++at;}
+  else if(op==112)MUSIC_NEED(ch==0);
+  else MUSIC_NEED(false);
  }
- M15_NEED(end&&!(refs&~labels));if(at>run)M15_NEED(m15_emit(f,s,&b,"commands.bam",run,at-run));s->size=(int64_t)b.n;ok=true;
+ MUSIC_NEED(end&&!(refs&~labels));if(at>run)MUSIC_NEED(music_emit(f,s,&b,"commands.bam",run,at-run));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 void xx_adlib_bam_init(xx_adlib_bam *r,xx_io_device *d,int64_t b) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_ADLIB_BAM,"adlib_bam");}}

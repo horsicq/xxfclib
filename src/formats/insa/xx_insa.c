@@ -6,7 +6,7 @@
  * producing the declared decoded size ends at its final coded byte.
  * XArchive's LH1 stream measurement confirms this framing.  The native
  * xx_lzh1 decoder accepts exactly that prefix and rejects whole trailing
- * bytes.  All eleven MOLYBALL.DAT outputs matched U3 byte-for-byte.
+ * bytes.  All eleven MOLYBALL.DAT outputs matched the reference reader byte-for-byte.
  */
 #include "xxfclib/formats/insa/xx_insa.h"
 #include "xxfclib/algo/lzh/xx_lzh.h"

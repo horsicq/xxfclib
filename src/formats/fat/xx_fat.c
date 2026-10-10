@@ -3054,7 +3054,8 @@ bool xx_fat_archive_record_move_to_next(Abstractformat *self,
  * than cached at parse time, and the same cycle guard applies. */
 static bool xx_fat_write_entry(Abstractformat *self, xx_fat_private *parsed,
                                const xx_fat_entry *entry,
-                               const char *destination, uint64_t *budget,
+                               const char *destination, bool overwrite,
+                               uint64_t *budget,
                                xx_pd_struct *pd) {
     const xx_fat_geometry *geometry = &parsed->geometry;
     xx_io_device *output;
@@ -3073,7 +3074,7 @@ static bool xx_fat_write_entry(Abstractformat *self, xx_fat_private *parsed,
     *budget -= remaining;
     buffer = (uint8_t *)xx_mem_alloc(geometry->bytes_per_cluster);
     if (!buffer) return false;
-    output = xx_io_file_open(destination, "wb");
+    output = xx_io_file_open(destination, overwrite ? "wb" : "wbx");
     created = output != NULL;
     if (!output) {
         xx_mem_free(buffer);
@@ -3122,7 +3123,7 @@ static bool xx_fat_write_entry(Abstractformat *self, xx_fat_private *parsed,
         cluster = next;
     }
     xx_fat_visit_reset(parsed);
-    xx_io_close(output);
+    if (xx_io_close(output) != 0) ok = false;
     xx_mem_free(buffer);
     if (!ok && created) (void)xx_rt_remove(destination);
     return ok;
@@ -3138,6 +3139,7 @@ bool xx_fat_unpack_current_archive_record(Abstractformat *self,
     char *owned_base = NULL;
     char *destination = NULL;
     bool result = false;
+    bool overwrite = false;
     if (!self || !self->device || !state || state->format != self ||
         !state->has_record || !state->internal_state ||
         (pd && xx_pd_is_stopped(pd))) {
@@ -3147,6 +3149,9 @@ bool xx_fat_unpack_current_archive_record(Abstractformat *self,
     if (stream->index >= stream->parsed->count) return false;
     entry = &stream->parsed->entries[stream->index];
     if (!xx_fat_safe_name(entry->name)) return false;
+    option = xx_format_resolve_extra_parameter(
+        self, &state->options, XX_META_ID_OPT_OVERWRITE);
+    overwrite = option && xx_var_get_bool(option);
     option = xx_fat_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!option) {
         /* No destination: report whether the record could be extracted. */
@@ -3174,6 +3179,7 @@ bool xx_fat_unpack_current_archive_record(Abstractformat *self,
         result = xx_io_create_dirs_a(destination, true);
     } else if (xx_io_create_dirs_a(destination, false)) {
         result = xx_fat_write_entry(self, stream->parsed, entry, destination,
+                                    overwrite,
                                     &stream->output_budget, pd);
     }
 cleanup:

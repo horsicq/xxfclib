@@ -2,11 +2,11 @@
  * SPDX-License-Identifier: MIT
  *
  * Compressed UNIX man-page databases (".dbz", also shipped as "MAN.1").
- * XArchive has no module for this one.  The layout was recovered from U3's
+ * XArchive has no module for this one.  The layout was recovered from the reference reader's
  * DBZ handler -- class umb, VMT 006d9458, recognition predicate
  * decompiled/functions/006d/006d97e0.c -> 006d94d0, open/list
  * 006d9800 -> 006d9510 -- and then confirmed against the corpus and against
- * U3's own listing, member for member.
+ * reference listings, member for member.
  *
  *   banner, 27 bytes at offset 0:
  *     "!<man database compressed>\n"
@@ -20,7 +20,7 @@
  *   FIRST record's offset, which is where the payload area begins.  So
  *   (offset0 - 27) must be a positive multiple of 32, and that quotient is
  *   the record count.  Trailing records that are all NUL are free slots and
- *   are skipped, which is exactly what U3 does.
+ *   are skipped, which is exactly what the reference reader does.
  *
  *   Each payload is a self-contained compressed stream: gzip (1f 8b) in the
  *   newer databases, Unix compress (1f 9d) in the older ones.  Two records
@@ -36,7 +36,7 @@
  * truncated copies: their index is intact and describes 186 pages, but the
  * file stops after page 122.  Rather than reject the whole database or read
  * past the end, this reader lists the records that are wholly inside the
- * file and drops the rest.  U3 lists all 186 and then fails on the missing
+ * file and drops the rest.  The reference reader lists all 186 and then fails on the missing
  * payloads; listing only what is actually present is the safer answer.
  *
  * A gzip member's plain size is taken from its own ISIZE trailer at parse
@@ -46,7 +46,7 @@
  * so a successful decode is still a decode of the whole stream.
  *
  * All 6 corpus samples in F:\ARC\ARC\DBZ parse: 286, 251, 271 and 253
- * members for the four complete databases, matching U3 member for member,
+ * members for the four complete databases, matching the reference reader member for member,
  * and 122 each for the two truncated ones (of the 186 their index names).
  */
 
@@ -382,7 +382,7 @@ static xx_dbz_stream *xx_dbz_parse(Abstractformat *self,
         uint32_t method;
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        /* Trailing all-NUL records are free slots, exactly as U3 treats
+        /* Trailing all-NUL records are free slots, exactly as the reference reader treats
          * them. */
         if (xx_dbz_entry_is_free(entry)) continue;
         name_length = xx_dbz_name_length(entry);

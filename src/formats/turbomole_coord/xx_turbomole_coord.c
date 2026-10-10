@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.ase-lib.org/_modules/ase/io/turbomole.html */
 #include "xxfclib/formats/turbomole_coord/xx_turbomole_coord.h"
-#include "../xx_thirteenth_root.h"
+#include "../common/xx_scientific_structure.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[8];unsigned nt,atoms=0;uint64_t head,tail=0;bool ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;
-    NH_NEED(th_words(&c,&line,t,8,&nt,"#") && el_eq(&b,t[0],"$coord") && (nt==1 || (nt==2 && el_eq(&b,t[1],"angs"))));head=c.at;
-    while(c.at<b.n) {uint64_t start=c.at;NH_NEED(th_words(&c,&line,t,8,&nt,"#"));if(el_eq(&b,t[0],"$end")) {NH_NEED(nt==1);tail=start;break;}
-        NH_NEED(nt==4 && ++atoms<=100000 && th_floats(&b,t,3) && th_symbol(&b,t[3]));}
-    NH_NEED(atoms && tail && tw_trailing(&c));
-    NH_NEED(nh_add(f,s,&b,"coordinate-header",0,head) && nh_add(f,s,&b,"atoms",head,tail-head) && nh_add(f,s,&b,"coordinate-end",tail,b.n-tail));s->size=(int64_t)b.n;ok=true;
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[8];unsigned nt,atoms=0;uint64_t head,tail=0;bool ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;
+    BLOB_NEED(structure_words(&c,&line,t,8,&nt,"#") && scientific_text_eq(&b,t[0],"$coord") && (nt==1 || (nt==2 && scientific_text_eq(&b,t[1],"angs"))));head=c.at;
+    while(c.at<b.n) {uint64_t start=c.at;BLOB_NEED(structure_words(&c,&line,t,8,&nt,"#"));if(scientific_text_eq(&b,t[0],"$end")) {BLOB_NEED(nt==1);tail=start;break;}
+        BLOB_NEED(nt==4 && ++atoms<=100000 && structure_floats(&b,t,3) && structure_symbol(&b,t[3]));}
+    BLOB_NEED(atoms && tail && molecular_trailing(&c));
+    BLOB_NEED(blob_add(f,s,&b,"coordinate-header",0,head) && blob_add(f,s,&b,"atoms",head,tail-head) && blob_add(f,s,&b,"coordinate-end",tail,b.n-tail));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

@@ -1,26 +1,26 @@
 /* SPDX-License-Identifier: MIT. Original framed components, no playback or payload execution. */
 #include "xxfclib/formats/tracker_dmf/xx_tracker_dmf.h"
-#include "../tracker_liquid/xx_eighth_components.h"
+#include "../common/xx_audio_components.h"
 #ifndef TRACKER_DMF
 #define XX_FILE_TYPE_TRACKER_DMF ((xx_file_type_t)807)
 #endif
-static bool e8_parse(e8_blob*c) {
+static bool audio_component_parse(audio_component_blob*c) {
  size_t p=66,seq=0,seqz=0,si=0,siz=0,sd=0,sdz=0;unsigned seen=0,patterns=0,channels=0,i;
- if(!e8_eq(c,0,"DDMF",4) || !e8_range(c,0,66) || c->b[4]!=8 || !e8_add(c,"header.bin",0,66))return false;
- while(p<c->n) {uint32_t z;size_t at=p+8;unsigned bit=0;char name[24];if(e8_eq(c,p,"ENDE",4)){if(p+4!=c->n || !e8_add(c,"ENDE.bin",p,4))return false;p+=4;break;}if(!e8_range(c,p,8) || (z=xx_data_get_u32(c->b+p+4, 4, 0, false))>c->n-at)return false;
-  if(e8_eq(c,p,"SEQU",4)){bit=1;seq=at;seqz=z;}
-  else if(e8_eq(c,p,"PATT",4)){size_t q=at+3;if(z<3 || !(patterns=xx_data_get_u16(c->b+at, 2, 0, false)) || patterns>1024 || !(channels=c->b[at+2]) || channels>32)return false;bit=2;for(i=0;i<patterns;++i){uint32_t n;unsigned rows;if(q+8>at+z || !e8_range(c,q,8) || c->b[q]==0 || c->b[q]>channels || !(rows=xx_data_get_u16(c->b+q+2, 2, 0, false)) || rows>1024 || (n=xx_data_get_u32(c->b+q+4, 4, 0, false))>at+z-q-8)return false;q+=8U+n;}if(q!=at+z)return false;}
-  else if(e8_eq(c,p,"SMPI",4)){bit=4;si=at;siz=z;}
-  else if(e8_eq(c,p,"SMPD",4)){bit=8;sd=at;sdz=z;}
-  else if(!e8_eq(c,p,"CMSG",4) && !e8_eq(c,p,"SETT",4))return false;
-  if(bit && (seen&bit)) {return false; } seen|=bit;xx_rt_snprintf(name,sizeof(name),"%.4s.bin",c->b+p);if(!e8_add(c,name,p,8U+z))return false;p=at+z;
+ if(!audio_component_eq(c,0,"DDMF",4) || !audio_component_range(c,0,66) || c->b[4]!=8 || !audio_component_add(c,"header.bin",0,66))return false;
+ while(p<c->n) {uint32_t z;size_t at=p+8;unsigned bit=0;char name[24];if(audio_component_eq(c,p,"ENDE",4)){if(p+4!=c->n || !audio_component_add(c,"ENDE.bin",p,4))return false;p+=4;break;}if(!audio_component_range(c,p,8) || (z=xx_data_get_u32(c->b+p+4, 4, 0, false))>c->n-at)return false;
+  if(audio_component_eq(c,p,"SEQU",4)){bit=1;seq=at;seqz=z;}
+  else if(audio_component_eq(c,p,"PATT",4)){size_t q=at+3;if(z<3 || !(patterns=xx_data_get_u16(c->b+at, 2, 0, false)) || patterns>1024 || !(channels=c->b[at+2]) || channels>32)return false;bit=2;for(i=0;i<patterns;++i){uint32_t n;unsigned rows;if(q+8>at+z || !audio_component_range(c,q,8) || c->b[q]==0 || c->b[q]>channels || !(rows=xx_data_get_u16(c->b+q+2, 2, 0, false)) || rows>1024 || (n=xx_data_get_u32(c->b+q+4, 4, 0, false))>at+z-q-8)return false;q+=8U+n;}if(q!=at+z)return false;}
+  else if(audio_component_eq(c,p,"SMPI",4)){bit=4;si=at;siz=z;}
+  else if(audio_component_eq(c,p,"SMPD",4)){bit=8;sd=at;sdz=z;}
+  else if(!audio_component_eq(c,p,"CMSG",4) && !audio_component_eq(c,p,"SETT",4))return false;
+  if(bit && (seen&bit)) {return false; } seen|=bit;xx_rt_snprintf(name,sizeof(name),"%.4s.bin",c->b+p);if(!audio_component_add(c,name,p,8U+z))return false;p=at+z;
  }
- if(p!=c->n || seen!=15 || !e8_eq(c,c->n-4,"ENDE",4) || seqz<6 || (seqz&1) || xx_data_get_u16(c->b+seq, 2, 0, false)>xx_data_get_u16(c->b+seq+2, 2, 0, false) || xx_data_get_u16(c->b+seq+2, 2, 0, false)>=(seqz-4)/2)return false;
+ if(p!=c->n || seen!=15 || !audio_component_eq(c,c->n-4,"ENDE",4) || seqz<6 || (seqz&1) || xx_data_get_u16(c->b+seq, 2, 0, false)>xx_data_get_u16(c->b+seq+2, 2, 0, false) || xx_data_get_u16(c->b+seq+2, 2, 0, false)>=(seqz-4)/2)return false;
  for(i=4;i<seqz;i+=2)if(xx_data_get_u16(c->b+seq+i, 2, 0, false)>=patterns)return false;
  if(!siz) {return false; } {size_t q=si+1,r=sd;unsigned count=c->b[si];for(i=0;i<count;++i){unsigned len;uint32_t raw,stored;uint8_t flags;if(q>=si+siz)return false;len=c->b[q++];if(len>si+siz-q || si+siz-q-len<30)return false;q+=len;raw=xx_data_get_u32(c->b+q, 4, 0, false);flags=c->b[q+15];if(flags&~15U || xx_data_get_u32(c->b+q+4, 4, 0, false)>xx_data_get_u32(c->b+q+8, 4, 0, false) || xx_data_get_u32(c->b+q+8, 4, 0, false)>raw || ((flags&2) && (raw&1)))return false;q+=30;if(sd+sdz-r<4)return false;stored=xx_data_get_u32(c->b+r, 4, 0, false);r+=4;if(stored>sd+sdz-r || (!(flags&12) && stored!=raw))return false;r+=stored;}if(q!=si+siz || r!=sd+sdz)return false;}
  return true;
 }
-static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {return e8_loaded(f,s,pd,e8_parse);}
+static bool pm_parse(Abstractformat*f,pm_stream*s,xx_pd_struct*pd) {return audio_component_loaded(f,s,pd,audio_component_parse);}
 void xx_tracker_dmf_init(xx_tracker_dmf*r,xx_io_device*d,int64_t b) {if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_TRACKER_DMF,"bin");}}
 xx_tracker_dmf*xx_tracker_dmf_create(xx_io_device*d,int64_t b) {xx_tracker_dmf*r=(xx_tracker_dmf*)xx_mem_alloc(sizeof(*r));if(r)xx_tracker_dmf_init(r,d,b);return r;}
 void xx_tracker_dmf_destroy(xx_tracker_dmf*r) {if(r)xx_format_cleanup_extra_parameters(&r->format);}

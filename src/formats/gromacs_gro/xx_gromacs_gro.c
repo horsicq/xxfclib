@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://manual.gromacs.org/current/reference-manual/file-formats.html#gro */
 #include "xxfclib/formats/gromacs_gro/xx_gromacs_gro.h"
-#include "../xx_eleventh_data.h"
-static bool gro_fixed(nh_blob *b,el_token v,unsigned decimals) {unsigned i;if(!el_float(b,v) || v.n!=8 || b->p[(size_t)v.at+7-decimals]!='.') return false;for(i=8-decimals;i<8;++i) if(b->p[(size_t)v.at+i]<'0' || b->p[(size_t)v.at+i]>'9') return false;return true;}
+#include "../common/xx_scientific_text.h"
+static bool gro_fixed(memory_blob *b,scientific_text_token v,unsigned decimals) {unsigned i;if(!scientific_text_float(b,v) || v.n!=8 || b->p[(size_t)v.at+7-decimals]!='.') return false;for(i=8-decimals;i<8;++i) if(b->p[(size_t)v.at+i]<'0' || b->p[(size_t)v.at+i]>'9') return false;return true;}
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[12];uint64_t count,head,atoms,box,n;unsigned i,j,nt;bool ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;
-    NH_NEED(el_line(&c,&line) && line.n && line.n<=1024 && el_line(&c,&line) && el_uint(&b,line,&count) && count && count<=4090);head=c.at;atoms=head;
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[12];uint64_t count,head,atoms,box,n;unsigned i,j,nt;bool ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;
+    BLOB_NEED(scientific_text_line(&c,&line) && line.n && line.n<=1024 && scientific_text_line(&c,&line) && scientific_text_uint(&b,line,&count) && count && count<=4090);head=c.at;atoms=head;
     for(i=0;i<count;++i) {
-        NH_NEED(el_line(&c,&line) && (line.n==44 || line.n==68) && el_uint(&b,el_slice(line,0,5),&n) && n<=99999 && el_uint(&b,el_slice(line,15,5),&n) && n<=99999);
-        NH_NEED(el_ident(&b,el_trim(&b,el_slice(line,5,5))) && el_ident(&b,el_trim(&b,el_slice(line,10,5))));
-        for(j=0;j<(line.n==44 ? 3U:6U);++j) NH_NEED(gro_fixed(&b,el_slice(line,20+8*j,8),j<3 ? 3:4));
+        BLOB_NEED(scientific_text_line(&c,&line) && (line.n==44 || line.n==68) && scientific_text_uint(&b,scientific_text_slice(line,0,5),&n) && n<=99999 && scientific_text_uint(&b,scientific_text_slice(line,15,5),&n) && n<=99999);
+        BLOB_NEED(scientific_text_ident(&b,scientific_text_trim(&b,scientific_text_slice(line,5,5))) && scientific_text_ident(&b,scientific_text_trim(&b,scientific_text_slice(line,10,5))));
+        for(j=0;j<(line.n==44 ? 3U:6U);++j) BLOB_NEED(gro_fixed(&b,scientific_text_slice(line,20+8*j,8),j<3 ? 3:4));
     }
-    box=c.at;NH_NEED(el_line(&c,&line) && el_split(&b,line,t,12,&nt,false) && (nt==3 || nt==9));for(i=0;i<nt;++i) NH_NEED(el_float(&b,t[i]));
-    NH_NEED(c.at==b.n && nh_add(f,s,&b,"header",0,head) && nh_add(f,s,&b,"atoms",atoms,box-atoms) && nh_add(f,s,&b,"box",box,b.n-box));s->size=(int64_t)b.n;ok=true;
+    box=c.at;BLOB_NEED(scientific_text_line(&c,&line) && scientific_text_split(&b,line,t,12,&nt,false) && (nt==3 || nt==9));for(i=0;i<nt;++i) BLOB_NEED(scientific_text_float(&b,t[i]));
+    BLOB_NEED(c.at==b.n && blob_add(f,s,&b,"header",0,head) && blob_add(f,s,&b,"atoms",atoms,box-atoms) && blob_add(f,s,&b,"box",box,b.n-box));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

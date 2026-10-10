@@ -12,6 +12,7 @@ static const binder_member *binder_doc_source_member(
     const binder_stream *stream, uint32_t directory_index) {
     size_t index;
     for (index = 0U; index < stream->count; ++index) {
+        if (stream->progress && xx_pd_is_stopped(stream->progress)) return NULL;
         const binder_member *member = &stream->items[index];
         if (!member->virtual_document &&
             member->directory_index == directory_index)
@@ -24,6 +25,7 @@ static bool binder_doc_mark(const binder_stream *stream, uint32_t index,
                             uint8_t *selected, unsigned depth) {
     const uint8_t *entry;
     uint8_t type;
+    if (stream->progress && xx_pd_is_stopped(stream->progress)) return false;
     if (index == BINDER_ENDOFCHAIN || index == BINDER_FREESECT) return true;
     if (depth >= BINDER_MAX_DEPTH || (size_t)index >= stream->entry_count ||
         selected[index])
@@ -80,6 +82,7 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
         goto fail;
 
     for (index = 1U; index < stream->entry_count; ++index) {
+        if (stream->progress && xx_pd_is_stopped(stream->progress)) goto fail;
         const binder_member *member;
         const uint8_t *entry;
         uint64_t sectors;
@@ -129,6 +132,7 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
     directory = output + BINDER_DOC_SECTOR;
     xx_mem_copy(directory, stream->directory, dir_bytes);
     for (index = 1U; index < stream->entry_count; ++index) {
+        if (stream->progress && xx_pd_is_stopped(stream->progress)) goto fail;
         if (!selected[index])
             xx_mem_zero(directory + index * BINDER_DIR_ENTRY_SIZE,
                         BINDER_DIR_ENTRY_SIZE);
@@ -166,6 +170,7 @@ static bool binder_doc_build(const binder_stream *stream, uint32_t storage,
                            index + 1U < dir_sectors
                                ? (uint32_t)index + 1U : BINDER_ENDOFCHAIN);
     for (index = 1U; index < stream->entry_count; ++index) {
+        if (stream->progress && xx_pd_is_stopped(stream->progress)) goto fail;
         const binder_member *member;
         uint8_t *entry;
         uint32_t count, first;
@@ -269,6 +274,7 @@ static uint32_t binder_doc_storage_index(const binder_stream *stream,
     int chars = snprintf(wanted, sizeof(wanted), "%u", storage_id);
     if (chars <= 0 || (size_t)chars >= sizeof(wanted)) return BINDER_FREESECT;
     for (index = 1U; index < stream->entry_count; ++index) {
+        if (stream->progress && xx_pd_is_stopped(stream->progress)) return BINDER_FREESECT;
         const uint8_t *entry = stream->directory +
                                index * BINDER_DIR_ENTRY_SIZE;
         uint16_t name_length;
@@ -301,6 +307,7 @@ static const char *binder_doc_extension(const binder_stream *stream,
     if (length <= 0 || (size_t)length >= sizeof(prefix)) return "";
     prefix_size = (size_t)length;
     for (index = 0U; index < stream->count; ++index) {
+        if (stream->progress && xx_pd_is_stopped(stream->progress)) return "";
         const binder_member *member = &stream->items[index];
         const char *leaf;
         if (member->virtual_document || !member->name ||
@@ -359,6 +366,7 @@ static bool binder_add_virtual_documents(binder_stream *stream) {
         cursor < 100U || cursor > blob_size)
         goto done;
     for (index = 0U; index < count; ++index) {
+        if (stream->progress && xx_pd_is_stopped(stream->progress)) break;
         uint32_t entry_size, title_size, storage_id, storage_index;
         const char *extension;
         char title[1024], path[1100];

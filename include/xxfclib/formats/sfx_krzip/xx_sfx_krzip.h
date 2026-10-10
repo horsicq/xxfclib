@@ -33,7 +33,7 @@
  *   u32    ~CRC-32 of the unpacked data
  *   data   packed size bytes
  *
- * Data is one of two encodings, told apart the way U3 does it -- byte 13
+ * Data is one of two encodings, distinguished by whether byte 13
  * of the data is 'x' (the first byte of a zlib header):
  *
  *   PKWARE DCL implode (older builds), decoding to the unpacked size;

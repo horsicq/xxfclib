@@ -4,7 +4,7 @@
  * SAB Diskette Utility images (".sdu").  Ported from XArchive's
  * FT_SABDU_IMAGE branch in core/xlegacystorearchive.cpp (the geometry gate)
  * together with games/xgamestorearchive_p.cpp (its signature and MIME), and
- * cross-checked against U3's SABDU handler (class nga, VMT 0049e150).
+ * cross-checked against the reference reader's SABDU handler (class nga, VMT 0049e150).
  *
  *   header, 46 bytes at offset 0:
  *     0x00  21  char[21] "SAB Diskette Utility" plus its NUL

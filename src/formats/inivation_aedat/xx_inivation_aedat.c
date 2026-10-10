@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html */
 #include "xxfclib/formats/inivation_aedat/xx_inivation_aedat.h"
-#include "../xx_tenth_data.h"
+#include "../common/xx_phylogenetic_text.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};bool ok=false;uint64_t at=0,start;uint32_t prev=0;unsigned count=0;NH_NEED(nh_load(f,&b,pd) && b.n>=21 && !xx_rt_memcmp(b.p,"#!AER-DAT2.0",12) && (b.p[12]=='\n' || (b.p[12]=='\r' && b.p[13]=='\n')));
-    while(at<b.n && b.p[(size_t)at]=='#') {uint64_t line=at;while(at<b.n && b.p[(size_t)at]!='\n') {uint8_t c=b.p[(size_t)at++];NH_NEED((c>=32 && c<=126) || c=='\r' || c=='\t');}NH_NEED(at<b.n && at-line<=4096 && at<65536);++at;}
-    start=at;NH_NEED(start>=13 && start<b.n && (b.n-start)%8==0 && (b.n-start)/8<=4090 && nh_add(f,s,&b,"header",0,start));
-    while(at<b.n) {uint32_t time=xx_data_get_u32(b.p+(size_t)at+4, 4, 0, true);NH_NEED(time<0x80000000U && (!count || time>=prev) && nh_add(f,s,&b,"event",at,8));prev=time;++count;at+=8;}
-    NH_NEED(count);s->size=(int64_t)b.n;ok=true;
+    memory_blob b={0};bool ok=false;uint64_t at=0,start;uint32_t prev=0;unsigned count=0;BLOB_NEED(blob_load(f,&b,pd) && b.n>=21 && !xx_rt_memcmp(b.p,"#!AER-DAT2.0",12) && (b.p[12]=='\n' || (b.p[12]=='\r' && b.p[13]=='\n')));
+    while(at<b.n && b.p[(size_t)at]=='#') {uint64_t line=at;while(at<b.n && b.p[(size_t)at]!='\n') {uint8_t c=b.p[(size_t)at++];BLOB_NEED((c>=32 && c<=126) || c=='\r' || c=='\t');}BLOB_NEED(at<b.n && at-line<=4096 && at<65536);++at;}
+    start=at;BLOB_NEED(start>=13 && start<b.n && (b.n-start)%8==0 && (b.n-start)/8<=4090 && blob_add(f,s,&b,"header",0,start));
+    while(at<b.n) {uint32_t time=xx_data_get_u32(b.p+(size_t)at+4, 4, 0, true);BLOB_NEED(time<0x80000000U && (!count || time>=prev) && blob_add(f,s,&b,"event",at,8));prev=time;++count;at+=8;}
+    BLOB_NEED(count);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

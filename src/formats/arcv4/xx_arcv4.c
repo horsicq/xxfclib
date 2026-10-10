@@ -93,7 +93,7 @@ static char *arcv4_name(const uint8_t *raw, size_t size) {
             return NULL;
         }
         /* Absolute DOS paths are archive member names. Convert the drive
-         * colon to an inert component (H:\\foo -> H_/foo), as U3 does, then
+         * colon to an inert component (H:\\foo -> H_/foo), as the reference reader does, then
          * retain directory separators rather than flattening the tree. */
         if (index == 1U && raw[0] >= 'A' && raw[0] <= 'Z' &&
             value == ':')

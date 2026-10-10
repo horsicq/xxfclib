@@ -4,7 +4,7 @@
  * The "boo" printable transport encoding: a name line followed by six-bit
  * characters packed four-to-three, with '~' escaping a run of NUL bytes.
  * Ported from XArchive's archives/xboo.cpp; the shape constraints that keep
- * plain text from matching come from U3's own recognition predicate.
+ * plain text from matching come from the recovered recognition predicate.
  * xx_boo.h documents the transform and the evidence.
  */
 
@@ -154,7 +154,7 @@ static bool boo_parse_name_line(const uint8_t *source, size_t size,
     if (line_end == limit || line_end < 1U) return false;
     length = line_end;
     if (source[length - 1U] == BOO_CR) --length;
-    /* U3 requires at least three characters in the name line. */
+    /* The reference reader requires at least three characters in the name line. */
     if (length < 3U || length > (size_t)XX_BOO_MAX_NAME_SIZE) return false;
     for (index = 0U; index < length; ++index)
         name_out[index] = (char)source[index];

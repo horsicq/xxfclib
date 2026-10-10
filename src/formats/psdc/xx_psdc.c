@@ -6,18 +6,18 @@
  * character of the extension replaced by '_' or '$' (PSDWIN.HLP ->
  * PSDWIN.HL$, TRIBUNE.TTF -> TRIBUNE.TT$).
  *
- * The container is undocumented, but U3 recognises it and its recognition
- * predicate is recovered in F:\utils\U3\src (FORMAT_INDEX.md "archive / 194
+ * The container is undocumented, but the reference reader recognises it and its recognition
+ * predicate is recovered during decoder analysis (FORMAT_INDEX.md "archive / 194
  * PSDC", class gqa, VMT 0x00554c48; slot 0 -> FUN_00554cc0, slot 1 ->
  * FUN_00554d70).  Transcribing FUN_00554cc0 gives the layout exactly, and
  * every rule below holds for all 88 samples in F:\ARC\ARC\PSDC:
  *
  *   0x00  char[13]  the original 8.3 name, NUL terminated inside the field
- *                   (U3 gates this on its own 8.3 test, FUN_00425300: one to
+ *                   (the reference reader gates this on its own 8.3 test, FUN_00425300: one to
  *                   eight name characters, a mandatory '.', up to three
  *                   extension characters, then the NUL)
  *   0x0C  u8[64]    all zero - the rest of a 76-byte name buffer
- *   0x4C  u32       the total length of the container, header included.  U3
+ *   0x4C  u32       the total length of the container, header included.  The reference reader
  *                   requires it to EQUAL the file's real size, and it does
  *                   in all 88 samples; that exact equality is the anchor
  *                   that makes the layout certain.
@@ -25,7 +25,7 @@
  *
  * THE CODEC IS PKWARE DCL.  The two bytes at 0x50 that earlier work noted as
  * "constant 00 06" are not a bespoke stream tag: they are the DCL prelude,
- * and U3 treats them as such.  FUN_00554cc0 accepts byte 0x50 only when it
+ * and the reference reader treats them as such.  FUN_00554cc0 accepts byte 0x50 only when it
  * is 0 or 1 (the literal mode) and byte 0x51 only when it is 4, 5 or 6 (the
  * dictionary-size selector) -- it builds a bit mask, `1 << b`, and tests it
  * against 0x03 and 0x70 respectively.  Those are precisely DCL's two legal
@@ -109,7 +109,7 @@ static bool xx_psdc_read_at(Abstractformat *self, int64_t offset,
     return true;
 }
 
-/* U3's own 8.3 test (FUN_00425300), which is what makes this weak header
+/* The reference reader's own 8.3 test (FUN_00425300), which is what makes this weak header
  * usable at all: a printable first character that is not '.', one to eight
  * name characters, a mandatory '.', up to three extension characters and
  * then the terminating NUL, all inside @p size bytes.  @p length receives
@@ -190,7 +190,7 @@ static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd) {
         return NULL;
     if (!xx_psdc_name_field_sane(header, XX_PSDC_NAME_FIELD, &name_length))
         return NULL;
-    /* The rest of the 76-byte name buffer is zero in every sample, and U3
+    /* The rest of the 76-byte name buffer is zero in every sample, and the reference reader
      * requires it; it is most of what separates this header from noise. */
     for (index = XX_PSDC_ZERO_START; index < XX_PSDC_ZERO_END; ++index)
         if (header[index] != 0U) return NULL;
@@ -200,7 +200,7 @@ static xx_psdc_stream *xx_psdc_parse(Abstractformat *self, xx_pd_struct *pd) {
         header[XX_PSDC_HEADER_SIZE + 1] > 6U)
         return NULL;
     declared = xx_data_get_u32(header + XX_PSDC_SIZE_OFFSET, 4, 0, false);
-    /* The declared length is the container's own length and U3 requires it
+    /* The declared length is the container's own length and the reference reader requires it
      * to match the file exactly.  Bounding it against the real extent this
      * way means no later size can be derived from an unchecked field. */
     if (declared <= (uint32_t)XX_PSDC_HEADER_SIZE || (int64_t)declared != span)

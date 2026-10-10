@@ -5,7 +5,7 @@
  * SETUP.INF that ships beside it and is the same container holding a single
  * member).  XArchive has no module for it; the layout below was derived from
  * the 13 corpus samples, and every field named here is confirmed against
- * F:\ARC\U3.exe's own output - member names, sizes and timestamps all agree,
+ * reference output - member names, sizes and timestamps all agree,
  * and the decoded bytes are identical.
  *
  * There is no archive header.  The file is a chain of members, each a

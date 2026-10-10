@@ -1,24 +1,24 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.ase-lib.org/_modules/ase/io/castep.html */
 #include "xxfclib/formats/castep_cell/xx_castep_cell.h"
-#include "../xx_thirteenth_root.h"
+#include "../common/xx_scientific_structure.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[12],kind,cell[3][3];unsigned nt,blocks=0,rows=0;uint64_t start,atoms=0;bool lattice=false,positions=false,ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;
-    while(c.at<b.n) {start=c.at;if(!th_words(&c,&line,t,12,&nt,"#!")) {NH_NEED(c.at==b.n);break;}
-        NH_NEED(nt==2 && th_eq(&b,t[0],"%BLOCK") && ++blocks<=2);kind=t[1];rows=0;
-        if(th_eq(&b,kind,"LATTICE_CART")) {NH_NEED(!lattice);lattice=true;}
-        else {NH_NEED(!positions && (th_eq(&b,kind,"POSITIONS_ABS") || th_eq(&b,kind,"POSITIONS_FRAC")));positions=true;}
-        for(;;) {NH_NEED(th_words(&c,&line,t,12,&nt,"#!"));
-            if(th_eq(&b,t[0],"%ENDBLOCK")) {NH_NEED(nt==2 && (th_eq(&b,kind,"LATTICE_CART") ? th_eq(&b,t[1],"LATTICE_CART"):th_eq(&b,kind,"POSITIONS_ABS") ? th_eq(&b,t[1],"POSITIONS_ABS"):th_eq(&b,t[1],"POSITIONS_FRAC")));break;}
-            if(!rows && nt==1 && (th_eq(&b,t[0],"ang") || th_eq(&b,t[0],"bohr"))) {NH_NEED(!th_eq(&b,kind,"POSITIONS_FRAC"));NH_NEED(th_words(&c,&line,t,12,&nt,"#!"));}
-            if(th_eq(&b,kind,"LATTICE_CART")) {NH_NEED(nt==3 && rows<3 && th_floats(&b,t,3));xx_rt_memcpy(cell[rows],t,3*sizeof(el_token));}
-            else {NH_NEED(nt==4 && tw_element(&b,t[0]) && th_floats(&b,t+1,3) && ++atoms<=100000);}++rows;
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[12],kind,cell[3][3];unsigned nt,blocks=0,rows=0;uint64_t start,atoms=0;bool lattice=false,positions=false,ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;
+    while(c.at<b.n) {start=c.at;if(!structure_words(&c,&line,t,12,&nt,"#!")) {BLOB_NEED(c.at==b.n);break;}
+        BLOB_NEED(nt==2 && structure_eq(&b,t[0],"%BLOCK") && ++blocks<=2);kind=t[1];rows=0;
+        if(structure_eq(&b,kind,"LATTICE_CART")) {BLOB_NEED(!lattice);lattice=true;}
+        else {BLOB_NEED(!positions && (structure_eq(&b,kind,"POSITIONS_ABS") || structure_eq(&b,kind,"POSITIONS_FRAC")));positions=true;}
+        for(;;) {BLOB_NEED(structure_words(&c,&line,t,12,&nt,"#!"));
+            if(structure_eq(&b,t[0],"%ENDBLOCK")) {BLOB_NEED(nt==2 && (structure_eq(&b,kind,"LATTICE_CART") ? structure_eq(&b,t[1],"LATTICE_CART"):structure_eq(&b,kind,"POSITIONS_ABS") ? structure_eq(&b,t[1],"POSITIONS_ABS"):structure_eq(&b,t[1],"POSITIONS_FRAC")));break;}
+            if(!rows && nt==1 && (structure_eq(&b,t[0],"ang") || structure_eq(&b,t[0],"bohr"))) {BLOB_NEED(!structure_eq(&b,kind,"POSITIONS_FRAC"));BLOB_NEED(structure_words(&c,&line,t,12,&nt,"#!"));}
+            if(structure_eq(&b,kind,"LATTICE_CART")) {BLOB_NEED(nt==3 && rows<3 && structure_floats(&b,t,3));xx_rt_memcpy(cell[rows],t,3*sizeof(scientific_text_token));}
+            else {BLOB_NEED(nt==4 && molecular_element(&b,t[0]) && structure_floats(&b,t+1,3) && ++atoms<=100000);}++rows;
         }
-        NH_NEED(rows && (!th_eq(&b,kind,"LATTICE_CART") || (rows==3 && th_cell(&b,cell))));
-        NH_NEED(nh_add(f,s,&b,th_eq(&b,kind,"LATTICE_CART") ? "lattice-block":"positions-block",start,c.at-start));
+        BLOB_NEED(rows && (!structure_eq(&b,kind,"LATTICE_CART") || (rows==3 && structure_cell(&b,cell))));
+        BLOB_NEED(blob_add(f,s,&b,structure_eq(&b,kind,"LATTICE_CART") ? "lattice-block":"positions-block",start,c.at-start));
     }
-    NH_NEED(lattice && positions && atoms && blocks==2);s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(lattice && positions && atoms && blocks==2);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

@@ -269,6 +269,13 @@ static bool xx_lha_tag_ok(const uint8_t *prefix) {
             (prefix[5] >= (uint8_t)'a' && prefix[5] <= (uint8_t)'z'));
 }
 
+static bool xx_lha_selected_tag_ok(const xx_lha *archive, const uint8_t *prefix) {
+    if (!archive->sar_tags) return xx_lha_tag_ok(prefix);
+    return prefix[2] == ' ' && prefix[3] == 'L' && prefix[4] == 'H' &&
+           (prefix[5] == '0' || prefix[5] == '4' || prefix[5] == '5') &&
+           prefix[6] == ' ' && prefix[20] <= 1U;
+}
+
 /* LHA is a Japanese format and genuinely permits names outside ASCII: they
  * are raw Shift-JIS (or the writer's local code page) with nothing in the
  * container to say which, so high bytes are passed through unchanged. What
@@ -298,7 +305,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
     /* LHarc 1.x DOS carriers place a normal LHA chain immediately after
      * their declared DOS image, sometimes after a few padding bytes. Limit
      * recognition to the named stub and validate the complete archive chain. */
-    {
+    if (!((xx_lha *)self)->sar_tags) {
         uint8_t carrier[128];
         size_t bytes = span < 128 ? (size_t)span : 128, i;
         if (!xx_lha_read_at(self, self->base_address, carrier, bytes)) return NULL;
@@ -417,7 +424,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
             terminated = true;
             break;
         }
-        if (!xx_lha_tag_ok(prefix)) {
+        if (!xx_lha_selected_tag_ok((xx_lha *)self, prefix)) {
             /* A zero where a header size would be is LHA's end-of-archive
              * marker. The tag is tested FIRST because at level 2 that byte is
              * only the low half of a 16-bit size, and a legitimate 256-byte
@@ -429,7 +436,8 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
             goto fail;
         }
 
-        method = XX_LHA_TAG3(prefix[3], prefix[4], prefix[5]);
+        method = ((xx_lha *)self)->sar_tags ? XX_LHA_TAG3('l', 'h', prefix[5]) :
+                                           XX_LHA_TAG3(prefix[3], prefix[4], prefix[5]);
         level = prefix[20];
         compressed_size = (int64_t)xx_data_get_u32(prefix + 7, 4, 0, false);
         uncompressed_size = (int64_t)xx_data_get_u32(prefix + 11, 4, 0, false);
@@ -658,12 +666,12 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         name[out] = '\0';
         /* GEMDOS self-extractor paths can use a literal pipe in an output
-         * name. U3 maps that Windows-reserved character to an underscore.
+         * name. The reference reader maps that Windows-reserved character to an underscore.
          * Keep the mapping wrapper-only; plain LHA retains stored names. */
         if (((xx_lha *)self)->sanitize_sfx_drive) {
             for (index = 0; index < (int32_t)out; ++index)
                 if (name[index] == '|') name[index] = '_';
-            /* Map only the legacy name bytes confirmed against U3 in Atari
+            /* Map only the legacy name bytes confirmed against the reference reader in Atari
              * self-extractors; plain LHA names retain their stored bytes. */
             for (index = 0; index < (int32_t)out; ++index) {
                 uint8_t encoded[3];
@@ -703,14 +711,14 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd) {
         }
         /* A GEMDOS/DOS self-extractor can store either a drive-rooted path
          * (X:/foo) or a drive-relative name (X:foo).  Its wrapper opts in
-         * to the safe X_ spelling that matches U3; ordinary LHA still
+         * to the safe X_ spelling that matches the reference reader; ordinary LHA still
          * rejects drive designators. */
         if (((xx_lha *)self)->sanitize_sfx_drive && out >= 3U &&
             ((name[0] >= 'A' && name[0] <= 'Z') ||
              (name[0] >= 'a' && name[0] <= 'z')) &&
             name[1] == ':') name[1] = '_';
         /* GEMDOS self-extractors can store one nameless level-0 member.
-         * U3 exposes it as "_"; apply that fallback only for the validated
+         * the reference reader exposes it as "_"; apply that fallback only for the validated
          * SFX wrapper.  A plain LHA archive still needs a stored name. */
         if (out == 0U) {
             if (!((xx_lha *)self)->sanitize_sfx_drive || is_dir) goto fail;

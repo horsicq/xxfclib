@@ -6,7 +6,7 @@
  * carries both layouts.
  *
  * Written from the file structure of the known books.  The signature checks
- * match what U3 tests (a header of 43 bytes for eBook Creator, u32 5 and
+ * match what the reference reader tests (a header of 43 bytes for eBook Creator, u32 5 and
  * "Sbook"/"Ebook" for SBook Builder); the name table, the chunk chain and
  * the trailers were worked out from the books themselves.  The name
  * handling and the counting sink follow the pattern of this library's

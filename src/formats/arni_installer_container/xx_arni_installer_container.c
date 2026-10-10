@@ -12,7 +12,7 @@
  * hors<horsicq@gmail.com>); the name-pool scan below is a C port of its
  * collectNameTable()/isPlainFileName(), the rest is a C rewrite, not a
  * transliteration.  The codec is the library's own xx_lzhuf_decode_memory(),
- * the parameter set SBX and ZTC already use.  U3 served as the extraction
+ * the parameter set SBX and ZTC already use.  The reference reader served as the extraction
  * oracle only.
  *
  * Where this differs from the references.  They find the chain by searching

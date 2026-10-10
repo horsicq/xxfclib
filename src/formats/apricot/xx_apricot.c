@@ -3,7 +3,7 @@
  *
  * ACT Apricot disk images (".dsk").  Ported from XArchive's
  * diskimages/xapricotimage.cpp together with the Apricot half of its
- * Algos/xdiskimagedecoder.cpp, and cross-checked against U3's Apricot handler
+ * Algos/xdiskimagedecoder.cpp, and cross-checked against the reference reader's Apricot handler
  * (class fcb, VMT 006137a8).
  *
  *   preamble, 0x80 bytes at offset 0, opening with the 22-byte ASCII

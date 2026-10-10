@@ -11,7 +11,7 @@
  * new field layout.  It is kept as its own reader because the two magics,
  * the two header shapes and the two corpora are disjoint.
  *
- * Header layout confirmed against U3's recognition predicate FUN_004f3400
+ * Header layout confirmed against the recovered recognition predicate FUN_004f3400
  * (archive/49, class wja, VMT 0x004f3348, slot 0 at 0x004f3860) and against
  * the corpus in F:\ARC\ARC\SQUEEZE2.
  */
@@ -369,7 +369,7 @@ static bool squeeze2_read_field(const uint8_t *input, size_t input_size,
  * The tree, the bitstream and the 0x90 repeat escape are IDENTICAL to the
  * Greenlaw squeeze the squeeze1 reader already implements; only the header
  * differs, which is why this is a sibling of that reader and not a new codec.
- * Field layout confirmed against U3's recognition predicate FUN_004f3400 (the
+ * Field layout confirmed against the recovered recognition predicate FUN_004f3400 (the
  * Squeeze2 VMT slot 0 at 0x004f3860) and against the corpus. */
 static bool squeeze2_parse_header(const uint8_t *input, size_t input_size,
                                   squeeze2_header *header) {

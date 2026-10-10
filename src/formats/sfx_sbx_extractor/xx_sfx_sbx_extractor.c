@@ -11,7 +11,7 @@
  * installers/xsbx.{h,cpp} (MIT, Copyright (c) 2026 hors<horsicq@gmail.com>);
  * the code below is a C rewrite, not a transliteration.  The codec is the
  * library's own xx_lzhuf_decode_memory(), the same parameter set ZTC uses.
- * U3 served as the extraction oracle only.
+ * the reference reader served as the extraction oracle only.
  *
  * Only the MZ header, the PE file header and section table (or, for NE, the
  * two signature bytes) are read to find the payload; nothing in the stub is

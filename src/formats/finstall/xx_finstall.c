@@ -6,7 +6,7 @@
  * xx_finstall.h carries the field table.
  *
  * Written from the structure of the known disk; the acceptance rules of
- * U3's handler (first entry right behind the directory, entries in order)
+ * the reference reader's handler (first entry right behind the directory, entries in order)
  * are kept, the version digit is not pinned to '2'.  Names are DOS names in
  * code page 437, converted to UTF-8.  A backslash or slash inside a name is
  * taken as a directory separator.  Names that would escape the output

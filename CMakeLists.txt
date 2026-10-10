@@ -2026,12 +2026,13 @@ set(XXFCLIB_SOURCES
     src/algo/lzx/xx_lzx.c
     src/algo/quantum/xx_quantum.c
     src/formats/xx_format.c
+    src/formats/xx_format_names.c
+    src/formats/detection/xx_format_detect_device.c
     src/formats/xx_format_base.c
     src/formats/xx_format_streams.c
     src/formats/xx_format_catalog.c
     src/formats/xx_format_detect_fast.c
     src/formats/xx_format_extractor.c
-    src/formats/xx_format_reader_only_abstract_extractor.c
     src/formats/xx_memory_map.c
     src/formats/zip/xx_zip.c
     src/formats/zip/xx_zip_legacy_encoder.c
@@ -4638,6 +4639,8 @@ set(XXFCLIB_SOURCES
 include("${CMAKE_CURRENT_SOURCE_DIR}/src/formats/die_music/xx_die_music_sources.cmake")
 list(APPEND XXFCLIB_SOURCES ${XX_DIE_MUSIC_SOURCES})
 include(src/formats/xx_native_format_sources.cmake)
+include("${CMAKE_CURRENT_SOURCE_DIR}/src/formats/adapters/xx_reader_adapters_sources.cmake")
+list(APPEND XXFCLIB_SOURCES ${XXFC_READER_ADAPTER_SOURCES})
 list(APPEND XXFCLIB_SOURCES
     src/formats/ue2_documents/xx_ue2_documents.c
     src/formats/microsoft_lit/xx_microsoft_lit.c

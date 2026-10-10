@@ -9,9 +9,8 @@
 /* WHERE THE LAYOUT COMES FROM.  Ported from XArchive's archives/xboo.cpp,
  * whose own provenance note says the transform was read out of DEBOO.EXE -
  * the format's reference decoder, which ships BOO-encoded in this very
- * corpus.  U3's recognition predicate (FUN_006e2120, reached from VMT slot 0
- * at 0x006e26f0) agrees with it field for field and supplied the two extra
- * shape constraints noted below.
+ * corpus.  Reverse-engineering of a second decoder independently confirmed
+ * the layout and supplied the two extra shape constraints noted below.
  *
  *   line 1        the payload's own DOS 8.3 file name, then CR LF or LF
  *   line 2..      payload, as printable characters
@@ -34,7 +33,7 @@
  * end of line is a desynchronised stream, not a run continuing onto the next
  * line.
  *
- * U3'S TWO EXTRA CONSTRAINTS, both adopted here:
+ * TWO ADDITIONAL RECOGNITION CONSTRAINTS:
  *   - the name line is a DOS 8.3 shape - at most 12 characters, at most one
  *     '.', a non-empty stem - and the whole first line must be at least three
  *     characters;

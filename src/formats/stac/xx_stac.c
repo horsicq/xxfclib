@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Stac Electronics LZS stream with the four-byte "sTaC" header.  The header
- * test is U3's own recognition predicate (FUN_005d0a00); the codec is LZS as
+ * test is the recovered recognition predicate (FUN_005d0a00); the codec is LZS as
  * published in ANSI X3.241 / RFC 2395.  xx_stac.h records the grammar and the
  * evidence that it is the right one.
  *

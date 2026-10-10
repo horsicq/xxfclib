@@ -8,12 +8,12 @@
  * squeeze; it is a separate DOS-era container that happens to share the two
  * ASCII letters, and its codec is unrelated to all three.
  *
- * Recovered from U3 archive/609 (class tib, VMT 0x00682b68): the recognition
+ * Recovered from reference format archive/609 (class tib, VMT 0x00682b68): the recognition
  * predicate is FUN_00682be0, the open handler FUN_00682dc0, the calendar
  * unpacker FUN_00682d50 and the decoder FUN_0059d670 with its helpers
  * FUN_0059cf50 (table init), FUN_0059d5a0 (symbol decode), FUN_0059d1c0 and
  * FUN_0059d080 (tree update) and FUN_0059d410 (bit reader).  The port is
- * verified byte for byte against U3's own output on all four corpus
+ * verified byte for byte against reference output on all four corpus
  * samples.
  */
 #include "xxfclib/rt/xx_rt.h"
@@ -292,7 +292,7 @@ static bool sq_add_member(sq_stream *stream, const sq_member *member) {
 #define SQ_MAX_INPUT ((uint64_t)64U * 1024U * 1024U)
 #define SQ_MAX_OUTPUT ((uint64_t)512U * 1024U * 1024U)
 
-/* Coding constants, all recovered from U3's decoder at 0x0059d670 and the
+/* Coding constants, all recovered from the reference decoder at 0x0059d670 and the
  * table initialiser at 0x0059cf50.
  *
  * The alphabet is 629 symbols: 256 literals, an end marker at 0x100 and then
@@ -538,7 +538,7 @@ done:
  *   u8     seconds / 2, 0..29
  * and then the coded stream to end of file.  There is no stored length, no
  * checksum and no method byte: the six calendar fields ARE the validation,
- * which is exactly what U3's recognition predicate FUN_00682be0 (the SQ VMT
+ * which is exactly what the recovered recognition predicate FUN_00682be0 (the SQ VMT
  * slot 0 at 0x00682fe0) tests, and FUN_00682dc0 shows the same six bytes
  * being turned into the member's timestamp.
  *

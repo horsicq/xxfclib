@@ -235,7 +235,7 @@ static bool ssm_parse(Abstractformat *format, ssm_stream **result) {
     member.method = method;
     /* Packed the way every other DOS-era reader here publishes it: the date
      * in the high half, the time in the low one.  The corpus confirms the
-     * field order - PICN4413 carries 1997-06-06 14:20:38, which is what U3
+     * field order - PICN4413 carries 1997-06-06 14:20:38, which is what the reference reader
      * stamps on the file it writes. */
     member.dos_time = ((uint32_t)xx_data_get_u16(header + 0x10U, 2, 0, false) << 16U) |
                       xx_data_get_u16(header + 0x12U, 2, 0, false);

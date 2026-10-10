@@ -29,7 +29,7 @@
  * magic.wa_ 14516, siren.wa_ 22834, rolldown.wa_ 6090), and both copies decode
  * to the same size.  Decoded output carries the expected headers - "MZ" for
  * the .ex_ members, an OLE compound-document signature for readme.do_ - and
- * PSNUnIns.ex_ was compared byte for byte against U3's extraction and is
+ * PSNUnIns.ex_ was compared byte for byte against the reference reader's extraction and is
  * identical.
  *
  * Identification rests on the 53-byte banner, which is long and specific

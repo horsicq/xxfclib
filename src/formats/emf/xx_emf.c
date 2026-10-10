@@ -4,7 +4,7 @@
  * Stored encoded components only; no rendering or external-resource access.
  */
 #include "xxfclib/formats/emf/xx_emf.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 
 static bool sm_rect(const uint8_t *p) { return (int32_t)xx_data_get_u32(p, 4, 0, false)<=(int32_t)xx_data_get_u32(p+8, 4, 0, false) && (int32_t)xx_data_get_u32(p+4, 4, 0, false)<=(int32_t)xx_data_get_u32(p+12, 4, 0, false); }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -13,15 +13,15 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     desc=xx_data_get_u32(h+60, 4, 0, false); offset=xx_data_get_u32(h+64, 4, 0, false);
     if(desc) { uint8_t text[2048]; uint32_t i; bool high=false;
         if(desc>1024 || desc<2 || offset!=88 || hs!=((88+desc*2+3)&~3U) || !pm_read(f,88,text,desc*2) || xx_data_get_u16(text+desc*2-2, 2, 0, false) || xx_data_get_u16(text+desc*2-4, 2, 0, false)) return false;
-        for(i=0;i<desc;++i) { uint16_t v=xx_data_get_u16(text+i*2, 2, 0, false); if(fd_stop(pd)) return false;
+        for(i=0;i<desc;++i) { uint16_t v=xx_data_get_u16(text+i*2, 2, 0, false); if(binary_stop(pd)) return false;
             if(high) { if(v<0xdc00 || v>0xdfff) return false; high=false; }
             else if(v>=0xd800 && v<=0xdbff) high=true; else if(v>=0xdc00 && v<=0xdfff) return false;
         } if(high) return false;
     } else if(offset || hs!=88) return false;
     xx_mem_zero(objects,sizeof(objects)); at=hs; if(!pm_add(f,s,"emf-header.bin",0,hs)) return false;
     while(at<total) { uint32_t kind,size,wanted=0,v=0; char label[48];
-        if(fd_stop(pd) || count>=records || !fd_range(at,8,total) || !pm_read(f,(int64_t)at,b,8)) { return false; } kind=xx_data_get_u32(b, 4, 0, false); size=xx_data_get_u32(b+4, 4, 0, false);
-        if(size<8 || (size&3) || !fd_range(at,size,total) || !pm_read(f,(int64_t)at,b,size<32 ? size:32)) return false;
+        if(binary_stop(pd) || count>=records || !binary_range(at,8,total) || !pm_read(f,(int64_t)at,b,8)) { return false; } kind=xx_data_get_u32(b, 4, 0, false); size=xx_data_get_u32(b+4, 4, 0, false);
+        if(size<8 || (size&3) || !binary_range(at,size,total) || !pm_read(f,(int64_t)at,b,size<32 ? size:32)) return false;
         if(kind==14) { if(size!=20 || xx_data_get_u32(b+8, 4, 0, false) || (xx_data_get_u32(b+12, 4, 0, false)!=0 && xx_data_get_u32(b+12, 4, 0, false)!=16) || xx_data_get_u32(b+16, 4, 0, false)!=20 || at+size!=total || count+1!=records) return false; }
         else if(kind>=2 && kind<=4) { uint32_t n;
             if(size<28 || !sm_rect(b+8) || !(n=xx_data_get_u32(b+24, 4, 0, false)) || n>65536-points || size!=28+(uint64_t)n*8 || (kind==2 && (n<4 || (n-1)%3)) || (kind==3 && n<3) || (kind==4 && n<2)) { return false; } points+=n;

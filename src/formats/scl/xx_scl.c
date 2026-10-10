@@ -40,7 +40,7 @@
  * control codes and the Spectrum's block-graphic and token bytes. The raw
  * name is therefore never grounds to refuse an image. It is mapped onto a
  * host-safe file name instead: space padding on either side is dropped (as
- * the trdos reader and U3 do), every byte a host path cannot carry becomes
+ * the trdos reader and reference extractor do), every byte a host path cannot carry becomes
  * '_', a stem that Windows would open as a device gets a '_' prefix, and
  * names that collide (without regard to case, as on Windows) get a numeric
  * suffix, so no member can overwrite another.

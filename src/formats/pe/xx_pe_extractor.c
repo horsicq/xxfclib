@@ -9,7 +9,7 @@
  * Offset 0 is always tried as well.
  * Each candidate must be accepted by the pe reader, which also measures it,
  * and named by the detector, both on a view that starts at the candidate.
- * The Abstractextractor below also exposes PE detection and size callbacks.
+ * The Abstractextractor below exposes PE detection, size and version callbacks.
  * See xx_format_extractor_engine.h.
  */
 
@@ -104,10 +104,16 @@ static void xx_pe_abstract_free_format_search(
     xx_format_search_free(state);
 }
 
+static char *xx_pe_abstract_get_version(xx_io_device *device,
+                                        int64_t base_address, bool is_mapped) {
+    return xx_format_search_get_version(&k_desc, device, base_address, is_mapped);
+}
+
 static Abstractextractor xx_pe_abstract_extractor = {
     .file_type = xx_pe_file_type,
     .fast_detect = xx_pe_fast_detect,
     .size = xx_pe_size,
+    .get_version = xx_pe_abstract_get_version,
     .create_format_search = xx_pe_abstract_create_format_search,
     .get_current_format_info = xx_pe_abstract_get_current_format_info,
     .format_search_find_next = xx_pe_abstract_format_search_find_next,

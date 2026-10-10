@@ -5,14 +5,14 @@
  * File limit64MiB, member limit4096. No payload or external resource is executed.
  */
 #include "xxfclib/formats/audio_aac_adts/xx_audio_aac_adts.h"
-#include "../audio_dolby_ac3/xx_ninth_media.h"
-static bool ng_quick(Abstractformat *f,uint64_t n) { uint8_t h[7];return ng_probe(f,n,h,7)&&h[0]==255&&h[1]==0xf1&&(h[2]>>6)==1&&((h[2]>>2)&15)<13; }
-static bool ng_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
+#include "../common/xx_audiovisual_components.h"
+static bool audiovisual_quick(Abstractformat *f,uint64_t n) { uint8_t h[7];return audiovisual_probe(f,n,h,7)&&h[0]==255&&h[1]==0xf1&&(h[2]>>6)==1&&((h[2]>>2)&15)<13; }
+static bool audiovisual_parse(Abstractformat *f,pm_stream *s,const uint8_t *b,uint64_t n,xx_pd_struct *pd) {
  uint64_t at=0;unsigned frames=0,rate=99,channels=99;char label[40];
- while(at<n){uint32_t size,r,c;if(ng_stop(pd)||!ng_span(at,7,n)||b[at]!=255||b[at+1]!=0xf1||(b[at+2]>>6)!=1||(r=(b[at+2]>>2)&15)>=13||(c=((b[at+2]&1)<<2)|(b[at+3]>>6))<1||c>7||(b[at+6]&3))return false;
-  size=((uint32_t)(b[at+3]&3)<<11)|((uint32_t)b[at+4]<<3)|(b[at+5]>>5);if(size<=7||!ng_span(at,size,n))return false;
+ while(at<n){uint32_t size,r,c;if(audiovisual_stop(pd)||!audiovisual_span(at,7,n)||b[at]!=255||b[at+1]!=0xf1||(b[at+2]>>6)!=1||(r=(b[at+2]>>2)&15)>=13||(c=((b[at+2]&1)<<2)|(b[at+3]>>6))<1||c>7||(b[at+6]&3))return false;
+  size=((uint32_t)(b[at+3]&3)<<11)|((uint32_t)b[at+4]<<3)|(b[at+5]>>5);if(size<=7||!audiovisual_span(at,size,n))return false;
   if(rate==99){rate=r;channels=c;}else if(rate!=r||channels!=c)return false;
-  xx_rt_snprintf(label,sizeof(label),"frame-%u.aac",frames++);if(!ng_emit(f,s,label,at,size,n))return false;at+=size;
+  xx_rt_snprintf(label,sizeof(label),"frame-%u.aac",frames++);if(!audiovisual_emit(f,s,label,at,size,n))return false;at+=size;
  }
  s->size=(int64_t)at;return frames>0;
 }

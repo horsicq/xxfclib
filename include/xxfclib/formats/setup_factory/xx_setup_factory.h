@@ -38,7 +38,7 @@ extern "C" {
  * the member's name, destination folder ("%AppDir%\\..."), unpacked size,
  * packed size, CRC-32 and a method byte (0 or 'r': DCL; 1 or 'n': stored).
  * Setup Factory 6 writes the long layout; the short layout (16-byte engine
- * names and an older CFileInfo schema) is the variant U3 accepts next to it.
+ * names and an older CFileInfo schema) is also accepted.
  *
  * Members are published as "<destination>/<name>" with "%AppDir%" dropped
  * and any other leading "%Var%" kept as a folder named Var. Only the payload

@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Teacy archives (".DAT").  Ported from XArchive's
- * games/xteacyarchive.cpp and cross-checked against U3's Teacy handler
+ * games/xteacyarchive.cpp and cross-checked against the reference reader's Teacy handler
  * (class xbb, VMT 0060f3c8).
  *
  *   header, 2 bytes at offset 0:

@@ -8,7 +8,7 @@
  * core/xlegacystorearchive.cpp, FT_INSTALLSHIELD_LAUNCHER branch (MIT,
  * Copyright (c) 2026 hors): the table starts at the exact end of the PE
  * image's last section, and every record is checked for the zero fields
- * that surround its name and size.  U3's "SFX IS2" handler checks the same
+ * that surround its name and size.  The reference reader's "SFX IS2" handler checks the same
  * header.  This reader adds what an SFX reader needs on hostile input and in
  * a raw-data search: a truncated or damaged chain keeps the complete members
  * in front of the damage, a chain that ends before the file does (an

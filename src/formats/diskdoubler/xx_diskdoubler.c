@@ -1492,6 +1492,14 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
             record + XX_DISKDOUBLER_DDAR_OFF_RSRC_SIZE, 4, 0, true);
         body = position + XX_DISKDOUBLER_DDAR_RECORD;
 
+        /* Folder-end records may repeat the previous file's fork lengths.
+         * Their CRC still covers those stale fields, but they have no body.
+         * Both the original DDAR parser and XADMaster test enddir first. */
+        if (record[XX_DISKDOUBLER_DDAR_OFF_FOLDER_END] != 0U) {
+            if (build->depth != 0U) --build->depth;
+            position = body;
+            continue;
+        }
         if (record[XX_DISKDOUBLER_DDAR_OFF_FOLDER] != 0U) {
             size_t index = 0U;
             if (data_size != 0 || rsrc_size != 0) return false;
@@ -1505,13 +1513,6 @@ static bool xx_diskdoubler_parse_ddar(xx_diskdoubler_build *build,
                 return false;
             }
             build->stack[build->depth++] = index;
-            position = body;
-            continue;
-        }
-        if (record[XX_DISKDOUBLER_DDAR_OFF_FOLDER_END] != 0U) {
-            if (data_size != 0 || rsrc_size != 0) return false;
-            /* A stray folder end at the top closes nothing. */
-            if (build->depth != 0U) --build->depth;
             position = body;
             continue;
         }

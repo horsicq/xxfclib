@@ -10,7 +10,7 @@
 #include "xxfclib/algo/zstd/xx_zstd.h"
 #include "xxfclib/algo/adler32/xx_adler32.h"
 #include "../xx_payload_members.h"
-#include "../xx_fourth_utf8.h"
+#include "../common/xx_utf8_validation.h"
 
 #define AVRO_MAX_BLOCK (64U * 1024U * 1024U)
 #define AVRO_MAX_TOTAL_DECODED (256U * 1024U * 1024U)
@@ -134,7 +134,7 @@ static bool avro_schema(Abstractformat *f,int64_t at,int64_t size,xx_pd_struct *
     const xx_var *budget=xx_format_resolve_extra_parameter(f,NULL,XX_META_ID_OPT_MEMORY_LIMIT);
     if(size<=0 || size>1024*1024 || (budget && (uint64_t)size*2U+256U>xx_var_get_u64(budget))) return false;
     data=(uint8_t *)xx_mem_alloc((size_t)size); if(!data) return false;
-    ok=pm_read(f,at,data,(size_t)size) && fourth_utf8(data,(size_t)size,pd); xx_json_init(&j,data,(size_t)size);
+    ok=pm_read(f,at,data,(size_t)size) && bounded_utf8(data,(size_t)size,pd); xx_json_init(&j,data,(size_t)size);
     if(ok) { xx_json_type_t type=xx_json_peek(&j); ok=(type==XX_JSON_TYPE_STRING || type==XX_JSON_TYPE_OBJECT || type==XX_JSON_TYPE_ARRAY) && xx_json_skip(&j); }
     for(i=j.position;ok && i<(size_t)size;++i) if(data[i]!=' ' && data[i]!='\r' && data[i]!='\n' && data[i]!='\t') ok=false;
     xx_mem_free(data); return ok;
@@ -154,7 +154,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
         for(i=0;i<count;++i) {
             char key[129],label[160]; int64_t key_size,size; bool is_schema,is_codec;
             if((pd && xx_pd_is_stopped(pd)) || !avro_long(f,&at,&key_size) || key_size<=0 || key_size>128 || !pm_read(f,at,key,(size_t)key_size)) return false;
-            key[key_size]=0; if(xx_rt_strlen(key)!=(size_t)key_size || !fourth_utf8((const uint8_t *)key,(size_t)key_size,pd)) return false; at+=key_size;
+            key[key_size]=0; if(xx_rt_strlen(key)!=(size_t)key_size || !bounded_utf8((const uint8_t *)key,(size_t)key_size,pd)) return false; at+=key_size;
             if(!avro_long(f,&at,&size) || size<0 || size>left-at) return false;
             is_schema=!xx_rt_strcmp(key,"avro.schema"); is_codec=!xx_rt_strcmp(key,"avro.codec");
             if(is_schema) { if(schema || !avro_schema(f,at,size,pd)) return false; schema=true; }

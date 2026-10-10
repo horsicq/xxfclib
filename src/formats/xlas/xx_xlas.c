@@ -12,7 +12,7 @@
  * zero with the write cursor at N - F = 4078, 8-bit flag groups consumed LSB
  * first where a set bit is one literal byte and a clear bit a two-byte match
  * token { position & 0xff, ((position >> 4) & 0xf0) | (length - 3) } naming an
- * absolute ring index.  Verified byte for byte against the U3 reference
+ * absolute ring index.  Verified byte for byte against the reference
  * output for every member of F:\ARC\ARC\XLAS\96_xyvcajslrfgbemth_bos.xla.
  * XArchive has no module for this container; layout derived from the corpus.
  */

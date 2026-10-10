@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://ase-lib.org/_modules/ase/io/dlp4.html */
 #include "xxfclib/formats/dl_poly_config/xx_dl_poly_config.h"
-#include "../xx_twelfth_root.h"
+#include "../common/xx_molecular_text.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[4];unsigned n;uint64_t level,periodic,atoms,i,j,id,at;bool ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;NH_NEED(el_line(&c,&line) && line.n && line.n<=80 && tw_words(&c,&line,t,4,&n) && n==3 && el_uint(&b,t[0],&level) && level<=2 && el_uint(&b,t[1],&periodic) && periodic<=3 && el_uint(&b,t[2],&atoms) && atoms && atoms<=100000);
-    if(periodic) for(i=0;i<3;++i) NH_NEED(tw_words(&c,&line,t,4,&n) && n==3 && tw_floats(&b,t,0,3) && !(el_zero(&b,t[0]) && el_zero(&b,t[1]) && el_zero(&b,t[2])));
-    NH_NEED(nh_add(f,s,&b,"configuration-header",0,c.at));
-    for(i=1;i<=atoms;++i) {at=c.at;NH_NEED(tw_words(&c,&line,t,4,&n) && n==2 && tw_element(&b,t[0]) && el_uint(&b,t[1],&id) && id==i);
-        for(j=0;j<=level;++j) NH_NEED(tw_words(&c,&line,t,4,&n) && n==3 && tw_floats(&b,t,0,3));
-        NH_NEED(nh_add(f,s,&b,"atom-state",at,c.at-at));
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[4];unsigned n;uint64_t level,periodic,atoms,i,j,id,at;bool ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;BLOB_NEED(scientific_text_line(&c,&line) && line.n && line.n<=80 && molecular_words(&c,&line,t,4,&n) && n==3 && scientific_text_uint(&b,t[0],&level) && level<=2 && scientific_text_uint(&b,t[1],&periodic) && periodic<=3 && scientific_text_uint(&b,t[2],&atoms) && atoms && atoms<=100000);
+    if(periodic) for(i=0;i<3;++i) BLOB_NEED(molecular_words(&c,&line,t,4,&n) && n==3 && molecular_floats(&b,t,0,3) && !(scientific_text_zero(&b,t[0]) && scientific_text_zero(&b,t[1]) && scientific_text_zero(&b,t[2])));
+    BLOB_NEED(blob_add(f,s,&b,"configuration-header",0,c.at));
+    for(i=1;i<=atoms;++i) {at=c.at;BLOB_NEED(molecular_words(&c,&line,t,4,&n) && n==2 && molecular_element(&b,t[0]) && scientific_text_uint(&b,t[1],&id) && id==i);
+        for(j=0;j<=level;++j) BLOB_NEED(molecular_words(&c,&line,t,4,&n) && n==3 && molecular_floats(&b,t,0,3));
+        BLOB_NEED(blob_add(f,s,&b,"atom-state",at,c.at-at));
     }
-    NH_NEED(tw_trailing(&c));s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(molecular_trailing(&c));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

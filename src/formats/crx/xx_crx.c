@@ -6,14 +6,14 @@
  */
 #include "xxfclib/formats/crx/xx_crx.h"
 #include "xxfclib/formats/zip/xx_zip.h"
-#include "../makeself/xx_fourth_wrapper_table.h"
+#include "../common/xx_carrier_helpers.h"
 
 /* CRX ZIP offsets are relative to the ZIP payload, with no SFX rebasing.
  * This subset refuses ZIP64 and multidisk archives; streams stay encoded. */
 static bool crx_zip_origin(Abstractformat *f,int64_t start,int64_t end,xx_pd_struct *pd) {
     uint8_t h[22]; int64_t at=end-22,low=end-start>65557 ? end-65557 : start;
     for(;at>=low;--at) {
-        if(wg_stop(pd) || !pm_read(f,at,h,4)) return false;
+        if(carrier_stop(pd) || !pm_read(f,at,h,4)) return false;
         if(xx_rt_memcmp(h,"PK\5\6",4) || !pm_read(f,at,h,22) || at+22+xx_data_get_u16(h+20, 2, 0, false)!=end) continue;
         return (uint64_t)xx_data_get_u32(h+16, 4, 0, false)+xx_data_get_u32(h+12, 4, 0, false)==(uint64_t)(at-start);
     }
@@ -61,7 +61,7 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!size || size>1024U*1024U || at>pm_available(f) || (budget && size>xx_var_get_u64(budget))) return false;
     header=(uint8_t *)xx_mem_alloc(size); if(!header || !pm_read(f,12,header,size) || !crx_proto(header,size,0,pd)) goto done;
     if(!pm_read(f,at,h,4) || xx_rt_memcmp(h,"PK\3\4",4)) goto done;
-    if(!crx_zip_origin(f,at,pm_available(f),pd) || !wg_zip(f,at,pm_available(f),pd)) goto done;
+    if(!crx_zip_origin(f,at,pm_available(f),pd) || !carrier_zip(f,at,pm_available(f),pd)) goto done;
     volume.device=f->device; volume.offset=f->base_address+at; volume.size=pm_available(f)-at;
     view=xx_io_multivolume_open(&volume,1,false); if(!view) goto done;
     zip=xx_zip_create(view,0); if(!zip || !xx_zip_handle_base_info(xx_zip_to_format(zip),pd)) goto done;

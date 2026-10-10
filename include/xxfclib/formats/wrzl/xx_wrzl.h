@@ -13,7 +13,7 @@
  * last, whose length follows from the total size. The 0x40 block uses
  * high-bit-first, 16-token control words, 12-bit backward distances, and a
  * repeated-byte escape. All six local corpus files decode to the declared
- * size; DUMMY.DA$ matches the U3 reference output byte-for-byte.
+ * size; DUMMY.DA$ matches reference output byte-for-byte.
  *
  * The container has no member name; the reader uses a neutral output leaf.
  */

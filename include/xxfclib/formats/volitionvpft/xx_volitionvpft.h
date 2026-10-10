@@ -6,10 +6,7 @@
  *  @brief Volition "VP" package (Descent: FreeSpace / FreeSpace 2 .vp).
  */
 
-/* WHERE THE LAYOUT COMES FROM.  U3's recognition predicate for its
- * VOLITION_VP_FT handler (FUN_006444a0, reached from VMT slot 0 at
- * 0x00644910) tests exactly four things, and they are reproduced verbatim
- * here:
+/* FORMAT RECOGNITION.  Reverse-engineering established four field checks:
  *
  *   u32 @ 0x00 == 0x50565056  ("VPVP")
  *   u32 @ 0x04 == 2           (the only version Volition ever shipped)
@@ -68,7 +65,7 @@ extern "C" {
 #define XX_VOLITIONVPFT_NAME_SIZE 32U
 /** Only version ever shipped. */
 #define XX_VOLITIONVPFT_VERSION 2U
-/** Entry-count ceiling taken from U3's own predicate. */
+/** Maximum entry count accepted by the reader. */
 #define XX_VOLITIONVPFT_MAX_ENTRIES 0xffffU
 /** Deepest directory nesting this reader will follow. */
 #define XX_VOLITIONVPFT_MAX_DEPTH 32U

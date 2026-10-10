@@ -1,6 +1,6 @@
 /* Canonical Wolf/Blake VSWAP palette in BMP B,G,R channel order.
  * Reconstructed from the three corpus VSWAP files and their rendered
- * BMP pixels. Index 255 is transparent in sprite runs; U3 renders that index
+ * BMP pixels. Index 255 is transparent in sprite runs; the reference reader renders that index
  * as magenta when it occurs in a wall's full palette-index plane. */
 static const uint8_t xx_wolfft_bgr[256][3] = {
     {0x00, 0x00, 0x00}, {0xaa, 0x00, 0x00}, {0x00, 0xaa, 0x00}, {0xaa, 0xaa, 0x00}, /*   0-  3 */

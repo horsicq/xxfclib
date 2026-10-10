@@ -3,7 +3,7 @@
  *
  * ".RSC" resource files, also shipped as ".GSL" and ".DAT" by the same
  * toolchain (Riptide, VR, MicroSong ...).  XArchive has no module for this
- * one.  The layout was recovered from U3's RSC handler -- class nza,
+ * one.  The layout was recovered from the reference reader's RSC handler -- class nza,
  * VMT 005f0858, recognition predicate decompiled/functions/005f/005f0c00.c,
  * which tail-calls decompiled/functions/005f/005f08d0.c -- and then confirmed
  * byte for byte against the corpus.
@@ -20,7 +20,7 @@
  *
  *   payloads follow the table back to back in table order, stored verbatim.
  *
- * U3's predicate is exactly: count >= 2; entry 0's offset equals 2+count*25
+ * The reference reader's predicate is exactly: count >= 2; entry 0's offset equals 2+count*25
  * (the header's own size); entry 0's and entry 1's sizes are both positive;
  * and entry 1's offset equals entry 0's offset plus entry 0's size.  This
  * reader keeps all of that and adds the whole-file version: EVERY payload
@@ -214,7 +214,7 @@ static xx_rsc_stream *xx_rsc_parse(Abstractformat *self,
         return NULL;
     }
 
-    /* U3's predicate refuses a single-member file outright: two entries are
+    /* The reference reader's predicate refuses a single-member file outright: two entries are
      * what the identifying arithmetic needs. */
     count = xx_data_get_u16(head, 2, 0, false);
     if (count < 2U || count > XX_RSC_MAX_MEMBERS) return NULL;
@@ -249,7 +249,7 @@ static xx_rsc_stream *xx_rsc_parse(Abstractformat *self,
             ++name_size;
         }
         if (name_size == 0U || name_size >= XX_RSC_NAME_SIZE) goto fail;
-        /* The whole-file form of U3's two-entry check: every payload starts
+        /* The whole-file form of the reference reader's two-entry check: every payload starts
          * exactly where the previous one ended, and its size is bounded
          * against what is left before it moves the cursor. */
         if (offset != cursor || size <= 0 || size > span - cursor) goto fail;

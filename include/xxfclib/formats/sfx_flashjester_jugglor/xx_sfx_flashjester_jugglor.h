@@ -48,14 +48,14 @@ extern "C" {
  *   +0xD4  u32     unknown
  *   +0xD8  u32 LE  0x8CF9BF0D
  *
- * "Exe Attachment" (U3's "SFX ExeAttachment") uses the same record family
+ * "Exe Attachment" packages use the same record family
  * with a 0x220-byte header -- magic, name at +0x004, directory at +0x104,
  * unpacked size at +0x204, stream size at +0x208, FILETIME at +0x20C and
  * 0x8CF9BF0D at +0x21C -- and a 0x116-byte record (magic at +0, 0x8CF9BF0D
  * at +0x112) behind every stream.
  *
  * Members are published as "<directory without drive>/<name>" with '/'
- * separators, which is how U3 lays them out.
+ * separators.
  */
 typedef struct xx_sfx_flashjester_jugglor {
     Abstractformat format;

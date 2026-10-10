@@ -1,29 +1,29 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://math.nist.gov/MatrixMarket/formats.html */
 #include "xxfclib/formats/matrix_market/xx_matrix_market.h"
-#include "../xx_eleventh_data.h"
+#include "../common/xx_scientific_text.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[8];unsigned nt,field,sym;uint64_t rows,cols,count,seen=0,head,row=0,column=0;bool coordinate,ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;
-    NH_NEED(el_line(&c,&line) && el_split(&b,line,t,8,&nt,false) && nt==5 && el_eq(&b,t[0],"%%MatrixMarket") && el_eq(&b,t[1],"matrix"));
-    coordinate=el_eq(&b,t[2],"coordinate");NH_NEED(coordinate || el_eq(&b,t[2],"array"));
-    field=el_eq(&b,t[3],"real") ? 1:el_eq(&b,t[3],"integer") ? 2:el_eq(&b,t[3],"complex") ? 3:el_eq(&b,t[3],"pattern") ? 4:0;
-    sym=el_eq(&b,t[4],"general") ? 1:el_eq(&b,t[4],"symmetric") ? 2:el_eq(&b,t[4],"skew-symmetric") ? 3:el_eq(&b,t[4],"hermitian") ? 4:0;
-    NH_NEED(field && sym && (coordinate || field!=4) && (sym!=4 || field==3));
-    do {NH_NEED(el_line(&c,&line));} while(!line.n || b.p[(size_t)line.at]=='%');
-    NH_NEED(el_split(&b,line,t,8,&nt,false) && nt==(coordinate ? 3U:2U) && el_uint(&b,t[0],&rows) && el_uint(&b,t[1],&cols) && rows && cols && rows<=1000000000 && cols<=1000000000 && (sym==1 || rows==cols));
-    if(coordinate) NH_NEED(el_uint(&b,t[2],&count));
-    else {NH_NEED(fd_mul(rows,sym==1 ? cols:(sym==3 ? rows-1:rows+1),&count));if(sym!=1) count/=2;}
-    NH_NEED(count<=1000000);head=c.at;if(!coordinate) {column=1;row=sym==3 ? 2:1;}
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[8];unsigned nt,field,sym;uint64_t rows,cols,count,seen=0,head,row=0,column=0;bool coordinate,ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;
+    BLOB_NEED(scientific_text_line(&c,&line) && scientific_text_split(&b,line,t,8,&nt,false) && nt==5 && scientific_text_eq(&b,t[0],"%%MatrixMarket") && scientific_text_eq(&b,t[1],"matrix"));
+    coordinate=scientific_text_eq(&b,t[2],"coordinate");BLOB_NEED(coordinate || scientific_text_eq(&b,t[2],"array"));
+    field=scientific_text_eq(&b,t[3],"real") ? 1:scientific_text_eq(&b,t[3],"integer") ? 2:scientific_text_eq(&b,t[3],"complex") ? 3:scientific_text_eq(&b,t[3],"pattern") ? 4:0;
+    sym=scientific_text_eq(&b,t[4],"general") ? 1:scientific_text_eq(&b,t[4],"symmetric") ? 2:scientific_text_eq(&b,t[4],"skew-symmetric") ? 3:scientific_text_eq(&b,t[4],"hermitian") ? 4:0;
+    BLOB_NEED(field && sym && (coordinate || field!=4) && (sym!=4 || field==3));
+    do {BLOB_NEED(scientific_text_line(&c,&line));} while(!line.n || b.p[(size_t)line.at]=='%');
+    BLOB_NEED(scientific_text_split(&b,line,t,8,&nt,false) && nt==(coordinate ? 3U:2U) && scientific_text_uint(&b,t[0],&rows) && scientific_text_uint(&b,t[1],&cols) && rows && cols && rows<=1000000000 && cols<=1000000000 && (sym==1 || rows==cols));
+    if(coordinate) BLOB_NEED(scientific_text_uint(&b,t[2],&count));
+    else {BLOB_NEED(binary_mul(rows,sym==1 ? cols:(sym==3 ? rows-1:rows+1),&count));if(sym!=1) count/=2;}
+    BLOB_NEED(count<=1000000);head=c.at;if(!coordinate) {column=1;row=sym==3 ? 2:1;}
     while(c.at<b.n) {
-        NH_NEED(el_line(&c,&line));if(!line.n || b.p[(size_t)line.at]=='%') continue;
-        NH_NEED(seen<count && el_split(&b,line,t,8,&nt,false));
-        if(coordinate) {NH_NEED(nt==(field==4 ? 2U:field==3 ? 4U:3U) && el_uint(&b,t[0],&row) && el_uint(&b,t[1],&column) && row && row<=rows && column && column<=cols && (sym==1 || row>=column) && (sym!=3 || row!=column));}
-        else NH_NEED(nt==(field==3 ? 2U:1U));
-        {unsigned at=coordinate ? 2:0;if(field!=4) NH_NEED(field==2 ? el_integer(&b,t[at]):el_float(&b,t[at]));if(field==3) NH_NEED(el_float(&b,t[at+1]) && (sym!=4 || row!=column || el_zero(&b,t[at+1])));}
+        BLOB_NEED(scientific_text_line(&c,&line));if(!line.n || b.p[(size_t)line.at]=='%') continue;
+        BLOB_NEED(seen<count && scientific_text_split(&b,line,t,8,&nt,false));
+        if(coordinate) {BLOB_NEED(nt==(field==4 ? 2U:field==3 ? 4U:3U) && scientific_text_uint(&b,t[0],&row) && scientific_text_uint(&b,t[1],&column) && row && row<=rows && column && column<=cols && (sym==1 || row>=column) && (sym!=3 || row!=column));}
+        else BLOB_NEED(nt==(field==3 ? 2U:1U));
+        {unsigned at=coordinate ? 2:0;if(field!=4) BLOB_NEED(field==2 ? scientific_text_integer(&b,t[at]):scientific_text_float(&b,t[at]));if(field==3) BLOB_NEED(scientific_text_float(&b,t[at+1]) && (sym!=4 || row!=column || scientific_text_zero(&b,t[at+1])));}
         ++seen;if(!coordinate && ++row>rows) {++column;row=sym==1 ? 1:sym==3 ? column+1:column;}
     }
-    NH_NEED(seen==count && nh_add(f,s,&b,"metadata",0,head) && nh_add(f,s,&b,"values",head,b.n-head));s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(seen==count && blob_add(f,s,&b,"metadata",0,head) && blob_add(f,s,&b,"values",head,b.n-head));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

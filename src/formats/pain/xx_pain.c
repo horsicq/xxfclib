@@ -24,10 +24,10 @@
  *         ((b0 << 8) ^ (b1 << 4) ^ b2) * 0x9e5f >> 4 & 0xfff.
  *
  * That is why no window origin could ever reproduce the distances: there is
- * no window.  The scheme was recovered from U3's own decoder (F:\utils\U3\src,
+ * no window.  The scheme was recovered from the reference decoder (recovered decoder analysis,
  * format 368 "PAiN": FUN_005dd8a0 walks the directory, FUN_005dd770 picks the
  * method, FUN_005dd540 reads the block tag, FUN_005dd1c0 is the loop and
- * FUN_005dd190 the hash) and checked against U3's output: all 705 compressed
+ * FUN_005dd190 the hash) and checked against the reference reader's output: all 705 compressed
  * members in F:\ARC\ARC\PAIN decode byte for byte identically.
  *
  * Layout derived from the corpus in F:\ARC\ARC\PAIN; XArchive has no module
@@ -403,9 +403,9 @@ static bool pain_lz_decode(const uint8_t *in, size_t in_size, uint8_t *out,
             if (out_size - op < length) return false;
             source = table[slot];
             if (source < 0) {
-                /* U3 fills a slot no stream has written with a rolling
+                /* The reference reader fills a slot no stream has written with a rolling
                  * '1'..'9','0'.  No corpus member reaches it; it is kept so
-                 * that a stream U3 accepts decodes the same way here. */
+                 * that a stream the reference reader accepts decodes the same way here. */
                 uint8_t value = 0x31U;
                 while (length-- != 0U) {
                     out[op++] = value;

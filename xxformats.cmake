@@ -90,7 +90,10 @@ list(REMOVE_DUPLICATES XXFORMATS_INCLUDE_DIRS)
 set_property(SOURCE ${CMAKE_CURRENT_LIST_DIR}/src/data/xx_data_raw.c
     APPEND PROPERTY COMPILE_DEFINITIONS XXFC_FORMATS_ONLY)
 # The detection fallback also depends on the excluded DIE music engine.
-set_property(SOURCE ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format.c
+set_property(SOURCE
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_names.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/detection/xx_format_detect_device.c
     APPEND PROPERTY COMPILE_DEFINITIONS XXFC_FORMATS_ONLY)
 set_property(SOURCE ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_extractor.c
     APPEND PROPERTY COMPILE_DEFINITIONS XXFC_FORMATS_ONLY)

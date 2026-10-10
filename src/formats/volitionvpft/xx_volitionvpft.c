@@ -4,7 +4,7 @@
  * Volition "VP" package (Descent: FreeSpace, FreeSpace 2).  A 16-byte header
  * points at a flat index of 44-byte entries that is really a pre-order walk
  * of a directory tree; members are stored, never compressed.  The header test
- * is U3's own recognition predicate (FUN_006444a0).  xx_volitionvpft.h has
+ * is the recovered recognition predicate (FUN_006444a0).  xx_volitionvpft.h has
  * the field table and the corpus evidence.
  */
 

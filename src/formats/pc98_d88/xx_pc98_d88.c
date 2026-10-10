@@ -4,7 +4,7 @@
  * Independently verified using the LibDsk 1.5.22 D88 producer/reader.
  */
 #include "xxfclib/formats/pc98_d88/xx_pc98_d88.h"
-#include "../asylum_amf/xx_thirteenth_media.h"
+#include "../common/xx_disk_music_components.h"
 #include <string.h>
 #include "xxfclib/data/xx_data.h"
 #define D88_MAX_BYTES (32U*1024U*1024U)
@@ -13,7 +13,7 @@
 #define D88_COPY 32768U
 
 static bool d88_stop(xx_pd_struct *pd) { return pd&&xx_pd_is_stopped(pd); }
-static bool d88_load(Abstractformat *f,tm_blob *b,xx_pd_struct *pd) {
+static bool d88_load(Abstractformat *f,disk_music_blob *b,xx_pd_struct *pd) {
     int64_t size=pm_available(f); size_t done=0U;
     if (size<672||size>D88_MAX_BYTES||d88_stop(pd)) return false;
     b->p=(uint8_t *)xx_mem_alloc((size_t)size); if (!b->p) return false;
@@ -29,7 +29,7 @@ static bool d88_load(Abstractformat *f,tm_blob *b,xx_pd_struct *pd) {
     }
     return !d88_stop(pd);
 }
-static bool d88_append_raw(Abstractformat *f,pm_stream *s,tm_blob *b,
+static bool d88_append_raw(Abstractformat *f,pm_stream *s,disk_music_blob *b,
                            const uint32_t *map,uint32_t count,uint32_t sector_size,
                            unsigned disk_no) {
     uint8_t *image; uint64_t length=(uint64_t)count*sector_size;
@@ -38,7 +38,7 @@ static bool d88_append_raw(Abstractformat *f,pm_stream *s,tm_blob *b,
     image=(uint8_t *)xx_mem_alloc((size_t)length); if (!image) return false;
     for (i=0U;i<count;++i) {
         uint64_t offset=(uint64_t)map[i]-1U;
-        if (d88_stop(b->pd)||!tm_span(b,offset,sector_size)) {
+        if (d88_stop(b->pd)||!disk_music_span(b,offset,sector_size)) {
             xx_mem_free(image); return false;
         }
         xx_rt_memcpy(image+(size_t)i*sector_size,b->p+(size_t)offset,sector_size);
@@ -52,40 +52,40 @@ static bool d88_append_raw(Abstractformat *f,pm_stream *s,tm_blob *b,
     return true;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    tm_blob b={0}; uint32_t *map=NULL; uint64_t disk_at=0U;
+    disk_music_blob b={0}; uint32_t *map=NULL; uint64_t disk_at=0U;
     unsigned disk_no=0U; uint32_t all_sectors=0U; bool ok=false;
-    TM_NEED(d88_load(f,&b,pd));
+    DISK_MUSIC_NEED(d88_load(f,&b,pd));
     map=(uint32_t *)xx_mem_alloc(D88_MAX_SECTORS*sizeof(*map));
-    TM_NEED(map);
+    DISK_MUSIC_NEED(map);
     while (disk_at<b.n) {
         uint64_t disk_size; uint32_t offsets[164]={0},first=0U,last=0U;
         uint32_t i,table_count,raw_count=0U,raw_size=0U,raw_spt=0U;
         uint32_t expected_track=0U,formatted=0U;
         uint32_t disk_sector_start=all_sectors; bool raw=true;
         char name[64];
-        TM_NEED(disk_no<D88_MAX_DISKS&&tm_span(&b,disk_at,672U));
+        DISK_MUSIC_NEED(disk_no<D88_MAX_DISKS&&disk_music_span(&b,disk_at,672U));
         disk_size=xx_data_get_u32(b.p+(size_t)disk_at+28U, 4, 0, false);
-        TM_NEED(disk_size>=672U&&disk_size<=D88_MAX_BYTES&&
-                tm_span(&b,disk_at,disk_size));
+        DISK_MUSIC_NEED(disk_size>=672U&&disk_size<=D88_MAX_BYTES&&
+                disk_music_span(&b,disk_at,disk_size));
         for (i=0U;i<160U;++i) {
             uint32_t t=xx_data_get_u32(b.p+(size_t)disk_at+32U+i*4U, 4, 0, false);
             if (t&&!first) first=t;
         }
-        TM_NEED(first==672U||first==688U);
+        DISK_MUSIC_NEED(first==672U||first==688U);
         table_count=first==688U ? 164U : 160U;
-        TM_NEED(disk_size>=first);
+        DISK_MUSIC_NEED(disk_size>=first);
         for (i=0U;i<table_count;++i) {
             uint32_t t=xx_data_get_u32(b.p+(size_t)disk_at+32U+i*4U, 4, 0, false);
             offsets[i]=t;
             if (!t) continue;
-            TM_NEED(t>=first&&t<=disk_size&&
+            DISK_MUSIC_NEED(t>=first&&t<=disk_size&&
                     (t==disk_size||(!last||t>last))&&
                     (last!=disk_size||t==disk_size));
             last=t;
         }
-        TM_NEED(last);
+        DISK_MUSIC_NEED(last);
         (void)xx_rt_snprintf(name,sizeof(name),"disk%02u.d88",disk_no);
-        TM_NEED(pm_add(f,s,name,(int64_t)disk_at,(int64_t)disk_size));
+        DISK_MUSIC_NEED(pm_add(f,s,name,(int64_t)disk_at,(int64_t)disk_size));
         for (i=0U;i<table_count;++i) {
             uint32_t start=offsets[i],end=(uint32_t)disk_size;
             uint32_t at,count,k,slots[129]={0}; bool track_raw=true;
@@ -93,10 +93,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             for (k=i+1U;k<table_count;++k) if (offsets[k]) {
                 end=offsets[k]; break;
             }
-            TM_NEED(end>start&&end-start>=16U);
+            DISK_MUSIC_NEED(end>start&&end-start>=16U);
             at=start;
             count=xx_data_get_u16(b.p+(size_t)disk_at+at+4U, 2, 0, false);
-            TM_NEED(count&&count<=128U&&count<=D88_MAX_SECTORS-all_sectors);
+            DISK_MUSIC_NEED(count&&count<=128U&&count<=D88_MAX_SECTORS-all_sectors);
             ++formatted;
             if (i!=expected_track) raw=false;
             expected_track=i+1U;
@@ -104,10 +104,10 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
             if (count!=raw_spt) track_raw=false;
             for (k=0U;k<count;++k) {
                 const uint8_t *h; uint32_t actual,implied; uint8_t id;
-                TM_NEED(!d88_stop(pd)&&at<=end&&end-at>=16U);
+                DISK_MUSIC_NEED(!d88_stop(pd)&&at<=end&&end-at>=16U);
                 h=b.p+(size_t)disk_at+at;
                 actual=xx_data_get_u16(h+14U, 2, 0, false); id=h[2];
-                TM_NEED(h[3]<=7U&&actual<=16384U&&
+                DISK_MUSIC_NEED(h[3]<=7U&&actual<=16384U&&
                         xx_data_get_u16(h+4U, 2, 0, false)==count&&actual<=end-at-16U);
                 implied=128U<<h[3];
                 if (h[0]!=i/2U||h[1]!=i%2U||id<1U||id>count||
@@ -120,26 +120,26 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
                 (void)xx_rt_snprintf(name,sizeof(name),
                     "disk%02u-track%03u-slot%03u-sector%03u.bin",
                     disk_no,i,k,(unsigned)id);
-                TM_NEED(pm_add(f,s,name,(int64_t)(disk_at+at+16U),actual));
+                DISK_MUSIC_NEED(pm_add(f,s,name,(int64_t)(disk_at+at+16U),actual));
                 ++all_sectors;
                 at+=16U+actual;
             }
-            TM_NEED(at==end);
+            DISK_MUSIC_NEED(at==end);
             if (track_raw) for (k=1U;k<=count;++k) {
                 if (!slots[k]) { track_raw=false; break; }
             }
             if (!track_raw) raw=false;
             if (raw) for (k=1U;k<=count;++k) {
-                TM_NEED(raw_count<D88_MAX_SECTORS);
+                DISK_MUSIC_NEED(raw_count<D88_MAX_SECTORS);
                 map[raw_count++]=slots[k];
             }
         }
-        TM_NEED(formatted);
+        DISK_MUSIC_NEED(formatted);
         if (raw&&raw_count==all_sectors-disk_sector_start&&raw_size)
-            TM_NEED(d88_append_raw(f,s,&b,map,raw_count,raw_size,disk_no));
+            DISK_MUSIC_NEED(d88_append_raw(f,s,&b,map,raw_count,raw_size,disk_no));
         disk_at+=disk_size; ++disk_no;
     }
-    TM_NEED(disk_at==b.n&&disk_no&&all_sectors&&!d88_stop(pd));
+    DISK_MUSIC_NEED(disk_at==b.n&&disk_no&&all_sectors&&!d88_stop(pd));
     s->size=(int64_t)b.n; ok=true;
 done:
     xx_mem_free(map); xx_mem_free(b.p); return ok;

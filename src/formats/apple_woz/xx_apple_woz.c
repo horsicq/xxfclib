@@ -8,22 +8,22 @@
  * when declared. Original bitstream and flux-timing bytes are exported.
  */
 #include "xxfclib/formats/apple_woz/xx_apple_woz.h"
-#include "../vice_x64/xx_ninth_retro.h"
+#include "../common/xx_retro_disk_components.h"
 #include "../apple_family/xx_apple_gcr.h"
 
-static bool wz_emit(af_work *w,const nh_blob *b,const char *name,uint32_t at,uint32_t size){
- char label[96];if(!nh_range(b,at,size) || w->s->count>=4096U)return false;
+static bool wz_emit(af_work *w,const retro_disk_blob *b,const char *name,uint32_t at,uint32_t size){
+ char label[96];if(!retro_disk_range(b,at,size) || w->s->count>=4096U)return false;
  xx_rt_snprintf(label,sizeof(label),"%04u-%s",(unsigned)w->s->count,name);return af_add(w,label,at,size,NULL);
 }
 
-static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b,af_work *w) {
+static bool parse_blob(Abstractformat *f,pm_stream *s,retro_disk_blob *b,af_work *w) {
  uint32_t at=12,info=0,tmap=0,trks=0,trksz=0,flux=0,flux_header=0;
  uint32_t meta=0,metasz=0,i,version,nonempty=0,info_version;
  uint8_t mapped[160]={0},fluxmapped[160]={0};
- nh_span spans[160]; uint32_t count=0; bool ok; char name[48]; (void)f;
- if(!nh_range(b,0,12) || (xx_rt_memcmp(b->p,"WOZ1\xff\x0a\x0d\x0a",8) && xx_rt_memcmp(b->p,"WOZ2\xff\x0a\x0d\x0a",8))) return false;
- version=b->p[3]-'0'; if(xx_data_get_u32(b->p+8, 4, 0, false) && (nh_crc(b,12,b->n-12,&ok)!=xx_data_get_u32(b->p+8, 4, 0, false) || !ok)) return false;
- while(at<b->n) { uint32_t z; if(!nh_range(b,at,8) || (z=xx_data_get_u32(b->p+at+4, 4, 0, false))>b->n-at-8) return false;
+ retro_disk_span spans[160]; uint32_t count=0; bool ok; char name[48]; (void)f;
+ if(!retro_disk_range(b,0,12) || (xx_rt_memcmp(b->p,"WOZ1\xff\x0a\x0d\x0a",8) && xx_rt_memcmp(b->p,"WOZ2\xff\x0a\x0d\x0a",8))) return false;
+ version=b->p[3]-'0'; if(xx_data_get_u32(b->p+8, 4, 0, false) && (retro_disk_crc(b,12,b->n-12,&ok)!=xx_data_get_u32(b->p+8, 4, 0, false) || !ok)) return false;
+ while(at<b->n) { uint32_t z; if(!retro_disk_range(b,at,8) || (z=xx_data_get_u32(b->p+at+4, 4, 0, false))>b->n-at-8) return false;
   if(!xx_rt_memcmp(b->p+at,"INFO",4)) { if(info || z!=60) return false; info=at+8; }
   else if(!xx_rt_memcmp(b->p+at,"TMAP",4)) { if(tmap || z!=160) return false; tmap=at+8; }
   else if(!xx_rt_memcmp(b->p+at,"TRKS",4)) { if(trks || z<(version==1 ? 6656U : 1280U)) return false; trks=at+8; trksz=z; }
@@ -64,7 +64,7 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b,af_work *w) {
  }
  if(version==1) {
   uint32_t tracks=trksz/6656U; if(trksz%6656U || tracks>160) return false;
-  for(i=0;i<160;++i) { uint32_t a,z,bits,splice; if(i>=tracks) { if(mapped[i]) return false; continue; } a=trks+i*6656; z=xx_data_get_u16(b->p+a+6646, 2, 0, false); bits=xx_data_get_u16(b->p+a+6648, 2, 0, false); splice=xx_data_get_u16(b->p+a+6650, 2, 0, false); if(!z || z>6646 || !bits || bits>z*8 || (splice!=65535U && (splice>bits || b->p[a+6653]<8U || b->p[a+6653]>10U)) || !nh_zero(b->p+a+6654,2)) return false; ++nonempty; xx_rt_snprintf(name,sizeof(name),"track-%u.bits",i); if(!wz_emit(w,b,name,a,z)) return false; }
+  for(i=0;i<160;++i) { uint32_t a,z,bits,splice; if(i>=tracks) { if(mapped[i]) return false; continue; } a=trks+i*6656; z=xx_data_get_u16(b->p+a+6646, 2, 0, false); bits=xx_data_get_u16(b->p+a+6648, 2, 0, false); splice=xx_data_get_u16(b->p+a+6650, 2, 0, false); if(!z || z>6646 || !bits || bits>z*8 || (splice!=65535U && (splice>bits || b->p[a+6653]<8U || b->p[a+6653]>10U)) || !retro_disk_zero(b->p+a+6654,2)) return false; ++nonempty; xx_rt_snprintf(name,sizeof(name),"track-%u.bits",i); if(!wz_emit(w,b,name,a,z)) return false; }
  } else {
   if(!wz_emit(w,b,"track-table.bin",trks,1280)) return false;
   for(i=0;i<160;++i) { const uint8_t *p=b->p+trks+i*8; uint32_t a=(uint32_t)xx_data_get_u16(p, 2, 0, false)*512U,z=(uint32_t)xx_data_get_u16(p+2, 2, 0, false)*512U,bits=xx_data_get_u32(p+4, 4, 0, false);
@@ -74,13 +74,13 @@ static bool parse_blob(Abstractformat *f,pm_stream *s,nh_blob *b,af_work *w) {
       z/512U>xx_data_get_u16(b->p+info+(is_flux ? 48U : 44U), 2, 0, false) ||
       (is_flux ? bits>z : bits>z*8U) ||
       a<trks+1280 || a>trks+trksz || z>trks+trksz-a ||
-      !nh_disjoint(spans,&count,160,a,z)) return false;
+      !retro_disk_disjoint(spans,&count,160,a,z)) return false;
    ++nonempty;
    xx_rt_snprintf(name,sizeof(name),"track-%u.%s",i,is_flux ? "flux" : "bits");
    if(!wz_emit(w,b,name,a,is_flux ? bits : (bits+7U)/8U)) return false;
   }
  }
- if(meta) { uint32_t pos; bool tab=false; for(pos=0;pos<metasz;++pos) { uint8_t c=b->p[meta+pos]; if(!(pos&4095U) && !nh_poll(b)) return false; if(c=='\t') { if(tab) return false; tab=true; } else if(c=='\n') { if(!tab) return false; tab=false; } else if(c<32 || c>126) return false; } if(tab || b->p[meta+metasz-1]!='\n' || !wz_emit(w,b,"metadata.txt",meta,metasz)) return false; }
+ if(meta) { uint32_t pos; bool tab=false; for(pos=0;pos<metasz;++pos) { uint8_t c=b->p[meta+pos]; if(!(pos&4095U) && !retro_disk_poll(b)) return false; if(c=='\t') { if(tab) return false; tab=true; } else if(c=='\n') { if(!tab) return false; tab=false; } else if(c<32 || c>126) return false; } if(tab || b->p[meta+metasz-1]!='\n' || !wz_emit(w,b,"metadata.txt",meta,metasz)) return false; }
  if(!nonempty) { return false; } s->size=at; return true;
 }
 
@@ -108,9 +108,9 @@ static bool wz_decode(af_work *w,const af_blob *b){
 done:af_release(w,latch,131074U);af_release(w,image,cylinders*4096U);return ok;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){
- af_work w;af_blob b;nh_blob legacy;bool ok;
+ af_work w;af_blob b;retro_disk_blob legacy;bool ok;
  if(!af_init(&w,f,s,pd) || !af_load(&w,&b))return false;
- legacy.p=b.p;legacy.n=b.n;legacy.crc_budget=NH_LIMIT;legacy.pd=pd;
+ legacy.p=b.p;legacy.n=b.n;legacy.crc_budget=RETRO_DISK_LIMIT;legacy.pd=pd;
  ok=parse_blob(f,s,&legacy,&w) && wz_decode(&w,&b);if(ok)((xx_apple_woz *)f)->number_of_records=s->count;
  af_release(&w,b.p,b.n);return ok;
 }

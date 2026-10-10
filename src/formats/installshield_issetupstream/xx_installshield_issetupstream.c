@@ -11,7 +11,7 @@
  * acceptance rules, the cipher selectors and the salted name key.  The
  * selector semantics (0 / -1 / -3 unfiltered, 2 and 6 filtered, the rest
  * unsupported) and the UTF-8 form of the key were checked against the
- * behaviour of U3's "SFX IS19" handler, and the whole codec against the five
+ * behaviour of the reference reader's "SFX IS19" handler, and the whole codec against the five
  * samples of F:\ARC\ARC\SFX IS19.
  *
  * This is a self-extractor reader: the carrier executable is parsed only as

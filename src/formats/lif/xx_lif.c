@@ -1,8 +1,8 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * The "DC"/"DL" single-member compressed-file container U3 labels LIF.  The
- * header test is U3's own recognition predicate (FUN_00555840), tightened
+ * LIF: the "DC"/"DL" single-member compressed-file container.  The
+ * header test is the recovered recognition predicate (FUN_00555840), tightened
  * with the two structural identities that hold in the whole corpus.  The
  * Method 6 is Zoo LZD with an explicit EOF code.  Its decoded size is
  * measured by scanning the code stream before the record is published.

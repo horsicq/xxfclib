@@ -4,7 +4,7 @@
  * Stored encoded components only; no rendering or external-resource access.
  */
 #include "xxfclib/formats/jbig2/xx_jbig2.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 
 static bool sm_jb_type(unsigned type) { return type==0 || type==4 || type==6 || type==7 || type==16 || type==20 || type==22 || type==23 || type==36 || type==38 || type==39 || type==40 || type==42 || type==43 || type==48 || type==49 || type==50 || type==51 || type==52 || type==53 || type==62; }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
@@ -14,21 +14,21 @@ static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     if(!unknown && (!pm_read(f,9,h+9,4) || !(pages=xx_data_get_u32(h+9, 4, 0, true)) || pages>4096)) return false;
     if(!pm_add(f,s,"jbig2-header.bin",0,(int64_t)at)) return false;
     while(at<end) { uint64_t begin=at,data,stop; uint32_t id,refs,page,length; unsigned type,width,j; uint8_t flags; char label[64];
-        if(fd_stop(pd) || count>=4096 || !fd_range(at,6,end) || !pm_read(f,(int64_t)at,b,6)) return false;
+        if(binary_stop(pd) || count>=4096 || !binary_range(at,6,end) || !pm_read(f,(int64_t)at,b,6)) return false;
         id=xx_data_get_u32(b, 4, 0, true); flags=b[4]; type=flags&63; refs=b[5]>>5;
         if(id==UINT32_MAX || (count && id<=last) || refs>4 || !sm_jb_type(type) || (b[5]&((uint8_t)(0x1fU & ~((1U<<(refs+1))-1U))))) return false;
         width=id<=256 ? 1:id<=65536 ? 2:4; at+=6;
         for(j=0;j<refs;++j) { uint32_t target; unsigned lo=0,hi=count;
-            if(!fd_range(at,width,end) || !pm_read(f,(int64_t)at,b,width)) { return false; } target=width==1 ? b[0]:width==2 ? xx_data_get_u16(b, 2, 0, true):xx_data_get_u32(b, 4, 0, true); at+=width;
+            if(!binary_range(at,width,end) || !pm_read(f,(int64_t)at,b,width)) { return false; } target=width==1 ? b[0]:width==2 ? xx_data_get_u16(b, 2, 0, true):xx_data_get_u32(b, 4, 0, true); at+=width;
             while(lo<hi) { unsigned mid=lo+(hi-lo)/2; if(ids[mid]<target) lo=mid+1; else hi=mid; } if(lo==count || ids[lo]!=target) return false;
         }
-        width=(flags&64) ? 4:1; if(!fd_range(at,width+4,end) || !pm_read(f,(int64_t)at,b,width+4)) return false;
+        width=(flags&64) ? 4:1; if(!binary_range(at,width+4,end) || !pm_read(f,(int64_t)at,b,width+4)) return false;
         page=width==1 ? b[0]:xx_data_get_u32(b, 4, 0, true); length=xx_data_get_u32(b+width, 4, 0, true); data=at+width+4;
-        if(length==UINT32_MAX || !fd_range(data,length,end)) { return false; } stop=data+length;
+        if(length==UINT32_MAX || !binary_range(data,length,end)) { return false; } stop=data+length;
         if(type==48) { uint64_t pixels;
             if(active || !page || page>4096 || (!unknown && page>pages) || page!=completed+1 || refs || length!=19 || !pm_read(f,(int64_t)data,b,19)) return false;
             w=xx_data_get_u32(b, 4, 0, true); height=xx_data_get_u32(b+4, 4, 0, true);
-            if(!w || !height || height==UINT32_MAX || !fd_mul(w,height,&pixels) || pixels>67108864 || (b[16]&0x80) || xx_data_get_u16(b+17, 2, 0, true)) { return false; } active=page;
+            if(!w || !height || height==UINT32_MAX || !binary_mul(w,height,&pixels) || pixels>67108864 || (b[16]&0x80) || xx_data_get_u16(b+17, 2, 0, true)) { return false; } active=page;
         } else if(type==49) { if(!active || page!=active || length || refs) return false; active=0; ++completed; }
         else if(type==51) { if(page || length || refs || active || !completed || (!unknown && completed!=pages)) return false; }
         else { if(type==50 || (page && page!=active)) return false;

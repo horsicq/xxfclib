@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://images.autodesk.com/adsk/files/autocad_2014_pdf_dxf_reference_enu.pdf */
 #include "xxfclib/formats/autocad_dxf/xx_autocad_dxf.h"
-#include "../xx_ninth_data.h"
+#include "../common/xx_memory_blob.h"
 
 static unsigned group_kind(uint16_t c) {
     if((c>=10 && c<=59) || (c>=110 && c<=149) || (c>=210 && c<=239) || (c>=460 && c<=469) || (c>=1010 && c<=1059)) return 8;
@@ -14,18 +14,18 @@ static unsigned group_kind(uint16_t c) {
     return 255;
 }
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    uint8_t h[22];nh_blob b={0};bool ok=false,in_section=false,want_name=false,eof=false;uint64_t at=22,start=0;unsigned tags=0,sections=0;char section[256];
-    if(!pm_read(f,0,h,22) || xx_rt_memcmp(h,"AutoCAD Binary DXF\r\n\x1a\0",22)) { return false; } NH_NEED(nh_load(f,&b,pd) && nh_add(f,s,&b,"sentinel",0,22));
-    while(at<b.n) {uint16_t code;unsigned kind;uint64_t value;char text[1024]={0};NH_NEED(++tags<=1000000 && nh_span(&b,at,2) && !eof);code=xx_data_get_u16(b.p+(size_t)at, 2, 0, false);kind=group_kind(code);at+=2;value=at;NH_NEED(kind!=255);
-        if(!kind) {size_t n=0;while(at<b.n && b.p[(size_t)at]) {NH_NEED(n+1<sizeof(text));text[n++]=(char)b.p[(size_t)at++];}NH_NEED(at<b.n && nh_ascii((const uint8_t *)text,n,false));++at;}
-        else if(kind==3) {uint8_t n;NH_NEED(nh_span(&b,at,1));n=b.p[(size_t)at++];NH_NEED(nh_span(&b,at,n));at+=n;}
-        else {unsigned width=kind==9 ? 8:kind;NH_NEED(nh_span(&b,at,width));if(kind==8) NH_NEED(nh_floats(&b,at,8,8,false));if(code>=290 && code<=299) NH_NEED(b.p[(size_t)at]<=1);at+=width;}
-        if(want_name) {NH_NEED(code==2 && text[0] && xx_rt_strlen(text)<sizeof(section));xx_rt_memcpy(section,text,xx_rt_strlen(text)+1);want_name=false;}
-        else if(!code && !xx_rt_strcmp(text,"SECTION")) {NH_NEED(!in_section && ++sections<=128);in_section=true;want_name=true;start=value-2;}
-        else if(!code && !xx_rt_strcmp(text,"ENDSEC")) {NH_NEED(in_section && !want_name && nh_add(f,s,&b,section,start,at-start));in_section=false;}
-        else if(!code && !xx_rt_strcmp(text,"EOF")) {NH_NEED(!in_section && sections && at==b.n && nh_add(f,s,&b,"eof",value-2,at-value+2));eof=true;}
-        else NH_NEED(in_section);
-    }NH_NEED(eof);s->size=(int64_t)b.n;ok=true;
+    uint8_t h[22];memory_blob b={0};bool ok=false,in_section=false,want_name=false,eof=false;uint64_t at=22,start=0;unsigned tags=0,sections=0;char section[256];
+    if(!pm_read(f,0,h,22) || xx_rt_memcmp(h,"AutoCAD Binary DXF\r\n\x1a\0",22)) { return false; } BLOB_NEED(blob_load(f,&b,pd) && blob_add(f,s,&b,"sentinel",0,22));
+    while(at<b.n) {uint16_t code;unsigned kind;uint64_t value;char text[1024]={0};BLOB_NEED(++tags<=1000000 && blob_span(&b,at,2) && !eof);code=xx_data_get_u16(b.p+(size_t)at, 2, 0, false);kind=group_kind(code);at+=2;value=at;BLOB_NEED(kind!=255);
+        if(!kind) {size_t n=0;while(at<b.n && b.p[(size_t)at]) {BLOB_NEED(n+1<sizeof(text));text[n++]=(char)b.p[(size_t)at++];}BLOB_NEED(at<b.n && blob_ascii((const uint8_t *)text,n,false));++at;}
+        else if(kind==3) {uint8_t n;BLOB_NEED(blob_span(&b,at,1));n=b.p[(size_t)at++];BLOB_NEED(blob_span(&b,at,n));at+=n;}
+        else {unsigned width=kind==9 ? 8:kind;BLOB_NEED(blob_span(&b,at,width));if(kind==8) BLOB_NEED(blob_floats(&b,at,8,8,false));if(code>=290 && code<=299) BLOB_NEED(b.p[(size_t)at]<=1);at+=width;}
+        if(want_name) {BLOB_NEED(code==2 && text[0] && xx_rt_strlen(text)<sizeof(section));xx_rt_memcpy(section,text,xx_rt_strlen(text)+1);want_name=false;}
+        else if(!code && !xx_rt_strcmp(text,"SECTION")) {BLOB_NEED(!in_section && ++sections<=128);in_section=true;want_name=true;start=value-2;}
+        else if(!code && !xx_rt_strcmp(text,"ENDSEC")) {BLOB_NEED(in_section && !want_name && blob_add(f,s,&b,section,start,at-start));in_section=false;}
+        else if(!code && !xx_rt_strcmp(text,"EOF")) {BLOB_NEED(!in_section && sections && at==b.n && blob_add(f,s,&b,"eof",value-2,at-value+2));eof=true;}
+        else BLOB_NEED(in_section);
+    }BLOB_NEED(eof);s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(b.p);return ok;
 }
 

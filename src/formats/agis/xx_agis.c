@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * AGIS archives (".AGS", ".IB&").  A direct port of XArchive's
- * games/xagis.cpp, cross-checked against U3's AGIS handler (class jpa,
+ * games/xagis.cpp, cross-checked against the reference reader's AGIS handler (class jpa,
  * VMT 0054bd88).
  *
  *   there is no archive-level header; the file is a chain of members, each a

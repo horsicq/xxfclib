@@ -168,7 +168,7 @@ static bool xx_trdos_add(xx_trdos_stream *stream,
  * and NBSP.  Corpus names genuinely carry LEADING spaces too - the OBERON
  * disks hold "  oberon", " oberon" and "oberon" side by side - and the
  * reference keeps them.  Here they are trimmed as well, because the reference
- * unpacker (U3) does and because a filename that starts with a space is
+ * unpacker does and because a filename that starts with a space is
  * unopenable through the Win32 path APIs.  The trim only affects the published
  * name; the member bytes are unchanged, and two records that differ only by
  * padding then extract to the same path, exactly as the reference unpacker

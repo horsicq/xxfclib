@@ -19,12 +19,18 @@ OPT_MAX_MEMBER_SIZE values are respected. Input image, retained records, names,
 owned options, decoded buffers, and codec workspaces are charged. A fixed 128 KiB
 reserve covers active buffers/stack and metadata conversions.
 
+Single-volume and multipart cabinet sets (including continued files and split
+CFDATA blocks) are decoded in RAM, preserving the codec history across parts.
+Empty runtime cabinets are accepted only as exact 36-byte cabinet headers.
+Every nonzero CFDATA checksum and continuation declaration is validated.
+
 Stored, MSZIP and LZX cabinet paths have independent fixture-byte comparisons
 with Binary Refinery 0.11.2. Those LZX fixtures contain uncompressed LZX blocks.
 Quantum is wired to the existing decoder but has no independent SIM fixture.
-Multipart/continued cabinets, non-EOF footers, unknown layouts/encodings and
-encryption variants are unsupported. No real independent SIM producer binary
-was used. Non-Windows builds currently require ASCII source names.
+All seven ARC9 producer packages pass RAM-only TEST, including the four-volume
+TuneUp cabinet set with 2,597 content members and compressed LZX blocks.
+Non-EOF footers, unknown layouts/encodings and encryption variants remain
+unsupported. Non-Windows builds currently require ASCII source names.
 
 Build/verify through the app smart_install_maker_probe target and runner:
   python tests/smart_install_maker_regression.py --probe <probe.exe> --root <reports>

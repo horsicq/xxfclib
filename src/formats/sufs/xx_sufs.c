@@ -613,7 +613,7 @@ static void sufs_walk(xx_io_device *device, sufs_parsed *parsed,
                         size_t i;
                         /* NeXT's old directory may count trailing NUL padding
                          * in namlen. Preserve the claimed width by replacing
-                         * those bytes with portable underscores, as U3 does. */
+                         * those bytes with portable underscores, as the reference reader does. */
                         for (i = 0U; i < namlen; ++i) {
                             uint8_t c = entry[SUFS_DIRENT_HEADER + i];
                             safe_name[i] = c ? c : (uint8_t)'_';

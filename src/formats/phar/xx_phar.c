@@ -27,7 +27,7 @@
  * zlib member is RAW Deflate, not a zlib stream, and every decoded member is
  * checked against its stored CRC32 before it is written.
  *
- * U3 implements the same format as archive/556 (class cgb, VMT 0x00657508);
+ * The reference reader implements the same format as archive/556 (class cgb, VMT 0x00657508);
  * its predicate FUN_006575f0 gates on the PHP stub's opening line before
  * parsing the manifest, which is what this reader's prefilter mirrors.
  */

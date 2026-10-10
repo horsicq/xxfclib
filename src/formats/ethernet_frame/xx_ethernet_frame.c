@@ -4,9 +4,9 @@
 /* Primary: https://www.rfc-editor.org/rfc/rfc894.html */
 #include "xxfclib/formats/ethernet_frame/xx_ethernet_frame.h"
 #include "xxfclib/data/xx_data.h"
-#include "../xx_fifteenth_wrappers.h"
+#include "../common/xx_network_packet.h"
 
-static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){nh_blob b;bool ok=false;if(!nh_load(f,&b,pd))return false;NH_NEED(b.n>=60&&nh_span(&b,0,14));unsigned type=xx_data_get_u16(b.p+12, 2, 0, true);NH_NEED((type==0x0800&&(b.p[14]>>4)==4)||(type==0x86dd&&(b.p[14]>>4)==6));NH_NEED(!(b.p[6]&1)&&!nh_zero(&b,6,6)&&nh_add(f,s,&b,"ethernet-header",0,14)&&f15_ip_add(f,s,&b,14,b.n-14));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
+static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd){memory_blob b;bool ok=false;if(!blob_load(f,&b,pd))return false;BLOB_NEED(b.n>=60&&blob_span(&b,0,14));unsigned type=xx_data_get_u16(b.p+12, 2, 0, true);BLOB_NEED((type==0x0800&&(b.p[14]>>4)==4)||(type==0x86dd&&(b.p[14]>>4)==6));BLOB_NEED(!(b.p[6]&1)&&!blob_zero(&b,6,6)&&blob_add(f,s,&b,"ethernet-header",0,14)&&packet_ip_add(f,s,&b,14,b.n-14));s->size=(int64_t)b.n;ok=true;done:xx_mem_free(b.p);return ok;}
 
 void xx_ethernet_frame_init(xx_ethernet_frame *r,xx_io_device *d,int64_t b){if(r){xx_mem_zero(r,sizeof(*r));pm_init(&r->format,d,b,XX_FILE_TYPE_ETHERNET_FRAME,"bin");}}
 xx_ethernet_frame *xx_ethernet_frame_create(xx_io_device *d,int64_t b){xx_ethernet_frame *r=(xx_ethernet_frame *)xx_mem_alloc(sizeof(*r));if(r)xx_ethernet_frame_init(r,d,b);return r;}

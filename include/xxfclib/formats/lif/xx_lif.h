@@ -3,21 +3,20 @@
  */
 
 /** @file xx_lif.h
- *  @brief The single-member "DC"/"DL" compressed-file container U3 calls LIF.
+ *  @brief LIF single-member "DC"/"DL" compressed-file container.
  */
 
-/* WHAT THIS IS - AND WHAT IT IS NOT.  The corpus directory is named LIF and
- * U3's handler for it is labelled LIF, but this is NOT Hewlett-Packard's LIF
+/* WHAT THIS IS - AND WHAT IT IS NOT.  The corpus directory is named LIF,
+ * but these compressed files do not use Hewlett-Packard's LIF
  * volume format: there is no 0x8000 volume header, no 256-byte directory and
  * no 8-character volume label anywhere in these files.  It is a small
  * single-member compressed-file wrapper whose members are the pieces of an
  * early-1990s Delrina WinFax installation (helphk.dll, windem.drv,
- * faxdem.exe, winfax.hlp, ...).  The name here follows U3's naming and the
- * corpus directory, nothing more.  It is unrelated to the LIF KD reader in
+ * faxdem.exe, winfax.hlp, ...).  The name here follows the corpus directory.
+ * It is unrelated to the LIF KD reader in
  * this library, whose members carry ASCII-hex headers.
  *
- * WHERE THE LAYOUT COMES FROM.  U3's recognition predicate (FUN_00555840,
- * reached from VMT slot 0 at 0x00555bf0) fixes six of the fields:
+ * FORMAT RECOGNITION.  Reverse-engineering established these field checks:
  *
  *   u16 @ 0x00 == 0x4344 ("DC") or 0x4c44 ("DL")
  *   u16 @ 0x02 == 2
@@ -61,7 +60,7 @@
  * shared Zoo LZD decoder for extraction.  The packed length may include one
  * extra zero alignment byte after EOF; the decoder sees only the bytes
  * through EOF.  Decoding all nine corpus members yielded the expected
- * lengths, including helphk.dll at 2304 bytes, and its bytes matched U3.
+ * lengths, including helphk.dll at 2304 bytes, which matched reference output.
  */
 
 #ifndef XXFCLIB_FORMAT_LIF_H

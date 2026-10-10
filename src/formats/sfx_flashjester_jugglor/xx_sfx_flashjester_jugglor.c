@@ -8,7 +8,7 @@
  *
  * Only the PE headers are parsed, to find the overlay; nothing in the stub
  * is run or emulated.  The record chain is walked forward from the overlay
- * the way U3's "SFX FlashJester" and "SFX ExeAttachment" handlers walk it,
+ * the way the reference reader's "SFX FlashJester" and "SFX ExeAttachment" handlers walk it,
  * and a Jugglor chain must end in its 220-byte trailer, whose fields are
  * cross-checked as XArchive archives/xjugglor.cpp checks them (MIT License,
  * Copyright (c) 2026 hors): the overlay offset, the chain size, the member
@@ -20,7 +20,7 @@
  * produce more than its declared size, must produce exactly that size, and
  * its Adler-32 must match.  Names are Delphi ShortStrings in the ANSI code
  * page (converted from Windows-1252 to UTF-8); the source directory is kept
- * without its drive, as U3 lays the files out.  Components that would alias
+ * without its drive, as the reference reader lays the files out.  Components that would alias
  * something on Windows ("..", "CON", "a:b", a trailing dot) are listed but
  * refused on extraction, and later duplicates (ASCII case-insensitive) get a
  * "_<member number>" suffix before the extension.

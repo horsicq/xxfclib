@@ -9,7 +9,7 @@
  * right after the table, member records carry 0xF012 and a zero extension
  * byte, zero-byte members have no stream) follow XArchive's
  * installers/xwarpin.cpp (MIT); the revision-4 extension header follows the
- * layout U3's WarpIN handler reads.  No code is taken from either.
+ * layout the reference reader's WarpIN handler reads.  No code is taken from either.
  *
  * The package is walked, never loaded: the header, the package table in
  * small batches and one 0x11D-byte member header at a time.  Validation

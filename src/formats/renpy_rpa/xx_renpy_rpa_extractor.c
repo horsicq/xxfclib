@@ -2,36 +2,48 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* xx_renpy_rpa_extractor.c - search raw data for renpy_rpa.
+/* xx_renpy_rpa_extractor.c - search raw data for the Ren'Py RPA family.
  *
- * Candidates use a fixed signature and the full bounded reader validation.
- * Each candidate must be accepted by the renpy_rpa reader, which also measures it,
- * and named by the detector, both on a view that starts at the candidate.
+ * RPA 2.0, 3.0, 3.2, 4.0 and ALT 1.0 share the public RENPY_RPA type.
+ * Use the complete RPA reader for validation, extent and metadata, as the
+ * archive-opening registry does. The older renpy_rpa reader only understands
+ * a restricted RPA 3.0 index grammar.
  * See xx_format_extractor_engine.h.
  */
 
 #include "../xx_format_extractor_engine.h"
 #include "xxfclib/formats/renpy_rpa/xx_renpy_rpa.h"
+#include <xxfclib/formats/rpa/xx_rpa.h>
 
 static const xx_file_type_t k_types[] = { XX_FILE_TYPE_RENPY_RPA };
 
 static Abstractformat *xx_renpy_rpa_search_open(xx_io_device *window) {
-    xx_renpy_rpa *reader = xx_renpy_rpa_create(window, 0);
+    xx_rpa *reader = xx_rpa_create(window, 0);
     return reader ? &reader->format : NULL;
 }
 
 static void xx_renpy_rpa_search_close(Abstractformat *format) {
     /* The format is the first member, so this is the reader itself. */
-    xx_renpy_rpa_free((xx_renpy_rpa *)format);
+    xx_rpa_free((xx_rpa *)format);
 }
 
-static const uint8_t anchor_bytes[] = {0x52,0x50,0x41,0x2d,0x33,0x2e,0x30,0x20};
-static const xx_format_search_anchor anchors[] = { { anchor_bytes,sizeof(anchor_bytes),0 } };
+static const uint8_t anchor_rpa20[] = "RPA-2.0 ";
+static const uint8_t anchor_rpa30[] = "RPA-3.0 ";
+static const uint8_t anchor_rpa32[] = "RPA-3.2 ";
+static const uint8_t anchor_rpa40[] = "RPA-4.0 ";
+static const uint8_t anchor_alt10[] = "ALT-1.0 ";
+static const xx_format_search_anchor anchors[] = {
+    { anchor_rpa20, sizeof(anchor_rpa20) - 1U, 0U },
+    { anchor_rpa30, sizeof(anchor_rpa30) - 1U, 0U },
+    { anchor_rpa32, sizeof(anchor_rpa32) - 1U, 0U },
+    { anchor_rpa40, sizeof(anchor_rpa40) - 1U, 0U },
+    { anchor_alt10, sizeof(anchor_alt10) - 1U, 0U }
+};
 
 static const xx_format_search_desc k_desc = {
     k_types, sizeof(k_types) / sizeof(k_types[0]),
-    anchors, 1U,
-    xx_renpy_rpa_search_open, xx_renpy_rpa_search_close, false
+    anchors, sizeof(anchors) / sizeof(anchors[0]),
+    xx_renpy_rpa_search_open, xx_renpy_rpa_search_close, true
 };
 
 static xx_format_search_state *xx_renpy_rpa_create_format_search(

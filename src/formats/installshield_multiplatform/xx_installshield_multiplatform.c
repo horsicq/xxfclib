@@ -12,7 +12,7 @@
  * executable is parsed, executed or emulated.
  *
  * The layout was measured on six launchers (three PE32, two i386 ELF, one
- * AIX XCOFF; ISMP 5.x era).  U3's "SFX ISNI" handler was read to confirm
+ * AIX XCOFF; ISMP 5.x era).  The reference reader's "SFX ISNI" handler was read to confirm
  * the entry shape (a 15-byte fixed part, the name, then a 0/1 flag that
  * adds 8 bytes); the code here is written from the layout, not from it.
  */

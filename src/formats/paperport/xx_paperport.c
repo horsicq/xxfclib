@@ -3,7 +3,7 @@
  *
  * Visioneer / ScanSoft PaperPort desktop files ("~DESKTOP.nnn", ".max").
  * Ported from XArchive's documents/xpaperport.cpp and cross-checked against
- * U3's PaperPort handler (class jlb, VMT 006c20c8).
+ * the reference reader's PaperPort handler (class jlb, VMT 006c20c8).
  *
  *   file header, 200 bytes at offset 0:
  *     0x00   3  char[3]  "ViG"

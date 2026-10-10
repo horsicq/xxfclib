@@ -19,7 +19,7 @@
  * at EOF, which is what turns two bytes of magic into a real detector.
  *
  * Ported from XArchive diskimages/xhdcopy.cpp and
- * Algos/xhdcopydecoder.cpp; U3 implements the same format as archive/62
+ * Algos/xhdcopydecoder.cpp; the reference reader implements the same format as archive/62
  * (class jga, VMT 0x0049dc40).
  */
 #include "xxfclib/rt/xx_rt.h"

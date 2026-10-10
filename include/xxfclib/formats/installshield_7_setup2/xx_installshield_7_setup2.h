@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 /**
- * @brief An InstallShield 7.x "setup.boot" file (U3 "IS7 BOOT").
+ * @brief An InstallShield 7.x "setup.boot" engine bundle.
  *
  * InstallShield 7's Setup.exe loader reads the engine DLLs it needs from
  * setup.boot, next to it on Disk1.  The file has no header, no count and no

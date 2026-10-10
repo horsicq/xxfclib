@@ -50,8 +50,8 @@
  * repeated until the plaintext length at 0x10 has been produced; a tail of
  * fewer than four bytes is stored raw.  Each block's tokens then feed a
  * byte-oriented LZ77 over a 512 KiB window primed with a fixed 4026-byte
- * dictionary.  See the codec section below for where in U3 each half came
- * from.  Verified against U3 over the whole corpus: all 278 members decode
+ * dictionary.  See the codec section below for where each recovered decoder half came
+ * from.  Verified against the reference reader over the whole corpus: all 278 members decode
  * to exactly their declared length and are byte-identical to its output.
  */
 
@@ -325,7 +325,7 @@ static bool xx_ftcomp_read_member(Abstractformat *self, int64_t span,
  * that token stream is then expanded by a byte-oriented LZ77 over a 512 KiB
  * circular window primed with a fixed 4026-byte dictionary.
  *
- * Both are ports of U3's decoder (F:\utils\U3\src, class `tgb` at VMT
+ * Both are ports of the recovered decoder (recovered decoder analysis, class `tgb` at VMT
  * 0x00666c78): FUN_00667430 drives the block loop, FUN_00664d00 ->
  * FUN_00663dd0 is the Huffman stage with FUN_006636e0 / FUN_00663310 /
  * FUN_006630c0 / FUN_00663940 building its trees, and FUN_00666d80 ->
@@ -368,7 +368,7 @@ static bool xx_ftcomp_read_member(Abstractformat *self, int64_t span,
 
 /* The two fixed weight tables the reference loads before every block:
  * the first codes the transmitted symbol weights, the second the
- * distance and length fields.  Lifted verbatim from U3's data section
+ * distance and length fields.  Lifted verbatim from the recovered data section
  * (the arrays PTR_DAT_00a0ad90 and PTR_DAT_00a0ad48 point at); only
  * symbols 0..0x100 carry a weight in either. */
 static const uint16_t ftcomp_weights_header[257] = {
@@ -430,7 +430,7 @@ static const uint16_t ftcomp_weights_extra[257] = {
 };
 
 /* The 4026-byte dictionary FUN_00662760 primes the window with, from
- * U3's data section at 0x009e8858.  It is a slab of C-runtime message
+ * the recovered data section at 0x009e8858.  It is a slab of C-runtime message
  * text and x86 prologue fragments - the things an OS/2 driver archive
  * is full of - and matches are made against it from the first byte. */
 static const uint8_t ftcomp_preset_dictionary[4026] = {
@@ -954,7 +954,7 @@ static void xx_ftcomp_sort(uint16_t *lut, const uint16_t *node, int32_t low,
     }
 }
 
-/* The post-RLE alphabet uses the same unstable U3 sort as the Huffman
+/* The post-RLE alphabet uses the same unstable reference sort as the Huffman
  * builder, but its frequency counters are full 32-bit integers. Equal
  * counts must keep the reference ordering: the table's bytes refer to
  * inverted rank positions, so a stable sort silently corrupts the output. */
@@ -1238,7 +1238,7 @@ static bool xx_ftcomp_build_extra(xx_ftcomp_huff *huff, uint8_t version) {
                  sizeof(ftcomp_weights_extra));
     weights[257] = 0U;
     if (version == 1U) {
-        /* U3's alternative table at 0x009ea012 differs only here. */
+        /* The reference reader's alternative table at 0x009ea012 differs only here. */
         weights[252] = 4U;
         weights[253] = 4U;
         weights[254] = 0U;

@@ -4,10 +4,10 @@
  * Stored encoded components only; no rendering or external-resource access.
  */
 #include "xxfclib/formats/audio_au/xx_audio_au.h"
-#include "../xx_fifth_data.h"
+#include "../common/xx_binary_cursor.h"
 
 static bool sm_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at,uint64_t n,uint64_t *measured) {
-    if(s->count>=4096 || !fd_range(at,n,(uint64_t)pm_available(f)) ||
+    if(s->count>=4096 || !binary_range(at,n,(uint64_t)pm_available(f)) ||
        !pm_add(f,s,label,(int64_t)at,(int64_t)n)) return false;
     if(at+n>*measured) { *measured=at+n; } return true;
 }
@@ -15,7 +15,7 @@ static bool sm_emit(Abstractformat *f,pm_stream *s,const char *label,uint64_t at
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
     uint8_t h[24]; uint32_t offset,declared,encoding,rate,channels,width;
     uint64_t n,measured=0; int64_t available; bool be;
-    if(fd_stop(pd) || (available=pm_available(f))<25 || !pm_read(f,0,h,24))
+    if(binary_stop(pd) || (available=pm_available(f))<25 || !pm_read(f,0,h,24))
         return false;
     if(!xx_rt_memcmp(h,".snd",4) || !xx_rt_memcmp(h,".sd\0",4))
         be=true;

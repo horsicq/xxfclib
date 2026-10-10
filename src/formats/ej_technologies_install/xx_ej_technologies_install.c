@@ -233,7 +233,7 @@ static bool ejti_get(ejti_cursor *cursor, int64_t offset, void *out, size_t size
 /* Locating the container                                                  */
 /* ---------------------------------------------------------------------- */
 
-/* The sixteen bytes the reference implementation (and U3) recognise the
+/* The sixteen bytes the reference implementation recognises the
  * container by. */
 static bool ejti_head_ok(const uint8_t *head) {
     int32_t count = (int32_t)xx_data_get_u32(head + 4, 4, 0, false);

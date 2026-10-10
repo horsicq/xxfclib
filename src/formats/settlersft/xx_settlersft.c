@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Blue Byte / Funatics "Settlers" resource files (SPAx.PA and friends).
- * Ported from XArchive's games/xsettlersft.cpp, cross-checked against U3's
+ * Ported from XArchive's games/xsettlersft.cpp, cross-checked against the reference reader's
  * Settlers_FT handler (class yob, VMT 00701688).
  *
  *   header, 8 bytes at offset 0:

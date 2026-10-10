@@ -1,23 +1,23 @@
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.ase-lib.org/_modules/ase/io/res.html */
 #include "xxfclib/formats/shelx_res/xx_shelx_res.h"
-#include "../xx_thirteenth_root.h"
+#include "../common/xx_scientific_structure.h"
 static bool pm_parse(Abstractformat *f,pm_stream *s,xx_pd_struct *pd) {
-    nh_blob b={0};el_lines c={0};el_token line,t[128],species[118],*labels=NULL;unsigned nt,nsp,i,atoms=0,nlabels=0;uint64_t head,tail=0,index,budget=10000000;bool ok=false;
-    NH_NEED(nh_load(f,&b,pd));c.b=&b;
-    NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt>=1 && el_eq(&b,t[0],"TITL"));
-    NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt==8 && el_eq(&b,t[0],"CELL") && th_floats(&b,t+1,7));
-    for(i=1;i<=4;++i) { NH_NEED(th_positive(&b,t[i])); } for(i=5;i<8;++i) NH_NEED(tw_value(&b,t[i])>0 && tw_value(&b,t[i])<180);
-    NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt==2 && el_eq(&b,t[0],"LATT") && el_eq(&b,t[1],"-1"));
-    NH_NEED(th_words(&c,&line,t,128,&nt,"!") && nt>=2 && nt<=119 && el_eq(&b,t[0],"SFAC"));nsp=nt-1;
-    for(i=0;i<nsp;++i) {unsigned j;NH_NEED(tw_element(&b,t[i+1]));for(j=0;j<i;++j) NH_NEED(!th_same(&b,species[j],t[i+1]));species[i]=t[i+1];}head=c.at;
-    while(c.at<b.n) {uint64_t start=c.at;NH_NEED(th_words(&c,&line,t,128,&nt,"!"));if(el_eq(&b,t[0],"END")) {NH_NEED(nt==1);tail=start;break;}
-        NH_NEED(nt==6 && ++atoms<=100000 && t[0].n<=8 && el_chars(&b,t[0],"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_",true) && el_uint(&b,t[1],&index) && index && index<=nsp && th_floats(&b,t+2,4) && tw_value(&b,t[5])>0 && tw_value(&b,t[5])<=1);
+    memory_blob b={0};scientific_text_lines c={0};scientific_text_token line,t[128],species[118],*labels=NULL;unsigned nt,nsp,i,atoms=0,nlabels=0;uint64_t head,tail=0,index,budget=10000000;bool ok=false;
+    BLOB_NEED(blob_load(f,&b,pd));c.b=&b;
+    BLOB_NEED(structure_words(&c,&line,t,128,&nt,"!") && nt>=1 && scientific_text_eq(&b,t[0],"TITL"));
+    BLOB_NEED(structure_words(&c,&line,t,128,&nt,"!") && nt==8 && scientific_text_eq(&b,t[0],"CELL") && structure_floats(&b,t+1,7));
+    for(i=1;i<=4;++i) { BLOB_NEED(structure_positive(&b,t[i])); } for(i=5;i<8;++i) BLOB_NEED(molecular_value(&b,t[i])>0 && molecular_value(&b,t[i])<180);
+    BLOB_NEED(structure_words(&c,&line,t,128,&nt,"!") && nt==2 && scientific_text_eq(&b,t[0],"LATT") && scientific_text_eq(&b,t[1],"-1"));
+    BLOB_NEED(structure_words(&c,&line,t,128,&nt,"!") && nt>=2 && nt<=119 && scientific_text_eq(&b,t[0],"SFAC"));nsp=nt-1;
+    for(i=0;i<nsp;++i) {unsigned j;BLOB_NEED(molecular_element(&b,t[i+1]));for(j=0;j<i;++j) BLOB_NEED(!structure_same(&b,species[j],t[i+1]));species[i]=t[i+1];}head=c.at;
+    while(c.at<b.n) {uint64_t start=c.at;BLOB_NEED(structure_words(&c,&line,t,128,&nt,"!"));if(scientific_text_eq(&b,t[0],"END")) {BLOB_NEED(nt==1);tail=start;break;}
+        BLOB_NEED(nt==6 && ++atoms<=100000 && t[0].n<=8 && scientific_text_chars(&b,t[0],"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_",true) && scientific_text_uint(&b,t[1],&index) && index && index<=nsp && structure_floats(&b,t+2,4) && molecular_value(&b,t[5])>0 && molecular_value(&b,t[5])<=1);
         /* ASE/AIRSS labels plain element rows by element; named sites are unique. */
-        if(!tw_element(&b,t[0])) {unsigned j;NH_NEED(nlabels<4096);if(!labels) {labels=(el_token *)xx_mem_alloc(4096*sizeof(el_token));NH_NEED(labels);}
-            for(j=0;j<nlabels;++j) {uint64_t k;if(labels[j].n!=t[0].n) continue;for(k=0;k<t[0].n;++k) {uint8_t a=b.p[(size_t)(labels[j].at+k)],z=b.p[(size_t)(t[0].at+k)];NH_NEED(budget);--budget;if(a>='a' && a<='z') a-=32;if(z>='a' && z<='z') z-=32;if(a!=z) break;}NH_NEED(k!=t[0].n);}labels[nlabels++]=t[0];}
+        if(!molecular_element(&b,t[0])) {unsigned j;BLOB_NEED(nlabels<4096);if(!labels) {labels=(scientific_text_token *)xx_mem_alloc(4096*sizeof(scientific_text_token));BLOB_NEED(labels);}
+            for(j=0;j<nlabels;++j) {uint64_t k;if(labels[j].n!=t[0].n) continue;for(k=0;k<t[0].n;++k) {uint8_t a=b.p[(size_t)(labels[j].at+k)],z=b.p[(size_t)(t[0].at+k)];BLOB_NEED(budget);--budget;if(a>='a' && a<='z') a-=32;if(z>='a' && z<='z') z-=32;if(a!=z) break;}BLOB_NEED(k!=t[0].n);}labels[nlabels++]=t[0];}
     }
-    NH_NEED(atoms && tail && tw_trailing(&c));NH_NEED(nh_add(f,s,&b,"structure-header",0,head) && nh_add(f,s,&b,"fractional-atoms",head,tail-head) && nh_add(f,s,&b,"structure-end",tail,b.n-tail));s->size=(int64_t)b.n;ok=true;
+    BLOB_NEED(atoms && tail && molecular_trailing(&c));BLOB_NEED(blob_add(f,s,&b,"structure-header",0,head) && blob_add(f,s,&b,"fractional-atoms",head,tail-head) && blob_add(f,s,&b,"structure-end",tail,b.n-tail));s->size=(int64_t)b.n;ok=true;
 done:xx_mem_free(labels);xx_mem_free(b.p);return ok;
 }
 

@@ -4,9 +4,9 @@
  * ABBYY Lingvo / FineReader distribution-disk formats; xx_lingvoarc.h carries
  * both field tables.
  *
- * Container ("lingvoArc1"/"lingvoArc2").  The layout is U3's own (VMT slot 0
+ * Container ("lingvoArc1"/"lingvoArc2").  The layout is the reference reader's own (VMT slot 0
  * at 0x0051d100 -> FUN_0051cd70 for the predicate, slot 1 at 0x0051d120 ->
- * FUN_0051cdc0 for the walk).  U3 copies member payloads out raw; here they
+ * FUN_0051cdc0 for the walk).  The reference reader copies member payloads out raw; here they
  * are decoded, because every whole member is a FINEAR stream - a 17-byte
  * header and an LHA -lh1- body with a stored plaintext length and a
  * CRC-16/ARC - and those two values are the anchor every decode is checked
@@ -23,7 +23,7 @@
  * A fragment cannot be decoded from one volume, so unpack refuses any method
  * other than 0.
  *
- * Stream ("LingvoArch").  Not handled by U3 or XArchive; the layout was
+ * Stream ("LingvoArch").  Not handled by the reference extractor or XArchive; the layout was
  * recovered from the 11 distinct samples of the reference corpus.  Every one
  * of them carries the same 26-byte header, a complete 321-symbol canonical
  * Huffman code and a bit stream that ends in symbol 256 with at most seven
@@ -445,7 +445,7 @@ static bool lva_parse_container(Abstractformat *format, int64_t size,
     size_t entry_size, name_size, descriptor_size, size_offset;
     uint32_t count, index;
     if (header[9] != '1' && header[9] != '2') return false;
-    /* Six constant bytes; U3's own predicate tests them, and they are what
+    /* Six constant bytes; the reference reader's own predicate tests them, and they are what
      * keeps a ten-byte ASCII magic from being the whole of the check. */
     if (header[10] != 0x00U || header[11] != 0xfdU || header[12] != 0x00U ||
         header[13] != 0xdfU || header[14] != 0x00U || header[15] != 0xffU)
