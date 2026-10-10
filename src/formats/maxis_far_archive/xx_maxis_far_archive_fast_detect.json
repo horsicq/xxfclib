@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "MAXIS_FAR_ARCHIVE",
+      "sources": [
+        "src/formats/maxis_far_archive/xx_maxis_far_archive.c"
+      ],
+      "note": "Full native Maxis FAR vendor signature and supported little-endian version1.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 41 52 21 62 79 41 5A 01 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

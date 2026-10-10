@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "YPF",
+      "sources": [
+        "src/formats/ypf/xx_ypf.c"
+      ],
+      "note": "Mandatory YPF-zero; version-specific table handling stays with the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "59 50 46 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

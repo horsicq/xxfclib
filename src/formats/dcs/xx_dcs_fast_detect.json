@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DCS",
+      "sources": [
+        "src/formats/dcs/xx_dcs.c"
+      ],
+      "note": "Exact Windows DCS version1 magic, not unrelated Amiga DCS! data.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 43 53 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

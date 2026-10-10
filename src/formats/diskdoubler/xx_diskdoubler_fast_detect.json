@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DISKDOUBLER",
+      "sources": [
+        "src/formats/diskdoubler/xx_diskdoubler.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "AB CD 00 54"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 44 41 32 00 3E"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 44 41 52"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

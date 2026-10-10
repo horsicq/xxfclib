@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CPIO",
+      "sources": ["src/formats/cpio/xx_cpio.c", "src/formats/cpio/xx_cpio_extractor.c"],
+      "note": "Complete signature family from the reader: newc, CRC, old ASCII, afio, both binary byte orders and the Solaris TL/TG block-compressed wrapper. Record fields and payload are validated when opening.",
+      "rules": [
+        {"tests": [{"origin": "base", "offset": 0, "hex": "30 37 30 37 30 31"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "30 37 30 37 30 32"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "30 37 30 37 30 37"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "30 37 30 37 32 37"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "C7 71"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "71 C7"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "19 9E 54 4C"}]}
+      ]
+    }
+  ]
+}

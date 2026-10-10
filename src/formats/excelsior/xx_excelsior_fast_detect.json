@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "EXCELSIOR_INSTALLER",
+      "sources": [
+        "Binary/data_overlays.6.sg",
+        "PE/installer_Excelsior_Installer.1.sg",
+        "src/formats/excelsior/xx_excelsior.c"
+      ],
+      "note": "Native ExcelsiorII1 raw/PE overlay marker; table and LZMA validation remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "pe_overlay",
+              "offset": 0,
+              "hex": "45 78 63 65 6C 73 69 6F 72 49 49 31"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "RDFZ",
+      "sources": [
+        "src/formats/rdfz/xx_rdfz.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "52 44 46 5A 04 00 00 00 5A 6C 69 62"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

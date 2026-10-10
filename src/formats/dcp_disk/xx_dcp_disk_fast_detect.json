@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DCP_DISK",
+      "sources": [
+        "src/formats/dcp_disk/xx_dcp_disk.c"
+      ],
+      "note": "DCP header marker at +92, both store and RDC compression methods; geometry and packed byte accounting remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 92,
+              "hex": "44 43 50 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

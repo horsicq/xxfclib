@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PSA_DISK",
+      "sources": [
+        "src/formats/psa_disk/xx_psa_disk.c"
+      ],
+      "note": "PSA diagnostic FAT image header; version 0..3 and exact sector-count/length validation stay in the carrier reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 62 65 65 72 21"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

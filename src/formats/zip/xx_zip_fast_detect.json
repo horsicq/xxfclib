@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZIP",
+      "sources": [
+        "Binary/data_overlays.6.sg",
+        "zip-file",
+        "src/formats/zip/xx_zip.c",
+        "src/formats/zip/xx_zip_inspect.c",
+        "src/formats/zip/xx_zip_legacy_encoder.c"
+      ],
+      "note": "Native local/empty ZIP and empty split-ZIP64 markers; optional PK00 and split PK0708 prefixes require an inner ZIP marker. APK/JAR/IPA content selection remains structural.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 03 04"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 05 06"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 06 06"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 30 30"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "50 4B 03 04"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 30 30"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "50 4B 05 06"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 30 30"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "50 4B 06 06"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 07 08"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "50 4B 03 04"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 07 08"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "50 4B 05 06"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4B 07 08"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "50 4B 06 06"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ICO",
+      "sources": [
+        "src/formats/ico/xx_ico.c",
+        "src/formats/ico/xx_ico_extractor.c",
+        "Binary/image_ICO.1.sg"
+      ],
+      "note": "Only icon type 1 is accepted by this reader; do not include cursor type 2. Require nonzero icon count and first directory-entry reserved byte zero, which removes ResourceFork numeric-header collisions while preserving every reader-supported ICO variant.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "00 00 01 00"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "00 00",
+              "not": true
+            },
+            {
+              "origin": "base",
+              "offset": 9,
+              "hex": "00"
+            }
+          ],
+          "min_size": 22
+        }
+      ]
+    }
+  ]
+}

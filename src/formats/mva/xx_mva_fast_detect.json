@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "MVA",
+      "sources": [
+        "src/formats/mva/xx_mva.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "6D 66 6C 68 01 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

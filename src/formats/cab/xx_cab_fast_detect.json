@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CAB",
+      "sources": [
+        "Binary/data_overlays.6.sg",
+        "src/formats/cab/xx_cab.c"
+      ],
+      "note": "DIE cab helper and native reader agree on MSCF plus reserved DWORD zero.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4D 53 43 46 00 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "XPK_COMPRESSED_FILE",
+      "sources": [
+        "src/formats/xpk_compressed_file/xx_xpk_compressed_file.c"
+      ],
+      "note": "Native XPKF container magic, corroborated by DIE archive_archives.ancient.sg; subpacker, bounds and header checksum remain reader responsibilities.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "58 50 4B 46"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

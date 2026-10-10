@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZOOT1",
+      "sources": [
+        "src/formats/zoot1/xx_zoot1.c"
+      ],
+      "note": "Exact ZOT3 header supported by the Zoot1 reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "5a 4f 54 33"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

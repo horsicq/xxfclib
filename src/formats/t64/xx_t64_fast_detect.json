@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "T64",
+      "sources": [
+        "src/formats/t64/xx_t64.c",
+        "src/formats/t64/xx_t64_extractor.c"
+      ],
+      "note": "Use complete accepted description prefixes rather than weak C64. Preserve all four source branches without inventing a version restriction.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 36 34 20 74 61 70 65 20 69 6d 61 67 65 20 66 69 6c 65"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 36 34 53 20 74 61 70 65 20 66 69 6c 65"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 36 34 53 20 74 61 70 65 20 69 6d 61 67 65 20 66 69 6c 65"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 36 34 20 74 61 70 65 20 66 69 6c 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

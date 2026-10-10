@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "FOX_SQZ",
+      "sources": [
+        "src/formats/fox_sqz/xx_fox_sqz.c"
+      ],
+      "note": "Full vendor marker; avoids unrelated SQZ compressed families.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 4F 58 53 51 5A 20 43 4F 4D 50 52 45 53 53 45 44 20 46 49 4C 45 00 1A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

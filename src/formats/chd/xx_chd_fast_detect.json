@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CHD",
+      "sources": [
+        "src/formats/chd/xx_chd.c"
+      ],
+      "note": "CHD magic covers header versions handled by chd_parse_header; hunk maps/codecs and metadata remain reader validation.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4D 43 6F 6D 70 72 48 44"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

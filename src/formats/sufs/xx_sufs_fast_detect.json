@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SUFS",
+      "sources": [
+        "src/formats/sufs/xx_sufs.c"
+      ],
+      "note": "Sun/older UFS1 superblock at 8192, magic at +0x55C, both byte orders. nrpos must be 8 and inode format must differ from BSD44 value 2, preserving the distinct BSD UFS1 enum; geometry and root inode remain reader validation.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 9564,
+              "hex": "54 19 01 00"
+            },
+            {
+              "origin": "base",
+              "offset": 9552,
+              "hex": "08 00 00 00"
+            },
+            {
+              "origin": "base",
+              "offset": 9516,
+              "hex": "02 00 00 00",
+              "not": true
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 9564,
+              "hex": "00 01 19 54"
+            },
+            {
+              "origin": "base",
+              "offset": 9552,
+              "hex": "00 00 00 08"
+            },
+            {
+              "origin": "base",
+              "offset": 9516,
+              "hex": "00 00 00 02",
+              "not": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VMSDB",
+      "sources": [
+        "src/formats/vmsdb/xx_vmsdb.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "FF FF 74 80 A0 80 80 01 01 81 01 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

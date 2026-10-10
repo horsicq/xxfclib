@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PIRS",
+      "sources": [
+        "src/formats/pirs/xx_pirs.c"
+      ],
+      "note": "Preserve all three Xbox STFS package signature families.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 49 52 53"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4c 49 56 45"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 4f 4e 20"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "HXC_STREAM_HFE",
+      "sources": [
+        "src/formats/hxc_stream_hfe/xx_hxc_stream_hfe.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "48 78 43 5F 53 74 72 65 61 6D 5F 49 6D 61 67 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

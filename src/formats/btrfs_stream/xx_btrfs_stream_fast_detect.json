@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BTRFS_STREAM",
+      "sources": [
+        "src/formats/btrfs_stream/xx_btrfs_stream.c"
+      ],
+      "note": "Btrfs send stream, not a btrfs disk filesystem; v1/v2/v3 validation and command checksums remain in bs_probe/reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "62 74 72 66 73 2D 73 74 72 65 61 6D 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

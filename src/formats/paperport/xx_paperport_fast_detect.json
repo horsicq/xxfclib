@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PAPERPORT",
+      "sources": [
+        "src/formats/paperport/xx_paperport.c",
+        "src/formats/paperport/xx_paperport_extractor.c",
+        "Binary/archive_archives.1.sg"
+      ],
+      "note": "Reader accepts ViG variants C/D/E/F, an unconstrained byte 4, and 1A at byte 5. Do not flatten this to ViG alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 69 47 43 ?? 1a"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 69 47 44 ?? 1a"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 69 47 45 ?? 1a"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 69 47 46 ?? 1a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

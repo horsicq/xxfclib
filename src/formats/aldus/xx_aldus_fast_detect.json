@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ALDUS",
+      "sources": [
+        "src/formats/aldus/xx_aldus.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 4C 44 55 53 20 4C 5A"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 4C 44 55 53 20 50 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 44 4F 42 45 20 4C 5A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

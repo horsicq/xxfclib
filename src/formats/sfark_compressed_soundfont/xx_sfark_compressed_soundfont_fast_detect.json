@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SFARK_COMPRESSED_SOUNDFONT",
+      "sources": [
+        "COM/converter_FIXCRK.1.sg",
+        "COM/protector_AdFlt.2.sg",
+        "src/formats/sfark_compressed_soundfont/xx_sfark_compressed_soundfont.c"
+      ],
+      "note": "Native sfArk marker at26 and supported method4..7; header checksum and audio layout remain reader validated.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 26,
+              "hex": "73 66 41 72 6B"
+            },
+            {
+              "origin": "base",
+              "offset": 31,
+              "hex": "04",
+              "mask": "FC"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

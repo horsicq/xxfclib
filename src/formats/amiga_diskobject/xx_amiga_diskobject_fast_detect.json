@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "AMIGA_DISKOBJECT",
+      "sources": [
+        "src/formats/amiga_diskobject/xx_amiga_diskobject.c",
+        "src/formats/amiga_diskobject/xx_amiga_diskobject_extractor.c",
+        "Binary/format_AmigaIcon.1.sg"
+      ],
+      "note": "Preserve all existing reader extractor signature alternatives.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "e3 10 00 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

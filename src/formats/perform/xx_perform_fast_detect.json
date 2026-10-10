@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PERFORM",
+      "sources": [
+        "src/formats/perform/xx_perform.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 65 72 46 4F 52 4D 20 63 6F 6D 70 72 65 73 73 65 64 20 64 61 74 61 62 61 73 65 20 31 2E 30 30 20 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

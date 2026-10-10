@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SFNT",
+      "sources": [
+        "src/formats/sfnt/xx_sfnt.c",
+        "src/formats/sfnt/xx_sfnt_extractor.c"
+      ],
+      "note": "Preserve all four reader flavors: TrueType 00010000, OTTO, true, typ1. TTC is a different format. Every supported flavor requires nonzero searchRange and zero entrySelector high byte (selector <= 11); these bounded tests disambiguate legacy numeric archive headers.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "00 01 00 00"
+            },
+            {
+              "origin": "base",
+              "offset": 6,
+              "hex": "00 00",
+              "not": true
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00"
+            }
+          ],
+          "min_size": 12
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4f 54 54 4f"
+            },
+            {
+              "origin": "base",
+              "offset": 6,
+              "hex": "00 00",
+              "not": true
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00"
+            }
+          ],
+          "min_size": 12
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "74 72 75 65"
+            },
+            {
+              "origin": "base",
+              "offset": 6,
+              "hex": "00 00",
+              "not": true
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00"
+            }
+          ],
+          "min_size": 12
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "74 79 70 31"
+            },
+            {
+              "origin": "base",
+              "offset": 6,
+              "hex": "00 00",
+              "not": true
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00"
+            }
+          ],
+          "min_size": 12
+        }
+      ]
+    }
+  ]
+}

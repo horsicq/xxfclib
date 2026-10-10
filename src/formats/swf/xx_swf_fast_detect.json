@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SWF",
+      "sources": [
+        "src/formats/swf/xx_swf.c",
+        "src/formats/swf/xx_swf_extractor.c",
+        "Binary/format_bin.SWF.1.sg"
+      ],
+      "note": "Preserve FWS/CWS/ZWS branches. DIE CWS zlib validation and file-length heuristics are parser constraints, not additional unconditional signature bytes.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 57 53"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 57 53"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "5a 57 53"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

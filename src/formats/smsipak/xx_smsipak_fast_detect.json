@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SMSIPAK",
+      "sources": [
+        "src/formats/smsipak/xx_smsipak.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 4D 53 49 50 41 4B 20 07 1A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

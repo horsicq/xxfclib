@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "APFS",
+      "sources": [
+        "src/formats/apfs/xx_apfs.c"
+      ],
+      "note": "Container superblock magic at object-header offset 32; APFS volume/checkpoint traversal stays in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 32,
+              "hex": "4E 58 53 42"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

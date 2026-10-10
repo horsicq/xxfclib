@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "EDP",
+      "sources": [
+        "src/formats/edp/xx_edp.c",
+        "src/formats/edp/xx_edp_extractor.c",
+        "src/formats/ckpedp/xx_ckpedp.c"
+      ],
+      "note": "Shared CKP/EDP parser selects this exact four-byte magic.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "2e 45 44 50"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

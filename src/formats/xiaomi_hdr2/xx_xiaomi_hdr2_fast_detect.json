@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "XIAOMI_HDR2",
+      "sources": [
+        "src/formats/xiaomi_hdr2/xx_xiaomi_hdr2.c"
+      ],
+      "note": "Exact Xiaomi HDR2 package magic.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "48 44 52 32"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

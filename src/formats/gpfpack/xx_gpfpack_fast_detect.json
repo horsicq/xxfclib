@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "GPFPACK",
+      "sources": [
+        "src/formats/gpfpack/xx_gpfpack.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "C0 00 00 00 47 50 46 50 41 43 4B"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BLINDWRITE_5_6_IMAGE",
+      "sources": [
+        "src/formats/blindwrite_5_6_image/xx_blindwrite_5_6_image.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 57 54 35 20 53 54 52 45 41 4D 20 53 49 47 4E"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

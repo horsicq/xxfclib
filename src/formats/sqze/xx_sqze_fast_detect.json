@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SQZE",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/sqze/xx_sqze.c"
+      ],
+      "note": "DIE SQZE marker plus the native supported version1 and24-byte header, preserving its short discriminator.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 51 5A 45"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "01 00 00 00 18 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

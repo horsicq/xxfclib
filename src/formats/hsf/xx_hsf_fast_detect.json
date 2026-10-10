@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "HSF",
+      "sources": [
+        "src/formats/hsf/xx_hsf.c"
+      ],
+      "note": "High Sierra filesystem uses block-16 number in both byte orders, CDROM at +9, and descriptor version 1. ISO9660 CD001 belongs to a different enum.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 32768,
+              "hex": "10 00 00 00 00 00 00 10"
+            },
+            {
+              "origin": "base",
+              "offset": 32777,
+              "hex": "43 44 52 4F 4D 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

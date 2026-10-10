@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ARTIPACK",
+      "sources": [
+        "src/formats/artipack/xx_artipack.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 52 54 49 50 41 43 4B"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

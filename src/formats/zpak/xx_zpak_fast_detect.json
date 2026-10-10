@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZPAK",
+      "sources": [
+        "src/formats/zpak/xx_zpak.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "7A 70 61 6B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "7A 70 6B 32"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "FREEZE",
+      "sources": ["src/formats/freeze/xx_freeze.c", "src/formats/freeze/xx_freeze_codec.c"],
+      "note": "Both Freeze/Melt wire versions are supported: 1F 9E for 1.x and 1F 9F for 2.x. Full Huffman decoding remains the reader's validity check.",
+      "rules": [
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9E"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9F"}]}
+      ]
+    }
+  ]
+}

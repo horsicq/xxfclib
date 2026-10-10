@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "NOA",
+      "sources": [
+        "src/formats/noa/xx_noa.c"
+      ],
+      "note": "Preserve both header families and mandatory DirEntry marker at offset 0x40 as AND tests.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 6e 74 69 73 1a"
+            },
+            {
+              "origin": "base",
+              "offset": 64,
+              "hex": "44 69 72 45 6e 74 72 79"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 49 53 54 1a"
+            },
+            {
+              "origin": "base",
+              "offset": 64,
+              "hex": "44 69 72 45 6e 74 72 79"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

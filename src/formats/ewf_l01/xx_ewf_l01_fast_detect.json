@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "EWF_L01",
+      "sources": [
+        "Binary/archive_DAA.1.sg",
+        "Binary/archive_archives.1.sg",
+        "Binary/audio_OGG.1.sg",
+        "Binary/audio_PAF.1.sg",
+        "Binary/data_overlays.6.sg",
+        "Binary/format_GBI.1.sg",
+        "Binary/format_SDI.1.sg",
+        "Binary/format_XBE.1.sg",
+        "Binary/format_ZZDATA.1.sg",
+        "Binary/format_video.VMD.1.sg",
+        "Binary/graphics.1.sg",
+        "PE/compiler_Zig.4.sg",
+        "src/formats/ewf_l01/xx_ewf_l01.c"
+      ],
+      "note": "Full logical EWF L01 signature, version1 and native reserved zero fields, distinct from physical EVF images.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4C 56 46 09 0D 0A FF 00 01"
+            },
+            {
+              "origin": "base",
+              "offset": 11,
+              "hex": "00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

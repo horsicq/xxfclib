@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CRX",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "Binary/format_UCM.1.sg",
+        "Borland",
+        "PE/_Microsoft.6.sg",
+        "PE/__GenericHeuristicAnalysis_By_DosX.7.sg",
+        "PE/_linkers.6.sg",
+        "PE/compiler_MinGW.6.sg",
+        "PE/compiler_tcc.6.sg",
+        "RosASM",
+        "src/formats/crx_native/xx_crx_native.c"
+      ],
+      "note": "Include CRX2 and CRX3; local DIE lists only CRX2, native reader explicitly supports both.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 72 32 34"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "02 00 00 00"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 72 32 34"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "03 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PSN",
+      "sources": [
+        "src/formats/psn/xx_psn.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 53 4E 63 6F 6D 70 72 65 73 73 2D 43 6F 70 79 72 69 67 68 74"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

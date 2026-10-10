@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BINARY_PLIST",
+      "sources": [
+        "src/formats/binary_plist/xx_binary_plist.c",
+        "src/formats/binary_plist/xx_binary_plist_extractor.c"
+      ],
+      "note": "Only bplist00 is supported by this reader; preserve that exact version.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "62 70 6c 69 73 74 30 30"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

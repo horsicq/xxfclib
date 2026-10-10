@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "FREEARC",
+      "sources": [
+        "Binary/archive_ARC.1.sg",
+        "src/formats/freearc/xx_freearc.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 72 43 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

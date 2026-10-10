@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SBPAK",
+      "sources": [
+        "src/formats/sbpak/xx_sbpak.c"
+      ],
+      "note": "Exact 13-byte versioned signature.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 42 50 41 4b 20 56 20 31 2e 30 0d 0a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

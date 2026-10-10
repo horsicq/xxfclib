@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "XAR",
+      "sources": [
+        "Binary/archive_DAA.1.sg",
+        "Binary/archive_GodotPCK.1.sg",
+        "Binary/archive_HIP.1.sg",
+        "Binary/archive_IPW.1.sg",
+        "Binary/archive_JAM.1.sg",
+        "Binary/archive_MS-WIM.1.sg",
+        "Binary/archive_PAK.1.sg",
+        "Binary/archive_PUP.1.sg",
+        "Binary/archive_XZP.1.sg",
+        "Binary/archive_archives.1.sg",
+        "Binary/audio_OGG.1.sg",
+        "Binary/audio_PAF.1.sg",
+        "Binary/audio_SOU.1.sg",
+        "Binary/data_overlays.6.sg",
+        "Binary/format_BSP.1.sg",
+        "Binary/format_BTF.1.sg",
+        "src/formats/xar/xx_xar.c"
+      ],
+      "note": "DIE XAR marker plus the reader-supported version0/1. Keep extended header lengths allowed by the reader instead of fixing DIE header length28.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "78 61 72 21"
+            },
+            {
+              "origin": "base",
+              "offset": 6,
+              "hex": "00 00",
+              "mask": "FF FE"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

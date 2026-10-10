@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "TITAN_QUEST",
+      "sources": [
+        "src/formats/titan_quest/xx_titan_quest.c"
+      ],
+      "note": "ARC-zero and mandatory little-endian version 1 in one bounded test.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 52 43 00 01 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

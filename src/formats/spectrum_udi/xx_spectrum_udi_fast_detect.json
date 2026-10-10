@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SPECTRUM_UDI",
+      "sources": [
+        "src/formats/spectrum_udi/xx_spectrum_udi.c"
+      ],
+      "note": "UDI version 0; track extents and file CRC stay in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "55 44 49 21"
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

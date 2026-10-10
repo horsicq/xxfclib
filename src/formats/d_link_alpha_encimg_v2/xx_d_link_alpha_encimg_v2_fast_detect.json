@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "D_LINK_ALPHA_ENCIMG_V2",
+      "sources": [
+        "src/formats/d_link_alpha_encimg_v2/xx_d_link_alpha_encimg_v2.c"
+      ],
+      "note": "Each rule requires wap and two identical magic words. Preserve coherent little-endian and big-endian branches; mixed words are rejected.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "77 61 70"
+            },
+            {
+              "origin": "base",
+              "offset": 32,
+              "hex": "21 03 08 20 21 03 08 20"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "77 61 70"
+            },
+            {
+              "origin": "base",
+              "offset": 32,
+              "hex": "20 08 03 21 20 08 03 21"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

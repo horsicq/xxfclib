@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SKF",
+      "sources": [
+        "src/formats/skf/xx_skf.c"
+      ],
+      "note": "Preserve both first-byte variants and supported SKF2 family. DIE archive_archives SKF3.0 pattern conflicts with this reader and is deliberately excluded.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "06 53 4b 46 32 2e"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "07 53 4b 46 32 2e"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

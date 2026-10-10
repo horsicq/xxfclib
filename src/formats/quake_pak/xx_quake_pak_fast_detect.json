@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "QUAKE_PAK",
+      "sources": [
+        "Binary/archive_DAA.1.sg",
+        "Binary/archive_PAK.1.sg",
+        "Binary/archive_PUP.1.sg",
+        "Binary/archive_Unity.1.sg",
+        "Binary/archive_archives.1.sg",
+        "Binary/audio_OGG.1.sg",
+        "Binary/audio_PAF.1.sg",
+        "Binary/data_overlays.6.sg",
+        "Binary/format_BTF.1.sg",
+        "Binary/format_CSO.1.sg",
+        "Binary/format_CTRK.1.sg",
+        "Binary/format_DunkleSchattenConfig.1.sg",
+        "Binary/format_DunkleSchattenSave.1.sg",
+        "Binary/format_GAL.1.sg",
+        "Binary/format_GBI.1.sg",
+        "Binary/format_HNM.1.sg",
+        "src/formats/quake_pak/xx_quake_pak.c"
+      ],
+      "note": "Native Quake PAK requires a12-byte header and directory byte length divisible by64. The low-six-bit AND discriminator rejects unrelated PACKIT text-header archives.",
+      "rules": [
+        {
+          "min_size": 12,
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 41 43 4B"
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00",
+              "mask": "3F"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

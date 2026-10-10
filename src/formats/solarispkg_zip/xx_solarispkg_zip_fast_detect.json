@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SOLARISPKG_ZIP",
+      "sources": [
+        "src/formats/solarispkg_zip/xx_solarispkg_zip.c"
+      ],
+      "note": "Complete compressed Solaris package header differs from uncompressed datastream newline delimiter.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 20 50 61 43 6B 41 67 45 20 44 61 54 61 53 74 52 65 41 6D 3A 7A 69 70 0A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

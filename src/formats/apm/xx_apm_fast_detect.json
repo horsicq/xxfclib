@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "APM",
+      "sources": [
+        "src/formats/apm/xx_apm.c"
+      ],
+      "note": "Driver Descriptor block geometry plus first PM entry. Both classic 512-byte map stepping and device-block map stepping are accepted; entry counts, nonempty partitions and bounds remain reader validation.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 52 02 00"
+            },
+            {
+              "origin": "base",
+              "offset": 512,
+              "hex": "50 4D 00 00"
+            }
+          ],
+          "min_size": 1024
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 52 04 00"
+            },
+            {
+              "origin": "base",
+              "offset": 512,
+              "hex": "50 4D 00 00"
+            }
+          ],
+          "min_size": 1024
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 52 04 00"
+            },
+            {
+              "origin": "base",
+              "offset": 1024,
+              "hex": "50 4D 00 00"
+            }
+          ],
+          "min_size": 1024
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 52 08 00"
+            },
+            {
+              "origin": "base",
+              "offset": 512,
+              "hex": "50 4D 00 00"
+            }
+          ],
+          "min_size": 1024
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 52 08 00"
+            },
+            {
+              "origin": "base",
+              "offset": 2048,
+              "hex": "50 4D 00 00"
+            }
+          ],
+          "min_size": 1024
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 52 10 00"
+            },
+            {
+              "origin": "base",
+              "offset": 512,
+              "hex": "50 4D 00 00"
+            }
+          ],
+          "min_size": 1024
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 52 10 00"
+            },
+            {
+              "origin": "base",
+              "offset": 4096,
+              "hex": "50 4D 00 00"
+            }
+          ],
+          "min_size": 1024
+        }
+      ]
+    }
+  ]
+}

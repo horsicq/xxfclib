@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "WIM",
+      "sources": [
+        "Binary/archive_MS-WIM.1.sg",
+        "src/formats/wim/xx_wim.c",
+        "src/formats/wim/xx_wim_codec.c"
+      ],
+      "note": "Complete WIM signature, including three terminating zero bytes required by the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4D 53 57 49 4D 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

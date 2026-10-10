@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CPK",
+      "sources": [
+        "src/formats/cpk/xx_cpk.c"
+      ],
+      "note": "Packet magic at archive base. UTF tables can be plain or obfuscated, so do not require plain UTF bytes later.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 50 4b 20"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

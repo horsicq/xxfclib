@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ASD",
+      "sources": [
+        "src/formats/asd/xx_asd.c"
+      ],
+      "note": "Exact supported ASD01 header marker.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 44 30 31 1A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

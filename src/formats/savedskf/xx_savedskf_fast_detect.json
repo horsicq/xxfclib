@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SAVEDSKF",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/savedskf/xx_savedskf.c"
+      ],
+      "note": "Old, new and LZW SaveDskF byte-order signatures; DIE shows only a new-format 512-byte sector example. This is identification only: exact geometry/extent and decoded boot validation remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "AA 58"
+            }
+          ],
+          "min_size": 40
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "AA 59"
+            }
+          ],
+          "min_size": 40
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "AA 5A"
+            }
+          ],
+          "min_size": 40
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZXML",
+      "sources": [
+        "src/formats/zxml/xx_zxml.c"
+      ],
+      "note": "Native header magic; logical-size and zlib checksum validation remain reader responsibilities.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "5A 58 4D 4C"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

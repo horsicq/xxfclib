@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "EDILZSS",
+      "sources": [
+        "src/formats/edilzss/xx_edilzss.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 44 49 4C 5A 53 53 31"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 44 49 4C 5A 53 53 32"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

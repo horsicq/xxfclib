@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VDI",
+      "sources": [
+        "Binary/format_VDI.1.sg",
+        "src/formats/vdi/xx_vdi.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 64,
+              "hex": "7F 10 DA BE"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

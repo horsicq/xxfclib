@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VMDK_SESPARSE",
+      "sources": [
+        "src/formats/vmdk_sesparse/xx_vmdk_sesparse.c"
+      ],
+      "note": "SESparse constant magic and version; other VMDK grammars have distinct enums.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "BE BA FE CA 00 00 00 00 01 00 00 00 02 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

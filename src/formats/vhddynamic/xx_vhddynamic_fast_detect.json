@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VHDDYNAMIC",
+      "sources": [
+        "Binary/format_MS-VHD.1.sg",
+        "src/formats/vhddynamic/xx_vhddynamic.c"
+      ],
+      "note": "Fixed, dynamic and differencing VHD all use this enum. Both 512- and 511-byte EOF footers are accepted; fixed disks have no header cookie at offset zero. DIE omits the 511-byte footer variant.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -512,
+              "hex": "63 6F 6E 65 63 74 69 78"
+            },
+            {
+              "origin": "end",
+              "offset": -500,
+              "hex": "00 01 00 00"
+            },
+            {
+              "origin": "end",
+              "offset": -452,
+              "hex": "00 00 00 02"
+            }
+          ],
+          "min_size": 1023
+        },
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -512,
+              "hex": "63 6F 6E 65 63 74 69 78"
+            },
+            {
+              "origin": "end",
+              "offset": -500,
+              "hex": "00 01 00 00"
+            },
+            {
+              "origin": "end",
+              "offset": -452,
+              "hex": "00 00 00 03"
+            }
+          ],
+          "min_size": 1023
+        },
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -512,
+              "hex": "63 6F 6E 65 63 74 69 78"
+            },
+            {
+              "origin": "end",
+              "offset": -500,
+              "hex": "00 01 00 00"
+            },
+            {
+              "origin": "end",
+              "offset": -452,
+              "hex": "00 00 00 04"
+            }
+          ],
+          "min_size": 1023
+        },
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -511,
+              "hex": "63 6F 6E 65 63 74 69 78"
+            },
+            {
+              "origin": "end",
+              "offset": -499,
+              "hex": "00 01 00 00"
+            },
+            {
+              "origin": "end",
+              "offset": -451,
+              "hex": "00 00 00 02"
+            }
+          ],
+          "min_size": 1023
+        },
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -511,
+              "hex": "63 6F 6E 65 63 74 69 78"
+            },
+            {
+              "origin": "end",
+              "offset": -499,
+              "hex": "00 01 00 00"
+            },
+            {
+              "origin": "end",
+              "offset": -451,
+              "hex": "00 00 00 03"
+            }
+          ],
+          "min_size": 1023
+        },
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -511,
+              "hex": "63 6F 6E 65 63 74 69 78"
+            },
+            {
+              "origin": "end",
+              "offset": -499,
+              "hex": "00 01 00 00"
+            },
+            {
+              "origin": "end",
+              "offset": -451,
+              "hex": "00 00 00 04"
+            }
+          ],
+          "min_size": 1023
+        }
+      ]
+    }
+  ]
+}

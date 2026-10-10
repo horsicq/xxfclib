@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "AMIGALZX",
+      "sources": ["src/formats/amigalzx/xx_amigalzx.c"],
+      "note": "All archive versions accepted by the reader begin with LZX. The remaining archive header bytes vary; member checksums and extent are validated when opening.",
+      "rules": [
+        {"tests": [{"origin": "base", "offset": 0, "hex": "4C 5A 58"}]}
+      ]
+    }
+  ]
+}

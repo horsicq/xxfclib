@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ISO9660",
+      "sources": [
+        "Binary/bin.ISO_9660.1.sg",
+        "src/formats/iso9660/xx_iso9660.c"
+      ],
+      "note": "Every descriptor read by the ISO9660 reader, including an initial boot descriptor before the primary descriptor, carries CD001 and version 1. Do not require descriptor type 1 at LBA16. Raw 2352/2336 CD offsets in DIE are handled by RAWCD, not this ISO9660 reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 32769,
+              "hex": "43 44 30 30 31 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CGJP",
+      "sources": [
+        "src/formats/cgjp/xx_cgjp.c"
+      ],
+      "note": "Exact format magic.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 47 4a 50"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DMS",
+      "sources": [
+        "Binary/archive_archives.ancient.sg",
+        "src/formats/dms/xx_dms.c"
+      ],
+      "note": "DMS container magic; DD/HD and method variants share it. DIE ancient JS also validates CRCs, track geometry and methods; these semantic checks are intentionally retained in the reader instead of flattened into static bytes.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 4D 53 21"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VALVE_XZP",
+      "sources": [
+        "src/formats/valve_xzp/xx_valve_xzp.c"
+      ],
+      "note": "Valve piZx header with little-endian version 6. DIE archive_XZP BDES variant is unrelated and deliberately not used.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "70 69 5a 78 06 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

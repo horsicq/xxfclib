@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "NINTENDO_WBFS",
+      "sources": [
+        "Binary/format_WBFS.1.sg",
+        "src/formats/nintendo_wbfs/xx_nintendo_wbfs.c"
+      ],
+      "note": "WBFS magic covers all reader-supported block shifts; DIE pins one example shift (0x15), so its remaining geometry bytes are not universal signature bytes.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "57 42 46 53"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

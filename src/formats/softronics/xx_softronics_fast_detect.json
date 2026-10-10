@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SOFTRONICS",
+      "sources": [
+        "src/formats/softronics/xx_softronics.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1,
+              "hex": "00 53 6F 66 74 72 6F 6E 69 63 73 20 43 6F 6D 70 72 65 73 73 65 64 20 46 69 6C 65 00 56 65 72 73 69 6F 6E 20 32 2E 30 30 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

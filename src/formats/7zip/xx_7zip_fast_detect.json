@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "7ZIP",
+      "sources": [
+        "Binary/archive_7z.1.sg",
+        "src/formats/7zip/xx_7zip.c",
+        "src/formats/7zip/xx_7zip_branch.c",
+        "src/formats/7zip/xx_7zip_stream.c"
+      ],
+      "note": "Exact DIE signature; omit its arbitrary64-byte file-size guard. Fast recognition accepts the6-byte signature; opening still validates the complete archive.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "37 7A BC AF 27 1C"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

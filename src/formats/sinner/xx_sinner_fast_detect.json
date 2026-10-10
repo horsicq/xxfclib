@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SINNER",
+      "sources": [
+        "src/formats/sinner/xx_sinner.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "7C 43 43 54 66 73 32 2E 30 7C"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+/* SPDX-License-Identifier: MIT. private typed framing primitives. */
+#ifndef XX_SECURITY_FRAMING_H
+#define XX_SECURITY_FRAMING_H
+#include "xx_protocol_framing.h"
+static XXFC_MAYBE_UNUSED bool security_string(memory_blob *b, uint64_t *at, uint64_t end, uint64_t *start, uint64_t *n,
+                                              bool utf) {
+    if (!protocol_take(b, at, end, 4))
+        return false;
+    *n = xx_data_get_u32(b->p + (size_t)*at - 4, 4, 0, true);
+    *start = *at;
+    return *n <= 65536 && protocol_take(b, at, end, *n) && (!utf || serialized_utf(b, *start, *n));
+}
+static XXFC_MAYBE_UNUSED bool security_ci(memory_blob *b, uint64_t at, uint64_t n, const char *s) {
+    if (n != xx_rt_strlen(s) || !blob_span(b, at, n))
+        return false;
+    for (uint64_t i = 0; i < n; ++i)
+        if ((b->p[(size_t)(at + i)] | 32) != (uint8_t)(s[i] | 32))
+            return false;
+    return true;
+}
+static int security_b64c(uint8_t c) {
+    if (c >= 'A' && c <= 'Z')
+        return c - 'A';
+    if (c >= 'a' && c <= 'z')
+        return c - 'a' + 26;
+    if (c >= '0' && c <= '9')
+        return c - '0' + 52;
+    if (c == '+')
+        return 62;
+    if (c == '/')
+        return 63;
+    return -1;
+}
+static XXFC_MAYBE_UNUSED bool security_b64(memory_blob *b, uint64_t start, uint64_t n, uint8_t **out, uint64_t *bytes) {
+    uint8_t *p;
+    uint64_t z = 0;
+    int a, c, d, e;
+    if (!n || n % 4 || n > 1048576 || !blob_span(b, start, n))
+        return false;
+    p = (uint8_t *)xx_mem_alloc((size_t)(n / 4 * 3));
+    if (!p)
+        return false;
+    for (uint64_t i = 0; i < n; i += 4) {
+        if (binary_stop(b->pd))
+            goto fail;
+        a = security_b64c(b->p[(size_t)(start + i)]);
+        c = security_b64c(b->p[(size_t)(start + i + 1)]);
+        d = security_b64c(b->p[(size_t)(start + i + 2)]);
+        e = security_b64c(b->p[(size_t)(start + i + 3)]);
+        if (a < 0 || c < 0)
+            goto fail;
+        p[z++] = (uint8_t)((a << 2) | (c >> 4));
+        if (d < 0) {
+            if (i + 4 != n || b->p[(size_t)(start + i + 2)] != '=' || b->p[(size_t)(start + i + 3)] != '=' || (c & 15))
+                goto fail;
+        } else {
+            p[z++] = (uint8_t)((c << 4) | (d >> 2));
+            if (e < 0) {
+                if (i + 4 != n || b->p[(size_t)(start + i + 3)] != '=' || (d & 3))
+                    goto fail;
+            } else
+                p[z++] = (uint8_t)((d << 6) | e);
+        }
+    }
+    *out = p;
+    *bytes = z;
+    return true;
+fail:
+    xx_mem_free(p);
+    return false;
+}
+static XXFC_MAYBE_UNUSED bool security_hmac(memory_blob *b, xx_hash_type_t type, const uint8_t *key, size_t kn,
+                                            const uint8_t *data, size_t n, uint8_t *out) {
+    uint8_t pad[64], digest[32];
+    xx_hash_context h;
+    size_t dn = xx_hash_digest_size(type);
+    if (kn > 64 || binary_stop(b->pd))
+        return false;
+    for (unsigned i = 0; i < 64; ++i)
+        pad[i] = (uint8_t)((i < kn ? key[i] : 0) ^ 0x36);
+    if (!xx_hash_init(&h, type))
+        return false;
+    xx_hash_update(&h, pad, 64);
+    for (size_t at = 0; at < n;) {
+        size_t z = n - at > 65536 ? 65536 : n - at;
+        if (binary_stop(b->pd))
+            return false;
+        xx_hash_update(&h, data + at, z);
+        at += z;
+    }
+    if (!xx_hash_final(&h, digest, sizeof(digest)))
+        return false;
+    for (unsigned i = 0; i < 64; ++i)
+        pad[i] ^= 0x36 ^ 0x5c;
+    if (!xx_hash_init(&h, type))
+        return false;
+    xx_hash_update(&h, pad, 64);
+    xx_hash_update(&h, digest, dn);
+    return xx_hash_final(&h, out, 32);
+}
+static XXFC_MAYBE_UNUSED bool security_hex(memory_blob *b, uint64_t at, uint64_t n, uint8_t *out) {
+    if (n % 2 || !blob_span(b, at, n))
+        return false;
+    for (uint64_t i = 0; i < n; ++i) {
+        uint8_t c = b->p[(size_t)(at + i)];
+        unsigned v;
+        if (c >= '0' && c <= '9')
+            v = c - '0';
+        else if (c >= 'a' && c <= 'f')
+            v = c - 'a' + 10;
+        else
+            return false;
+        if (!(i & 1))
+            out[i / 2] = (uint8_t)(v << 4);
+        else
+            out[i / 2] |= (uint8_t)v;
+    }
+    return true;
+}
+static XXFC_MAYBE_UNUSED bool security_distinct(memory_blob *b, uint64_t a, uint64_t an, uint64_t c, uint64_t cn,
+                                                unsigned *candidates, uint64_t *bytes) {
+    if (++*candidates > 1048576 || binary_stop(b->pd))
+        return false;
+    if (an != cn)
+        return true;
+    if (an > 16777216 - *bytes)
+        return false;
+    *bytes += an;
+    return xx_rt_memcmp(b->p + (size_t)a, b->p + (size_t)c, (size_t)an) != 0;
+}
+static XXFC_MAYBE_UNUSED bool security_namelist(memory_blob *b, uint64_t at, uint64_t n, bool empty) {
+    if ((!empty && !n) || !blob_span(b, at, n) || n > 4096)
+        return false;
+    bool after = true;
+    for (uint64_t i = 0; i < n; ++i) {
+        uint8_t c = b->p[(size_t)(at + i)];
+        if (c == ',') {
+            if (after)
+                return false;
+            after = true;
+        } else {
+            if (c < 33 || c > 126)
+                return false;
+            after = false;
+        }
+    }
+    return !n || !after;
+}
+#endif

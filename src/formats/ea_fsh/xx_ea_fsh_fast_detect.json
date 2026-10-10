@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "EA_FSH",
+      "sources": [
+        "src/formats/ea_fsh/xx_ea_fsh.c",
+        "Binary/image_FSH.1.sg"
+      ],
+      "note": "Reader accepts all four magic branches; DIE image_FSH only describes SHPI and must not suppress the other three.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 48 50 49"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 48 50 50"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 48 50 53"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 48 50 58"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

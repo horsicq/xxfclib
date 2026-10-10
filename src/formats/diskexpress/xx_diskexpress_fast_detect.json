@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DISKEXPRESS",
+      "sources": [
+        "src/formats/diskexpress/xx_diskexpress.c"
+      ],
+      "note": "Disk eXPress AS variants 1.1,1.4,2.0,2.30 and all three release markers; geometry and stored/RLE layout remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 01 01 20"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 01 01 41"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 01 01 61"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 01 04 20"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 01 04 41"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 01 04 61"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 02 00 20"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 02 00 41"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 02 00 61"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 02 1E 20"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 02 1E 41"
+            }
+          ],
+          "min_size": 20
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 53 02 1E 61"
+            }
+          ],
+          "min_size": 20
+        }
+      ]
+    }
+  ]
+}

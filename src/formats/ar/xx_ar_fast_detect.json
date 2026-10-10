@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "AR",
+      "sources": [
+        "Binary/archive_AR.1.sg",
+        "src/formats/ar/xx_ar.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "21 3C 61 72 63 68 3E 0A"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "21 3C 74 68 69 6E 3E 0A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

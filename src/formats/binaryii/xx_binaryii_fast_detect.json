@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BINARYII",
+      "sources": ["src/formats/binaryii/xx_binaryii.c"],
+      "note": "Binary II requires both its three-byte transport signature and the fixed identity byte at 0x12. Member names, sizes and countdown are validated when opening.",
+      "rules": [
+        {"tests": [
+          {"origin": "base", "offset": 0, "hex": "0A 47 4C"},
+          {"origin": "base", "offset": 18, "hex": "02"}
+        ]}
+      ]
+    }
+  ]
+}

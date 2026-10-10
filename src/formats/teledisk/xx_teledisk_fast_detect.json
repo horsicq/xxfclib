@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "TELEDISK",
+      "sources": [
+        "src/formats/teledisk/xx_teledisk.c"
+      ],
+      "note": "Uppercase stored and lowercase compressed (v10..19 LZW, v20..21 LZHUF) images share the TeleDisk enum. The third byte is a variable volume sequence, so the old TD00/td00 scan anchors are incomplete.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "54 44"
+            }
+          ],
+          "min_size": 12
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "74 64"
+            }
+          ],
+          "min_size": 12
+        }
+      ]
+    }
+  ]
+}

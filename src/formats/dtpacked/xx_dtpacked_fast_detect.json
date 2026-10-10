@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DTPACKED",
+      "sources": [
+        "src/formats/dtpacked/xx_dtpacked.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 54 02 00 01 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

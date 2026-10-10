@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "METAPRODUCTS",
+      "sources": [
+        "src/formats/metaproducts/xx_metaproducts.c"
+      ],
+      "note": "Exact little-endian MetaProducts marker0xABBA1973 in native raw/PE overlay carrier.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "pe_overlay",
+              "offset": 0,
+              "hex": "73 19 BA AB"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

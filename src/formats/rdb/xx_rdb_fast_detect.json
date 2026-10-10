@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "RDB",
+      "sources": [
+        "src/formats/rdb/xx_rdb.c"
+      ],
+      "note": "Reader searches the first sixteen 512-byte block starts, not only offset zero; RDSK checksum and block geometry stay in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 512,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1024,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1536,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 2048,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 2560,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 3072,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 3584,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 4096,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 4608,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 5120,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 5632,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 6144,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 6656,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 7168,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 7680,
+              "hex": "52 44 53 4B"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

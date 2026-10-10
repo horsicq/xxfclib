@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "KIRIKIRI_XP3",
+      "sources": [
+        "src/formats/kirikiri_xp3/xx_kirikiri_xp3.c",
+        "src/formats/kirikiri_xp3/xx_kirikiri_xp3_extractor.c"
+      ],
+      "note": "Preserve all existing reader extractor signature alternatives.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "58 50 33 0d 0a 20 0a 1a 8b 67 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ARQ",
+      "sources": [
+        "Binary/data_overlays.6.sg",
+        "src/formats/arq/xx_arq.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "67 57 04 01"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "67 57 04 02"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

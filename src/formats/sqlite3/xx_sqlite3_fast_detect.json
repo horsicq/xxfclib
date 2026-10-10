@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SQLITE3",
+      "sources": [
+        "src/formats/sqlite3/xx_sqlite3.c",
+        "src/formats/sqlite3/xx_sqlite3_extractor.c",
+        "Binary/format_database.SQLite.1.sg"
+      ],
+      "note": "Preserve all existing reader extractor signature alternatives.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 51 4c 69 74 65 20 66 6f 72 6d 61 74 20 33 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

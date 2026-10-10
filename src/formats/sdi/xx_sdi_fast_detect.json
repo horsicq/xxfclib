@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SDI",
+      "sources": [
+        "Binary/format_SDI.1.sg",
+        "src/formats/sdi/xx_sdi.c"
+      ],
+      "note": "SDI header signature; DIE additionally pins eight zero bytes after the magic that the reader does not require. Header checksum and bounded section table remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "24 53 44 49 30 30 30 31"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

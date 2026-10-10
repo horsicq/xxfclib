@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "LBRCOBOL",
+      "sources": [
+        "src/formats/lbrcobol/xx_lbrcobol.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4D 69 63 72 6F 20 46 6F 63 75 73 20 43 4F 42 4F 4C 20 4C 69 62 72 61 72 79 20 46 69 6C 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

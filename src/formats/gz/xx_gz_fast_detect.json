@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "GZ",
+      "sources": [
+        "src/formats/gz/xx_gz.c"
+      ],
+      "note": "Preserve DEFLATE method8 and all reserved flag bits zero; optional GZIP header flags remain allowed.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "1F 8B 08 00",
+              "mask": "FF FF FF E0"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

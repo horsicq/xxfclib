@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "KRML",
+      "sources": [
+        "src/formats/krml/xx_krml.c",
+        "src/formats/krml/xx_krml_extractor.c"
+      ],
+      "note": "Preserve all existing reader extractor signature alternatives.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4b 52 4d 4c"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

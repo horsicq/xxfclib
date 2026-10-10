@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VHDX",
+      "sources": [
+        "Binary/format_MS-VHDX.sg",
+        "src/formats/vhdx/xx_vhdx.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "76 68 64 78 66 69 6C 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

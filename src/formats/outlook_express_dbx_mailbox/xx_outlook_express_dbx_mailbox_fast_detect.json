@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "OUTLOOK_EXPRESS_DBX_MAILBOX",
+      "sources": [
+        "src/formats/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox.c"
+      ],
+      "note": "Exact mandatory DBX mailbox GUID-style 20-byte magic; other Outlook structures are separate formats.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "cf ad 12 fe c5 fd 74 6f 66 e3 d1 11 9a 4e 00 c0 4f d7 5e 5b"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

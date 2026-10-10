@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PTERO_BIGF",
+      "sources": [
+        "src/formats/ptero_bigf/xx_ptero_bigf.c",
+        "src/formats/ptero_bigf/xx_ptero_bigf_extractor.c"
+      ],
+      "note": "Require the Pterodon BIGF-zero-ZBL discriminator, not generic EA BIGF.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 49 47 46 00 5a 42 4c"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "LINGVOARC",
+      "sources": [
+        "src/formats/lingvoarc/xx_lingvoarc.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "6C 69 6E 67 76 6F 41 72 63 31 00 FD 00 DF 00 FF"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "6C 69 6E 67 76 6F 41 72 63 32 00 FD 00 DF 00 FF"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4C 69 6E 67 76 6F 41 72 63 68 01 00 F0 1F 00 01 40 00 47 01 47 01 1F 83 41 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

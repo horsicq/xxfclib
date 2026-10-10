@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DAEMON_TOOLS_MDX",
+      "sources": [
+        "src/formats/daemon_tools_mdx/xx_daemon_tools_mdx.c"
+      ],
+      "note": "MDX Media Descriptor 16-byte magic followed immediately by major version 2; encrypted key/header and volume layout stay in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4D 45 44 49 41 20 44 45 53 43 52 49 50 54 4F 52 02"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

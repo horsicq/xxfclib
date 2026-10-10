@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "QDA",
+      "sources": [
+        "src/formats/qda/xx_qda.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "51 44 41 30"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

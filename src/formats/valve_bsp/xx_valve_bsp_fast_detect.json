@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VALVE_BSP",
+      "sources": [
+        "src/formats/valve_bsp/xx_valve_bsp.c",
+        "src/formats/valve_bsp/xx_valve_bsp_extractor.c",
+        "Binary/format_BSP.1.sg"
+      ],
+      "note": "VBSP is shared by all reader-supported BSP versions. DIE version 21 is one variant and must not become a universal gate.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 42 53 50"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

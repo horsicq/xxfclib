@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CSQ",
+      "sources": [
+        "Binary/archive_DAA.1.sg",
+        "Binary/archive_PAK.1.sg",
+        "Binary/archive_PUP.1.sg",
+        "Binary/archive_Unity.1.sg",
+        "Binary/archive_archives.1.sg",
+        "Binary/audio_OGG.1.sg",
+        "Binary/audio_PAF.1.sg",
+        "Binary/data_overlays.6.sg",
+        "Binary/format_BTF.1.sg",
+        "Binary/format_CSO.1.sg",
+        "Binary/format_CTRK.1.sg",
+        "Binary/format_DunkleSchattenConfig.1.sg",
+        "Binary/format_DunkleSchattenSave.1.sg",
+        "Binary/format_GAL.1.sg",
+        "Binary/format_GBI.1.sg",
+        "Binary/format_PAT.1.sg",
+        "src/formats/csq/xx_csq.c"
+      ],
+      "note": "Exact TiGGER CSQ magic and nonzero one-byte member count; retain stream/XOR validation in reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "54 69 47 47 45 52 01 07"
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00",
+              "not": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

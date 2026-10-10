@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "TPWM",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/tpwm/xx_tpwm.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "54 50 57 4D"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

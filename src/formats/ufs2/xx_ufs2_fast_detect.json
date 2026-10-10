@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "UFS2",
+      "sources": [
+        "src/formats/ufs2/xx_ufs2.c"
+      ],
+      "note": "Primary and piggyback superblocks, both byte orders, standard 0x19540119 and extended-attribute 0x19012038 variants accepted by ufs2_magic_order.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 66908,
+              "hex": "19 01 54 19"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 66908,
+              "hex": "19 54 01 19"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 66908,
+              "hex": "38 20 01 19"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 66908,
+              "hex": "19 01 20 38"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 263516,
+              "hex": "19 01 54 19"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 263516,
+              "hex": "19 54 01 19"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 263516,
+              "hex": "38 20 01 19"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 263516,
+              "hex": "19 01 20 38"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

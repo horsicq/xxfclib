@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BZ2",
+      "sources": [
+        "Binary/archive_BZip.1.sg",
+        "src/formats/bz2/xx_bz2.c"
+      ],
+      "note": "DIE block marker is an AND condition. Include the native decoder EOS marker for valid empty streams; all compression levels1..9 remain supported.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 31"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 31"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 32"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 32"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 33"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 33"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 34"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 34"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 35"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 35"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 36"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 36"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 37"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 37"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 38"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 38"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 39"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "31 41 59 26 53 59"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "42 5A 68 39"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "17 72 45 38 50 90"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

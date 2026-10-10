@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "formats": [{
+    "enum": "MDH",
+    "sources": ["src/formats/mdh/xx_mdh.c"],
+    "note": "Formats/audio/xmdh.cpp anchor. xx_mdh_detect additionally checks the fixed table, active records, proportional levels and final 60 00 program marker.",
+    "rules": [{"tests": [{"origin": "base", "offset": 0, "hex": "4D 44 48 00"}]}]
+  }]
+}

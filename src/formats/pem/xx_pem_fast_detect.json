@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PEM",
+      "sources": [
+        "Binary/format_OpenSSH.1.sg",
+        "Binary/format_PEM.1.sg",
+        "Binary/format_PGP.1.sg",
+        "src/formats/pem/xx_pem.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "2D 2D 2D 2D 2D 42 45 47 49 4E 20"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

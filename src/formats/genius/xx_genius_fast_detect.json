@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "GENIUS",
+      "sources": [
+        "src/formats/genius/xx_genius.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "47 45 4E 49 55 53 20 4C 49 42 52 41 52 59 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

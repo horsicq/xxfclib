@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ULEAD",
+      "sources": [
+        "src/formats/ulead/xx_ulead.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "55 5F 4C 45 41 44 20 43 4F 52 50 2E"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

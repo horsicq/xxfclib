@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "JBF",
+      "sources": [
+        "src/formats/jbf/xx_jbf.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "E4 63 31 30 B3 70 B4 5C"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

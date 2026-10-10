@@ -1,0 +1,1289 @@
+{
+  "generator": "tools/generate_reader_only_abstract_extractors.py",
+  "files": [
+    {
+      "path": "include/xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc",
+      "sha256": "16709c6cac8b889084329e37a4f7349b2c41dcd2259c5fc07d80a20d5162b87d"
+    },
+    {
+      "path": "src/formats/aaruformat/xx_aaruformat_reader_adapters.c",
+      "sha256": "9a329d0aa24093f13c7092139e231b6c9c96c1a6d1150a9f81cacdd197192cec"
+    },
+    {
+      "path": "src/formats/acorn_adfs/xx_acorn_adfs_reader_adapters.c",
+      "sha256": "aefcc055f069f5bcd43ddddb3524354244c1d74cfa80b79288a5a9b941dcbfb5"
+    },
+    {
+      "path": "src/formats/acorn_atom_disk/xx_acorn_atom_disk_reader_adapters.c",
+      "sha256": "cdc2414159bc4ca4ae97f396820cdcec7f4163ddf41b2fa261ee6ff577cec7f7"
+    },
+    {
+      "path": "src/formats/acorn_dfs/xx_acorn_dfs_reader_adapters.c",
+      "sha256": "132bfcea130bbbbaf2e1b0ed0318bbb56edc4fc8027999799f0619815c5194e5"
+    },
+    {
+      "path": "src/formats/acorn_partitions/xx_acorn_partitions_reader_adapters.c",
+      "sha256": "7489d769c9e8abb110c9a505233bf3362c042afeb6429bd1032b018e4fa4913c"
+    },
+    {
+      "path": "src/formats/adapters/xx_format_detector_adapters.c",
+      "sha256": "5a7474c169360747eadb9a705b158d77201bdee149427d6b59343a6516ba8838"
+    },
+    {
+      "path": "src/formats/adapters/xx_reader_adapters_sources.cmake",
+      "sha256": "dba098e4a718557107c5441a3d8f3a2ce5f1e5ec4cfd9103f6913f6e4b569091"
+    },
+    {
+      "path": "src/formats/aff/xx_aff_reader_adapters.c",
+      "sha256": "721caeec5b569aaf9601014140d5af67c55694bd0e688db0e9e33299af4558b3"
+    },
+    {
+      "path": "src/formats/amdos/xx_amdos_reader_adapters.c",
+      "sha256": "5b9d8a8a2a8e7f884ad35a641e39476e821f4bd5069ced19a189e15f54549d44"
+    },
+    {
+      "path": "src/formats/amiga_ext_adf/xx_amiga_ext_adf_reader_adapters.c",
+      "sha256": "e404939a2af4bce019b4a3f2ba6eef260cef87b5bd6a962a927cb1fe7f0bca8d"
+    },
+    {
+      "path": "src/formats/amiga_old_ext_adf/xx_amiga_old_ext_adf_reader_adapters.c",
+      "sha256": "0f0e972d93fd795c86d9cc4910e01162e52d4319e01f5210d72fe453f0afbd1d"
+    },
+    {
+      "path": "src/formats/amiga_pfs/xx_amiga_pfs_reader_adapters.c",
+      "sha256": "a8269a8a61c2789e6d41dab24fa3acf7ab7a280be4af2a46b439f2ccb9131315"
+    },
+    {
+      "path": "src/formats/amiga_sfs/xx_amiga_sfs_reader_adapters.c",
+      "sha256": "edfb4c26802e11b084f300d1c75aa3edce26067b4de8072f62ebf654192cb7f3"
+    },
+    {
+      "path": "src/formats/amplus/xx_amplus_reader_adapters.c",
+      "sha256": "39085a15d6c7870cbddb7e24a1e247a752bba9cbea380594a0fc0a4481740bfa"
+    },
+    {
+      "path": "src/formats/android_lp/xx_android_lp_reader_adapters.c",
+      "sha256": "b3877f1b5e6d7e4494bbabba6a9d0af623c6c3a9902a9ab2be6842f071e38f75"
+    },
+    {
+      "path": "src/formats/anex86_hdi/xx_anex86_hdi_reader_adapters.c",
+      "sha256": "a681a8fc89ccb8945970d34337803d3bd7fb7e007cfbfa1414285f3df73c9f5a"
+    },
+    {
+      "path": "src/formats/apks/xx_apks_reader_adapters.c",
+      "sha256": "22bbf88681e437689379fb75128c32014308f2bf0de96908d0eb9a76f4344f58"
+    },
+    {
+      "path": "src/formats/apollo_afd/xx_apollo_afd_reader_adapters.c",
+      "sha256": "9b3bcf84b91a4d2f7aee59d152b8ead756b4d1efd56dfa5aecb76a588223893c"
+    },
+    {
+      "path": "src/formats/apple_cassette/xx_apple_cassette_reader_adapters.c",
+      "sha256": "dab13f161a0fe6b2c6e231276e10d903f4cbd032414ccf8e1ba2efdb68216f38"
+    },
+    {
+      "path": "src/formats/apple_dos32/xx_apple_dos32_reader_adapters.c",
+      "sha256": "f7f187cc770e1430ddb00056f66a6a4bd06ff3088f58d897ef5a5e3f6a2ee5c6"
+    },
+    {
+      "path": "src/formats/apple_dos33/xx_apple_dos33_reader_adapters.c",
+      "sha256": "972c735b224eac24749d21ffbe25aba7509b003f7ea1c694e294c1cca0dccfc4"
+    },
+    {
+      "path": "src/formats/apple_dos33_32/xx_apple_dos33_32_reader_adapters.c",
+      "sha256": "d0edbafc12299adf5dce2b7e9685a2429da0f589752808cd31b4dba1f5906698"
+    },
+    {
+      "path": "src/formats/apple_dos_hybrid/xx_apple_dos_hybrid_reader_adapters.c",
+      "sha256": "f19fcfeb3c35f9fa48018568b6e86d88afd92925eb68cf99f3e37fcf6f2c0a89"
+    },
+    {
+      "path": "src/formats/apple_nib/xx_apple_nib_reader_adapters.c",
+      "sha256": "85162ceec91331182554d873d784a6a4c229a66171f9940c1646ef05b6d443bb"
+    },
+    {
+      "path": "src/formats/apple_pascal/xx_apple_pascal_reader_adapters.c",
+      "sha256": "5f554a9a2a050c1cc6eb5707bfcd285fa08756cc7adacd04b4d76a4243fbac34"
+    },
+    {
+      "path": "src/formats/apple_rdos/xx_apple_rdos_reader_adapters.c",
+      "sha256": "58f4cfe60d9957ed4d88578a91568ea051da26c94dc175c854a231e77d12715e"
+    },
+    {
+      "path": "src/formats/applelink_pe/xx_applelink_pe_reader_adapters.c",
+      "sha256": "82aeeabc4343b6c5683842f544f74ef10de37eae7179b7b6db504a45f8e658f2"
+    },
+    {
+      "path": "src/formats/apricot_partitions/xx_apricot_partitions_reader_adapters.c",
+      "sha256": "a03cfbfe29d141f44790f7e7d11638f9781707768a27e9b9c5c920ce12f352ce"
+    },
+    {
+      "path": "src/formats/apridisk/xx_apridisk_reader_adapters.c",
+      "sha256": "0726d6da99fce322fadaca50b3d13639836c4e79490982d9b9c5c1c3f9d848e1"
+    },
+    {
+      "path": "src/formats/arc_cbm/xx_arc_cbm_reader_adapters.c",
+      "sha256": "722a851748e3b134ef4aef82164f0bd0b892b94eff43cb1d80643785f9a5063d"
+    },
+    {
+      "path": "src/formats/atari_ahdi/xx_atari_ahdi_reader_adapters.c",
+      "sha256": "85e9ed9f022735fbd0761a197aae2f471cf97ed22e092903b8d8f93e4c108089"
+    },
+    {
+      "path": "src/formats/atari_dim/xx_atari_dim_reader_adapters.c",
+      "sha256": "ce36545f6fb6176eaf6b267bfc3526c63b60fcafe86b07fc572f996e999e2b76"
+    },
+    {
+      "path": "src/formats/atari_dos2/xx_atari_dos2_reader_adapters.c",
+      "sha256": "6e0eebb1df83352e28f26785c968df5ca0bb3592208c6bb7525e39d6bac227c6"
+    },
+    {
+      "path": "src/formats/atari_stt/xx_atari_stt_reader_adapters.c",
+      "sha256": "6e16bc7c4661756e1ac31c0cc50b0cc486256e22eceec7fc0e6e71592e170b9c"
+    },
+    {
+      "path": "src/formats/atari_stw/xx_atari_stw_reader_adapters.c",
+      "sha256": "4be9c4a369cecff8dcbbcf47a7a20e131caeb91b53f3c84fe1e09d852db53787"
+    },
+    {
+      "path": "src/formats/atheos_fs/xx_atheos_fs_reader_adapters.c",
+      "sha256": "f5c4266563423ca43ded18a53862e22889e33b3f281b4e06076cb7db98a639fc"
+    },
+    {
+      "path": "src/formats/balz/xx_balz_reader_adapters.c",
+      "sha256": "64cb4aeff1ee340c52dc3716246def32722212ced5f0c2e970536eec3e937413"
+    },
+    {
+      "path": "src/formats/beos_fs/xx_beos_fs_reader_adapters.c",
+      "sha256": "9d91f3b158af93a7c14766fa953edadab704cb1b609d031435486f9877bfb84a"
+    },
+    {
+      "path": "src/formats/bga/xx_bga_reader_adapters.c",
+      "sha256": "4c5d6597b006907be066053ef538f890b73d5b3e495277e68a8485d162f3772f"
+    },
+    {
+      "path": "src/formats/bgi/xx_bgi_reader_adapters.c",
+      "sha256": "5f6bba2e7b7ce3fae1e5b804d512a537968838433935ba32bb1dc3419f52059b"
+    },
+    {
+      "path": "src/formats/bgi2/xx_bgi2_reader_adapters.c",
+      "sha256": "cdf0da9a64abceb5375d29257a16678c0cf01ca05256803bb69615abc7cc507e"
+    },
+    {
+      "path": "src/formats/binscii/xx_binscii_reader_adapters.c",
+      "sha256": "4954e2f2b28c80b55032bc5465298d502c89521b62fea6a56ef555920ebe8133"
+    },
+    {
+      "path": "src/formats/binsh_sfx/xx_binsh_sfx_reader_adapters.c",
+      "sha256": "aba4869b46cd8d6cef42c3dbaf3cfb1526b956c5aa4b05ee416689a764dcc734"
+    },
+    {
+      "path": "src/formats/bitrock/xx_bitrock_reader_adapters.c",
+      "sha256": "06598529d27cc49030abb96498db1bac79da9c0ea5066cb44eaa4ef0dcc7d957"
+    },
+    {
+      "path": "src/formats/blindwrite4/xx_blindwrite4_reader_adapters.c",
+      "sha256": "ecabe3addb851e31aa07df9c47a76996666dea3753515c49ab397615e5177775"
+    },
+    {
+      "path": "src/formats/blindwrite_5_6_image/xx_blindwrite_5_6_image_reader_adapters.c",
+      "sha256": "9df3578a6eea246ade8d60818b052710e03e9c7d167b830244804d53aae9f1eb"
+    },
+    {
+      "path": "src/formats/bochs_growing/xx_bochs_growing_reader_adapters.c",
+      "sha256": "41d30fd6c4496fc4f378aef9f5f4d7689449132245da77b5a609f6e92e5e4223"
+    },
+    {
+      "path": "src/formats/bsd_disklabel/xx_bsd_disklabel_reader_adapters.c",
+      "sha256": "ca75a417fab50b456287d1637487681d5140b8780cadc4bec7ee9381e62b7d84"
+    },
+    {
+      "path": "src/formats/btrfs_stream/xx_btrfs_stream_reader_adapters.c",
+      "sha256": "ebdd2167aa93c13edb50d8ca73bf0d78b5f9e1391a498a97f9b509359024b4aa"
+    },
+    {
+      "path": "src/formats/bytekiller/xx_bytekiller_reader_adapters.c",
+      "sha256": "38e8d995065ce6839f72711be6e09b0f2e2aae8c625faeb9975ec7ea67a70177"
+    },
+    {
+      "path": "src/formats/bzip1/xx_bzip1_reader_adapters.c",
+      "sha256": "8af932ba1dc0b6d9d96a533680cf41acd1f10e3f345a24963c20bf73c194db80"
+    },
+    {
+      "path": "src/formats/camputers_lynx_ldf/xx_camputers_lynx_ldf_reader_adapters.c",
+      "sha256": "b3c785d9d7381a046ff1d598af6d4c7857b9a15be9b43a5ba24ddfb76eebd891"
+    },
+    {
+      "path": "src/formats/casio_fzf/xx_casio_fzf_reader_adapters.c",
+      "sha256": "ca8e9b5a7dd221e2f64a7a40a3e365891d22e0d7cb70386c37120db15a1b4758"
+    },
+    {
+      "path": "src/formats/catsystem_kif/xx_catsystem_kif_reader_adapters.c",
+      "sha256": "3c013dfc29addce88633d0b08f758e53d2791cc2dc0112bba6387fc2d8f50159"
+    },
+    {
+      "path": "src/formats/cbm_d64/xx_cbm_d64_reader_adapters.c",
+      "sha256": "99379b8b59f8a166965eefe8f860d3846aa1cb4067c17aecfea8c16733c91014"
+    },
+    {
+      "path": "src/formats/cbm_d67/xx_cbm_d67_reader_adapters.c",
+      "sha256": "0efa8ecb4e74c6d519ad1bdf99aea231e3bb1afeefd6edc1ee59ac5f9fb4fa97"
+    },
+    {
+      "path": "src/formats/cbm_d71/xx_cbm_d71_reader_adapters.c",
+      "sha256": "beaafed0f34dd3a9261a57ec89faf1f499e20c69e021f8dfbdc7375d6f0bcf30"
+    },
+    {
+      "path": "src/formats/cbm_d81/xx_cbm_d81_reader_adapters.c",
+      "sha256": "b2d14044eac6eb136ab7a6f68e98d4d7840a82c07081c6cb4beca7f0463cb5f9"
+    },
+    {
+      "path": "src/formats/cbm_d8x/xx_cbm_d8x_reader_adapters.c",
+      "sha256": "a2325ec5e3eb4410cc8731c08751e6c1fc07552f70db8867f1e0b7632fc574c0"
+    },
+    {
+      "path": "src/formats/cbm_d90/xx_cbm_d90_reader_adapters.c",
+      "sha256": "90b8afbef39cfae0f360487a43fad1d37b31b949a8999a8f07e5aad6a602ff15"
+    },
+    {
+      "path": "src/formats/ccd/xx_ccd_reader_adapters.c",
+      "sha256": "1d37a96eb2e3a001b79db3aaa3328bbb128c37b136ea6b124f617b8ba33abc3f"
+    },
+    {
+      "path": "src/formats/cdi_fs/xx_cdi_fs_reader_adapters.c",
+      "sha256": "343a0a43a3709bf4127ea1a1ae9d7529d5c1498fc1a6d318b54584a2bef5810e"
+    },
+    {
+      "path": "src/formats/cdrdao_toc/xx_cdrdao_toc_reader_adapters.c",
+      "sha256": "b2bac1d65a4a0c7b00d80d8400f7abad08e9dccf11139a77ad2ad0b9dadaa142"
+    },
+    {
+      "path": "src/formats/cfbf/xx_cfbf_reader_adapters.c",
+      "sha256": "1845264e625eb4fa65c958f6182a0df6fc4a7c8e645a3dbffea15c5684a03d0e"
+    },
+    {
+      "path": "src/formats/cffa/xx_cffa_reader_adapters.c",
+      "sha256": "a72a8342a9188fd9e43ec0097166d3f745a127c8e83f0a5fd31ad79b39c7fbbf"
+    },
+    {
+      "path": "src/formats/chromium_pak/xx_chromium_pak_reader_adapters.c",
+      "sha256": "72d100208f5e36cf6f2bdbd442ded7c131f51681c28c0e401b0d7582cff1ce78"
+    },
+    {
+      "path": "src/formats/chz/xx_chz_reader_adapters.c",
+      "sha256": "d55ab9cb5c48896e772dd92880b3ac81885f4c9451b8f7eead495074a57659c5"
+    },
+    {
+      "path": "src/formats/ciscopy/xx_ciscopy_reader_adapters.c",
+      "sha256": "b72c35ee1e44f20e014f4acacea58a1e943ad80145bbe37f495594c508ac8acf"
+    },
+    {
+      "path": "src/formats/ciso/xx_ciso_reader_adapters.c",
+      "sha256": "05d150c95bc0bbd90d5502a09f8341f4a1017928386f8261ac119393c851aeba"
+    },
+    {
+      "path": "src/formats/cmd_fd/xx_cmd_fd_reader_adapters.c",
+      "sha256": "2e0b2903fcb4856a3c9b510e58decbeb0226a2a2cfc054499689d3d35ad9190a"
+    },
+    {
+      "path": "src/formats/coff_object/xx_coff_object_reader_adapters.c",
+      "sha256": "6057cf1bcbabce845ead2d400536b89510b296d404d635abb25552d59a734cfd"
+    },
+    {
+      "path": "src/formats/coherent_fs/xx_coherent_fs_reader_adapters.c",
+      "sha256": "f44576ffdd03589a5e6f6f813341336ba16df3c6c7891d600ea77cfea4516ed3"
+    },
+    {
+      "path": "src/formats/compdisk/xx_compdisk_reader_adapters.c",
+      "sha256": "c71632207c1f2d5bf63935ec3ef231a33f359115b10468de5a21afae3896a13b"
+    },
+    {
+      "path": "src/formats/copytape/xx_copytape_reader_adapters.c",
+      "sha256": "db4bd5eae0e71a36dd8c313c892659ae49c9966b89b2a2f357e02ecd75c204ec"
+    },
+    {
+      "path": "src/formats/cpk/xx_cpk_reader_adapters.c",
+      "sha256": "71f9a65703b83b8fdc023d4b0e398bbb1a5a7119eba656bf569d9719220b1432"
+    },
+    {
+      "path": "src/formats/cpm/xx_cpm_reader_adapters.c",
+      "sha256": "ca1ed8ed1956d8860804e652c31397acfb38efcf1651ab05055a6a211e6b8d3b"
+    },
+    {
+      "path": "src/formats/cpm_crunch/xx_cpm_crunch_reader_adapters.c",
+      "sha256": "fa20f1b07ef1772f2dee6a9f832c86aed84609d8275b19ab029a464939060a14"
+    },
+    {
+      "path": "src/formats/cpoint/xx_cpoint_reader_adapters.c",
+      "sha256": "87eabd801a8cc243dd37923e4ef6fe3d7791a789eabd263307e59efaf8a67393"
+    },
+    {
+      "path": "src/formats/cpx/xx_cpx_reader_adapters.c",
+      "sha256": "4083787927639886e37805a46363bc01f962b918356e49d8398cd924cbc720ba"
+    },
+    {
+      "path": "src/formats/crt/xx_crt_reader_adapters.c",
+      "sha256": "f2a8d577a6d3305abc58fe38dab46f6abc19c1571c3a178298441cc4c33f79e7"
+    },
+    {
+      "path": "src/formats/crunchdisk/xx_crunchdisk_reader_adapters.c",
+      "sha256": "5cfcbf4a48ee1ab60c3f52aee217ce643b3f25df4bdb69c9f30e16348ff4d514"
+    },
+    {
+      "path": "src/formats/d_link_alpha_encimg_v2/xx_d_link_alpha_encimg_v2_reader_adapters.c",
+      "sha256": "125879ecee769802e2ae3ee9140a741e927a023952001eb2dab7662c51ef4b14"
+    },
+    {
+      "path": "src/formats/d_link_fpkg_cpkg/xx_d_link_fpkg_cpkg_reader_adapters.c",
+      "sha256": "85e0e82a891fb92b1e22f30cc98abfe43952406d038d8b69e341fa1386fc8aaf"
+    },
+    {
+      "path": "src/formats/daemon_tools_mdx/xx_daemon_tools_mdx_reader_adapters.c",
+      "sha256": "bbb556d119ffa450707dccde49753cc449df66573ce986e48b27039847e6f3ea"
+    },
+    {
+      "path": "src/formats/dart/xx_dart_reader_adapters.c",
+      "sha256": "4708676671e9a4ad041e53a640e31f3bbd93781ea63be91a615621b140de498c"
+    },
+    {
+      "path": "src/formats/ddd/xx_ddd_reader_adapters.c",
+      "sha256": "1c9f14ea69c527578dd6816f2220760c821be667f6b746c0ad256ce8f1a8b941"
+    },
+    {
+      "path": "src/formats/dec_disklabel/xx_dec_disklabel_reader_adapters.c",
+      "sha256": "7db69adc6e7e901102c11d3575209dbfc668c2b756b19fdd1bf74314e5206fb6"
+    },
+    {
+      "path": "src/formats/der/xx_der_reader_adapters.c",
+      "sha256": "cf533c25f1dd6a4e1ad33a347779e2a93e76a732fd48aea1d562c57e47da51ef"
+    },
+    {
+      "path": "src/formats/dgca/xx_dgca_reader_adapters.c",
+      "sha256": "3c78d0565e0af87d0de538bc73473baed58d6c9dbc848b7674303fe7cc941cfa"
+    },
+    {
+      "path": "src/formats/diet_compression/xx_diet_compression_reader_adapters.c",
+      "sha256": "dfe624c766ce44936d38d4ee2e085397e4c1b0f31555275d3eafad70addcd172"
+    },
+    {
+      "path": "src/formats/discferret_dfi/xx_discferret_dfi_reader_adapters.c",
+      "sha256": "ba8c9d6608378dc4dbcc50477d57362104275f6182886f04caca27f4ea9c1a42"
+    },
+    {
+      "path": "src/formats/diskcopy42/xx_diskcopy42_reader_adapters.c",
+      "sha256": "88e037c4ee7ce090d78d026a086436f6cd8eb4c5ff8cb1a5e70c1dc386b6e3a6"
+    },
+    {
+      "path": "src/formats/dmk/xx_dmk_reader_adapters.c",
+      "sha256": "b3a7439d46139e8d955f4365b30aab2dcb2480c692a1520ed16b08b7499e8743"
+    },
+    {
+      "path": "src/formats/dos_master/xx_dos_master_reader_adapters.c",
+      "sha256": "2b4e773dde40950ce0f7d7b7eaf70430487b5b217dd9bad4a4a80498105ad09b"
+    },
+    {
+      "path": "src/formats/dragonfly_disklabel/xx_dragonfly_disklabel_reader_adapters.c",
+      "sha256": "b43b413ac81503139257b15ebab40b933decfa3fd78b36b8819ae0b905c4726a"
+    },
+    {
+      "path": "src/formats/dri_diskcopy/xx_dri_diskcopy_reader_adapters.c",
+      "sha256": "033c4ba4914764a175c5673a8e3c04fffd7675a92779dead462249f003bad52a"
+    },
+    {
+      "path": "src/formats/dxa/xx_dxa_reader_adapters.c",
+      "sha256": "66e8c43eb97b9f8962985b5b330b964a1d8c1aa5a2f3deb9b86e729fa03f1958"
+    },
+    {
+      "path": "src/formats/ea_fsh/xx_ea_fsh_reader_adapters.c",
+      "sha256": "69b26f45e394f693db812586997b38a3359bea8bb90fc0b33eded71838b5494b"
+    },
+    {
+      "path": "src/formats/ecm/xx_ecm_reader_adapters.c",
+      "sha256": "8c7e018b6703f63501ec4897de5c0ebf4c8d767c6d5726aaf18a8e30e9e85741"
+    },
+    {
+      "path": "src/formats/ecma67_fs/xx_ecma67_fs_reader_adapters.c",
+      "sha256": "93062229076fd958f56a56d724f455837ace31af669c8954d844bcf5b6beca21"
+    },
+    {
+      "path": "src/formats/emax_disk/xx_emax_disk_reader_adapters.c",
+      "sha256": "1ce4417218b4df5fbf7e9920a5330150f4f3d9fc9e7e3c2f7d2af879ea51c80b"
+    },
+    {
+      "path": "src/formats/emulatorii_eii/xx_emulatorii_eii_reader_adapters.c",
+      "sha256": "5a4e91b7642f8330d04d9b3af203ca253a9ff22cecc4e78877cd6f27f3142f53"
+    },
+    {
+      "path": "src/formats/enigma_virtual_box/xx_enigma_virtual_box_reader_adapters.c",
+      "sha256": "e425a2ddda5cc7cf006234018e982fbdc6817770f11857f523adf16d87491a67"
+    },
+    {
+      "path": "src/formats/ensoniq_ede/xx_ensoniq_ede_reader_adapters.c",
+      "sha256": "ba1ef75be9472065a5d4f7956d1423f5a002eb9d9c4908f7cd7bfbd483408e0c"
+    },
+    {
+      "path": "src/formats/ensoniq_gkh/xx_ensoniq_gkh_reader_adapters.c",
+      "sha256": "1cad465644c7ddd8a481e07776b4fa1a2f6a0ddb98237e6c602e7830da234c00"
+    },
+    {
+      "path": "src/formats/erofs/xx_erofs_reader_adapters.c",
+      "sha256": "ca73b54211c852ff5cc50c7e57fcd32203a16148e19e68f5c5ee6a7e7b07d023"
+    },
+    {
+      "path": "src/formats/ewf2_ex01/xx_ewf2_ex01_reader_adapters.c",
+      "sha256": "9c0bbedfd6243d8ce8874b2dbaf94c306c4291c1ba9f11b247d718943a090331"
+    },
+    {
+      "path": "src/formats/ewf2_lx01/xx_ewf2_lx01_reader_adapters.c",
+      "sha256": "f02493f69e906ab65a86d8466df54b6a1e292e5a4da1953973b61211bc474375"
+    },
+    {
+      "path": "src/formats/ewf_l01/xx_ewf_l01_reader_adapters.c",
+      "sha256": "a9b83a0ec3864b6e9d8cbdf27a8cff184a5c8901a4cdd8f19a0120a54fe17ab2"
+    },
+    {
+      "path": "src/formats/excelsior/xx_excelsior_reader_adapters.c",
+      "sha256": "9f537670a828bcf2a515abdf46040e126e8c656829c1bbcebe369ddf9e663cc5"
+    },
+    {
+      "path": "src/formats/exfat/xx_exfat_reader_adapters.c",
+      "sha256": "e0a7f6d3c8e8e2cc407f889b43679adbce51f7b7eb63d7cd2d77197e4cd2f0a5"
+    },
+    {
+      "path": "src/formats/f2fs/xx_f2fs_reader_adapters.c",
+      "sha256": "205697866e1b4d5b061f0e7b367705a610d7bd55aac302ef8a0377884fa7d0d6"
+    },
+    {
+      "path": "src/formats/fdcopy_cfi/xx_fdcopy_cfi_reader_adapters.c",
+      "sha256": "1faea2834d2c2816c077ff0e235bd022733a184fab7006d5b543587f27f5d02b"
+    },
+    {
+      "path": "src/formats/fdx68_fdx/xx_fdx68_fdx_reader_adapters.c",
+      "sha256": "f69ef4dbaf5dd14720ab6da7982b03ee10e4bbff3f45a8544347d20d7692a9e7"
+    },
+    {
+      "path": "src/formats/fead/xx_fead_reader_adapters.c",
+      "sha256": "0aa6b37adca044ac7aab0716a26cc76e116e8f9c15468f8aa26e35d495f36bb1"
+    },
+    {
+      "path": "src/formats/fei/xx_fei_reader_adapters.c",
+      "sha256": "da8f463132da598a4a78164bd4c2953a52cee7101efd8a23c356761ed2de4ae5"
+    },
+    {
+      "path": "src/formats/fmod_sample_bank/xx_fmod_sample_bank_reader_adapters.c",
+      "sha256": "e2dff1447f0ac048ebda13267f2b1865fcec6d6f72215a7c2aa4a8de0e2a9905"
+    },
+    {
+      "path": "src/formats/focusdrive/xx_focusdrive_reader_adapters.c",
+      "sha256": "fbe09d442c4270cd11c59bd0102fea65786ee9cc5a630d535dff25046ef1ec63"
+    },
+    {
+      "path": "src/formats/fossil_fs/xx_fossil_fs_reader_adapters.c",
+      "sha256": "68b768e8ce7f30b9bd904fb96b33aff23468ab886944329767b611433e38a456"
+    },
+    {
+      "path": "src/formats/freeze/xx_freeze_reader_adapters.c",
+      "sha256": "90e230de707fc082a5933af64454f9eaa34474a934ab745885cadbc31076d2e4"
+    },
+    {
+      "path": "src/formats/gbi/xx_gbi_reader_adapters.c",
+      "sha256": "0d8462eb5d687e6b8f18d1f0f6077acf67c3a2e50201b5aab41c0a2f093c09e6"
+    },
+    {
+      "path": "src/formats/gdi/xx_gdi_reader_adapters.c",
+      "sha256": "d057ecfc97e388b551b36e3bd585983854581125fa4866a7a404535affbc1bdd"
+    },
+    {
+      "path": "src/formats/gfs2/xx_gfs2_reader_adapters.c",
+      "sha256": "fae1d2a2b888871adb0a9b5c74363415589074d8e5047e94163d7b81a2ccc403"
+    },
+    {
+      "path": "src/formats/goldsrc_bsp/xx_goldsrc_bsp_reader_adapters.c",
+      "sha256": "22e52e1fcb5f9cdce9607e34410fe1f1dc71430f407e603cf403935cf1778cef"
+    },
+    {
+      "path": "src/formats/grzip/xx_grzip_reader_adapters.c",
+      "sha256": "bd369f4d4ec556844d6a2604c2ac3a4a20512a6d806e04630de40799ae94a6c2"
+    },
+    {
+      "path": "src/formats/gutenberg/xx_gutenberg_reader_adapters.c",
+      "sha256": "8ff0b8c4c66a27dc0a50cad7b92f919405f9be6d03ec8d4148b3e191f9a4e896"
+    },
+    {
+      "path": "src/formats/hammer_fs/xx_hammer_fs_reader_adapters.c",
+      "sha256": "5501736158d823f43d0471f64291d307c2d9a56e9d6a8d9e49cf9225b8f099e6"
+    },
+    {
+      "path": "src/formats/he_tlkb/xx_he_tlkb_reader_adapters.c",
+      "sha256": "9c1f7019dd2a1367dad0d736aa5800f01381ed50af378477744bbdf4e13f326f"
+    },
+    {
+      "path": "src/formats/heathkit_h17/xx_heathkit_h17_reader_adapters.c",
+      "sha256": "2453a4daa6e13ccb220a7ba1287c59d7df5ed33f58aa2d35aad3d8fa0e84794b"
+    },
+    {
+      "path": "src/formats/hfs/xx_hfs_reader_adapters.c",
+      "sha256": "495e72acb98e50de49a85484259cc00762c59add5266c5c9e05ee42fe4118c2e"
+    },
+    {
+      "path": "src/formats/hfsplus/xx_hfsplus_reader_adapters.c",
+      "sha256": "49197da7493b27ac616648702cc206f408ad3c152fedda4d51057a703c593791"
+    },
+    {
+      "path": "src/formats/hp_lif/xx_hp_lif_reader_adapters.c",
+      "sha256": "3e4fc39cc8cd62838968eead782a816e0fa034e3cac082a0bc49912670c0d8a8"
+    },
+    {
+      "path": "src/formats/hpfs/xx_hpfs_reader_adapters.c",
+      "sha256": "fd96d13658ca69f1a6834e338efbbbdf8ab1935a32ee1d2e8ff2fb8fd94f61b6"
+    },
+    {
+      "path": "src/formats/hpofs/xx_hpofs_reader_adapters.c",
+      "sha256": "e2380856339a93a797340da0b27f58169379e1fd2929be2b83bf2c12bb9f04a1"
+    },
+    {
+      "path": "src/formats/hsf/xx_hsf_reader_adapters.c",
+      "sha256": "810b7434bca796a2dec8efc21e02e2026928d501fd839c2c2e08f321909b4bf4"
+    },
+    {
+      "path": "src/formats/htc_nbh_rom_image/xx_htc_nbh_rom_image_reader_adapters.c",
+      "sha256": "153aa1ea915134c3fccc3ac7830ca9caf4075469e37f220988cf082081e04115"
+    },
+    {
+      "path": "src/formats/human68k_partitions/xx_human68k_partitions_reader_adapters.c",
+      "sha256": "63c4d152ff7c50ca8e52d9076877a402da56d031b291e4276c7a9a43f800833f"
+    },
+    {
+      "path": "src/formats/hxc_afi/xx_hxc_afi_reader_adapters.c",
+      "sha256": "f04bc7952a1828dff8d597857772a8af728ef8cd86d8ed30e0d62e8ff753eee1"
+    },
+    {
+      "path": "src/formats/hxc_hfe_extended/xx_hxc_hfe_extended_reader_adapters.c",
+      "sha256": "610e2590c8cf79855eb382fc4f85550d525abc674309556a9e3a72521c13da3a"
+    },
+    {
+      "path": "src/formats/hxc_hfe_hddd_a2_variant/xx_hxc_hfe_hddd_a2_variant_reader_adapters.c",
+      "sha256": "7ed43f4a079c4f0d861e2a2bc836f098564e1c52d35f02c756357f2626b5a6b5"
+    },
+    {
+      "path": "src/formats/hxc_hfe_v3/xx_hxc_hfe_v3_reader_adapters.c",
+      "sha256": "dd1f7b9e2b4b49c186eae6559b7f9f9487a2e0d9ee7f6ceebbbf535a1dd9df20"
+    },
+    {
+      "path": "src/formats/hxc_logic_analyzer/xx_hxc_logic_analyzer_reader_adapters.c",
+      "sha256": "98c46069ba90c8f41d2052d3e48d517a2df8a671fa5101b34b10fdc4fbebc8da"
+    },
+    {
+      "path": "src/formats/hxc_qd/xx_hxc_qd_reader_adapters.c",
+      "sha256": "4d50599a6f8b96ae533de98a9974612036774a884081af857170375949188519"
+    },
+    {
+      "path": "src/formats/hxc_raw_floppy/xx_hxc_raw_floppy_reader_adapters.c",
+      "sha256": "a1e6d8c78c12c2999ae225709c2d2cb1ac4caa95dab894cc5c7ee574fa3ae7ef"
+    },
+    {
+      "path": "src/formats/hxc_stream/xx_hxc_stream_reader_adapters.c",
+      "sha256": "f0d4dba24de67831b8d558ba41d607600b57c2b3a68af6b834c88bf4826680a0"
+    },
+    {
+      "path": "src/formats/hxc_xml_disk_layout/xx_hxc_xml_disk_layout_reader_adapters.c",
+      "sha256": "01d1f5ba4c39a241b86bc9b9d16c1e5c375cb35b96a8fc416774017cfcbf909a"
+    },
+    {
+      "path": "src/formats/hxs/xx_hxs_reader_adapters.c",
+      "sha256": "9a09c426a4b49600c589a338fa18177a39f58e51ec5990d8fed99ce5a6e8e391"
+    },
+    {
+      "path": "src/formats/instalit_data/xx_instalit_data_reader_adapters.c",
+      "sha256": "c61fb07bc8c5f89bd84c2b2efbec1af95945171a1323b7f7a1323034dd7537a1"
+    },
+    {
+      "path": "src/formats/is_stored/xx_is_stored_reader_adapters.c",
+      "sha256": "bd1e68f9421eab27500e95e51ff1b168ae4338f6afff740a4a4e9030c56a4c3e"
+    },
+    {
+      "path": "src/formats/jffs2_old/xx_jffs2_old_reader_adapters.c",
+      "sha256": "5a2e60daf8758c0594b2964cd7c797c12b9965e9cd3aeb9de9a823bdebadbce5"
+    },
+    {
+      "path": "src/formats/jfs/xx_jfs_reader_adapters.c",
+      "sha256": "088e0c73634e442f0c7ae3699390763c46ea6a97552d1db830acf10bef72e482"
+    },
+    {
+      "path": "src/formats/jvc/xx_jvc_reader_adapters.c",
+      "sha256": "853234e2e7583fe70b11eee5b30de6a4727169da60566e616f49c93b7f96c664"
+    },
+    {
+      "path": "src/formats/kgb_archiver/xx_kgb_archiver_reader_adapters.c",
+      "sha256": "5df23f484297e6d079d20bc42784f9eef8931ba77cc5d8b8b625c6070dd5e57a"
+    },
+    {
+      "path": "src/formats/kryoflux_stream/xx_kryoflux_stream_reader_adapters.c",
+      "sha256": "2617ad588f82613712a15517b01378223ac040d6c600584dc80fa427a2e6e779"
+    },
+    {
+      "path": "src/formats/larc_pfx/xx_larc_pfx_reader_adapters.c",
+      "sha256": "bbd78bf7264484d2b759c1b1a694753fc019eba1171653bd8a041a4eeb899f56"
+    },
+    {
+      "path": "src/formats/ldbs/xx_ldbs_reader_adapters.c",
+      "sha256": "8e654008e6badbdd6760d9eed56a7a8388baae6b4801048ec7f85f16ad8ca94d"
+    },
+    {
+      "path": "src/formats/ldbst/xx_ldbst_reader_adapters.c",
+      "sha256": "ebc986770a5863222e9c24ef5e933686e3674c77ed9f4ded6cfba0ba81166c31"
+    },
+    {
+      "path": "src/formats/lhf/xx_lhf_reader_adapters.c",
+      "sha256": "769abd08e9857ad6a51afba6396ede10b99fe5faa617a8afe0a773511a17d145"
+    },
+    {
+      "path": "src/formats/lhpak_sfx/xx_lhpak_sfx_reader_adapters.c",
+      "sha256": "9cf5efd4189e5d1e82db5aa7a7e6a98b65c19a1fcdd0884e7ce91d629ce0d9ee"
+    },
+    {
+      "path": "src/formats/lhsfx/xx_lhsfx_reader_adapters.c",
+      "sha256": "658e7af31625b6ce8c3a25a38381eca04140ff91671a4d438f0dd7b69c8915a5"
+    },
+    {
+      "path": "src/formats/lhwarp/xx_lhwarp_reader_adapters.c",
+      "sha256": "82511fcb317a3ba5eb2b59da74300a36022cba0d375bd76cca1bff6548c3becf"
+    },
+    {
+      "path": "src/formats/libdsk_extra/xx_libdsk_extra_reader_adapters.c",
+      "sha256": "1b95c1e0840213e5060645af25a161f7e51b4a0003a52154588d3c52e5ccdb2c"
+    },
+    {
+      "path": "src/formats/linux_ext/xx_linux_ext_reader_adapters.c",
+      "sha256": "c54c0403b41a257004bc174e419c7ae064df96a1ed4e851a9fbfc34c95986726"
+    },
+    {
+      "path": "src/formats/lisa_blu/xx_lisa_blu_reader_adapters.c",
+      "sha256": "57f18b872b2869cde4277f3a8d769cddba77094d74a819226d1927ee9398701a"
+    },
+    {
+      "path": "src/formats/lisa_fs/xx_lisa_fs_reader_adapters.c",
+      "sha256": "b3a1023d882bc6400ac3b48490dc83872d3b25f1dcb9824813db91d8128115cd"
+    },
+    {
+      "path": "src/formats/livemaker/xx_livemaker_reader_adapters.c",
+      "sha256": "35dc8c2430734b8e90e6d75a42ef4c4c4863e9c0c070d49b3855d59d8e7f86a2"
+    },
+    {
+      "path": "src/formats/locus_fs/xx_locus_fs_reader_adapters.c",
+      "sha256": "4069905b31471921c125a2216f6e2c916b44c3c83a43051f86f0fd26cb9c5f11"
+    },
+    {
+      "path": "src/formats/lpak/xx_lpak_reader_adapters.c",
+      "sha256": "69671d14505dc8efe76bc4f4d7e43467e52e0ffa13ac66a5dbfde2afde402a03"
+    },
+    {
+      "path": "src/formats/lpaq1/xx_lpaq1_reader_adapters.c",
+      "sha256": "de3f76b6630a9892c78e1d1d0a637886236abab5625303b7ac07315874860f72"
+    },
+    {
+      "path": "src/formats/lpaq5/xx_lpaq5_reader_adapters.c",
+      "sha256": "6d999cb6115fa4c7202ff079c16e45404b58bc9412cd33c74a693b18918a04d5"
+    },
+    {
+      "path": "src/formats/lrzip/xx_lrzip_reader_adapters.c",
+      "sha256": "b6c16b45d9d952bd2bfa5c5f77f89647f899f9e91991180dffa18ba431020d27"
+    },
+    {
+      "path": "src/formats/lvm2/xx_lvm2_reader_adapters.c",
+      "sha256": "3f94871519dce8bcba8bc14afb28bf3349d2ca42cd07bda22c7873b805e5cd60"
+    },
+    {
+      "path": "src/formats/lzma86/xx_lzma86_reader_adapters.c",
+      "sha256": "f1422afa0f3a969216bd07245ea3f58ae0c6c3c1c101ab7645c2168f7076de2d"
+    },
+    {
+      "path": "src/formats/mac_ts/xx_mac_ts_reader_adapters.c",
+      "sha256": "781b82cd1b26ebf7d795e3236e06356c818e4c6cd3712697a6a24d862b8a78d3"
+    },
+    {
+      "path": "src/formats/machofat/xx_machofat_reader_adapters.c",
+      "sha256": "fb40d3c7f1b1458783c91c6e40e2eee88e730ff900e92b93f782735fd474730c"
+    },
+    {
+      "path": "src/formats/majiro/xx_majiro_reader_adapters.c",
+      "sha256": "0f1b0c6b584b20f31ead9f8a0d413d90ebe70cbf8afd7adb6ee07917c0e40375"
+    },
+    {
+      "path": "src/formats/malie_lib/xx_malie_lib_reader_adapters.c",
+      "sha256": "d568eaa48fbb0d1c222210420e35a927a62cbcc38359845da375282700f13103"
+    },
+    {
+      "path": "src/formats/maxi_disk/xx_maxi_disk_reader_adapters.c",
+      "sha256": "37c58c4e2c29309cc7d1ed8aa63ea82722289f7e4a13be24da93271ebd78489a"
+    },
+    {
+      "path": "src/formats/maxis_far_archive/xx_maxis_far_archive_reader_adapters.c",
+      "sha256": "74c4e1d54a60d660adab9ba7cb42617112a28b64b89e6f97de9f531e97473cd4"
+    },
+    {
+      "path": "src/formats/md_raid/xx_md_raid_reader_adapters.c",
+      "sha256": "9926bc2a47a992d55e81d78a0cbda00b574928d504f1d309ab99d9dd5ed0bedc"
+    },
+    {
+      "path": "src/formats/mdh/xx_mdh_reader_adapters.c",
+      "sha256": "21a9ffc5fd04535022fa90507fe1c55091488376b6f0a4b26ace366d50feae08"
+    },
+    {
+      "path": "src/formats/mds/xx_mds_reader_adapters.c",
+      "sha256": "142b1e35b02dd866102071a457af0880ca178dc3883449237b1d43eb4f883cad"
+    },
+    {
+      "path": "src/formats/mfs/xx_mfs_reader_adapters.c",
+      "sha256": "414fc18e1881da7e44fd3842dbb6723bd071e7125b006d5ce656bb4ed89b9252"
+    },
+    {
+      "path": "src/formats/mgt/xx_mgt_reader_adapters.c",
+      "sha256": "544a0ac8ce3056d61f556ddb6ff5593da00134b1e91fa73fe14d7c0c907467f2"
+    },
+    {
+      "path": "src/formats/micral_n_raw/xx_micral_n_raw_reader_adapters.c",
+      "sha256": "4ed1d9da2c424da7c09097d4da23b50a3f4f8ca4a150c16d9a4c85ba07bd3016"
+    },
+    {
+      "path": "src/formats/microdrive/xx_microdrive_reader_adapters.c",
+      "sha256": "1d65b4440fec9e4f88e6e77babcaa7f8f35cfaacb827bb90b1da373fe5087e47"
+    },
+    {
+      "path": "src/formats/microsoft_lit/xx_microsoft_lit_reader_adapters.c",
+      "sha256": "1fd54722bb27903b2fe76bfaac00fb4ab83c995ad8bb70c04135ba581b21840d"
+    },
+    {
+      "path": "src/formats/minix/xx_minix_reader_adapters.c",
+      "sha256": "212dc61d8ffe86db3f0c2c1ef0ccaacf64aa63aaf264697d99ed62c8bd87db03"
+    },
+    {
+      "path": "src/formats/minix_partitions/xx_minix_partitions_reader_adapters.c",
+      "sha256": "321930b22b9a40657999ccb1cbbbda2eea3ce4f5d8a534e95d1c43a85f6ed494"
+    },
+    {
+      "path": "src/formats/molebox/xx_molebox_reader_adapters.c",
+      "sha256": "67d11cabf0349c1ef537f4c71d040edfbbcb44246dfa5eba3256a14bac73275b"
+    },
+    {
+      "path": "src/formats/moof/xx_moof_reader_adapters.c",
+      "sha256": "b3f87e3926dfb2002b5e0a41ba719c8dc8b35fd361175ba0a54873875298772d"
+    },
+    {
+      "path": "src/formats/ms_dos_backup2/xx_ms_dos_backup2_reader_adapters.c",
+      "sha256": "fae826542cd2840b05fd5f76bbbaaaf9a5de1b6e7278dd2a0a5272e70dbbf3cd"
+    },
+    {
+      "path": "src/formats/mub/xx_mub_reader_adapters.c",
+      "sha256": "f06d4bb287b4ded1937563092f8fbb285665aff76f807691ab760d48670183b9"
+    },
+    {
+      "path": "src/formats/mxm_simplearc/xx_mxm_simplearc_reader_adapters.c",
+      "sha256": "de07f36f53a0cbbdc559d9f02e1c5b8343d14e1694926de5e06a81d3538caf92"
+    },
+    {
+      "path": "src/formats/nexas_pac/xx_nexas_pac_reader_adapters.c",
+      "sha256": "b0a05f36dc48be9a8e69571321b3391a2fda8c6b5be0e592ce7e22970214580a"
+    },
+    {
+      "path": "src/formats/next_disklabel/xx_next_disklabel_reader_adapters.c",
+      "sha256": "5f4d59dfbeb290da170929e3f857ed0b4ef19894e8c767a6f327118da9a3d997"
+    },
+    {
+      "path": "src/formats/nhd/xx_nhd_reader_adapters.c",
+      "sha256": "2a6c228458660311bdd61f304072a4cb874dd8ff4916c3ed7609e124f7afb8e3"
+    },
+    {
+      "path": "src/formats/nilfs2/xx_nilfs2_reader_adapters.c",
+      "sha256": "149f29ba9cdc210ba5fb93453ca73712a57926eaa0233cb32941a0db70f1cc61"
+    },
+    {
+      "path": "src/formats/nitroplus_npa/xx_nitroplus_npa_reader_adapters.c",
+      "sha256": "1ad87ced491b228e8383c96939e7688ddc933630b8cf9056e4ba1ebbb07cfae2"
+    },
+    {
+      "path": "src/formats/nitroplus_npk2/xx_nitroplus_npk2_reader_adapters.c",
+      "sha256": "4aa0857df400c153a3e23521951cecaa10f73739743cde683a9adf8e5a55a47f"
+    },
+    {
+      "path": "src/formats/noa/xx_noa_reader_adapters.c",
+      "sha256": "2fb97f25be93e8bf0623c2d1470c140b26f60cfa93bccddadf018688f243c769"
+    },
+    {
+      "path": "src/formats/northstar_nsi/xx_northstar_nsi_reader_adapters.c",
+      "sha256": "a1468c842743098ddfbbc26a9f88c55078d320957f52706ee947901cafab079c"
+    },
+    {
+      "path": "src/formats/nowcompress/xx_nowcompress_reader_adapters.c",
+      "sha256": "82d5fcaecc3b01ef7a9eee5f59607eac14709c7b54900c634862c818f0049ce4"
+    },
+    {
+      "path": "src/formats/nsis/xx_nsis_reader_adapters.c",
+      "sha256": "b14f642597025099db019e0f637dbb1384dc25a3814d296c24dd9a6fcbe15209"
+    },
+    {
+      "path": "src/formats/ods2_fs/xx_ods2_fs_reader_adapters.c",
+      "sha256": "56ac0f3c77b411c336020cffed01eed9416622c91eab23eac98529ff45a7e234"
+    },
+    {
+      "path": "src/formats/opera_fs/xx_opera_fs_reader_adapters.c",
+      "sha256": "bf2f7863cb2cd65e2da079ef9d2e2ecfec90a90cb6d4d89cbda89a4f03d0d125"
+    },
+    {
+      "path": "src/formats/oric_dsk/xx_oric_dsk_reader_adapters.c",
+      "sha256": "63f5c0f3030f36b4facc9731c2929c7d3e2fe0ada9a1a16afd4d6500dbed1686"
+    },
+    {
+      "path": "src/formats/os9_rbf/xx_os9_rbf_reader_adapters.c",
+      "sha256": "7e9373ea222facc6416ab90345031df32cf1a4900d7bce615c121da7bc4f07cb"
+    },
+    {
+      "path": "src/formats/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_reader_adapters.c",
+      "sha256": "a51b45228501da8edb8dbac7a5b9c9a799e54b927349475561361af606aec879"
+    },
+    {
+      "path": "src/formats/ozdos/xx_ozdos_reader_adapters.c",
+      "sha256": "f0ba1cad06439e57ac92259abf9a040b0e19e46b2853a9047592b37f99d069b6"
+    },
+    {
+      "path": "src/formats/palladix_mus/xx_palladix_mus_reader_adapters.c",
+      "sha256": "34c99fd1da21f9b72da836ece86a19e23415e026c806750151b13ed348d82904"
+    },
+    {
+      "path": "src/formats/palladix_pma/xx_palladix_pma_reader_adapters.c",
+      "sha256": "9f3d6dacce72ab3e2fd41734a28af18c6866060ea2f22b01951a34eef220e30c"
+    },
+    {
+      "path": "src/formats/palladix_snd/xx_palladix_snd_reader_adapters.c",
+      "sha256": "fd0894ee16c41b326a724a906686784da50299cb2bca0eff8b8d07779809c69e"
+    },
+    {
+      "path": "src/formats/paq8/xx_paq8_reader_adapters.c",
+      "sha256": "9b1c3f247a7c225238f312ad0fe7c5a1019a34dec18796dd108c5f39cb941ce4"
+    },
+    {
+      "path": "src/formats/parsec_dma/xx_parsec_dma_reader_adapters.c",
+      "sha256": "da763f86f624958906983cc84f3ad6d3e58cbf29fa73625eb860877ae2914a0c"
+    },
+    {
+      "path": "src/formats/parsec_dtc/xx_parsec_dtc_reader_adapters.c",
+      "sha256": "92af6f33c03e1ce6f9e6375eb9c60a95e71ef65c6c640b5da8bddd774f720b71"
+    },
+    {
+      "path": "src/formats/partclone_image/xx_partclone_image_reader_adapters.c",
+      "sha256": "c3fc2dc319c0f150e3ce4a338f5e50180c733485acc9c3412fbe9e3a15a90f03"
+    },
+    {
+      "path": "src/formats/partimage/xx_partimage_reader_adapters.c",
+      "sha256": "c724397dfb980d8f214b846ab4f7cab0c07c8e26f1bba3a8afae1b8c16d060c1"
+    },
+    {
+      "path": "src/formats/pascal_profile_manager/xx_pascal_profile_manager_reader_adapters.c",
+      "sha256": "e704bf1353c6c045719b92f9169ed2161eb645f8c2055828967372685b1043c4"
+    },
+    {
+      "path": "src/formats/pc98_partitions/xx_pc98_partitions_reader_adapters.c",
+      "sha256": "de90990ca682deb256d08f7951d989f6c067adb3e77572eadfdb545a809a9102"
+    },
+    {
+      "path": "src/formats/pc_86f/xx_pc_86f_reader_adapters.c",
+      "sha256": "89ce0ab7f43264b4586788cad65b6ee1cd420fb6a14ed70aae87f4fe19c0f6b3"
+    },
+    {
+      "path": "src/formats/pce_anadisk/xx_pce_anadisk_reader_adapters.c",
+      "sha256": "4e53237db6b9863e687cd15c694dc83c2477cdac216239923e48f7befb66a563"
+    },
+    {
+      "path": "src/formats/pce_pbi/xx_pce_pbi_reader_adapters.c",
+      "sha256": "67d43373e6c465c2a63c7519d8bab60fb32a7ca83da67a26cc0b518fa112c096"
+    },
+    {
+      "path": "src/formats/pce_pbit/xx_pce_pbit_reader_adapters.c",
+      "sha256": "8d242a13397471cd0cc0b3ccebed9c54379cdf7edbd1631439500fac9d35a9ab"
+    },
+    {
+      "path": "src/formats/pce_pfdc/xx_pce_pfdc_reader_adapters.c",
+      "sha256": "d70ae73627891c72308fb98ec6ca370cd564313655164ce7199c78f08c8bbad2"
+    },
+    {
+      "path": "src/formats/pce_pfi/xx_pce_pfi_reader_adapters.c",
+      "sha256": "b9fd683945b4de16a5c36daf542cd886934edc0b6df87a197c0ba1149f09830c"
+    },
+    {
+      "path": "src/formats/pce_pri/xx_pce_pri_reader_adapters.c",
+      "sha256": "526459762a90db2aee41e1338d34b15e8178095f19452ebc9afad998b2c88a75"
+    },
+    {
+      "path": "src/formats/pce_tc/xx_pce_tc_reader_adapters.c",
+      "sha256": "0c66ffb9488c4d4a1544356fdc1053af2a72456485a1f863050c9b1e50ce0609"
+    },
+    {
+      "path": "src/formats/pce_xdf/xx_pce_xdf_reader_adapters.c",
+      "sha256": "ad3cac75e72ff17b09b407f45e7db3ee008ab9662a8033e4a986a0fd296f3315"
+    },
+    {
+      "path": "src/formats/pcompress_pack/xx_pcompress_pack_reader_adapters.c",
+      "sha256": "d85519be28157f53e5d749b1e0e2805c14b379efdae3225447ef145d20fd1784"
+    },
+    {
+      "path": "src/formats/plan9_partitions/xx_plan9_partitions_reader_adapters.c",
+      "sha256": "d01321adb0705ccc77d10b32fb0c9fb3b27350921c759a04e013d356f3fa8eba"
+    },
+    {
+      "path": "src/formats/ppmd/xx_ppmd_reader_adapters.c",
+      "sha256": "4c1a565129f50c5903cc154bab90ef471759a6ce6cbfacdf05508cb8ef09b0d9"
+    },
+    {
+      "path": "src/formats/qlie_pack/xx_qlie_pack_reader_adapters.c",
+      "sha256": "e81c26249b35c19ae20cb3aafe0ac67251dad2b627e958c7b51e4f18bdfa5fe3"
+    },
+    {
+      "path": "src/formats/qnx4/xx_qnx4_reader_adapters.c",
+      "sha256": "9b47383cab1da36027099a2abb1066b2062a5121b736f7097a811f03b5234ba5"
+    },
+    {
+      "path": "src/formats/quad/xx_quad_reader_adapters.c",
+      "sha256": "49bb0a6df670dcec7db0068b9a9069b514ae72bb4d1241e44d5b4a64b802adb2"
+    },
+    {
+      "path": "src/formats/quoted_printable_encoded_fil/xx_quoted_printable_encoded_fil_reader_adapters.c",
+      "sha256": "9a01bdc63af40901560cdd1bf343174e4e6b86a114ec8bec0e47c9ade29f9be6"
+    },
+    {
+      "path": "src/formats/ray_dim/xx_ray_dim_reader_adapters.c",
+      "sha256": "fc500d003575f69080a3c94ea2b4083585a11594051d342819b293ea9d37d584"
+    },
+    {
+      "path": "src/formats/refs/xx_refs_reader_adapters.c",
+      "sha256": "9add2e3de82e34ee00e35cec6058a1a15f26cf805524c5c133569ddcc12598b9"
+    },
+    {
+      "path": "src/formats/reiserfs/xx_reiserfs_reader_adapters.c",
+      "sha256": "175442a73f29d3af6845239e31fd1fc2446c1fab62d685f26af4aa342901f8cc"
+    },
+    {
+      "path": "src/formats/rio_karma_partitions/xx_rio_karma_partitions_reader_adapters.c",
+      "sha256": "5298af7c60649567c433ed0b76f0ce49ccb82fdb1511349e0c47065c539eca42"
+    },
+    {
+      "path": "src/formats/risc_os_sprite/xx_risc_os_sprite_reader_adapters.c",
+      "sha256": "a771457a8c671b155d4faefcaddf990d2c17c7b46f09ecb69489e5a3f6783a69"
+    },
+    {
+      "path": "src/formats/rpg_maker_rgssad/xx_rpg_maker_rgssad_reader_adapters.c",
+      "sha256": "2ca2776c6253cc0f5f6df63217aafbb18a1d6db178be101687e4e2ae7e30cc77"
+    },
+    {
+      "path": "src/formats/rs_ide/xx_rs_ide_reader_adapters.c",
+      "sha256": "ceb77a6ae4acd23310140fecd59e0dacfd8423fcea81fd84d6a17f50e6df624b"
+    },
+    {
+      "path": "src/formats/rt11_fs/xx_rt11_fs_reader_adapters.c",
+      "sha256": "909c609e377f1d657f05e52ee1b047065761b2796e67de5fb68bb4020835264a"
+    },
+    {
+      "path": "src/formats/rzip/xx_rzip_reader_adapters.c",
+      "sha256": "94b61be4a0eb86c4d15f038662976eda558ffdfd75ff633859232cc38abe4ff7"
+    },
+    {
+      "path": "src/formats/s_omni/xx_s_omni_reader_adapters.c",
+      "sha256": "88e9d8144e3ca6fae0e7554b81aa05e7eb72b232fd78fd239378068231f294f0"
+    },
+    {
+      "path": "src/formats/samcoupe_sad/xx_samcoupe_sad_reader_adapters.c",
+      "sha256": "ecc6e7dbceeb7e3485d50d6fe536c173a192e1836f58d13da6cffb8f6d265165"
+    },
+    {
+      "path": "src/formats/sar/xx_sar_reader_adapters.c",
+      "sha256": "999180c67ff1d847665e95c57e1d2834961ff8768cd3c7a999b99d5a306e4c66"
+    },
+    {
+      "path": "src/formats/savage/xx_savage_reader_adapters.c",
+      "sha256": "171ee32c4ef515f439b96379b2c9194c0c4f37d8b11b8e35fe73b505d82cfc4d"
+    },
+    {
+      "path": "src/formats/sdi/xx_sdi_reader_adapters.c",
+      "sha256": "23504d98510cf62f1e0fd7ed4d0a47c890b89c7411c16d1490f39dbbd449dc31"
+    },
+    {
+      "path": "src/formats/sds_sfx/xx_sds_sfx_reader_adapters.c",
+      "sha256": "554e406ac58ec2ccd2d73149b9631ef2abb3ab9f481405cb9a1137492417f6fa"
+    },
+    {
+      "path": "src/formats/sdu/xx_sdu_reader_adapters.c",
+      "sha256": "f59484ac9832142192784e6f698d3b8d5c70dc0e43a53049db8f2ef6d56620d8"
+    },
+    {
+      "path": "src/formats/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_reader_adapters.c",
+      "sha256": "b69c02f4b002e72f074410555ba88bafbb47670a640e8ae38a6e62d259e29d78"
+    },
+    {
+      "path": "src/formats/sgi_efs/xx_sgi_efs_reader_adapters.c",
+      "sha256": "8cc99ed654bda6df352594d90f8d799349325515aff389f4cc2a434c3a7b74ea"
+    },
+    {
+      "path": "src/formats/sgi_volume_header/xx_sgi_volume_header_reader_adapters.c",
+      "sha256": "83cfea3e8f434ee2487dfcecd1cb449e8284188921944ae984d13d853b4a821e"
+    },
+    {
+      "path": "src/formats/shrink_cdaf/xx_shrink_cdaf_reader_adapters.c",
+      "sha256": "3a52346db09ec21c7c056d9d9b4f4464fed1218d8c4ab505ab958706598c2d12"
+    },
+    {
+      "path": "src/formats/simh_disk/xx_simh_disk_reader_adapters.c",
+      "sha256": "fe3959294cfed62171ce4ac36c030c78a66e3d87497ce8b5a3047c6d887a8c19"
+    },
+    {
+      "path": "src/formats/sis/xx_sis_reader_adapters.c",
+      "sha256": "6676c6676120d20b01862f9b6a6c22ca271f626abc4dd967e332ed3ff64f5592"
+    },
+    {
+      "path": "src/formats/sm8/xx_sm8_reader_adapters.c",
+      "sha256": "6e343089639eba4fd10b2e59d0b1fc8473a5c78fcf1ff493aede2090bdfe5ae8"
+    },
+    {
+      "path": "src/formats/smart_install_maker/xx_smart_install_maker_reader_adapters.c",
+      "sha256": "ea5abdc76172f48bbcfa8e63d1b96eb71ab236c67bad9dbd9ddf02a19db36d8b"
+    },
+    {
+      "path": "src/formats/snatchit_cp2/xx_snatchit_cp2_reader_adapters.c",
+      "sha256": "175c108c588ab5dc0a44ffdaabeb458baed912f30d46a0d596fcbb411453aa67"
+    },
+    {
+      "path": "src/formats/solar_fs/xx_solar_fs_reader_adapters.c",
+      "sha256": "2340e6c44ccd96154575528ae223038cadf65ea8a2e4196df07edb312db1a840"
+    },
+    {
+      "path": "src/formats/spack/xx_spack_reader_adapters.c",
+      "sha256": "47055d4acbc6268eda5853d51ec3b75c2ea4256170649e722d487276349045ab"
+    },
+    {
+      "path": "src/formats/speccydos_sdd/xx_speccydos_sdd_reader_adapters.c",
+      "sha256": "35591910ff18c886ebcaceed40ef9ef37a793bac68253d4d7053d2e2bdde9ccf"
+    },
+    {
+      "path": "src/formats/spectrum_udi/xx_spectrum_udi_reader_adapters.c",
+      "sha256": "e7b31f6b1bf6d58f1866f120bc52061675f469663105c3ad6f230ede8f5b9eef"
+    },
+    {
+      "path": "src/formats/squashfs_sqlz/xx_squashfs_sqlz_reader_adapters.c",
+      "sha256": "c1a0d6cc22e7f98b6b8007082b8992f2ca7cc17395388401f430ce42e112c64b"
+    },
+    {
+      "path": "src/formats/stos_memory_bank/xx_stos_memory_bank_reader_adapters.c",
+      "sha256": "7ec14bf7bfb3cce0a0b2baa70ddde96a70623efd9b5291da6fe6e8aa920537dd"
+    },
+    {
+      "path": "src/formats/stuffitx/xx_stuffitx_reader_adapters.c",
+      "sha256": "f9bdbaa78fc001af134658e43416da2db61c11dcc738b77ce134619046bd6893"
+    },
+    {
+      "path": "src/formats/sufs/xx_sufs_reader_adapters.c",
+      "sha256": "351906797812e158ea883638dcaca48f236e5f7142fa4b72a5ce268e99ef335c"
+    },
+    {
+      "path": "src/formats/sunvtoc/xx_sunvtoc_reader_adapters.c",
+      "sha256": "28a3694b39d8bb61e3105d9628244f8b7d9fec1bf4809a0006159c4af2c23891"
+    },
+    {
+      "path": "src/formats/superdat/xx_superdat_reader_adapters.c",
+      "sha256": "9e98cc61b6588e35df2dac2c065574f0b2d8f199af4a26a9874776cacdc83865"
+    },
+    {
+      "path": "src/formats/svd/xx_svd_reader_adapters.c",
+      "sha256": "bfbcb062272667ce8842e963183de3c770c8260c960502627d7dfe77d82ffee4"
+    },
+    {
+      "path": "src/formats/sysv_fs/xx_sysv_fs_reader_adapters.c",
+      "sha256": "ef82841b70e865127d3b603e1966dbc5c9048d9bfc441b6192d43b8138b23c36"
+    },
+    {
+      "path": "src/formats/t98_hdd/xx_t98_hdd_reader_adapters.c",
+      "sha256": "29c0e84c51d464f6dbc872b11903b74a93e416aa15a1a4b61c09f90d45bd2ac3"
+    },
+    {
+      "path": "src/formats/te_executable/xx_te_executable_reader_adapters.c",
+      "sha256": "98a8f1095058ababdfd61734d557cf812739ba536eb72c1ba9571b3525bd70d0"
+    },
+    {
+      "path": "src/formats/telltale_ttarch/xx_telltale_ttarch_reader_adapters.c",
+      "sha256": "916f977913f34befd495d6e4ac09d4ed95de5d1694a9a3b3dd3c3e97462ee0fb"
+    },
+    {
+      "path": "src/formats/text/xx_text_reader_adapters.c",
+      "sha256": "a23c962aca5173fef583476581fe41b2c875c441872f589245639d1a57d674c3"
+    },
+    {
+      "path": "src/formats/thomson_fd/xx_thomson_fd_reader_adapters.c",
+      "sha256": "4363f0a12f0fc065f80449c37157580ba243d6b73cd0b6227aeaac7393328a59"
+    },
+    {
+      "path": "src/formats/thomson_sap/xx_thomson_sap_reader_adapters.c",
+      "sha256": "a5dad2bf993c0de52c61f0d1eb66869b3a2d5e9cb04a260bae35513883747168"
+    },
+    {
+      "path": "src/formats/ti99_dsk/xx_ti99_dsk_reader_adapters.c",
+      "sha256": "88654a0c56850818d606a52c116ee5a20cc8561233ec7ed7b16485ab6b82ad8d"
+    },
+    {
+      "path": "src/formats/ti99_pc99/xx_ti99_pc99_reader_adapters.c",
+      "sha256": "daa8dfa10547d63312e808a5fa7142a7fbfdebbac25f2c5e2ac3560de7108b28"
+    },
+    {
+      "path": "src/formats/trackstar/xx_trackstar_reader_adapters.c",
+      "sha256": "44e3f3fce621c6cdd7cf70cc58ebd55bf435a5d976dedcb63aa6113d4bfc3247"
+    },
+    {
+      "path": "src/formats/ue2_documents/xx_ue2_documents_reader_adapters.c",
+      "sha256": "40a2022fba145abefc1b3fc4ab7c16831271fecbbf41b911a026d819aca3028f"
+    },
+    {
+      "path": "src/formats/ue2_games/xx_ue2_games_reader_adapters.c",
+      "sha256": "f4a79c164625e9f1b180a93af676222252dadb304a290be58f422e43e03bbe78"
+    },
+    {
+      "path": "src/formats/ufs1/xx_ufs1_reader_adapters.c",
+      "sha256": "e0a6c3a7def0758f65bfed66580ebe9bfb473c0f634f1ff20602d265075a81e0"
+    },
+    {
+      "path": "src/formats/ufs2/xx_ufs2_reader_adapters.c",
+      "sha256": "6d2b4244d09d84813b76021943bc97229b035a306d8af8e7c525dd289fca637c"
+    },
+    {
+      "path": "src/formats/uif/xx_uif_reader_adapters.c",
+      "sha256": "0883311374eda35cc93e3862dd2c4b255b85c5cdcb8907784208cf683a0528bd"
+    },
+    {
+      "path": "src/formats/unicos_fs/xx_unicos_fs_reader_adapters.c",
+      "sha256": "285a7c2aed6f2780698521c4b058fcca4b95b864b76a47c3e8b4ee8d787f66aa"
+    },
+    {
+      "path": "src/formats/unidos/xx_unidos_reader_adapters.c",
+      "sha256": "797b07e183d6e18fe368e6dd0941ce1b6c523cc07f72b8a7133bd0d2b59ba6a7"
+    },
+    {
+      "path": "src/formats/unix_bfs/xx_unix_bfs_reader_adapters.c",
+      "sha256": "fddc39c6da4f956c4f22592e116c8870caf610a236a2bd5e34844051b7aefc88"
+    },
+    {
+      "path": "src/formats/unix_v7/xx_unix_v7_reader_adapters.c",
+      "sha256": "49c4c089042f767f17cacf34e93d1dcd0d460030f09c7aea309b097203f02c8e"
+    },
+    {
+      "path": "src/formats/upx_engine/xx_upx_engine_reader_adapters.c",
+      "sha256": "f29401be803d616eadfab56a6de17483f5e349926d2d0fe56a95d31a2234437b"
+    },
+    {
+      "path": "src/formats/valve_gcf_cache/xx_valve_gcf_cache_reader_adapters.c",
+      "sha256": "be841ce6e0abec4ae88885590b3ff28be791e8a28120bf5c562f9b085b67ed08"
+    },
+    {
+      "path": "src/formats/valve_xzp/xx_valve_xzp_reader_adapters.c",
+      "sha256": "ea13f2c06ab00e7efb4173d84ec5b615b6ceab88b1a2cc549bb29b29a167301d"
+    },
+    {
+      "path": "src/formats/virtual98/xx_virtual98_reader_adapters.c",
+      "sha256": "c03e37094cba9026f309250ddb3032f394e86e96f67d6e8820c1dfb2a348a4a8"
+    },
+    {
+      "path": "src/formats/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_reader_adapters.c",
+      "sha256": "50f14373e4957edc709fa48e089c67d5dacbc6e3c1680cf079290789c0c40858"
+    },
+    {
+      "path": "src/formats/vmdk_sesparse/xx_vmdk_sesparse_reader_adapters.c",
+      "sha256": "625dcc747379b4abf05994d9166e7f7672f045fafee574df491facbe499d2671"
+    },
+    {
+      "path": "src/formats/vmfs/xx_vmfs_reader_adapters.c",
+      "sha256": "81bc054e06a1e9e9f2abb62dd0d2694c3d7a5281fcc4d14864aee53f2904abb1"
+    },
+    {
+      "path": "src/formats/vtr_disk/xx_vtr_disk_reader_adapters.c",
+      "sha256": "c36f5a5a1819d0a4b9cae3013c22ff6012ceac8ac701a5f7f8e13b74c2cea8d7"
+    },
+    {
+      "path": "src/formats/vxfs/xx_vxfs_reader_adapters.c",
+      "sha256": "1328a4034a1b3f6e67be2e003f1dc7f5416ba31a84cca7868bf383b87bf6a40e"
+    },
+    {
+      "path": "src/formats/warp/xx_warp_reader_adapters.c",
+      "sha256": "8da856aa937f74d55a8a40ce7ef0370487dbf5379fc414cbfbeee631a40486c8"
+    },
+    {
+      "path": "src/formats/wc_disk_image/xx_wc_disk_image_reader_adapters.c",
+      "sha256": "0358d3245496dffa1c11627fd46e4d6e6c74a4dab8aa9ee38b92d7bb079a5078"
+    },
+    {
+      "path": "src/formats/wii_wad/xx_wii_wad_reader_adapters.c",
+      "sha256": "d35c50a5a9361e115161fce859553c47780d061200938034ea981f8c63ad0b56"
+    },
+    {
+      "path": "src/formats/windows_ldm/xx_windows_ldm_reader_adapters.c",
+      "sha256": "50da7c925ed4d5e57ac758dbfa3017db1ddf8deadb3c0cb22bbce9850741ceb4"
+    },
+    {
+      "path": "src/formats/windows_thumbnail_cache/xx_windows_thumbnail_cache_reader_adapters.c",
+      "sha256": "ce96e5b79b136df108ea1f91bfadcfe6df96ede40a8a282a9bfd0c46f2a07abb"
+    },
+    {
+      "path": "src/formats/wux/xx_wux_reader_adapters.c",
+      "sha256": "ea988bc951b515103ffe95a42e8fc4763629d3876650c15af0f12295b54bbf87"
+    },
+    {
+      "path": "src/formats/xbox360_layout/xx_xbox360_layout_reader_adapters.c",
+      "sha256": "ec8dff90812684f01b218526b84917a8ebd34935a5827c9845f51ecdda28296b"
+    },
+    {
+      "path": "src/formats/xenix_fs/xx_xenix_fs_reader_adapters.c",
+      "sha256": "3009c52689f5c5f13e99bc730dc86c11d00400722f362fd3ff778a4c28f93e55"
+    },
+    {
+      "path": "src/formats/xenix_partitions/xx_xenix_partitions_reader_adapters.c",
+      "sha256": "d236ee76287f35953b04fb47fbac396fef4a481ab7e51502338b283e141bbe83"
+    },
+    {
+      "path": "src/formats/xfs/xx_xfs_reader_adapters.c",
+      "sha256": "1e22854d549dbaf79f05880ce40535ac0d46f79af3ac2f8211c22b84e68c530a"
+    },
+    {
+      "path": "src/formats/xia_fs/xx_xia_fs_reader_adapters.c",
+      "sha256": "56c8acc49c7ac07758da0d39e70072b574d9f75ddc73a0e3c6f3c1fb729de06c"
+    },
+    {
+      "path": "src/formats/xiaomi_hdr1/xx_xiaomi_hdr1_reader_adapters.c",
+      "sha256": "88e93a078549bbcf36ddd568fc062790ab5e29422d4c6612e942d9451f01f5f8"
+    },
+    {
+      "path": "src/formats/xiaomi_hdr2/xx_xiaomi_hdr2_reader_adapters.c",
+      "sha256": "84c33a06a76fe181a1352237dcd105b596baa395cc02c2a56ea3ad9bf028c74b"
+    },
+    {
+      "path": "src/formats/xpk_compressed_file/xx_xpk_compressed_file_reader_adapters.c",
+      "sha256": "b60d8a3b27a7cfd4c79a01fcafed5fad42280a660791628b662bdb6f80e261d3"
+    },
+    {
+      "path": "src/formats/xva/xx_xva_reader_adapters.c",
+      "sha256": "fd6c47ab6f72ce0e5a6ccbf178d01b55b9477f0d6275de635bcfa6949809ff16"
+    },
+    {
+      "path": "src/formats/xx_format_reader_only_decls.inc",
+      "sha256": "9a88223e083811c96766768a22bea7b7b536edea236a51a56b14ef7d7f8257cb"
+    },
+    {
+      "path": "src/formats/xx_format_reader_only_rows.inc",
+      "sha256": "2272b2dd01c69bdb2654a0588dfda4d574b115fb1ebd9918295a0709ddec6384"
+    },
+    {
+      "path": "src/formats/yenc_encoded_file/xx_yenc_encoded_file_reader_adapters.c",
+      "sha256": "9139c922a72fc56307abd5d1bdd2652ea9cd2f04b4cb998324e3a219ca05d01b"
+    },
+    {
+      "path": "src/formats/ypf/xx_ypf_reader_adapters.c",
+      "sha256": "2c4919183caa5d7e66d0c245ed8cfa02e7916daf310da6792aa1e31234165061"
+    },
+    {
+      "path": "src/formats/zfs/xx_zfs_reader_adapters.c",
+      "sha256": "c6723f684a03610d93a420aae08ce3e91c778e0fa6154f54e163a069f967ee9a"
+    }
+  ]
+}

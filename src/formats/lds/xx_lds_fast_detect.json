@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "LDS",
+      "sources": [
+        "src/formats/lds/xx_lds.c"
+      ],
+      "note": "Native LDS STOR version1/1 header, not generic storage/string magic.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 54 4F 52 01 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

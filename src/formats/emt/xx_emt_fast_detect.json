@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "EMT",
+      "sources": [
+        "src/formats/emt/xx_emt.c"
+      ],
+      "note": "EMT4OS2, EMT4PM and EMT4PMW versioned headers share the 32-bit magic at +2.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 2,
+              "hex": "7A C5 D4 E3"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

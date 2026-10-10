@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "NRG",
+      "sources": [
+        "src/formats/nrg/xx_nrg.c"
+      ],
+      "note": "Nero v2/v1 EOF footer variants; track/chunk-list offsets and END! terminator stay in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

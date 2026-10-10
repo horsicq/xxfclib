@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "HTC_NBH_ROM_IMAGE",
+      "sources": [
+        "src/formats/htc_nbh_rom_image/xx_htc_nbh_rom_image.c"
+      ],
+      "note": "Mandatory seven-byte R000FF-newline container signature; HTC logical image and block mapping remain reader validation.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "52 30 30 30 46 46 0a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

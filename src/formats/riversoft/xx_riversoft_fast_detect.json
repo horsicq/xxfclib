@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "RIVERSOFT",
+      "sources": [
+        "src/formats/riversoft/xx_riversoft.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "52 69 76 65 72 53 6F 66 74 20 44 61 74 61 20 4C 69 62 72 61 72 79 1A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

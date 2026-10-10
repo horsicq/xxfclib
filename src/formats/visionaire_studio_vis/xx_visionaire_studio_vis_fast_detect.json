@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VISIONAIRE_STUDIO_VIS",
+      "sources": [
+        "src/formats/visionaire_studio_vis/xx_visionaire_studio_vis.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 49 53 33"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

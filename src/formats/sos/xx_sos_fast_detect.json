@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SOS",
+      "sources": [
+        "src/formats/sos/xx_sos.c"
+      ],
+      "note": "DOS alone is shared by Amiga ADF; SOS1 at +16 identifies this distinct disk grammar.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 4F 53"
+            },
+            {
+              "origin": "base",
+              "offset": 16,
+              "hex": "53 4F 53 31"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VMSPCSI",
+      "sources": [
+        "src/formats/vmspcsi/xx_vmspcsi.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4F 70 65 6E 56 4D 53 20 44 43 58 20 50 43 53 49 20 43 6F 6D 70 72 65 73 73 65 64 20 46 69 6C 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

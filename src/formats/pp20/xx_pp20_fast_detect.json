@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PP20",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/pp20/xx_pp20.c"
+      ],
+      "note": "All five native PowerPacker wire markers, including PP11 and encrypted PX20/PPBK. DIE PP20 marker byte09 is one table choice, not a universal field value.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 50 32 30"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 50 31 31"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 50 4C 53"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 58 32 30"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 50 42 4B"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

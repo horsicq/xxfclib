@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PACKIT_MAC",
+      "sources": [
+        "src/formats/packit_mac/xx_packit_mac.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4D 61 67"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 4D 61 34"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "IZPACK",
+      "sources": [
+        "src/formats/izpack/xx_izpack.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 10,
+              "hex": "73 72 00 1B 63 6F 6D 2E 69 7A 66 6F 72 67 65 2E 69 7A 70 61 63 6B 2E 50 61 63 6B 46 69 6C 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

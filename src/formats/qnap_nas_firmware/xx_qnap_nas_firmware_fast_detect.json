@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "QNAP_NAS_FIRMWARE",
+      "sources": [
+        "src/formats/qnap_nas_firmware/xx_qnap_nas_firmware.c",
+        "src/formats/qnap_nas_firmware/xx_qnap_nas_firmware_extractor.c"
+      ],
+      "note": "Both fixed markers are mandatory: four-byte header and icpnas at start of 74-byte EOF footer. Do not accept header alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "f5 7b 47 03"
+            },
+            {
+              "origin": "end",
+              "offset": -74,
+              "hex": "69 63 70 6e 61 73"
+            }
+          ],
+          "min_size": 78
+        }
+      ]
+    }
+  ]
+}

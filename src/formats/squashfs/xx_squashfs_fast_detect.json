@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SQUASHFS",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/squashfs/xx_squashfs.c"
+      ],
+      "note": "All six magic spellings accepted by xx_squashfs_parse_superblock, including big-endian LZO and legacy 0x68191122; DIE covers only two variants and contains overly narrow bytes after the magic.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "68 73 71 73"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "73 71 73 68"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "68 73 71 74"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "73 68 73 71"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "74 71 73 68"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "22 11 19 68"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

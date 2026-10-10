@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "FMOD_SAMPLE_BANK",
+      "sources": [
+        "src/formats/fmod_sample_bank/xx_fmod_sample_bank.c",
+        "Binary/audio_FSB.1.sg"
+      ],
+      "note": "All five reader-supported FSB versions. DIE FSB5 codec range is narrower than the reader and is not imported as a universal gate.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 53 42 31"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 53 42 32"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 53 42 33"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 53 42 34"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "46 53 42 35"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

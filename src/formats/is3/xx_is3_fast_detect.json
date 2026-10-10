@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "IS3",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/is3/xx_is3.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "13 5D 65 8C"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "2A AB 79 D8 00 01 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "GOB",
+      "sources": [
+        "src/formats/gob/xx_gob.c",
+        "src/formats/gob/xx_gob_extractor.c"
+      ],
+      "note": "Preserve both newline and space fourth-byte variants.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "47 4f 42 0a"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "47 4f 42 20"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

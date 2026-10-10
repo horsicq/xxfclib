@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "NETWARE2",
+      "sources": [
+        "src/formats/netware2/xx_netware2.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 00 00 00 10 4E 65 74 57 61 72 65 46 69 6C 65 49 6E 66 6F"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

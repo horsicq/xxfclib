@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "MINIX",
+      "sources": [
+        "src/formats/minix/xx_minix.c"
+      ],
+      "note": "Minix v1/v2 magic at superblock +16 and v3 at +24; 14-/30-/60-character filename and both byte-order variants. These are filesystem signatures; geometry/root inode still validate in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "7F 13"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "13 7F"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "8F 13"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "13 8F"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "68 24"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "24 68"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "78 24"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1040,
+              "hex": "24 78"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1048,
+              "hex": "5A 4D"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 1048,
+              "hex": "4D 5A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

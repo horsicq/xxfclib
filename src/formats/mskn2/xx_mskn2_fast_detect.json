@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "MSKN2",
+      "sources": [
+        "src/formats/mskn2/xx_mskn2.c",
+        "Binary/archive_archives.1.sg"
+      ],
+      "note": "Exact nine-byte wrapper signature. DIE fixes zlib 78 9C afterward, but reader accepts other valid zlib header variants.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "5f 4d 43 54 00 4b 53 4c 5a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

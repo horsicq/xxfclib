@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SONY_IMAGE",
+      "sources": [
+        "src/formats/sony_image/xx_sony_image.c"
+      ],
+      "note": "Sony TCJN initial/continuation header; size equality, volume mode and ZLIB member validation stay in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "54 43 4A 4E"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

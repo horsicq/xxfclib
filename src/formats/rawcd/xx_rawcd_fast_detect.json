@@ -1,0 +1,766 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "RAWCD",
+      "sources": [
+        "src/formats/rawcd/xx_rawcd.c"
+      ],
+      "note": "Synced sector 0 mode 1/2 plus all five layouts accepted when the initial sync is absent: descriptor pairs at sectors 16/17, 2336/2352/2448 stride, ISO9660 or CD-i. rawcd_probe explicitly rejects NER5/NERO EOF cookies even when the Nero table is malformed; preserve that reader-specific exclusion. Geometry, BCD frame sequence, descriptor types and track boundary checks remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 15,
+              "hex": "01"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 15,
+              "hex": "02"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37385,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39721,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42048
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37385,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39721,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42048
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37385,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39721,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42048
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37385,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39721,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42048
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37649,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40001,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37649,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40001,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37649,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40001,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37649,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40001,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37657,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40009,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37657,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40009,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37657,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40009,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 37657,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 40009,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 37632,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 39984,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 42336
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39185,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41633,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39185,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41633,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39185,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41633,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39185,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41633,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39193,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41641,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39193,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41641,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39193,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41641,
+              "hex": "43 44 30 30 31 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 39193,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 41641,
+              "hex": "43 44 2D 49 20 01"
+            },
+            {
+              "origin": "base",
+              "offset": 39168,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "base",
+              "offset": 41616,
+              "hex": "00 FF FF FF FF FF FF FF FF FF FF 00"
+            },
+            {
+              "origin": "end",
+              "offset": -12,
+              "hex": "4E 45 52 35",
+              "not": true
+            },
+            {
+              "origin": "end",
+              "offset": -8,
+              "hex": "4E 45 52 4F",
+              "not": true
+            }
+          ],
+          "min_size": 44064
+        }
+      ]
+    }
+  ]
+}

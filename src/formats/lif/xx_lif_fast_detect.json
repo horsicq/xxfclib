@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "LIF",
+      "sources": [
+        "Binary/archive_ANC-Cruncher.1.sg",
+        "Binary/archive_ARC.1.sg",
+        "Binary/archive_DAA.1.sg",
+        "Binary/archive_HIP.1.sg",
+        "Binary/archive_JAM.1.sg",
+        "Binary/archive_LAB.1.sg",
+        "Binary/archive_PAK.1.sg",
+        "Binary/archive_XZP.1.sg",
+        "Binary/archive_archives.1.sg",
+        "Binary/audio_HMI.1.sg",
+        "Binary/audio_PAF.1.sg",
+        "Binary/audio_SOU.1.sg",
+        "Binary/audio_ShockwaveAudio.1.sg",
+        "Binary/bin.IDA.1.sg",
+        "Binary/data_overlays.6.sg",
+        "Binary/font_TFM.1.sg",
+        "src/formats/lif/xx_lif.c"
+      ],
+      "note": "Native DC/DL version2 header plus nonzero count, method6 and reserved DWORD zero. Size identities and LZD validation remain reader responsibilities.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 43 02 00"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "00 00",
+              "not": true
+            },
+            {
+              "origin": "base",
+              "offset": 25,
+              "hex": "06 00 00 00"
+            },
+            {
+              "origin": "base",
+              "offset": 33,
+              "hex": "00 00 00 00"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "44 4C 02 00"
+            },
+            {
+              "origin": "base",
+              "offset": 4,
+              "hex": "00 00",
+              "not": true
+            },
+            {
+              "origin": "base",
+              "offset": 25,
+              "hex": "06 00 00 00"
+            },
+            {
+              "origin": "base",
+              "offset": 33,
+              "hex": "00 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

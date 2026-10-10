@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "QCOW",
+      "sources": [
+        "src/formats/qcow/xx_qcow.c"
+      ],
+      "note": "QCOW2 and QCOW3 share the QCOW reader. Version 1 is a separate QCOW1 enum/reader; never merge only the four QFI magic bytes.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "51 46 49 FB 00 00 00 02"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "51 46 49 FB 00 00 00 03"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

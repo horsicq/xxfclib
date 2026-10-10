@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PALLADIX_SND",
+      "sources": [
+        "../Formats/audio/xsnd.cpp"
+      ],
+      "note": "Fixed driver header identifies a candidate. The reader validates entry points, NS footer, alignment and zero padding.",
+      "rules": [
+        {
+          "min_size": 24,
+          "tests": [
+            {
+              "offset": 0,
+              "hex": "53 4e 44 00 00 01 10 00 06 00"
+            },
+            {
+              "offset": 12,
+              "hex": "53 4e 44 00 00 00 00 00 00 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

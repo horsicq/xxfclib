@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CLP",
+      "sources": [
+        "src/formats/clp/xx_clp.c",
+        "src/formats/clp/xx_clp_extractor.c"
+      ],
+      "note": "Preserve both documented little-endian clipboard identifiers C350 and C351. This is candidate identification; record validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 c3"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "51 c3"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

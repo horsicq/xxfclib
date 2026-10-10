@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "TWOIMG",
+      "sources": [
+        "src/formats/twoimg/xx_twoimg.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "32 49 4D 47"
+            }
+          ],
+          "min_size": 64
+        }
+      ]
+    }
+  ]
+}

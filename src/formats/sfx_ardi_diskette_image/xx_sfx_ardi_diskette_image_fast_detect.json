@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "SFX_ARDI_DISKETTE_IMAGE",
+      "sources": [
+        "src/formats/sfx_ardi_diskette_image/xx_sfx_ardi_diskette_image.c"
+      ],
+      "note": "ARDI executable plus EOF copyright trailer; four year digits vary across 1991..2003. NE records and deflate stream validation remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4D 5A"
+            },
+            {
+              "origin": "end",
+              "offset": -31,
+              "hex": "41 52 44 49 2D 28 43 29 31 39 39 31 2D ?? ?? ?? ?? 2D 44 61 6E 69 65 6C 20 56 61 6C 6F 74 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

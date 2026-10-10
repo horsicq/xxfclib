@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "MPQ",
+      "sources": [
+        "src/formats/mpq/xx_mpq.c",
+        "src/formats/mpq/xx_mpq_extractor.c",
+        "Binary/archive_archives.1.sg"
+      ],
+      "note": "MPQ archive-at-base reader; no MPQ user-data or executable carrier variant is added.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4d 50 51 1a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

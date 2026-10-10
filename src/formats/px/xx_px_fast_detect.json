@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PX",
+      "sources": [
+        "src/formats/px/xx_px.c"
+      ],
+      "note": "Exact 30-byte Photodex Presenter signature including control bytes.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 68 6f 74 6f 64 65 78 20 50 72 65 73 65 6e 74 65 72 20 53 74 72 65 61 6d 1a 0a 0d 0a 1a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

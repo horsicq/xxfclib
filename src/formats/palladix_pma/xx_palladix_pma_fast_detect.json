@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "formats": [{
+    "enum": "PALLADIX_PMA",
+    "sources": ["src/formats/palladix_pma/xx_palladix_pma.c"],
+    "note": "Formats/audio/xpma.cpp PLX anchor; unrelated to PMarc PMA. xx_palladix_pma_detect additionally validates mode, all channel offsets, event operands, notes, instrument references and terminators.",
+    "rules": [{"tests": [{"origin": "base", "offset": 0, "hex": "50 4C 58"}]}]
+  }]
+}

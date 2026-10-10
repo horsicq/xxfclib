@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "UNIX_COMPRESS",
+      "sources": ["src/formats/unixcompress/xx_unixcompress.c"],
+      "note": "The three-byte compress header permits 9 through 16 maximum bits, optional block mode (bit 7), and no reserved bits (5 or 6). All reader-supported headers are covered.",
+      "rules": [
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 09", "mask": "FF FF 7F"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 0A", "mask": "FF FF 7F"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 0B", "mask": "FF FF 7F"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 0C", "mask": "FF FF 7F"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 0D", "mask": "FF FF 7F"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 0E", "mask": "FF FF 7F"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 0F", "mask": "FF FF 7F"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "1F 9D 10", "mask": "FF FF 7F"}]}
+      ]
+    }
+  ]
+}

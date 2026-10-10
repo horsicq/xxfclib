@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "STUFFIT",
+      "sources": [
+        "src/formats/stuffit/xx_stuffit.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 10,
+              "hex": "72 4C 61 75"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

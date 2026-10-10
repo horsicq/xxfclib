@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PARTCLONE_IMAGE",
+      "sources": [
+        "src/formats/partclone_image/xx_partclone_image.c"
+      ],
+      "note": "This reader implements the Partclone image v2 grammar only; filesystem label and image checksums remain reader validation.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "70 61 72 74 63 6C 6F 6E 65 2D 69 6D 61 67 65 00"
+            },
+            {
+              "origin": "base",
+              "offset": 30,
+              "hex": "30 30 30 32"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

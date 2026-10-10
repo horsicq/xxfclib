@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "GXL",
+      "sources": [
+        "src/formats/gxl/xx_gxl.c",
+        "src/formats/gxl/xx_gxl_extractor.c",
+        "Binary/archive_archives.1.sg"
+      ],
+      "note": "Reader requires 01 CA plus Copyri. DIE checks the longer publisher copyright; retain the reader-required prefix so accepted banner variants remain detectable.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "01 ca 43 6f 70 79 72 69"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PARSEC_DMA",
+      "sources": [
+        "../Formats/formats/xdma.cpp"
+      ],
+      "note": "Fixed driver header identifies a candidate. The reader validates entry points, NS footer, alignment and zero padding.",
+      "rules": [
+        {
+          "min_size": 24,
+          "tests": [
+            {
+              "offset": 0,
+              "hex": "44 4d 41 00 02 01 19 00 04 00"
+            },
+            {
+              "offset": 12,
+              "hex": "44 4d 41 00 ff ff 00 00 00 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

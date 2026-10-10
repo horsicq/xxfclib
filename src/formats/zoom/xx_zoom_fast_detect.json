@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZOOM",
+      "sources": [
+        "src/formats/zoom/xx_zoom.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "5A 4F 4D 35"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

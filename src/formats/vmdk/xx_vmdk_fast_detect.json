@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VMDK",
+      "sources": [
+        "Binary/format_img.VM.1.sg",
+        "src/formats/vmdk/xx_vmdk.c"
+      ],
+      "note": "Binary sparse versions 1..3 plus external text descriptors accepted by vmdk_external_parse; COWD and SESparse are separate enums. Grain tables, extent companions, compression markers and descriptor grammar remain reader checks.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4B 44 4D 56 01 00 00 00"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4B 44 4D 56 02 00 00 00"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4B 44 4D 56 03 00 00 00"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 20 44 69 73 6B 20 44 65 73 63 72 69 70 74 6F 72 46 69 6C 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

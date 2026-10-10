@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BVRP",
+      "sources": [
+        "src/formats/bvrp/xx_bvrp.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 10,
+              "hex": "42 56 52 50 20 53 6F 66 74 77 61 72 65"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

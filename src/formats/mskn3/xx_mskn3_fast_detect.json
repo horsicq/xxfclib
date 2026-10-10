@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "MSKN3",
+      "sources": [
+        "src/formats/mskn3/xx_mskn3.c"
+      ],
+      "note": "Exact seven-byte KSMSSTL header.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4b 53 4d 53 53 54 4c"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

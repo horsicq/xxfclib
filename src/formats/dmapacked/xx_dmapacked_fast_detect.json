@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DMA_PACKED",
+      "sources": [
+        "src/formats/dmapacked/xx_dmapacked.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 26,
+              "hex": "50 41 4B 50 41 4B 00 2A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

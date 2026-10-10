@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "NVP",
+      "sources": [
+        "src/formats/nvp/xx_nvp.c"
+      ],
+      "note": "Exact NVP version-1 magic; avoids old cheap detector constructing and validating the archive.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4e 56 50 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

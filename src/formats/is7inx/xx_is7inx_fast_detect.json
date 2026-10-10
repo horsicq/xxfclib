@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "IS7INX",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/is7inx/xx_is7inx.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "74 C4 2C 84"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

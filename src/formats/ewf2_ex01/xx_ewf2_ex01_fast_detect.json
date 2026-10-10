@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "EWF2_EX01",
+      "sources": [
+        "src/formats/ewf2_ex01/xx_ewf2_ex01.c"
+      ],
+      "note": "EWF2/Ex01 and major version 2; not the older EVF signature used by EWF.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "45 56 46 32 0D 0A 81 00 02"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

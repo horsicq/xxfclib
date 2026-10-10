@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZISOFS",
+      "sources": [
+        "src/formats/zisofs/xx_zisofs.c"
+      ],
+      "note": "Full zisofs magic; block table decoding remains the native reader responsibility.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "37 E4 53 96 C9 DB D6 07"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

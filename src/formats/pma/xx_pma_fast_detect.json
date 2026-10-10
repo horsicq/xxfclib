@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PMA",
+      "sources": [
+        "src/formats/pma/xx_pma.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 2,
+              "hex": "2D 70 6D 30 2D"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 2,
+              "hex": "2D 70 6D 31 2D"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 2,
+              "hex": "2D 70 6D 32 2D"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

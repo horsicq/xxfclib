@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BSN",
+      "sources": [
+        "src/formats/bsn/xx_bsn.c",
+        "src/formats/bsn/xx_bsn_codec.c",
+        "src/formats/bsn/xx_bsn_extractor.c"
+      ],
+      "note": "Strengthen old FFBS anchor to required FFBSG plus supported big-endian version 0 or 1.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "ff 42 53 47 00 00"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "ff 42 53 47 00 01"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

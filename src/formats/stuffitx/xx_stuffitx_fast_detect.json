@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "STUFFITX",
+      "sources": [
+        "src/formats/stuffitx/xx_stuffitx.c"
+      ],
+      "note": "Full native StuffIt X container marker; distinct from classic StuffIt rLau and StuffIt5 text headers.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "53 74 75 66 66 49 74 21"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

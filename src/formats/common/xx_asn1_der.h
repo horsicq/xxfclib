@@ -1,0 +1,293 @@
+/* SPDX-License-Identifier: MIT. Checked DER primitives; structural validation, no signature authentication. */
+#ifndef XX_ASN1_DER_H
+#define XX_ASN1_DER_H
+#include "xx_serialized_value_helpers.h"
+typedef struct der_tlv {
+    uint8_t tag;
+    uint64_t start, value, end;
+} der_tlv;
+static bool der_read(memory_blob *b, uint64_t *at, uint64_t end, der_tlv *t) {
+    uint64_t n;
+    uint8_t c;
+    unsigned w;
+    if (!record_span(*at, 2, end) || !blob_span(b, *at, 2))
+        return false;
+    t->start = *at;
+    t->tag = b->p[(size_t)(*at)++];
+    if ((t->tag & 31) == 31 || !t->tag)
+        return false;
+    c = b->p[(size_t)(*at)++];
+    n = c;
+    if (c & 128) {
+        w = c & 127;
+        if (!w || w > 4 || !record_span(*at, w, end) || !blob_span(b, *at, w) || !b->p[(size_t)*at])
+            return false;
+        n = 0;
+        for (unsigned i = 0; i < w; ++i)
+            n = (n << 8) | b->p[(size_t)(*at)++];
+        if (n < 128)
+            return false;
+    }
+    t->value = *at;
+    if (!record_span(*at, n, end) || !blob_span(b, *at, n))
+        return false;
+    t->end = *at + n;
+    *at = t->end;
+    return true;
+}
+static bool der_take(memory_blob *b, uint64_t *at, uint64_t end, uint8_t tag, der_tlv *t) {
+    return der_read(b, at, end, t) && t->tag == tag;
+}
+static bool der_oid(memory_blob *b, der_tlv *t) {
+    uint64_t i = t->value;
+    unsigned width = 0;
+    if (t->tag != 6 || i == t->end)
+        return false;
+    while (i < t->end) {
+        uint8_t c = b->p[(size_t)i++];
+        if (!width && c == 128)
+            return false;
+        if (++width > 10)
+            return false;
+        if (!(c & 128))
+            width = 0;
+    }
+    return !width;
+}
+static bool der_date(const uint8_t *v, uint64_t n, uint8_t tag) {
+    unsigned base = tag == 23 ? 2 : 4, year = 0, values[5], month, days;
+    if (n != (tag == 23 ? 13U : 15U) || v[n - 1] != 'Z')
+        return false;
+    for (uint64_t i = 0; i < n - 1; ++i)
+        if (v[i] < '0' || v[i] > '9')
+            return false;
+    for (unsigned i = 0; i < base; ++i)
+        year = year * 10 + (unsigned)(v[i] - '0');
+    if (tag == 23)
+        year += year >= 50 ? 1900U : 2000U;
+    for (unsigned i = 0; i < 5; ++i)
+        values[i] = (unsigned)(v[base + i * 2] - '0') * 10 + (unsigned)(v[base + i * 2 + 1] - '0');
+    month = values[0];
+    if (!month || month > 12 || !values[1] || values[2] > 23 || values[3] > 59 || values[4] > 59)
+        return false;
+    days = month == 2 ? 28U + (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0))
+           : month == 4 || month == 6 || month == 9 || month == 11 ? 30U
+                                                                   : 31U;
+    return values[1] <= days;
+}
+static bool der_tree(memory_blob *b, uint64_t at, uint64_t end, unsigned depth, unsigned *work) {
+    der_tlv t;
+    uint64_t prev = 0, prevn = 0;
+    if (depth > 32)
+        return false;
+    while (at < end) {
+        if (++*work > 65536 || !der_read(b, &at, end, &t))
+            return false;
+        uint64_t n = t.end - t.value;
+        uint8_t *v = b->p + (size_t)t.value;
+        if (!(t.tag & 192) && (t.tag & 32) && t.tag != 48 && t.tag != 49)
+            return false;
+        if (t.tag & 32) {
+            if (!der_tree(b, t.value, t.end, depth + 1, work))
+                return false;
+            if (t.tag == 49) {
+                uint64_t pos = t.value;
+                der_tlv a;
+                while (pos < t.end) {
+                    if (!der_read(b, &pos, t.end, &a) ||
+                        (prevn &&
+                         serialized_cmp(b->p + (size_t)prev, prevn, b->p + (size_t)a.start, a.end - a.start) > 0))
+                        return false;
+                    prev = a.start;
+                    prevn = a.end - a.start;
+                }
+                prevn = 0;
+            }
+        } else if (t.tag == 1) {
+            if (n != 1 || (*v != 0 && *v != 255))
+                return false;
+        } else if (t.tag == 2) {
+            if (!n || (n > 1 && ((v[0] == 0 && !(v[1] & 128)) || (v[0] == 255 && (v[1] & 128)))))
+                return false;
+        } else if (t.tag == 3) {
+            if (!n || v[0] > 7 || (n == 1 && v[0]) || (n > 1 && (v[n - 1] & ((1U << v[0]) - 1))))
+                return false;
+        } else if (t.tag == 5) {
+            if (n)
+                return false;
+        } else if (t.tag == 6) {
+            if (!der_oid(b, &t))
+                return false;
+        } else if (t.tag == 12) {
+            if (!serialized_utf(b, t.value, n))
+                return false;
+        } else if (t.tag == 23 || t.tag == 24) {
+            if (!der_date(v, n, t.tag))
+                return false;
+        } else if (t.tag == 19) {
+            for (uint64_t i = 0; i < n; ++i) {
+                uint8_t c = v[i];
+                if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != ' ' && c != 39 &&
+                    c != '(' && c != ')' && c != '+' && c != ',' && c != '-' && c != '.' && c != '/' && c != ':' &&
+                    c != '=' && c != '?')
+                    return false;
+            }
+        } else if (t.tag == 22) {
+            for (uint64_t i = 0; i < n; ++i)
+                if (v[i] > 127)
+                    return false;
+        } else if (t.tag == 30) {
+            if (n & 1)
+                return false;
+            for (uint64_t i = 0; i < n; i += 2) {
+                uint16_t c = xx_data_get_u16(v + (size_t)i, 2, 0, true);
+                if (c >= 0xd800 && c <= 0xdfff)
+                    return false;
+            }
+        } else if (t.tag != 4 && t.tag != 20 && (t.tag & 192) != 128)
+            return false;
+    }
+    return at == end;
+}
+static bool der_alg(memory_blob *b, der_tlv *t) {
+    uint64_t at = t->value;
+    der_tlv a;
+    if (t->tag != 48 || !der_take(b, &at, t->end, 6, &a) || !der_oid(b, &a))
+        return false;
+    if (at < t->end && !der_read(b, &at, t->end, &a))
+        return false;
+    return at == t->end;
+}
+static bool x509_name(memory_blob *b, der_tlv *t, bool empty) {
+    uint64_t at = t->value, p, q;
+    der_tlv rdn, entry, oid, value;
+    if (t->tag != 48 || (!empty && at == t->end))
+        return false;
+    while (at < t->end) {
+        if (!der_take(b, &at, t->end, 49, &rdn) || rdn.value == rdn.end)
+            return false;
+        p = rdn.value;
+        while (p < rdn.end) {
+            if (!der_take(b, &p, rdn.end, 48, &entry))
+                return false;
+            q = entry.value;
+            if (!der_take(b, &q, entry.end, 6, &oid) || !der_oid(b, &oid) || !der_read(b, &q, entry.end, &value) ||
+                q != entry.end ||
+                (value.tag != 12 && value.tag != 19 && value.tag != 20 && value.tag != 22 && value.tag != 30))
+                return false;
+        }
+    }
+    return at == t->end;
+}
+static bool x509_bits(memory_blob *b, der_tlv *t, bool nonempty) {
+    uint64_t n = t->end - t->value;
+    const uint8_t *v = b->p + (size_t)t->value;
+    return n && (!nonempty || (n > 1 && !v[0])) && v[0] <= 7 && (n != 1 || !v[0]) &&
+           (n < 2 || !(v[n - 1] & ((1U << v[0]) - 1)));
+}
+static uint64_t x509_time(memory_blob *b, der_tlv *t) {
+    uint64_t n = 0;
+    const uint8_t *v = b->p + (size_t)t->value;
+    unsigned i = 0;
+    if (t->tag == 23) {
+        unsigned year = (v[0] - 48U) * 10U + v[1] - 48U;
+        n = year >= 50 ? 19 : 20;
+    }
+    for (; i < t->end - t->value - 1; ++i)
+        n = n * 10 + (v[i] - 48U);
+    return n;
+}
+static bool x509_extensions(memory_blob *b, der_tlv *t) {
+    uint64_t at = t->value, p, q, seen[1024], length[1024];
+    unsigned count = 0, work = 0;
+    der_tlv list, entry, oid, critical, value;
+    if (!der_take(b, &at, t->end, 48, &list) || at != t->end || list.value == list.end)
+        return false;
+    at = list.value;
+    while (at < list.end) {
+        if (count >= 1024 || !der_take(b, &at, list.end, 48, &entry))
+            return false;
+        p = entry.value;
+        if (!der_take(b, &p, entry.end, 6, &oid) || !der_oid(b, &oid))
+            return false;
+        for (unsigned i = 0; i < count; ++i)
+            if (length[i] == oid.end - oid.value &&
+                !xx_rt_memcmp(b->p + (size_t)seen[i], b->p + (size_t)oid.value, (size_t)length[i]))
+                return false;
+        seen[count] = oid.value;
+        length[count++] = oid.end - oid.value;
+        if (p < entry.end && b->p[(size_t)p] == 1) {
+            if (!der_take(b, &p, entry.end, 1, &critical) || critical.end - critical.value != 1 ||
+                b->p[(size_t)critical.value] != 255)
+                return false;
+        }
+        if (!der_take(b, &p, entry.end, 4, &value) || value.value == value.end || p != entry.end)
+            return false;
+        q = value.value;
+        if (!der_tree(b, value.value, value.end, 0, &work) || !der_read(b, &q, value.end, &critical) || q != value.end)
+            return false;
+    }
+    return at == list.end;
+}
+static XXFC_MAYBE_UNUSED bool der_cert(memory_blob *b, der_tlv *t) {
+    uint64_t at = t->value, p, q;
+    uint8_t version = 0, last = 128;
+    der_tlv x, y, z, outer, before, after;
+    if (t->tag != 48 || !der_take(b, &at, t->end, 48, &x) || !der_take(b, &at, t->end, 48, &y) || !der_alg(b, &y) ||
+        !der_take(b, &at, t->end, 3, &z) || !x509_bits(b, &z, true) || at != t->end)
+        return false;
+    outer = y;
+    p = x.value;
+    if (p < x.end && b->p[(size_t)p] == 160) {
+        der_tlv ver, integer;
+        if (!der_take(b, &p, x.end, 160, &ver))
+            return false;
+        q = ver.value;
+        if (!der_take(b, &q, ver.end, 2, &integer) || q != ver.end || integer.end - integer.value != 1 ||
+            !(version = b->p[(size_t)integer.value]) || version > 2)
+            return false;
+    }
+    if (!der_take(b, &p, x.end, 2, &z) || z.end == z.value || z.end - z.value > 21 || (b->p[(size_t)z.value] & 128) ||
+        (z.end - z.value == 1 && !b->p[(size_t)z.value]) || !der_take(b, &p, x.end, 48, &z) || !der_alg(b, &z) ||
+        z.end - z.start != outer.end - outer.start ||
+        xx_rt_memcmp(b->p + (size_t)z.start, b->p + (size_t)outer.start, (size_t)(z.end - z.start)) ||
+        !der_take(b, &p, x.end, 48, &z) || !x509_name(b, &z, false) || !der_take(b, &p, x.end, 48, &z))
+        return false;
+    q = z.value;
+    if (!der_read(b, &q, z.end, &before) || (before.tag != 23 && before.tag != 24) || !der_read(b, &q, z.end, &after) ||
+        (after.tag != 23 && after.tag != 24) || q != z.end || x509_time(b, &before) > x509_time(b, &after) ||
+        !der_take(b, &p, x.end, 48, &z) || !x509_name(b, &z, true) || !der_take(b, &p, x.end, 48, &z))
+        return false;
+    q = z.value;
+    if (!der_take(b, &q, z.end, 48, &y) || !der_alg(b, &y) || !der_take(b, &q, z.end, 3, &y) ||
+        !x509_bits(b, &y, true) || q != z.end)
+        return false;
+    while (p < x.end) {
+        if (!der_read(b, &p, x.end, &z) || z.tag <= last || (z.tag != 129 && z.tag != 130 && z.tag != 163))
+            return false;
+        if (z.tag == 163 ? version != 2 || !x509_extensions(b, &z) : !version || !x509_bits(b, &z, false))
+            return false;
+        last = z.tag;
+    }
+    return p == x.end;
+}
+static XXFC_MAYBE_UNUSED bool der_attr(memory_blob *b, der_tlv *t) {
+    uint64_t at = t->value, prev = 0, prevn = 0;
+    der_tlv a, x, y;
+    unsigned count = 0;
+    while (at < t->end) {
+        if (++count > 1024 || !der_take(b, &at, t->end, 48, &a))
+            return false;
+        if (prevn && serialized_cmp(b->p + (size_t)prev, prevn, b->p + (size_t)a.start, a.end - a.start) > 0)
+            return false;
+        prev = a.start;
+        prevn = a.end - a.start;
+        uint64_t p = a.value;
+        if (!der_take(b, &p, a.end, 6, &x) || !der_oid(b, &x) || !der_take(b, &p, a.end, 49, &y) || y.value == y.end ||
+            p != a.end)
+            return false;
+    }
+    return count > 0;
+}
+
+#endif

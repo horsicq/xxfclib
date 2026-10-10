@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PARALLELS_HDD",
+      "sources": [
+        "src/formats/parallels_hdd/xx_parallels_hdd.c"
+      ],
+      "note": "Both Parallels HDD magic strings, including the intentionally abbreviated extended spelling.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "57 69 74 68 6F 75 74 46 72 65 65 53 70 61 63 65"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "57 69 74 68 6F 75 46 72 65 53 70 61 63 45 78 74"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

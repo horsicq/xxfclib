@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "UIMAGE",
+      "sources": [
+        "src/formats/uimage/xx_uimage.c",
+        "src/formats/uimage/xx_uimage_extractor.c",
+        "src/formats/uimage/xx_uimage_lz4_native.c"
+      ],
+      "note": "Preserve all existing reader extractor signature alternatives.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "27 05 19 56"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

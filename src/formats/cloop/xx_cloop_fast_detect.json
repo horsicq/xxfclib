@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "CLOOP",
+      "sources": [
+        "src/formats/cloop/xx_cloop.c"
+      ],
+      "note": "All cloop_flavour variants: V/v2 zlib, L/l3 XZ, Z/z4 Zstd. A generic shell prefix alone would also match unrelated shell scripts.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 21 2F 62 69 6E 2F 73 68 0A 23 56 32 2E 30"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 21 2F 62 69 6E 2F 73 68 0A 23 76 32 2E 30"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 21 2F 62 69 6E 2F 73 68 0A 23 4C 33 2E 30"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 21 2F 62 69 6E 2F 73 68 0A 23 6C 33 2E 30"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 21 2F 62 69 6E 2F 73 68 0A 23 5A 34 2E 30"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "23 21 2F 62 69 6E 2F 73 68 0A 23 7A 34 2E 30"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

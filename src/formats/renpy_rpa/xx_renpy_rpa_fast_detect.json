@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "RENPY_RPA",
+      "sources": ["include/xxfclib/formats/rpa/xx_rpa.h", "src/formats/rpa/xx_rpa.c"],
+      "note": "The shared public RPA type covers all five tags accepted by the complete RPA reader. Hex fields, zlib index and data-only pickle validation remain structural reader checks.",
+      "rules": [
+        {"tests": [{"origin": "base", "offset": 0, "hex": "52 50 41 2D 32 2E 30 20"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "52 50 41 2D 33 2E 30 20"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "52 50 41 2D 33 2E 32 20"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "52 50 41 2D 34 2E 30 20"}]},
+        {"tests": [{"origin": "base", "offset": 0, "hex": "41 4C 54 2D 31 2E 30 20"}]}
+      ]
+    }
+  ]
+}

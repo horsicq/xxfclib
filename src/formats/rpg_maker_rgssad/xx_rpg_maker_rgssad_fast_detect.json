@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "RPG_MAKER_RGSSAD",
+      "sources": [
+        "src/formats/rpg_maker_rgssad/xx_rpg_maker_rgssad.c"
+      ],
+      "note": "Full RGSSAD zero-terminated marker plus native supported version1/3, including unobserved but explicitly supported RGSS3A.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "52 47 53 53 41 44 00 01"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "52 47 53 53 41 44 00 03"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

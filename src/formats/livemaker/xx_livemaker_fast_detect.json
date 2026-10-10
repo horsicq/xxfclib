@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "LIVEMAKER",
+      "sources": [
+        "src/formats/livemaker/xx_livemaker.c"
+      ],
+      "note": "Exact four-byte vff-zero archive header accepted by read_header.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "76 66 66 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

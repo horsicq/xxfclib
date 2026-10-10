@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VMDK_COWD_SPARSE",
+      "sources": [
+        "src/formats/vmdk_cowd_sparse/xx_vmdk_cowd_sparse.c"
+      ],
+      "note": "VMware COWD sparse version 1; distinct from KDMV sparse and SESparse formats.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "43 4F 57 44 01 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

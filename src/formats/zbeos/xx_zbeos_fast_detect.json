@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZBEOS",
+      "sources": [
+        "src/formats/zbeos/xx_zbeos.c"
+      ],
+      "note": "Compressed BeOS boot image exact boot stub signature plus fixed gzip header offset; CRC and output length remain in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "EB 73 90 F8 73 64 66 53 B8 01 DE BE"
+            },
+            {
+              "origin": "base",
+              "offset": 131072,
+              "hex": "1F 8B 08 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

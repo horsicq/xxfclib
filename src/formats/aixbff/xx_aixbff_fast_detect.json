@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "AIXBFF",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/aixbff/xx_aixbff.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "09 00 6B EA"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

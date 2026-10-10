@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "IBMZPAK",
+      "sources": [
+        "src/formats/ibmzpak/xx_ibmzpak.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "2D 5A 50 41 4B 00 01 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

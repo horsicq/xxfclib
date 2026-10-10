@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "GAMOS",
+      "sources": [
+        "src/formats/gamos/xx_gamos.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "1A 47 41 4D 4F 53 20 50 41 43 4B 45 44 20 46 49 4C 45"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

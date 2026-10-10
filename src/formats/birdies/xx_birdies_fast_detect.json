@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "BIRDIES",
+      "sources": [
+        "src/formats/birdies/xx_birdies.c"
+      ],
+      "note": "Preserve the three archive-level numeric magic branches used by the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "9c ec 12 00"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 8b 3e 77"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "b8 09 ba 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

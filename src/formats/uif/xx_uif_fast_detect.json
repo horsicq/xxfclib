@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "UIF",
+      "sources": [
+        "src/formats/uif/xx_uif.c"
+      ],
+      "note": "UIF footer lives 64 bytes before EOF; stored, zlib and encrypted variants share it. Block list, version, cipher and checksums remain reader validation.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "end",
+              "offset": -64,
+              "hex": "62 62 69 73"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

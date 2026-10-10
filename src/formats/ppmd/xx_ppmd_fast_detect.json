@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PPMD",
+      "sources": [
+        "Binary/archive_DAA.1.sg",
+        "Binary/archive_HIP.1.sg",
+        "Binary/archive_MCS.1.sg",
+        "Binary/archive_PAK.1.sg",
+        "Binary/archive_PUP.1.sg",
+        "Binary/archive_Unity.1.sg",
+        "Binary/archive_archives.1.sg",
+        "Binary/audio_OGG.1.sg",
+        "Binary/audio_PAF.1.sg",
+        "Binary/data_overlays.6.sg",
+        "Binary/format_BTF.1.sg",
+        "Binary/format_CSO.1.sg",
+        "Binary/format_CTRK.1.sg",
+        "Binary/format_DunkleSchattenConfig.1.sg",
+        "Binary/format_DunkleSchattenSave.1.sg",
+        "Binary/format_GAL.1.sg",
+        "src/formats/ppmd/xx_ppmd.c",
+        "src/formats/ppmd/xx_ppmd_varh.c",
+        "src/formats/ppmd/xx_ppmd_vari.c"
+      ],
+      "note": "Full PPMd signature plus supported variant H/I and nonzero encoded model order; bounded header grammar remains reader validated.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "8F AF AC 84"
+            },
+            {
+              "origin": "base",
+              "offset": 9,
+              "hex": "70",
+              "mask": "F0"
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00",
+              "mask": "0F",
+              "not": true
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "8F AF AC 84"
+            },
+            {
+              "origin": "base",
+              "offset": 9,
+              "hex": "80",
+              "mask": "F0"
+            },
+            {
+              "origin": "base",
+              "offset": 8,
+              "hex": "00",
+              "mask": "0F",
+              "not": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

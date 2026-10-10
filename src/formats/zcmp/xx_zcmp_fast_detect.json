@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ZCMP",
+      "sources": [
+        "src/formats/zcmp/xx_zcmp.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "00 00 00 00 5A 63 6D 70"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

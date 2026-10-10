@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "DISKDUPE",
+      "sources": [
+        "src/formats/diskdupe/xx_diskdupe.c"
+      ],
+      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "4D 53 44 20 49 6D 61 67 65 20 56 65 72 73 69 6F 6E 20 31 20 1A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "RCF",
+      "sources": [
+        "src/formats/rcf/xx_rcf.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "03 F7 E8 EB 03 31 2E 30 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

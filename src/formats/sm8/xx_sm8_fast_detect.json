@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "formats": [{
+    "enum": "SM8",
+    "sources": ["src/formats/sm8/xx_sm8.c"],
+    "note": "Formats/audio/xsm8.cpp anchor. xx_sm8_detect additionally checks the exact PCM length; the anchor alone is not structural validation.",
+    "rules": [{"tests": [{"origin": "base", "offset": 0, "hex": "53 4D 38 00 00 01"}]}]
+  }]
+}

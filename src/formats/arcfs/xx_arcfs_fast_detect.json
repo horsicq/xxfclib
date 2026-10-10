@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "ARCFS",
+      "sources": [
+        "Binary/archive_archives.1.sg",
+        "src/formats/arcfs/xx_arcfs.c"
+      ],
+      "note": "Complete existing reader search-anchor OR union retained; every owned sample/version has a matching anchor. DIE matches are corroborative provenance only; conditional DIE comparisons were not transplanted alone.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "41 72 63 68 69 76 65 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

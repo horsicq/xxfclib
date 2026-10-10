@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "PAM_PAK",
+      "sources": [
+        "src/formats/pam_pak/xx_pam_pak.c"
+      ],
+      "note": "Exact eight-byte header including trailing zero.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "50 41 4d 5f 50 41 4b 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

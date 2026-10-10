@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VOLITIONVPFT",
+      "sources": [
+        "src/formats/volitionvpft/xx_volitionvpft.c",
+        "src/formats/volitionvpft/xx_volitionvpft_extractor.c"
+      ],
+      "note": "Preserve all existing reader extractor signature alternatives.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "56 50 56 50 02 00 00 00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

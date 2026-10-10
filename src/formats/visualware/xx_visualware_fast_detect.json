@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "VISUALWARE",
+      "sources": [
+        "src/formats/visualware/xx_visualware.c"
+      ],
+      "note": "Full first VisualWare block marker, including block discriminator_B; raw and PE overlay carriers are supported.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "pe_overlay",
+              "offset": 0,
+              "hex": "4A 4B 4D 4E 50 51 53 54 56 57 59 5A 5C 5D 5F 42"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
