@@ -1,0 +1,7 @@
+option(XXFC_BUILD_ZOOM_LABELS_TESTS "Build Zoom USEHEADER sector-label regressions" OFF)
+if(XXFC_BUILD_ZOOM_LABELS_TESTS AND NOT TARGET test_zoom_labels)
+    enable_testing()
+    add_executable(test_zoom_labels "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_zoom_labels.c")
+    target_link_libraries(test_zoom_labels PRIVATE xxfclib::xxfclib)
+    add_test(NAME xxfc_zoom_labels COMMAND test_zoom_labels "${CMAKE_CURRENT_BINARY_DIR}/zoom-labels-output")
+endif()

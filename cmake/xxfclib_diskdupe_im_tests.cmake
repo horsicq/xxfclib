@@ -1,0 +1,8 @@
+option(XXFC_BUILD_DISKDUPE_IM_TESTS "Build DiskDupe IM track-map and legacy regressions" OFF)
+if(XXFC_BUILD_DISKDUPE_IM_TESTS AND NOT TARGET test_diskdupe_im)
+    enable_testing()
+    add_executable(test_diskdupe_im "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_diskdupe_im.c")
+    target_link_libraries(test_diskdupe_im PRIVATE xxfclib::xxfclib)
+    target_compile_definitions(test_diskdupe_im PRIVATE XXFC_DISKDUPE_IM_FACTORY_TESTS=1)
+    add_test(NAME xxfc_diskdupe_im COMMAND test_diskdupe_im "${CMAKE_CURRENT_BINARY_DIR}/diskdupe-im-output")
+endif()

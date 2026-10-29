@@ -1,0 +1,8 @@
+option(XXFC_BUILD_DH_TESTS "Build DH0902 archive and bounded DCL regressions" OFF)
+if(XXFC_BUILD_DH_TESTS AND NOT TARGET test_dh)
+    enable_testing()
+    add_executable(test_dh "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dh.c")
+    target_link_libraries(test_dh PRIVATE xxfclib::xxfclib)
+    target_compile_definitions(test_dh PRIVATE XXFC_DH_FACTORY_TESTS=1)
+    add_test(NAME xxfc_dh COMMAND test_dh "${CMAKE_CURRENT_BINARY_DIR}/dh-output")
+endif()

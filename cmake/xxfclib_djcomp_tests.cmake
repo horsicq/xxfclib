@@ -1,0 +1,8 @@
+option(XXFC_BUILD_DJCOMP_TESTS "Build DJcomp and bounded Softronics LZW regressions" OFF)
+if(XXFC_BUILD_DJCOMP_TESTS AND NOT TARGET test_djcomp)
+    enable_testing()
+    add_executable(test_djcomp "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_djcomp.c")
+    target_link_libraries(test_djcomp PRIVATE xxfclib::xxfclib)
+    target_compile_definitions(test_djcomp PRIVATE XXFC_DJCOMP_FACTORY_TESTS=1)
+    add_test(NAME xxfc_djcomp COMMAND test_djcomp "${CMAKE_CURRENT_BINARY_DIR}/djcomp-output")
+endif()

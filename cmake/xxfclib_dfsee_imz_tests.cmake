@@ -1,0 +1,8 @@
+option(XXFC_BUILD_DFSEE_IMZ_TESTS "Build DFSee Tpack LZW12+CRC image regressions" OFF)
+if(XXFC_BUILD_DFSEE_IMZ_TESTS AND NOT TARGET test_dfsee_imz)
+    enable_testing()
+    add_executable(test_dfsee_imz "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dfsee_imz.c")
+    target_link_libraries(test_dfsee_imz PRIVATE xxfclib::xxfclib)
+    target_compile_definitions(test_dfsee_imz PRIVATE XXFC_DFSEE_IMZ_FACTORY_TESTS=1)
+    add_test(NAME xxfc_dfsee_imz COMMAND test_dfsee_imz "${CMAKE_CURRENT_BINARY_DIR}/dfsee-imz-output")
+endif()
