@@ -835,3 +835,11 @@ XXFC_API Abstractextractor *xx_zoot1_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_zoot1_get_abstract_detector(void);
 XXFC_API Abstractextractor *xx_zxml_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_zxml_get_abstract_detector(void);
+
+XXFC_API Abstractextractor *xx_dfsee_imz_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_dfsee_imz_get_abstract_detector(void);
+
+XXFC_API Abstractextractor *xx_dh_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_dh_get_abstract_detector(void);
+XXFC_API Abstractextractor *xx_djcomp_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_djcomp_get_abstract_detector(void);

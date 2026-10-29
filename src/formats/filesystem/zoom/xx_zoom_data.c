@@ -12,9 +12,12 @@ static const xx_data_struct_field_desc sxst_zoom_header_fields[] = {
     SX_FIELD("first_cylinder","uint8",4,1,SX_NONE),
     SX_FIELD("last_cylinder","uint8",5,1,SX_NONE),
     SX_FIELD("version","uint8",6,1,SX_ID),
-    SX_FIELD("unknown_07","byte[21]",7,21,SX_NONE),
-    SX_FIELD("note_size","uint32",28,4,SX_SIZE),
-    SX_FIELD("unknown_20","byte[4]",32,4,SX_NONE),
+    SX_FIELD("unknown_07","uint8",7,1,SX_NONE),
+    SX_FIELD("flags","uint32",8,4,SX_FLAGS),
+    SX_FIELD("unknown_0c","byte[12]",12,12,SX_NONE),
+    SX_FIELD("attached_text_raw_size","uint32",24,4,SX_SIZE),
+    SX_FIELD("attached_text_packed_size","uint32",28,4,SX_SIZE),
+    SX_FIELD("note_offset","uint32",32,4,SX_OFFSET),
     SX_FIELD("password_protected","uint8",36,1,SX_FLAGS),
     SX_FIELD("unknown_25","byte[35]",37,35,SX_NONE),
     SX_FIELD("header_checksum","uint32",72,4,SX_CHECKSUM),
@@ -32,7 +35,8 @@ static const xx_data_struct_field_desc sxst_zoom_chunk_fields[] = {
     SX_FIELD("middle_size","uint16",28,2,SX_SIZE),
     SX_FIELD("final_size","uint16",30,2,SX_SIZE),
     SX_FIELD("lzhuf_flag","uint16",32,2,SX_FLAGS),
-    SX_FIELD("unknown_22","byte[8]",34,8,SX_NONE),
+    SX_FIELD("packed_checksum","uint32",34,4,SX_CHECKSUM),
+    SX_FIELD("record_checksum","uint32",38,4,SX_CHECKSUM),
 };
 const sx_layout sxst_zoom_chunk = {0x60370007U,"zoom_chunk",sxst_zoom_chunk_fields,SX_COUNT(sxst_zoom_chunk_fields),SX_BE};
 #define SXST_LIMIT 24000U

@@ -644,7 +644,16 @@ static int has_legacy_script_map(const xx_memory_map *map)
 static cd_i64 script_entry_point_offset(DieEngine *pEngine)
 {
     if (has_legacy_script_map(pEngine->pMap)) {
-        return xx_memory_map_address_to_offset(pEngine->pMap, pEngine->pMap->entry_point_address);
+        cd_u64 entry = pEngine->pMap->entry_point_address;
+        /* The DOS script map exposes CS:IP as a module-relative address,
+         * while its loaded bytes use the synthetic 0x10000000 segment.
+         * Bias the lookup, preserving getAddressOfEntryPoint's public value.
+         * Mapping also rejects an entry that falls into an overlay. */
+        if (pEngine->pMap->file_type == XX_FILE_TYPE_MSDOS) {
+            if (entry > UINT64_MAX - UINT64_C(0x10000000)) return -1;
+            entry += UINT64_C(0x10000000);
+        }
+        return xx_memory_map_address_to_offset(pEngine->pMap, entry);
     }
 
     if (pEngine->bHasElf) {

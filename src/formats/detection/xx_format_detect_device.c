@@ -3258,7 +3258,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
     bool is_fdi = (magic_size >= 4U && xx_rt_memcmp(magic, "FDI", 3U) == 0 && magic[3] <= 1U);
     bool is_twoimg = (magic_size >= 4U && xx_rt_memcmp(magic, "2IMG", 4U) == 0);
     bool is_imd = (magic_size >= 4U && xx_rt_memcmp(magic, "IMD ", 4U) == 0);
-    bool is_diskdupe = (magic_size >= 21U && xx_rt_memcmp(magic, "MSD Image Version 1 \x1A", 21U) == 0);
+    bool is_diskdupe = (magic_size >= 21U && xx_rt_memcmp(magic, "MSD Image Version 1 \x1A", 21U) == 0) ||
+                       (magic_size >= 10U && xx_rt_memcmp(magic, "IM\0\0\0\0\0\0\0\0", 10U) == 0);
     bool is_pmdiskcopy = (magic_size >= 11U && xx_rt_memcmp(magic, "PM Diskcopy", 11U) == 0);
     bool is_pax = (magic_size >= 38U && xx_rt_memcmp(magic, "LZF0", 4U) == 0);
     bool is_beospkg = (magic_size >= 8U && magic[0] == 0x41U && magic[1] == 0x6CU && magic[2] == 0x42U && magic[3] == 0x1AU && magic[4] == 0xFFU && magic[5] == 0x0AU &&
@@ -5619,6 +5620,14 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
         if (xx_format_is_dlke_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_DLKE;
+        }
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+    }
+    /* A fully validated IM track map outranks headerless trial formats. */
+    if (is_diskdupe && magic_size >= 10U && xx_rt_memcmp(magic, "IM\0\0\0\0\0\0\0\0", 10U) == 0) {
+        if (xx_format_is_diskdupe_device(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_DISKDUPE;
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
     }

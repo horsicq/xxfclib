@@ -1,32 +1,13 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * Zoom - an Amiga floppy imager (magic "ZOM5").  A container is a whole floppy
- * and the product is ONE .adf image of
- * (last_cylinder - first_cylinder + 1) * 0x2C00 bytes, where 0x2C00 is a
- * cylinder of 2 tracks * 11 sectors * 512 bytes.  EVERYTHING MULTI-BYTE IS
- * BIG-ENDIAN; it is an Amiga format.
- *
- * File header, 0x4C bytes:
- *   0x00   4  magic "ZOM5"
- *   0x04   1  first cylinder
- *   0x05   1  last cylinder
- *   0x06   1  format version, must be 5
- *   0x1C   4  length N of a trailing note block, 0 = none; when it is set the
- *             header is followed by N + 4 bytes (note plus its checksum)
- *   0x24   1  non zero = password protected
- *   0x48   4  checksum over bytes 0..0x47 (parsed, NOT verified - as in the
- *             reference)
- *
- * Then chunk records back to back.  This reader does NOT walk them: the chunk
- * index is spread across the records themselves, there is no member extent to
- * publish, and xx_zoom_decode_memory() is handed the whole container.  The
- * note length is the one field that has to be bounded against the real file
- * here, because the codec's own header walk only sees the bytes it is given.
- *
- * The password flag is reported through XX_META_ID_IS_ENCRYPTED and the codec
- * refuses such a container outright - so a protected file lists but does not
- * extract, which is what the reference does.
+ * Zoom - an Amiga floppy imager (magic "ZOM5"). The original label-free
+ * path publishes disk.adf. USEHEADER records contain separate 512-byte sector
+ * data and 16-byte sector-label planes and publish both disk.adf and
+ * disk.adf.labels. The scoped labelled path accepts dense masks, cylinders
+ * 0..79 and no attached text/note, and authenticates all three stored CRCs.
+ * Multi-byte fields are big-endian. The codec owns the whole container;
+ * published records therefore refer to the same complete compressed extent.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -51,6 +32,10 @@
  * bound. */
 #define XX_ZOOM_MAX_INPUT ((int64_t)64 * 1024 * 1024)
 #define XX_ZOOM_PAYLOAD_NAME "disk.adf"
+#define XX_ZOOM_LABEL_NAME "disk.adf.labels"
+#define XX_ZOOM_LABEL_CYLINDER_SIZE (22U * 16U)
+#define XX_ZOOM_READER_OVERHEAD 16384U
+#define XX_ZOOM_CODEC_WORKSPACE 262144U
 
 typedef struct xx_zoom_context_s {
     int64_t input_size;
@@ -59,24 +44,65 @@ typedef struct xx_zoom_context_s {
     uint8_t first_cylinder;
     uint8_t last_cylinder;
     bool is_protected;
+    bool use_header;
+    bool labels_record;
+    int64_t label_size;
 } xx_zoom_context;
 
 static void xx_zoom_vtable_destroy(Abstractformat *self);
+static const xx_var *xx_zoom_get_option(const xx_list_s *options, uint32_t meta_id);
 
 /* ------------------------------------------------------------- helpers -- */
 
 static bool xx_zoom_read_at(Abstractformat *self, int64_t offset, uint8_t *buffer, size_t size)
 {
     size_t completed = 0U;
-    if (!self || !self->device || offset < 0 || (!buffer && size != 0U) || xx_io_seek64(self->device, offset, SEEK_SET) != 0) {
-        return false;
-    }
-    while (completed < size) {
+    int64_t saved;
+    bool ok = true;
+    if (!self || !self->device || offset < 0 || (!buffer && size != 0U)) return false;
+    saved = xx_io_tell(self->device);
+    if (xx_io_seek64(self->device, offset, SEEK_SET) != 0) ok = false;
+    while (ok && completed < size) {
         ssize_t received = xx_io_read(self->device, buffer + completed, size - completed);
-        if (received <= 0 || (size_t)received > size - completed) return false;
-        completed += (size_t)received;
+        if (received <= 0 || (size_t)received > size - completed) ok = false;
+        else completed += (size_t)received;
     }
-    return true;
+    /* Retain the original seek/read contract for legacy devices without tell.
+     * The labelled path requires tell separately before whole-file decoding. */
+    if (saved >= 0 && xx_io_seek64(self->device, saved, SEEK_SET) != 0) ok = false;
+    return ok;
+}
+
+static size_t xx_zoom_selected_size(const xx_zoom_context *context)
+{
+    return (size_t)(context->labels_record ? context->label_size : context->uncompressed_size);
+}
+
+static const char *xx_zoom_selected_name(const xx_zoom_context *context)
+{
+    return context->labels_record ? XX_ZOOM_LABEL_NAME : XX_ZOOM_PAYLOAD_NAME;
+}
+
+static uint64_t xx_zoom_budget(Abstractformat *self, const xx_list_s *options, uint32_t id)
+{
+    const xx_var *v = xx_format_resolve_extra_parameter(self, NULL, id);
+    uint64_t limit = v ? xx_var_get_u64(v) : UINT64_MAX;
+    v = xx_zoom_get_option(options, id);
+    if (v && xx_var_get_u64(v) < limit) limit = xx_var_get_u64(v);
+    return limit;
+}
+
+static bool xx_zoom_ready(Abstractformat *self, const xx_zoom_context *context, const xx_list_s *options, xx_pd_struct *pd)
+{
+    uint64_t selected;
+    uint64_t charge;
+    if (!self || !context || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!context->use_header) return true;
+    if (xx_io_tell(self->device) < 0) return false;
+    selected = (uint64_t)xx_zoom_selected_size(context);
+    charge = XX_ZOOM_READER_OVERHEAD + (uint64_t)context->input_size + selected + XX_ZOOM_CODEC_WORKSPACE;
+    return selected <= xx_zoom_budget(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE) &&
+           charge <= xx_zoom_budget(self, options, XX_META_ID_OPT_MEMORY_LIMIT);
 }
 
 /* --------------------------------------------------------------- parse -- */
@@ -109,6 +135,10 @@ static bool xx_zoom_parse(Abstractformat *self, xx_zoom_context *context, xx_pd_
     /* The note block is skipped whole: N bytes of note plus a four-byte
      * checksum.  It has to fit inside the real file - the codec cannot check
      * that for a caller who hands it a short slice. */
+    context->use_header = (xx_data_get_u32(header + 8, 4, 0, true) & 1U) != 0U;
+    if (context->use_header && (header[4] != 0U || header[5] >= 80U ||
+        xx_io_tell(self->device) < 0 || xx_data_get_u32(header + 24, 4, 0, true) != 0U ||
+        xx_data_get_u32(header + 28, 4, 0, true) != 0U || xx_data_get_u32(header + 32, 4, 0, true) != 0U)) return false;
     note_size = (int64_t)xx_data_get_u32(header + 0x1c, 4, 0, true);
     chunks_offset = XX_ZOOM_HEADER_SIZE;
     if (note_size != 0) {
@@ -126,6 +156,7 @@ static bool xx_zoom_parse(Abstractformat *self, xx_zoom_context *context, xx_pd_
     context->last_cylinder = header[5];
     context->is_protected = header[0x24] != 0U;
     context->uncompressed_size = cylinders * (int64_t)XX_ZOOM_CYLINDER_SIZE;
+    context->label_size = context->use_header ? cylinders * (int64_t)XX_ZOOM_LABEL_CYLINDER_SIZE : 0;
     return true;
 }
 
@@ -158,7 +189,7 @@ static bool xx_zoom_read_container(Abstractformat *self, const xx_zoom_context *
     return true;
 }
 
-static bool xx_zoom_decode(Abstractformat *self, const xx_zoom_context *context, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+static bool xx_zoom_decode(Abstractformat *self, const xx_zoom_context *context, const xx_list_s *options, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
 {
     uint8_t *input = NULL;
     uint8_t *output = NULL;
@@ -169,16 +200,20 @@ static bool xx_zoom_decode(Abstractformat *self, const xx_zoom_context *context,
     if (out) *out = NULL;
     if (out_size) *out_size = 0U;
     if (!self || !context || !out || !out_size || context->uncompressed_size <= 0 || (uint64_t)context->uncompressed_size > (uint64_t)SIZE_MAX ||
-        (pd && xx_pd_is_stopped(pd)) || !xx_zoom_read_container(self, context, &input, &input_size)) {
+        !xx_zoom_ready(self, context, options, pd) || !xx_zoom_read_container(self, context, &input, &input_size)) {
         return false;
     }
-    if (!xx_zoom_scan_memory(input, input_size, (size_t)context->uncompressed_size, NULL, &produced) || produced != (size_t)context->uncompressed_size ||
-        (pd && xx_pd_is_stopped(pd))) {
+    produced = xx_zoom_selected_size(context);
+    if (!xx_zoom_ready(self, context, options, pd) || (!context->use_header &&
+        (!xx_zoom_scan_memory(input, input_size, produced, NULL, &written) || written != produced))) {
         xx_mem_free(input);
         return false;
     }
     output = (uint8_t *)xx_mem_alloc(produced);
-    if (!output || !xx_zoom_decode_memory(input, input_size, output, produced, &written) || written != produced) {
+    if (!output || !xx_zoom_ready(self, context, options, pd) ||
+        !(context->labels_record ? xx_zoom_decode_labels_memory(input, input_size, output, produced, &written) :
+                                  xx_zoom_decode_memory(input, input_size, output, produced, &written)) ||
+        written != produced || !xx_zoom_ready(self, context, options, pd)) {
         xx_mem_free(input);
         xx_mem_free(output);
         return false;
@@ -189,7 +224,7 @@ static bool xx_zoom_decode(Abstractformat *self, const xx_zoom_context *context,
     return true;
 }
 
-static bool xx_zoom_recover_prefix(Abstractformat *self, const xx_zoom_context *context, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+static bool xx_zoom_recover_prefix(Abstractformat *self, const xx_zoom_context *context, const xx_list_s *options, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
 {
     uint8_t *input = NULL;
     uint8_t *output = NULL;
@@ -200,12 +235,15 @@ static bool xx_zoom_recover_prefix(Abstractformat *self, const xx_zoom_context *
     if (out) *out = NULL;
     if (out_size) *out_size = 0U;
     if (!self || !context || !out || !out_size || context->uncompressed_size <= 0 || (uint64_t)context->uncompressed_size > (uint64_t)SIZE_MAX ||
-        (pd && xx_pd_is_stopped(pd)) || !xx_zoom_read_container(self, context, &input, &input_size)) {
+        !xx_zoom_ready(self, context, options, pd) || !xx_zoom_read_container(self, context, &input, &input_size)) {
         return false;
     }
-    output = (uint8_t *)xx_mem_alloc((size_t)context->uncompressed_size);
-    if (!output || !xx_zoom_decode_prefix_memory(input, input_size, output, (size_t)context->uncompressed_size, &written, &complete) || complete || written == 0U ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!xx_zoom_ready(self, context, options, pd)) { xx_mem_free(input); return false; }
+    output = (uint8_t *)xx_mem_alloc(xx_zoom_selected_size(context));
+    if (!output ||
+        !(context->labels_record ? xx_zoom_decode_labels_prefix_memory(input, input_size, output, xx_zoom_selected_size(context), &written, &complete) :
+                                  xx_zoom_decode_prefix_memory(input, input_size, output, xx_zoom_selected_size(context), &written, &complete)) ||
+        complete || written == 0U || !xx_zoom_ready(self, context, options, pd)) {
         xx_mem_free(input);
         xx_mem_free(output);
         return false;
@@ -313,9 +351,9 @@ bool xx_zoom_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     self->format_size = context.input_size;
     self->overlay_offset = -1;
     self->overlay_size = 0;
-    self->number_of_archive_records = 1U;
+    self->number_of_archive_records = context.use_header ? 2U : 1U;
     self->is_crypted = context.is_protected;
-    archive->number_of_records = 1U;
+    archive->number_of_records = self->number_of_archive_records;
     archive->chunks_offset = context.chunks_offset;
     archive->uncompressed_size = context.uncompressed_size;
     archive->first_cylinder = context.first_cylinder;
@@ -353,9 +391,9 @@ static bool xx_zoom_set_record(xx_archive_record *record, Abstractformat *self, 
      * the records themselves and no member extent exists. */
     record->data_offset = self->base_address;
     record->compressed_size = context->input_size;
-    return xx_archive_record_set_original_name(record, XX_ZOOM_PAYLOAD_NAME) &&
+    return xx_archive_record_set_original_name(record, xx_zoom_selected_name(context)) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)context->input_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)context->uncompressed_size) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)xx_zoom_selected_size(context)) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, context->is_protected);
 }
@@ -408,7 +446,7 @@ xx_archive_record_state *xx_zoom_create_archive_records_reading(Abstractformat *
     xx_archive_record_state_init(state, self);
     state->internal_state = context;
     state->free_internal = xx_mem_free;
-    state->total_records = 1;
+    state->total_records = context->use_header ? 2 : 1;
     if (!xx_zoom_copy_options(&state->options, options) || !xx_zoom_set_record(&state->current_record, self, context)) {
         xx_archive_record_state_free(state);
         return NULL;
@@ -428,7 +466,15 @@ bool xx_zoom_archive_record_move_to_next(Abstractformat *self, xx_archive_record
     if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    /* Exactly one record; the container has no second member to move to. */
+    {
+        xx_zoom_context *context = (xx_zoom_context *)state->internal_state;
+        if (context && context->use_header && !context->labels_record) {
+            context->labels_record = true;
+            if (!xx_zoom_set_record(&state->current_record, self, context)) { state->has_record = false; return false; }
+            state->current_index = 1;
+            return true;
+        }
+    }
     xx_archive_record_cleanup(&state->current_record);
     xx_archive_record_init(&state->current_record);
     state->has_record = false;
@@ -458,7 +504,7 @@ bool xx_zoom_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
     if (!path_option) {
         /* No destination: decode and discard, which verifies the container
          * without writing anything. */
-        result = xx_zoom_decode(self, context, &plain, &plain_size, pd);
+        result = xx_zoom_decode(self, context, &state->options, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
@@ -473,9 +519,9 @@ bool xx_zoom_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
         return false;
     }
     if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
-        target_path = xx_str_concat3(base_path, "/", XX_ZOOM_PAYLOAD_NAME);
+        target_path = xx_str_concat3(base_path, "/", xx_zoom_selected_name(context));
     } else {
-        target_path = xx_str_concat(base_path, XX_ZOOM_PAYLOAD_NAME);
+        target_path = xx_str_concat(base_path, xx_zoom_selected_name(context));
     }
     xx_str_free(converted_path);
     if (!target_path) return false;
@@ -484,26 +530,31 @@ bool xx_zoom_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
         xx_str_free(target_path);
         return false;
     }
-    if (!xx_zoom_decode(self, context, &plain, &plain_size, pd)) {
-        if (!xx_zoom_recover_prefix(self, context, &plain, &plain_size, pd)) {
+    if (!xx_zoom_decode(self, context, &state->options, &plain, &plain_size, pd)) {
+        if (!xx_zoom_recover_prefix(self, context, &state->options, &plain, &plain_size, pd)) {
             xx_str_free(target_path);
             return false;
         }
         partial = true;
     }
     {
-        xx_io_device *output = xx_io_file_open(target_path, "wb");
+        xx_io_device *output = xx_zoom_ready(self, context, &state->options, pd) ? xx_io_file_open(target_path, "wb") : NULL;
         created = output != NULL;
         size_t completed = 0U;
         result = output != NULL;
         while (result && completed < plain_size) {
-            ssize_t sent = xx_io_write(output, plain + completed, plain_size - completed);
-            if (sent <= 0 || (size_t)sent > plain_size - completed) {
+            size_t step = plain_size - completed;
+            ssize_t sent;
+            if (!xx_zoom_ready(self, context, &state->options, pd)) { result = false; break; }
+            if (step > 65536U) step = 65536U;
+            sent = xx_io_write(output, plain + completed, step);
+            if (sent <= 0 || (size_t)sent > step) {
                 result = false;
                 break;
             }
             completed += (size_t)sent;
         }
+        if (!xx_zoom_ready(self, context, &state->options, pd)) result = false;
         if (output && xx_io_close(output) != 0) result = false;
     }
     xx_mem_free(plain);

@@ -15,6 +15,10 @@
 #define ZOOM_CHUNK_HEADER_SIZE 42
 #define ZOOM_CYLINDER_SIZE 0x2c00
 #define ZOOM_SECTOR_SIZE 0x200
+#define ZOOM_LABEL_CYLINDER_SIZE (22U * 16U)
+#define ZOOM_LABELLED_CYLINDER_SIZE (ZOOM_CYLINDER_SIZE + ZOOM_LABEL_CYLINDER_SIZE)
+#define ZOOM_LABELLED_MAX_CYLINDERS 80U
+#define ZOOM_FULL_MASK 0x003fffffU
 #define ZOOM_SECTORS_PER_CYLINDER 22
 #define ZOOM_SLOTS 5
 #define ZOOM_SLOT_UNUSED 0xff
@@ -68,6 +72,9 @@ typedef struct zoom_ctx {
     uint8_t stage_a[ZOOM_SCRATCH];
     uint8_t stage_b[ZOOM_SCRATCH];
 } zoom_ctx;
+
+/* The USEHEADER reader charges this conservative codec workspace bound. */
+typedef char zoom_workspace_within_reader_bound[(sizeof(zoom_ctx) <= 262144U) ? 1 : -1];
 
 /* ----------------------------------------------------------- bit reader --- */
 
@@ -417,7 +424,7 @@ static bool zoom_emit(uint8_t *output, size_t limit, size_t *pos, const uint8_t 
     return true;
 }
 
-static bool zoom_image_core(zoom_ctx *ctx, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t max_output, size_t *consumed_out,
+static bool zoom_image_core_legacy(zoom_ctx *ctx, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t max_output, size_t *consumed_out,
                             size_t *produced_out)
 {
     uint32_t first = 0;
@@ -580,6 +587,113 @@ corrupt:
     return false;
 }
 
+
+/* USEHEADER is planar per cylinder: all 22 data sectors, then their labels.
+ * Only the demonstrated dense, zero-based, note-free layout is admitted.
+ * Each authenticated record advances both planes, including discarded ones. */
+static bool zoom_labels_core(zoom_ctx *ctx, const uint8_t *input, size_t input_size,
+                             uint8_t *data_output, size_t data_capacity, size_t data_limit,
+                             uint8_t *label_output, size_t label_capacity, size_t *consumed_out,
+                             size_t *data_out, size_t *labels_out)
+{
+    uint32_t first = 0U, last = 0U;
+    bool protected_file = false;
+    size_t offset = 0U, current = 0U, records = 0U;
+    size_t data_pos = 0U, label_pos = 0U, committed_data = 0U, committed_labels = 0U, committed_offset = 0U;
+    size_t data_size, label_size;
+    *consumed_out = 0U;
+    *data_out = 0U;
+    *labels_out = 0U;
+    if (!zoom_parse_header(input, input_size, &first, &last, &protected_file, &offset) || protected_file ||
+        first != 0U || last >= ZOOM_LABELLED_MAX_CYLINDERS ||
+        (xx_data_get_u32(input + 8U, 4U, 0, true) & 1U) == 0U ||
+        xx_data_get_u32(input + 24U, 4U, 0, true) != 0U ||
+        xx_data_get_u32(input + 28U, 4U, 0, true) != 0U || xx_data_get_u32(input + 32U, 4U, 0, true) != 0U ||
+        (xx_crc32_calc(UINT32_MAX, input, 72U) ^ UINT32_MAX) != xx_data_get_u32(input + 72U, 4U, 0, true)) return false;
+    data_size = ((size_t)last + 1U) * ZOOM_CYLINDER_SIZE;
+    label_size = ((size_t)last + 1U) * ZOOM_LABEL_CYLINDER_SIZE;
+    if (data_size > data_limit || (data_output && data_capacity < data_size) ||
+        (label_output && label_capacity < label_size)) return false;
+    while (offset < input_size) {
+        const uint8_t *record, *blob, *buffer;
+        size_t packed_size, middle_size, total, buffer_size, source_pos = 0U;
+        size_t slots = 0U, next = current, i;
+        bool unused = false;
+        uint32_t flag;
+        if (++records > ZOOM_LABELLED_MAX_CYLINDERS || input_size - offset < ZOOM_CHUNK_HEADER_SIZE) goto corrupt;
+        record = input + offset;
+        packed_size = (size_t)zoom_be16(record + 26U);
+        middle_size = (size_t)zoom_be16(record + 28U);
+        flag = zoom_be16(record + 32U);
+        if (packed_size > input_size - offset - ZOOM_CHUNK_HEADER_SIZE) goto corrupt;
+        blob = record + ZOOM_CHUNK_HEADER_SIZE;
+        if ((xx_crc32_calc(UINT32_MAX, record, 38U) ^ UINT32_MAX) != xx_data_get_u32(record + 38U, 4U, 0, true) ||
+            (xx_crc32_calc(UINT32_MAX, blob, packed_size) ^ UINT32_MAX) != xx_data_get_u32(record + 34U, 4U, 0, true)) goto corrupt;
+        for (i = 0U; i < ZOOM_SLOTS; ++i) {
+            uint32_t cylinder = record[i];
+            if (cylinder == ZOOM_SLOT_UNUSED) { unused = true; continue; }
+            if (unused || cylinder < next || cylinder > last ||
+                xx_data_get_u32(record + 6U + i * 4U, 4U, 0, true) != ZOOM_FULL_MASK) goto corrupt;
+            next = (size_t)cylinder + 1U;
+            ++slots;
+        }
+        if (slots == 0U) goto corrupt;
+        total = slots * ZOOM_LABELLED_CYLINDER_SIZE;
+        buffer = blob;
+        buffer_size = packed_size;
+        if (flag != 0U) {
+            size_t want = middle_size ? middle_size : total;
+            if (want > ZOOM_SCRATCH || !zoom_lzhuf_decode(ctx, blob, packed_size, ctx->stage_a, want)) goto corrupt;
+            buffer = ctx->stage_a;
+            buffer_size = want;
+        } else if (buffer_size != (middle_size ? middle_size : total)) goto corrupt;
+        if (middle_size != 0U) {
+            size_t got = 0U;
+            /* FatLength is not the decoded geometry. The RLE's own BE24
+             * length must agree with the 528-byte sector calculation. */
+            if (total > ZOOM_SCRATCH || buffer_size != middle_size ||
+                !zoom_rle_core(buffer, buffer_size, ctx->stage_b, total, &got, NULL) || got != total) goto corrupt;
+            buffer = ctx->stage_b;
+            buffer_size = total;
+        }
+        if (buffer_size != total) goto corrupt;
+        for (i = 0U; i < slots; ++i) {
+            size_t cylinder = record[i];
+            while (current < cylinder) {
+                if (!zoom_emit(data_output, data_size, &data_pos, NULL, ZOOM_CYLINDER_SIZE) ||
+                    !zoom_emit(label_output, label_size, &label_pos, NULL, ZOOM_LABEL_CYLINDER_SIZE)) goto corrupt;
+                ++current;
+            }
+            if (source_pos > buffer_size || ZOOM_LABELLED_CYLINDER_SIZE > buffer_size - source_pos ||
+                !zoom_emit(data_output, data_size, &data_pos, buffer + source_pos, ZOOM_CYLINDER_SIZE) ||
+                !zoom_emit(label_output, label_size, &label_pos, buffer + source_pos + ZOOM_CYLINDER_SIZE, ZOOM_LABEL_CYLINDER_SIZE)) goto corrupt;
+            source_pos += ZOOM_LABELLED_CYLINDER_SIZE;
+            ++current;
+        }
+        if (source_pos != buffer_size) goto corrupt;
+        offset += ZOOM_CHUNK_HEADER_SIZE + packed_size;
+        committed_data = data_pos;
+        committed_labels = label_pos;
+        committed_offset = offset;
+    }
+    if (records == 0U) goto corrupt;
+    while (current <= (size_t)last) {
+        if (!zoom_emit(data_output, data_size, &data_pos, NULL, ZOOM_CYLINDER_SIZE) ||
+            !zoom_emit(label_output, label_size, &label_pos, NULL, ZOOM_LABEL_CYLINDER_SIZE)) goto corrupt;
+        ++current;
+    }
+    if (data_pos != data_size || label_pos != label_size) goto corrupt;
+    *consumed_out = offset;
+    *data_out = data_pos;
+    *labels_out = label_pos;
+    return true;
+corrupt:
+    *consumed_out = committed_offset;
+    *data_out = committed_data;
+    *labels_out = committed_labels;
+    return false;
+}
+
 static bool zoom_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t max_output, size_t *consumed, size_t *produced)
 {
     zoom_ctx *ctx;
@@ -588,7 +702,12 @@ static bool zoom_run(const uint8_t *input, size_t input_size, uint8_t *output, s
     ctx = (zoom_ctx *)xx_mem_alloc(sizeof(zoom_ctx));
     if (!ctx) return false;
 
-    ok = zoom_image_core(ctx, input, input_size, output, output_capacity, max_output, consumed, produced);
+    if (input_size >= 12U && (xx_data_get_u32(input + 8U, 4U, 0, true) & 1U) != 0U) {
+        size_t labels = 0U;
+        ok = zoom_labels_core(ctx, input, input_size, output, output_capacity, max_output, NULL, 0U, consumed, produced, &labels);
+    } else {
+        ok = zoom_image_core_legacy(ctx, input, input_size, output, output_capacity, max_output, consumed, produced);
+    }
 
     xx_mem_free(ctx);
 
@@ -645,4 +764,42 @@ bool xx_zoom_scan_memory(const uint8_t *input, size_t input_size, size_t max_out
     if (produced) *produced = local_produced;
 
     return true;
+}
+
+
+static bool zoom_run_labels(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size,
+                            size_t *written, bool *complete)
+{
+    zoom_ctx *ctx;
+    size_t consumed = 0U, data = 0U, labels = 0U;
+    bool ok;
+    if (written) *written = 0U;
+    if (complete) *complete = false;
+    if (!input || !output || output_size == 0U || input_size < ZOOM_HEADER_SIZE ||
+        (xx_data_get_u32(input + 8U, 4U, 0, true) & 1U) == 0U) return false;
+    ctx = (zoom_ctx *)xx_mem_alloc(sizeof(*ctx));
+    if (!ctx) return false;
+    ok = zoom_labels_core(ctx, input, input_size, NULL, 0U,
+                          ZOOM_LABELLED_MAX_CYLINDERS * ZOOM_CYLINDER_SIZE,
+                          output, output_size, &consumed, &data, &labels);
+    xx_mem_free(ctx);
+    if (written) *written = labels;
+    if (complete) *complete = ok;
+    return ok || labels != 0U;
+}
+
+bool xx_zoom_decode_labels_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
+{
+    size_t count = 0U;
+    bool complete = false;
+    if (written) *written = 0U;
+    if (!zoom_run_labels(input, input_size, output, output_size, &count, &complete) || !complete) return false;
+    if (written) *written = count;
+    return true;
+}
+
+bool xx_zoom_decode_labels_prefix_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size,
+                                        size_t *written, bool *complete)
+{
+    return zoom_run_labels(input, input_size, output, output_size, written, complete);
 }

@@ -678,6 +678,11 @@ static const uint8_t fast_bytes_675[] = { 0x01,0xDD };
 static const uint8_t fast_bytes_676[] = { 0x01,0xDF };
 
 static const uint8_t fast_bytes_ico_cursor[] = { 0x00,0x00,0x02,0x00 };
+static const uint8_t fast_bytes_677[] = { 0x49,0x4D,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00 };
+static const uint8_t fast_bytes_678[] = { 0x49,0x4D,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00 };
+static const uint8_t fast_bytes_679[] = { 0x49,0x4D,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03,0x00,0x00,0x00 };
+static const uint8_t fast_bytes_680[] = { 0x49,0x4D,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x04,0x00,0x00,0x00 };
+static const uint8_t fast_mask_diskdupe_im14[] = { 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF };
 static const fast_atom fast_atoms[] = {
     { INT64_C(0), fast_bytes_0, fast_bytes_1, 4U, FAST_BASE, false },
     { INT64_C(0), fast_bytes_2, fast_bytes_1, 4U, FAST_BASE, false },
@@ -1542,6 +1547,10 @@ static const fast_atom fast_atoms[] = {
     { INT64_C(0), fast_bytes_ico_cursor, fast_bytes_1, 4U, FAST_BASE, false },
     { INT64_C(4), fast_bytes_136, fast_bytes_47, 2U, FAST_BASE, true },
     { INT64_C(9), fast_bytes_415, fast_bytes_263, 1U, FAST_BASE, false },
+    { 0, fast_bytes_677, fast_mask_diskdupe_im14, 14U, FAST_BASE, false },
+    { 0, fast_bytes_678, fast_mask_diskdupe_im14, 14U, FAST_BASE, false },
+    { 0, fast_bytes_679, fast_mask_diskdupe_im14, 14U, FAST_BASE, false },
+    { 0, fast_bytes_680, fast_mask_diskdupe_im14, 14U, FAST_BASE, false },
 };
 static const fast_rule fast_rules[] = {
     { INT64_C(0), INT64_C(9223372036854775807), 0U, 1U },
@@ -2200,6 +2209,11 @@ static const fast_rule fast_rules[] = {
     { INT64_C(92), INT64_C(9223372036854775807), 854U, 2U },
     { INT64_C(92), INT64_C(9223372036854775807), 856U, 2U },
     { INT64_C(92), INT64_C(9223372036854775807), 858U, 2U },
+    { 0, INT64_MAX, 290U, 1U }, /* existing MSD rule, relocated group */
+    { 14, INT64_MAX, 863U, 1U },
+    { 14, INT64_MAX, 864U, 1U },
+    { 14, INT64_MAX, 865U, 1U },
+    { 14, INT64_MAX, 866U, 1U },
 };
 static const fast_type fast_types[] = {
     { XX_FILE_TYPE_ZIP, 0U, 9U }, /* src/formats/zip/xx_zip_fast_detect.json */
@@ -2376,7 +2390,7 @@ static const fast_type fast_types[] = {
     { XX_FILE_TYPE_FDI, 260U, 1U }, /* src/formats/fdi/xx_fdi_fast_detect.json */
     { XX_FILE_TYPE_TWOIMG, 261U, 1U }, /* src/formats/twoimg/xx_twoimg_fast_detect.json */
     { XX_FILE_TYPE_IMD, 262U, 1U }, /* src/formats/imd/xx_imd_fast_detect.json */
-    { XX_FILE_TYPE_DISKDUPE, 263U, 1U }, /* src/formats/diskdupe/xx_diskdupe_fast_detect.json */
+    { XX_FILE_TYPE_DISKDUPE, 656U, 5U }, /* src/formats/diskdupe/xx_diskdupe_fast_detect.json */
     { XX_FILE_TYPE_PMDISKCOPY, 264U, 1U }, /* src/formats/pmdiskcopy/xx_pmdiskcopy_fast_detect.json */
     { XX_FILE_TYPE_PAX, 265U, 1U }, /* src/formats/pax/xx_pax_fast_detect.json */
     { XX_FILE_TYPE_SOLARISPKG, 266U, 1U }, /* src/formats/solarispkg/xx_solarispkg_fast_detect.json */

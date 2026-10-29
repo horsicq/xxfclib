@@ -39,7 +39,7 @@ static bool lva_volume_candidate(void *opaque,const char *name,bool is_directory
     char *path;
     bool keep_going=true;
     if(++s->seen>4096U||xx_pd_is_stopped(s->pd))return false;
-    if(is_directory||!xx_rt_strcmp(name,s->selected_name))return true;
+    if(is_directory||(s->selected_name&&!xx_rt_strcmp(name,s->selected_name)))return true;
     if(xx_str_len(s->directory)+xx_str_len(name)>4094U)return false;
     path=xx_str_concat3(s->directory,"/",name);if(!path)return false;
     d=xx_io_file_open(path,"rb");xx_str_free(path);if(!d)return true;
@@ -80,12 +80,44 @@ done:
     xx_io_close(d);return keep_going;
 }
 
+/* Avoid enumerating the selected directory twice for ordinary spelling
+ * differences. Other aliases remain conservative: two accepted candidates
+ * fail the existing unique-companion requirement. */
+static size_t lva_directory_length(const char *path)
+{
+    size_t length=xx_str_len(path);
+    while(length>1U&&(path[length-1U]=='/'||path[length-1U]=='\\')) {
+#if defined(_WIN32)
+        /* A drive-relative "C:" is not the root directory "C:\\". */
+        if(length==3U&&path[1]==':')break;
+#endif
+        --length;
+    }
+    return length;
+}
+static bool lva_same_directory(const char *a,const char *b)
+{
+    size_t na=lva_directory_length(a),nb=lva_directory_length(b),i;
+    if(na!=nb)return false;
+    for(i=0;i<na;++i) {
+        unsigned char x=(unsigned char)a[i],y=(unsigned char)b[i];
+#if defined(_WIN32)
+        if(x=='\\')x='/';
+        if(y=='\\')y='/';
+        if(x>='A'&&x<='Z')x=(unsigned char)(x+('a'-'A'));
+        if(y>='A'&&y<='Z')y=(unsigned char)(y+('a'-'A'));
+#endif
+        if(x!=y)return false;
+    }
+    return true;
+}
+
 static bool lva_decode_fragment(Abstractformat *f,const lva_member *m,uint8_t **plain,size_t *plain_size,xx_pd_struct *pd)
 {
     lva_volume_scan s;
     lva_stream *catalog=NULL;
-    const char *source,*p;
-    char *directory=NULL;
+    const char *source,*p,*value;
+    char *directory=NULL,*extra=NULL;
     uint8_t header[18];
     size_t prefix=0;
     int64_t size,saved;
@@ -99,13 +131,23 @@ static bool lva_decode_fragment(Abstractformat *f,const lva_member *m,uint8_t **
     for(p=source;*p;p++)if(*p=='/'||*p=='\\')prefix=(size_t)(p-source)+1U;
     directory=prefix?xx_str_create_len(prefix):xx_str_dup(".");if(!directory)goto done;
     if(prefix){xx_mem_copy(directory,source,prefix);directory[prefix]=0;}
-    s.selected=f;s.member=m;s.directory=directory;s.selected_name=source+prefix;s.version=catalog->version;s.pd=pd;
-    if(xx_fs_platform_enumerate(directory,lva_volume_candidate,&s)&&s.accepted==1U&&!xx_pd_is_stopped(pd)) {
-        *plain=s.plain;*plain_size=s.plain_size;s.plain=NULL;ok=true;
+    value=xx_rt_getenv("XXFC_LINGVOARC_COMPANION_DIR");
+    if(value&&*value) {
+        if(xx_str_len(value)>4094U||!(extra=xx_str_dup(value)))goto done;
     }
+    s.selected=f;s.member=m;s.directory=directory;s.selected_name=source+prefix;s.version=catalog->version;s.pd=pd;
+    if(!xx_fs_platform_enumerate(directory,lva_volume_candidate,&s))goto done;
+    if(extra&&!lva_same_directory(directory,extra)) {
+        /* One context keeps all work limits and ambiguity checks aggregate.
+         * A same basename in another directory is not the selected device. */
+        s.directory=extra;s.selected_name=NULL;
+        if(!xx_fs_platform_enumerate(extra,lva_volume_candidate,&s))goto done;
+    }
+    if(s.accepted==1U&&!xx_pd_is_stopped(pd))ok=true;
 done:
-    xx_mem_free(s.plain);xx_str_free(directory);if(catalog)lva_stream_free(catalog);
-    if(saved>=0)(void)xx_io_seek64(f->device,saved,SEEK_SET);
+    if(saved>=0&&xx_io_seek64(f->device,saved,SEEK_SET))ok=false;
+    if(ok){*plain=s.plain;*plain_size=s.plain_size;s.plain=NULL;}
+    xx_mem_free(s.plain);xx_str_free(directory);xx_str_free(extra);if(catalog)lva_stream_free(catalog);
     return ok;
 }
 #endif

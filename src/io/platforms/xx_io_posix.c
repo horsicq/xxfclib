@@ -395,11 +395,12 @@ int xx_io_platform_file_resize(void *handle, int64_t new_size)
         xx_io_extract_fail(errno);
         return -1;
     }
-    /* fflush also discards unread input on POSIX. Reposition before changing
-     * EOF so a failed seek cannot leave a successfully resized file behind;
-     * it clears a prior EOF indication and keeps the logical stdio position.
-     * ftruncate itself never changes the descriptor's position. */
-    if (fflush(file) != 0 || fseeko(file, position, SEEK_SET) != 0 || ftruncate(descriptor, (off_t)new_size) != 0) {
+    /* Validate/reposition before changing EOF, preserving the logical cursor.
+     * A stdio implementation may refill its input buffer during that seek.
+     * POSIX fflush after ftruncate discards those now-stale input bytes as
+     * well as synchronizing the descriptor with the logical file position. */
+    if (fflush(file) != 0 || fseeko(file, position, SEEK_SET) != 0 ||
+        ftruncate(descriptor, (off_t)new_size) != 0 || fflush(file) != 0) {
         xx_io_extract_fail(errno);
         return -1;
     }

@@ -6,7 +6,7 @@
       "sources": [
         "src/formats/filesystem/diskdupe/xx_diskdupe.c"
       ],
-      "note": "Fixed format identification bytes from the reader; structural and checksum validation remains in the reader.",
+      "note": "Identification bytes only; complete structural validation remains in the reader. No original-image checksum authority is asserted.",
       "rules": [
         {
           "tests": [
@@ -14,6 +14,46 @@
               "origin": "base",
               "offset": 0,
               "hex": "4D 53 44 20 49 6D 61 67 65 20 56 65 72 73 69 6F 6E 20 31 20 1A"
+            }
+          ]
+        },
+        {
+          "min_size": 14,
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "49 4D 00 00 00 00 00 00 00 00 01 00 00 00"
+            }
+          ]
+        },
+        {
+          "min_size": 14,
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "49 4D 00 00 00 00 00 00 00 00 02 00 00 00"
+            }
+          ]
+        },
+        {
+          "min_size": 14,
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "49 4D 00 00 00 00 00 00 00 00 03 00 00 00"
+            }
+          ]
+        },
+        {
+          "min_size": 14,
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "49 4D 00 00 00 00 00 00 00 00 04 00 00 00"
             }
           ]
         }

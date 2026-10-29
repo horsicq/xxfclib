@@ -1587,6 +1587,9 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/filesystem/t64/xx_t64.h
     include/xxfclib/formats/archive/uue/xx_uue.h
     include/xxfclib/formats/filesystem/vdi/xx_vdi.h
+    include/xxfclib/formats/filesystem/dfsee_imz/xx_dfsee_imz.h
+    include/xxfclib/formats/archive/dh/xx_dh.h
+    include/xxfclib/formats/archive/djcomp/xx_djcomp.h
     include/xxfclib/formats/image/bmp/xx_bmp.h
     include/xxfclib/formats/image/bmp/xx_bmp_make.h
     include/xxfclib/formats/firmware/cfe/xx_cfe.h
@@ -4702,6 +4705,12 @@ set(XXFCLIB_SOURCES
     src/formats/archive/uue/xx_uue.c
     src/formats/archive/uue/xx_uue_extractor.c
     src/formats/filesystem/vdi/xx_vdi.c
+    src/formats/filesystem/dfsee_imz/xx_dfsee_imz.c
+    src/formats/filesystem/dfsee_imz/xx_dfsee_imz_reader_adapters.c
+    src/formats/archive/dh/xx_dh.c
+    src/formats/archive/dh/xx_dh_reader_adapters.c
+    src/formats/archive/djcomp/xx_djcomp.c
+    src/formats/archive/djcomp/xx_djcomp_reader_adapters.c
     src/formats/filesystem/vdi/xx_vdi_extractor.c
     src/formats/image/bmp/xx_bmp.c
     src/formats/image/bmp/xx_bmp_make.c
@@ -7901,3 +7910,10 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_larc_pfx420_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_spis_lh5_key_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_squeeze1_crlf_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_swag_advisory_footer_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_zoom_labels_tests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dfsee_imz_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dh_tests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_diskdupe_im_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_djcomp_tests.cmake")

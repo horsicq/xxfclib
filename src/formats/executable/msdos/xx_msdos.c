@@ -28,6 +28,7 @@
 
 /* MS-DOS/MZ header signature */
 #define XX_MSDOS_SIGNATURE 0x5A4D
+#define XX_MSDOS_REVERSED_SIGNATURE 0x4D5A
 #define XX_MSDOS_HEADER_MIN_SIZE 28U
 #define XX_MSDOS_HEADER_MAX_SIZE 64U
 
@@ -241,7 +242,7 @@ bool xx_msdos_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
 
     /* Check MZ signature at offset 0 */
     uint16_t signature = xx_io_get_u16(self->device, self->base_address, false);
-    return (signature == XX_MSDOS_SIGNATURE);
+    return signature == XX_MSDOS_SIGNATURE || signature == XX_MSDOS_REVERSED_SIGNATURE;
 }
 
 bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
@@ -285,7 +286,7 @@ bool xx_msdos_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
 
     /* Parse MS-DOS header fields (all little-endian) */
     msdos->signature = (uint16_t)(header[0] | (header[1] << 8));
-    if (msdos->signature != XX_MSDOS_SIGNATURE) {
+    if (msdos->signature != XX_MSDOS_SIGNATURE && msdos->signature != XX_MSDOS_REVERSED_SIGNATURE) {
         self->is_valid = false;
         return false;
     }

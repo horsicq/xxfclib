@@ -17,15 +17,14 @@ extern "C" {
 /**
  * @brief A Zoom container: a whole Amiga floppy, big-endian throughout.
  *
- * It holds ONE product - an .adf image of
- * (last_cylinder - first_cylinder + 1) * 0x2C00 bytes - so exactly one archive
- * record is published and the whole container is handed to the codec: the
- * chunk index is spread across the records themselves and no per-member extent
- * exists.
+ * Label-free containers publish one disk.adf record. Supported USEHEADER
+ * containers also publish disk.adf.labels, with 16 label bytes per sector.
+ * Both records refer to the whole compressed container. The ADF size and
+ * public structure layout retain their original meaning.
  */
 typedef struct xx_zoom {
     Abstractformat format;      /**< Must stay first: the reader casts to it. */
-    uint64_t number_of_records; /**< Always 1 for a valid container. */
+    uint64_t number_of_records; /**< One ADF, or ADF plus its label plane. */
     int64_t chunks_offset;      /**< First chunk record, past any note block. */
     int64_t uncompressed_size;  /**< Size of the .adf the codec would emit. */
     uint8_t first_cylinder;

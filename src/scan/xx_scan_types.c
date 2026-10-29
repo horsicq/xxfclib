@@ -281,11 +281,22 @@ static xx_list_t *xx_scan_detect_type_window(xx_io_device *device, const xx_scan
         if (head_size < 64U) return xx_scan_type_list(XX_FILE_TYPE_MSDOS, pd);
         uint32_t offset = xx_scan_u32le(head + 0x3c);
         uint8_t signature[26];
-        if (offset >= 64U && offset <= 1024U * 1024U && (size < 0 || (uint64_t)offset + sizeof(signature) <= (uint64_t)size) &&
+        if (offset <= 1024U * 1024U && (size < 0 || (uint64_t)offset + sizeof(signature) <= (uint64_t)size) &&
             xx_scan_read_at(device, offset, signature, sizeof(signature))) {
             if (!memcmp(signature, "PE\0\0", 4)) {
                 uint16_t magic = (uint16_t)signature[24] | ((uint16_t)signature[25] << 8U);
                 if (magic == 0x10bU || magic == 0x20bU) {
+                    /* Tiny executable packers overlap their DOS/NT headers.
+                     * Require complete bounded PE validation in that case;
+                     * a short MZ containing only a PE marker is insufficient. */
+                    if (offset < sizeof(head)) {
+                        xx_pe compact;
+                        bool valid;
+                        xx_pe_init(&compact, device, 0);
+                        valid = xx_pe_check_is_valid(&compact.format, pd);
+                        xx_pe_destroy(&compact);
+                        if (!valid) return xx_scan_type_list(XX_FILE_TYPE_MSDOS, pd);
+                    }
                     xx_dotnet managed;
                     bool valid_managed;
                     xx_dotnet_init(&managed, device, 0);

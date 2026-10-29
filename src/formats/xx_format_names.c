@@ -1337,6 +1337,9 @@ const char *xx_format_file_type_to_string(xx_file_type_t type)
         case XX_FILE_TYPE_FURY_DAT: return "Fury of the Furries DAT archive";
         case XX_FILE_TYPE_PE_RAWFILE: return "PE RAWFILE resource container";
         case XX_FILE_TYPE_PKLITE: return "PKLITE compressed DOS executable";
+        case XX_FILE_TYPE_DFSEE_IMZ: return "DFSee compressed sector image";
+        case XX_FILE_TYPE_DH: return "DH archive";
+        case XX_FILE_TYPE_DJCOMP: return "DJcomp compressed data";
         case XX_FILE_TYPE_STARFORCE_OVL: return "StarForce OVL resource archive";
         case XX_FILE_TYPE_SELF_UNSTUFFER: return "Aladdin DOS Self-UnStuffer archive";
         case XX_FILE_TYPE_SECURA: return "Secura SAC1 archive";

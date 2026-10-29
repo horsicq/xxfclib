@@ -17,8 +17,11 @@
 
 static const uint8_t k_anchor0[] = {0x4D, 0x53, 0x44, 0x20, 0x49, 0x6D, 0x61, 0x67, 0x65, 0x20, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6F, 0x6E, 0x20, 0x31, 0x20, 0x1A};
 
+static const uint8_t k_anchor_im[] = {'I','M',0,0,0,0,0,0,0,0};
+
 static const xx_format_search_anchor k_anchors[] = {
     {k_anchor0, sizeof(k_anchor0), 0U},
+    {k_anchor_im, sizeof(k_anchor_im), 0U},
 };
 
 static const xx_file_type_t k_types[] = {XX_FILE_TYPE_DISKDUPE};

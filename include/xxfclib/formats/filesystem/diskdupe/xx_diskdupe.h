@@ -6,7 +6,8 @@
 
 #include "xxfclib/formats/xx_format.h"
 
-/* DiskDupe DDI image.  A per-track block table; the member is the reassembled flat image. */
+/* DiskDupe MSD and bounded IM track maps; one flat image.img member.
+ * Omitted tracks use an F6 projection; see docs/DISKDUPE_IM.md. */
 typedef struct xx_diskdupe {
     Abstractformat format;
     uint64_t number_of_records;

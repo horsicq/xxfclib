@@ -417,3 +417,8 @@
 { XX_FILE_TYPE_ZISOFS, xx_zisofs_get_abstract_extractor, xx_zisofs_get_abstract_detector },
 { XX_FILE_TYPE_ZOOT1, xx_zoot1_get_abstract_extractor, xx_zoot1_get_abstract_detector },
 { XX_FILE_TYPE_ZXML, xx_zxml_get_abstract_extractor, xx_zxml_get_abstract_detector },
+
+{ XX_FILE_TYPE_DFSEE_IMZ, xx_dfsee_imz_get_abstract_extractor, xx_dfsee_imz_get_abstract_detector },
+
+{ XX_FILE_TYPE_DH, xx_dh_get_abstract_extractor, xx_dh_get_abstract_detector },
+{ XX_FILE_TYPE_DJCOMP, xx_djcomp_get_abstract_extractor, xx_djcomp_get_abstract_detector },

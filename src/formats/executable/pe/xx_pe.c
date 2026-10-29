@@ -205,7 +205,8 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     relative_size = total - format->base_address;
     if (relative_size < XX_PE_DOS_HEADER_SIZE || xx_io_get_u16(format->device, format->base_address, false) != UINT16_C(0x5a4d)) return false;
     parsed->pe_offset = xx_io_get_u32(format->device, format->base_address + 0x3c, false);
-    if (parsed->pe_offset < XX_PE_DOS_HEADER_SIZE || format->base_address > INT64_MAX - (int64_t)parsed->pe_offset ||
+    /* Tiny packed PEs can overlap their DOS and NT headers. */
+    if (format->base_address > INT64_MAX - (int64_t)parsed->pe_offset ||
         (nt_offset = format->base_address + (int64_t)parsed->pe_offset) < 0 || nt_offset > total || total - nt_offset < 24 ||
         xx_io_get_u32(format->device, nt_offset, false) != XX_PE_SIGNATURE)
         return false;
@@ -311,8 +312,9 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     if (!format->is_mapped && parsed->directory_count > XX_PE_DIRECTORY_SECURITY && parsed->directory_rva[XX_PE_DIRECTORY_SECURITY] &&
         parsed->directory_size[XX_PE_DIRECTORY_SECURITY]) {
         uint64_t certificate_end = (uint64_t)parsed->directory_rva[XX_PE_DIRECTORY_SECURITY] + parsed->directory_size[XX_PE_DIRECTORY_SECURITY];
-        if (certificate_end > (uint64_t)relative_size) goto done;
-        if (certificate_end > (uint64_t)image_end) image_end = (int64_t)certificate_end;
+        /* Invalid optional certificate metadata is not part of the loadable
+         * image. Packers can reuse these directory bytes for other data. */
+        if (certificate_end <= (uint64_t)relative_size && certificate_end > (uint64_t)image_end) image_end = (int64_t)certificate_end;
     }
     if (format->is_mapped && parsed->image_size) {
         image_end = parsed->image_size < (uint64_t)relative_size ? (int64_t)parsed->image_size : relative_size;

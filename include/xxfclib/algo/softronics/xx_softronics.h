@@ -24,6 +24,19 @@ XXFC_API bool xx_softronics_lzw_decompress_memory(const uint8_t *input, size_t i
 /** Same dialect, but END must occupy the final byte (only bit padding allowed). */
 XXFC_API bool xx_softronics_lzw_decompress_memory_exact(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size);
 
+/** Return true to continue. Bounded passes poll before/after parsing and at
+ * most every 256 charged code, prefix, output/count or tail operations. */
+typedef bool (*xx_softronics_poll_fn)(void *context);
+/** Measure with the exact dialect, without a full output buffer. The validated
+ * phrase stack still contains bounded scratch bytes. On failure measured_size
+ * is zero; reaching output_limit alone never succeeds without END/tail checks.
+ * Callers must also bound packed input and reserve codec workspace. */
+XXFC_API bool xx_softronics_lzw_measure_memory_exact_bounded(const uint8_t *input, size_t input_size, size_t output_limit,
+    uint64_t work_limit, xx_softronics_poll_fn poll, void *context, size_t *measured_size);
+/** Exact decoding with the same work/poll rules. work_limit must be nonzero. */
+XXFC_API bool xx_softronics_lzw_decompress_memory_exact_bounded(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size,
+    uint64_t work_limit, xx_softronics_poll_fn poll, void *context);
+
 #ifdef __cplusplus
 }
 #endif
