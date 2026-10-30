@@ -1,6 +1,9 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
- * Internal bounded on-disk schema helpers. Included by xx_format_datastructs.c only.
+ * Internal bounded on-disk schema helpers, shared by the engine
+ * (xx_format_datastructs.c) and every schema family unit and per-format data
+ * file. All of them are compiled as one translation unit: the engine includes
+ * them through xx_format_schema_units.inc, so the helpers below stay static.
  */
 #ifndef XX_FORMAT_SCHEMA_INTERNAL_H
 #define XX_FORMAT_SCHEMA_INTERNAL_H
@@ -45,6 +48,26 @@ typedef struct sx_context {
     size_t count, capacity;
     bool failed;
 } sx_context;
+/* One schema family: the formats it describes, how to walk them, the layouts
+ * it can name and the record comments it adds. Each family unit defines one
+ * as sx_<family>_family; xx_format_schema_families.inc lists them in order. */
+typedef struct sx_family {
+    bool (*supports)(xx_file_type_t type);
+    bool (*build)(sx_context *ctx);
+    const sx_layout *const *layouts;
+    size_t layout_count;
+    bool (*comment)(xx_data_struct_record *record, uint32_t id);
+} sx_family;
+/* Focused emulator and DIE engine profiles omit the reader factory and the
+ * canonical readers, so alias formats keep only their standalone schemas
+ * instead of pulling in the full registry link closure. */
+#ifndef SX_ALIAS_READER_FACTORY
+#if defined(XXFC_PROFILE_APK_EMUL) || defined(XXFC_PROFILE_DOTNET_EMUL) || defined(XXFC_PROFILE_DIE_ENGINE)
+#define SX_ALIAS_READER_FACTORY 0
+#else
+#define SX_ALIAS_READER_FACTORY 1
+#endif
+#endif
 /* Offsets passed below are relative to f->base_address. The emitted descriptor
  * has an absolute device offset, matching the public data-structure contract.
  * Reads and additions check cancellation, arithmetic and the device bounds.

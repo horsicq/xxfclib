@@ -5584,6 +5584,9 @@ if(XXFC_BUILD_DIE_ENGINE)
     xxfclib_select_stream_sources(XXFC_DIE_ENGINE_SOURCES)
     add_library(die_engine STATIC ${XXFC_DIE_ENGINE_SOURCES})
     xxfclib_configure_target(die_engine FALSE)
+    # The schema's alias formats need the reader factory, which is outside
+    # this closure; under the DIE engine profile they keep standalone layouts.
+    target_compile_definitions(die_engine PRIVATE XXFC_PROFILE_DIE_ENGINE=1)
     if(XXFC_DIE_ENGINE_TAR_ONLY_WRITING)
         target_compile_definitions(die_engine PRIVATE XXFC_ARCHIVE_WRITE_TAR_ONLY=1)
     endif()

@@ -18,6 +18,10 @@ list(FILTER XXFORMATS_SOURCES EXCLUDE REGEX
 # is needed for formats-only consumers or non-x86 builds.
 # DIE music readers require the separate signature engine and its runtime.
 list(FILTER XXFORMATS_SOURCES EXCLUDE REGEX "/src/formats/audio/die_music/")
+# xx_format_datastructs.c compiles every schema family unit and per-format
+# data file itself, so the glob must not compile them a second time.
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/xxfclib_schema_sources.cmake")
+list(REMOVE_ITEM XXFORMATS_SOURCES ${XXFC_SCHEMA_FAMILY_SOURCES})
 list(APPEND XXFORMATS_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/extractor/xx_extractor.c
     ${XXFC_CODEPAGE_SOURCES}

@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_GZ_INTERNAL_H
 #define XXFCLIB_GZ_INTERNAL_H
 
-/* Reader state shared by xx_gz.c and xx_gz_data.c. */
+/* Reader state shared by xx_gz.c and xx_gz_datastructs.c. */
 
 #include <stdint.h>
 

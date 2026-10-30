@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_XZ_INTERNAL_H
 #define XXFCLIB_XZ_INTERNAL_H
 
-/* Reader state and helpers shared by xx_xz.c and xx_xz_data.c. */
+/* Reader state and helpers shared by xx_xz.c and xx_xz_datastructs.c. */
 
 #include "xxfclib/data/xx_pd.h"
 

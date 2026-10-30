@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_TAR_XZ_INTERNAL_H
 #define XXFCLIB_TAR_XZ_INTERNAL_H
 
-/* Reader helpers shared by xx_tar_xz.c and xx_tar_xz_data.c. */
+/* Reader helpers shared by xx_tar_xz.c and xx_tar_xz_datastructs.c. */
 
 #include "xxfclib/formats/archive/tar_xz/xx_tar_xz.h"
 

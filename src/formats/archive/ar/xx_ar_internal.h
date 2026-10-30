@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_AR_INTERNAL_H
 #define XXFCLIB_AR_INTERNAL_H
 
-/* Reader state and helpers shared by xx_ar.c and xx_ar_data.c. */
+/* Reader state and helpers shared by xx_ar.c and xx_ar_datastructs.c. */
 
 #include "xxfclib/formats/xx_format.h"
 

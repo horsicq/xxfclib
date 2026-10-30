@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "xxfclib/formats/xx_format_streams.h"
+#include "xx_tar_data.h"
 #include "xx_tar_datastructs_internal.h"
 
 typedef struct xx_tar_ds_stream_s {

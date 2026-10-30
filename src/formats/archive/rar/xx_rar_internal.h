@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_RAR_INTERNAL_H
 #define XXFCLIB_RAR_INTERNAL_H
 
-/* Reader state shared by xx_rar.c and xx_rar_data.c. */
+/* Reader state shared by xx_rar.c and xx_rar_datastructs.c. */
 
 #include "xxfclib/formats/archive/rar/xx_rar.h"
 

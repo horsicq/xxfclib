@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_7ZIP_INTERNAL_H
 #define XXFCLIB_7ZIP_INTERNAL_H
 
-/* Reader state shared by xx_7zip.c and xx_7zip_data.c. */
+/* Reader state shared by xx_7zip.c and xx_7zip_datastructs.c. */
 
 #include "xxfclib/formats/archive/7zip/xx_7zip.h"
 

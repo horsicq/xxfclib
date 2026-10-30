@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_ZIP_INTERNAL_H
 #define XXFCLIB_ZIP_INTERNAL_H
 
-/* Reader helpers shared by xx_zip.c and xx_zip_data.c. */
+/* Reader helpers shared by xx_zip.c and xx_zip_datastructs.c. */
 
 #include "xxfclib/formats/archive/zip/xx_zip.h"
 

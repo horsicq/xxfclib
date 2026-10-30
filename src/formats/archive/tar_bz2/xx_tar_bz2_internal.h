@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_TAR_BZ2_INTERNAL_H
 #define XXFCLIB_TAR_BZ2_INTERNAL_H
 
-/* Reader helpers shared by xx_tar_bz2.c and xx_tar_bz2_data.c. */
+/* Reader helpers shared by xx_tar_bz2.c and xx_tar_bz2_datastructs.c. */
 
 #include "xxfclib/formats/archive/tar_bz2/xx_tar_bz2.h"
 

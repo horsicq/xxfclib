@@ -1,7 +1,8 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  */
-#include "xx_tar_common.h"
+#include "xx_tar_common_data.h"
+#include "../tar/xx_tar_data.h"
 
 const char *xx_tar_common_data_struct_id_to_string(xx_tar_common *common, uint32_t id)
 {

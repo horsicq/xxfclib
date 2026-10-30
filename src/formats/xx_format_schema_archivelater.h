@@ -87,6 +87,11 @@ extern const sx_layout sxal_dos_backup2_directory;
 extern const sx_layout sxal_dos_backup2_file;
 extern const sx_layout sxal_esp_header;
 extern const sx_layout sxal_lpak_header;
+extern const sx_layout sxal_uharc_header;
+extern const sx_layout sxal_is_stored_signature;
+extern const sx_layout sxal_is_stored_marker;
+extern const sx_layout sxal_tarx2_signature;
+extern const sx_layout sxal_tarx2_marker;
 bool sxal_span(sx_context *c,uint64_t p,uint64_t n);
 bool sxal_read(sx_context *c,uint64_t p,void *b,size_t n);
 uint64_t sxal_uint(const uint8_t *b,unsigned n,bool be);
@@ -111,5 +116,8 @@ bool sx_ms_dos_backup_build(sx_context *c);  /* archive/ms_dos_backup/xx_ms_dos_
 bool sx_ms_dos_backup2_build(sx_context *c);  /* archive/ms_dos_backup2/xx_ms_dos_backup2_data.c */
 bool sx_esp_archive_build(sx_context *c);  /* archive/esp_archive/xx_esp_archive_data.c */
 bool sx_lpak_build(sx_context *c);  /* archive/lpak/xx_lpak_data.c */
+bool sx_uharc_build(sx_context *c);  /* archive/uharc/xx_uharc_data.c */
+bool sx_is_stored_build(sx_context *c);  /* archive/is_stored/xx_is_stored_data.c */
+bool sx_tarx2_build(sx_context *c);  /* archive/tarx2/xx_tarx2_data.c */
 
 #endif

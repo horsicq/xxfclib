@@ -303,13 +303,21 @@ static xx_data_struct_record_state *sc_records(Abstractformat *f,const xx_data_s
     s=xx_mem_alloc(sizeof(*s));if(!s){sc_record_free(c);return NULL;}xx_data_struct_record_state_init(s,f,d);s->internal_state=c;s->free_internal=sc_record_free;
     if(!sc_record_load(s)){xx_data_struct_record_state_free(s);return NULL;}return s;
 }
-bool sx_nativecarriers_attach(Abstractformat *f)
+static const StreamDataStructs *sx_nativecarriers_get_stream_datastructs(Abstractformat *f)
 {
-    if(!f||!sx_nativecarriers_supports(f->file_type))return false;
-    f->data_struct_id_to_string=sc_id_name;f->data_struct_string_to_id=sc_name_id;f->create_data_structs_reading=sc_structs;f->data_struct_move_to_next=sc_struct_next;f->create_data_struct_records_reading=sc_records;f->data_struct_record_move_to_next=sc_record_next;return true;
+    if(!f||!sx_nativecarriers_supports(f->file_type))return NULL;
+    static const StreamDataStructs stream = {
+        .data_struct_id_to_string = sc_id_name,
+        .data_struct_string_to_id = sc_name_id,
+        .create_data_structs_reading = sc_structs,
+        .data_struct_move_to_next = sc_struct_next,
+        .create_data_struct_records_reading = sc_records,
+        .data_struct_record_move_to_next = sc_record_next
+    };
+    return &stream;
 }
 #undef SC_ID_BASE
 #undef SC_MAX_ITEMS
 #else
-bool sx_nativecarriers_attach(Abstractformat *f){(void)f;return false;}
+static const StreamDataStructs *sx_nativecarriers_get_stream_datastructs(Abstractformat *f){(void)f;return NULL;}
 #endif

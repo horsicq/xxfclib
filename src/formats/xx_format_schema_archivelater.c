@@ -85,10 +85,31 @@ static const sx_layout *const sx_archivelater_layouts[] = {
  &sxal_dos_backup2_file,
  &sxal_esp_header,
  &sxal_lpak_header,
+ &sxal_uharc_header,
+ &sxal_is_stored_signature,
+ &sxal_is_stored_marker,
+ &sxal_tarx2_signature,
+ &sxal_tarx2_marker,
 };
 static bool sx_archivelater_comment(xx_data_struct_record *r,uint32_t id){
  if(!r||!r->name||id<0x60200000U||id>=0x60210000U)return true;
  const wchar_t *text=NULL;switch(id){
+ case 0x6020004eU:
+ if(!xx_rt_wcscmp(r->name,L"signature"))text=L"Three-byte UHA container signature; the entropy-coded archive stream begins at offset 4.";
+ if(!xx_rt_wcscmp(r->name,L"version"))text=L"Stored UHARC version byte: high nibble is major and low nibble is minor (for example, 0x04 is version 0.4).";
+ break;
+ case 0x6020004fU:
+ if(!xx_rt_wcscmp(r->name,L"signature"))text=L"Four-byte fixed marker in the XOR-A9 stored wrapper, verified by the native reader at offsets 0 and 6.";
+ break;
+ case 0x60200050U:
+ if(!xx_rt_wcscmp(r->name,L"marker"))text=L"Three-byte fixed marker verified by the native reader at offset 12. Bytes 4-5, 10-11 and 15 are left raw.";
+ break;
+ case 0x60200051U:
+ if(!xx_rt_wcscmp(r->name,L"signature"))text=L"Four-byte TARX2 clear-header signature at offset 0, checked by the native transport decoder.";
+ break;
+ case 0x60200052U:
+ if(!xx_rt_wcscmp(r->name,L"marker"))text=L"Four-byte TARX2 clear-header marker at offset 8, checked by the native transport decoder.";
+ break;
  case 0x60200002U:
  if(!xx_rt_wcscmp(r->name,L"modified"))text=L"Packed DOS date/time, not a Unix timestamp.";
  break;
@@ -224,6 +245,6 @@ uint32_t sxal32(const uint8_t *b,bool be){return (uint32_t)sxal_uint(b,4,be);}
 bool sxal_add(sx_context *c,const sx_layout *l,uint64_t p){const xx_data_struct_field_desc *f=&l->fields[l->field_count-1];return c->count<SXAL_LIMIT&&p<=INT64_MAX&&sx_add(c,l,(int64_t)p,f->rel_offset+f->size);}
 static int sxal_order(const void *a,const void *b){const xx_data_struct *x=a,*y=b;return x->offset<y->offset?-1:x->offset>y->offset?1:0;}
 static bool sxal_finish(sx_context *c){size_t n=c->count;int64_t end=0;xx_rt_qsort(c->items,n,sizeof(*c->items),sxal_order);for(size_t i=0;i<n;i++){int64_t p=c->items[i].offset-c->f->base_address;if(p<end)return false;if(p>end&&!sx_raw(c,end,p-end))return false;end=p+c->items[i].total_size;}if(end<c->size&&!sx_raw(c,end,c->size-end))return false;xx_rt_qsort(c->items,c->count,sizeof(*c->items),sxal_order);return !c->failed;}
-static bool sx_archivelater_supports(xx_file_type_t type){switch(type){case XX_FILE_TYPE_ALDUS:case XX_FILE_TYPE_AMPK:case XX_FILE_TYPE_ARX:case XX_FILE_TYPE_PACKIT:case XX_FILE_TYPE_ASAR:case XX_FILE_TYPE_PEA:case XX_FILE_TYPE_STUFFIT5:case XX_FILE_TYPE_DISKDOUBLER:case XX_FILE_TYPE_XPK_COMPRESSED_FILE:case XX_FILE_TYPE_PPMD:case XX_FILE_TYPE_LRZIP:case XX_FILE_TYPE_RZIP:case XX_FILE_TYPE_MS_DOS_BACKUP:case XX_FILE_TYPE_MS_DOS_BACKUP2:case XX_FILE_TYPE_ESP_ARCHIVE:case XX_FILE_TYPE_LPAK:return true;default:return false;}}
-static bool sx_archivelater_build(sx_context *c){if(!c||(!c->f->base_info_handled&&!xx_format_handle_base_info(c->f,c->pd))||!c->f->is_valid)return false;bool ok=false;switch(c->f->file_type){case XX_FILE_TYPE_ALDUS:ok=sx_aldus_build(c);break;case XX_FILE_TYPE_AMPK:ok=sx_ampk_build(c);break;case XX_FILE_TYPE_ARX:ok=sx_arx_build(c);break;case XX_FILE_TYPE_PACKIT:ok=sx_packit_build(c);break;case XX_FILE_TYPE_ASAR:ok=sx_asar_build(c);break;case XX_FILE_TYPE_PEA:ok=sx_pea_build(c);break;case XX_FILE_TYPE_STUFFIT5:ok=sx_stuffit5_build(c);break;case XX_FILE_TYPE_DISKDOUBLER:ok=sx_diskdoubler_build(c);break;case XX_FILE_TYPE_XPK_COMPRESSED_FILE:ok=sx_xpk_compressed_file_build(c);break;case XX_FILE_TYPE_PPMD:ok=sx_ppmd_build(c);break;case XX_FILE_TYPE_LRZIP:ok=sx_lrzip_build(c);break;case XX_FILE_TYPE_RZIP:ok=sx_rzip_build(c);break;case XX_FILE_TYPE_MS_DOS_BACKUP:ok=sx_ms_dos_backup_build(c);break;case XX_FILE_TYPE_MS_DOS_BACKUP2:ok=sx_ms_dos_backup2_build(c);break;case XX_FILE_TYPE_ESP_ARCHIVE:ok=sx_esp_archive_build(c);break;case XX_FILE_TYPE_LPAK:ok=sx_lpak_build(c);break;default:break;}return ok&&sxal_finish(c);}
+static bool sx_archivelater_supports(xx_file_type_t type){switch(type){case XX_FILE_TYPE_ALDUS:case XX_FILE_TYPE_AMPK:case XX_FILE_TYPE_ARX:case XX_FILE_TYPE_PACKIT:case XX_FILE_TYPE_ASAR:case XX_FILE_TYPE_PEA:case XX_FILE_TYPE_STUFFIT5:case XX_FILE_TYPE_DISKDOUBLER:case XX_FILE_TYPE_XPK_COMPRESSED_FILE:case XX_FILE_TYPE_PPMD:case XX_FILE_TYPE_LRZIP:case XX_FILE_TYPE_RZIP:case XX_FILE_TYPE_MS_DOS_BACKUP:case XX_FILE_TYPE_MS_DOS_BACKUP2:case XX_FILE_TYPE_ESP_ARCHIVE:case XX_FILE_TYPE_LPAK:case XX_FILE_TYPE_UHARC:case XX_FILE_TYPE_IS_STORED:case XX_FILE_TYPE_TARX2:return true;default:return false;}}
+static bool sx_archivelater_build(sx_context *c){if(!c||(!c->f->base_info_handled&&!xx_format_handle_base_info(c->f,c->pd))||!c->f->is_valid)return false;bool ok=false;switch(c->f->file_type){case XX_FILE_TYPE_ALDUS:ok=sx_aldus_build(c);break;case XX_FILE_TYPE_AMPK:ok=sx_ampk_build(c);break;case XX_FILE_TYPE_ARX:ok=sx_arx_build(c);break;case XX_FILE_TYPE_PACKIT:ok=sx_packit_build(c);break;case XX_FILE_TYPE_ASAR:ok=sx_asar_build(c);break;case XX_FILE_TYPE_PEA:ok=sx_pea_build(c);break;case XX_FILE_TYPE_STUFFIT5:ok=sx_stuffit5_build(c);break;case XX_FILE_TYPE_DISKDOUBLER:ok=sx_diskdoubler_build(c);break;case XX_FILE_TYPE_XPK_COMPRESSED_FILE:ok=sx_xpk_compressed_file_build(c);break;case XX_FILE_TYPE_PPMD:ok=sx_ppmd_build(c);break;case XX_FILE_TYPE_LRZIP:ok=sx_lrzip_build(c);break;case XX_FILE_TYPE_RZIP:ok=sx_rzip_build(c);break;case XX_FILE_TYPE_MS_DOS_BACKUP:ok=sx_ms_dos_backup_build(c);break;case XX_FILE_TYPE_MS_DOS_BACKUP2:ok=sx_ms_dos_backup2_build(c);break;case XX_FILE_TYPE_ESP_ARCHIVE:ok=sx_esp_archive_build(c);break;case XX_FILE_TYPE_LPAK:ok=sx_lpak_build(c);break;case XX_FILE_TYPE_UHARC:ok=sx_uharc_build(c);break;case XX_FILE_TYPE_IS_STORED:ok=sx_is_stored_build(c);break;case XX_FILE_TYPE_TARX2:ok=sx_tarx2_build(c);break;default:break;}return ok&&sxal_finish(c);}
 const sx_family sx_archivelater_family={sx_archivelater_supports,sx_archivelater_build,sx_archivelater_layouts,SX_COUNT(sx_archivelater_layouts),sx_archivelater_comment};

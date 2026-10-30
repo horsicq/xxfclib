@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_TAR_ZSTD_INTERNAL_H
 #define XXFCLIB_TAR_ZSTD_INTERNAL_H
 
-/* Reader helpers shared by xx_tar_zstd.c and xx_tar_zstd_data.c. */
+/* Reader helpers shared by xx_tar_zstd.c and xx_tar_zstd_datastructs.c. */
 
 #include "xxfclib/formats/archive/tar_zstd/xx_tar_zstd.h"
 

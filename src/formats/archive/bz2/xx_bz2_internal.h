@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_BZ2_INTERNAL_H
 #define XXFCLIB_BZ2_INTERNAL_H
 
-/* Reader helpers shared by xx_bz2.c and xx_bz2_data.c. */
+/* Reader helpers shared by xx_bz2.c and xx_bz2_datastructs.c. */
 
 #include "xxfclib/io/xx_io.h"
 

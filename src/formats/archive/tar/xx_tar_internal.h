@@ -5,7 +5,7 @@
 #ifndef XXFCLIB_TAR_INTERNAL_H
 #define XXFCLIB_TAR_INTERNAL_H
 
-/* Reader state and helpers shared by xx_tar.c and xx_tar_data.c. */
+/* Reader state and helpers shared by xx_tar.c and xx_tar_datastructs.c. */
 
 #include "xxfclib/io/xx_io.h"
 

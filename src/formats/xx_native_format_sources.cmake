@@ -5,6 +5,10 @@ file(GLOB_RECURSE XXFCLIB_NATIVE_FORMAT_SOURCES CONFIGURE_DEPENDS
 list(FILTER XXFCLIB_NATIVE_FORMAT_SOURCES EXCLUDE REGEX
     "[/\\\\][^/\\\\]* \\(conflicted copy [^/\\\\]*\\)\\.[^/\\\\]+$")
 list(FILTER XXFCLIB_NATIVE_FORMAT_SOURCES EXCLUDE REGEX "/die_music/")
+# xx_format_datastructs.c compiles every schema family unit and per-format
+# data file itself, so the glob must not compile them a second time.
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/xxfclib_schema_sources.cmake")
+list(REMOVE_ITEM XXFCLIB_NATIVE_FORMAT_SOURCES ${XXFC_SCHEMA_FAMILY_SOURCES})
 list(APPEND XXFCLIB_SOURCES ${XXFCLIB_NATIVE_FORMAT_SOURCES}
     "${CMAKE_CURRENT_LIST_DIR}/installer/nsis/nsis_bzip2.c")
 # Normalize existing relative entries before removing duplicate source paths.
