@@ -227,10 +227,35 @@ static int64_t xx_scan_pdf_header_offset(xx_io_device *device, int64_t file_size
 #define XX_SCAN_ZIP_CFH 0x02014b50U
 #define XX_SCAN_ZIP_ECD 0x06054b50U
 
-typedef struct xx_scan_zip_range {
-    int64_t start;
-    int64_t end;
-} xx_scan_zip_range;
+/* A central directory larger than this is walked record by record. */
+#define XX_SCAN_ZIP_DIRECTORY_LIMIT ((int64_t)64 * 1024 * 1024)
+/* One scratch slot: a fixed header plus a 16-bit name or extra field. */
+#define XX_SCAN_ZIP_SLOT 65600U
+
+typedef struct xx_scan_zip_entry {
+    int64_t header, central, end;
+    uint32_t crc, compressed, uncompressed;
+    uint16_t flags, method, name_length;
+    uint8_t version[2];
+} xx_scan_zip_entry;
+
+/* One walked (directory offset, entry count). */
+typedef struct xx_scan_zip_walk {
+    int64_t directory, end;
+    uint32_t total;
+    bool valid;
+    uint8_t *trail;
+} xx_scan_zip_walk;
+
+typedef struct xx_scan_zip_context {
+    xx_io_device *device;
+    int64_t size, base, window;
+    const uint8_t *tail;
+    uint8_t *scratch;
+    xx_scan_zip_walk *walks;
+    size_t walk_count, walk_capacity;
+    xx_pd_struct *pd;
+} xx_scan_zip_context;
 
 static uint16_t xx_scan_u16le(const uint8_t *bytes)
 {
@@ -242,10 +267,22 @@ static uint64_t xx_scan_u64le(const uint8_t *bytes)
     return (uint64_t)xx_scan_u32le(bytes) | ((uint64_t)xx_scan_u32le(bytes + 4) << 32U);
 }
 
+/* Exact-size read. Scattered ZIP headers come from the whole-file cache when
+ * it holds the file, else straight from the cached device's source, so each
+ * costs its own bytes rather than a cache-window refill. */
 static bool xx_scan_zip_read(xx_io_device *device, int64_t size, int64_t offset, uint8_t *bytes, size_t length)
 {
+    const unsigned char *whole;
+    xx_io_device *source;
     if (offset < 0 || offset > size || (int64_t)length > size - offset) return false;
-    return !length || xx_scan_read_at(device, offset, bytes, length);
+    if (!length) return true;
+    whole = xx_io_buffer_whole(device, 0);
+    if (whole) {
+        xx_mem_copy(bytes, whole + offset, length);
+        return true;
+    }
+    source = xx_io_buffer_source(device);
+    return xx_scan_read_at(source ? source : device, offset, bytes, length);
 }
 
 /* decodeZipUtf8Strict: a name flagged UTF-8 must be well-formed UTF-8. */
@@ -283,55 +320,74 @@ static bool xx_scan_zip_utf8(const uint8_t *data, size_t size)
     return true;
 }
 
-static int xx_scan_zip_range_compare(const void *left, const void *right)
+static int xx_scan_zip_entry_compare(const void *left, const void *right)
 {
-    int64_t a = ((const xx_scan_zip_range *)left)->start, b = ((const xx_scan_zip_range *)right)->start;
+    int64_t a = ((const xx_scan_zip_entry *)left)->header, b = ((const xx_scan_zip_entry *)right)->header;
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/* One XZip::findECDOffset candidate. scratch holds 3 x 65536 bytes. */
-static bool xx_scan_zip_directory(xx_io_device *device, int64_t size, int64_t eocd, const uint8_t *ecd, uint8_t *scratch, xx_pd_struct *pd)
+/* The XZip::findECDOffset entry checks of one (directory offset, entry count),
+ * with records bounded by the largest end record that claims them. A later
+ * (smaller) end record passes exactly when *end_out <= it: every check but
+ * the bound is independent of the end record. scratch holds 3 slots. */
+static bool xx_scan_zip_walk_entries(xx_scan_zip_context *context, int64_t directory, uint32_t total, int64_t bound, int64_t *end_out)
 {
-    uint8_t *local_name = scratch, *central_name = scratch + 65536, *extra = scratch + 131072;
-    uint16_t total = xx_scan_u16le(ecd + 10);
-    uint32_t directory_size = xx_scan_u32le(ecd + 12), directory_offset = xx_scan_u32le(ecd + 16);
-    int64_t directory = (int64_t)directory_offset, current;
-    xx_scan_zip_range *ranges;
-    uint32_t count = 0, index;
-    bool valid = true;
-    if (xx_scan_u16le(ecd + 4) || xx_scan_u16le(ecd + 6) || xx_scan_u16le(ecd + 8) != total || total == 0xFFFFU || directory_size == 0xFFFFFFFFU ||
-        directory_offset == 0xFFFFFFFFU)
-        return false;
-    if (!total) return !directory_size && directory == eocd;
-    if (directory > eocd || (int64_t)directory_size != eocd - directory) return false;
-    ranges = (xx_scan_zip_range *)xx_mem_alloc((size_t)total * sizeof(*ranges));
-    if (!ranges) return false;
-    current = directory;
-    for (index = 0; index < total && valid; ++index) {
-        uint8_t central[46], local[30], descriptor[24];
-        uint16_t central_flags, method, name_length, local_flags, local_name_length, local_extra_length;
-        uint32_t crc, compressed, uncompressed, local_crc, local_compressed, local_uncompressed;
-        int64_t record_size, header, data, end;
+    xx_io_device *device = context->device;
+    int64_t size = context->size, current = directory;
+    uint8_t *scratch = context->scratch, *directory_bytes = NULL;
+    xx_scan_zip_entry *entries;
+    uint32_t index;
+    bool valid = false;
+    entries = (xx_scan_zip_entry *)xx_mem_alloc((size_t)total * sizeof(*entries));
+    if (!entries) return false;
+    /* The whole central directory in one read when it is of sane size. */
+    if (bound - directory <= XX_SCAN_ZIP_DIRECTORY_LIMIT) {
+        directory_bytes = (uint8_t *)xx_mem_alloc((size_t)(bound - directory) + 1U);
+        if (directory_bytes && !xx_scan_zip_read(device, size, directory, directory_bytes, (size_t)(bound - directory))) {
+            xx_mem_free(directory_bytes);
+            directory_bytes = NULL;
+        }
+    }
+    for (index = 0; index < total; ++index) {
+        xx_scan_zip_entry *entry = entries + index;
+        const uint8_t *central = scratch;
+        int64_t record_size;
+        if ((context->pd && context->pd->is_stop) || bound - current < 46) goto done;
+        if (directory_bytes) central = directory_bytes + (current - directory);
+        else if (!xx_scan_zip_read(device, size, current, scratch, 46)) goto done;
+        if (xx_scan_u32le(central) != XX_SCAN_ZIP_CFH) goto done;
+        entry->flags = xx_scan_u16le(central + 8);
+        entry->method = xx_scan_u16le(central + 10);
+        entry->crc = xx_scan_u32le(central + 16);
+        entry->compressed = xx_scan_u32le(central + 20);
+        entry->uncompressed = xx_scan_u32le(central + 24);
+        entry->name_length = xx_scan_u16le(central + 28);
+        entry->version[0] = central[6];
+        entry->version[1] = central[7];
+        record_size = 46 + (int64_t)entry->name_length + xx_scan_u16le(central + 30) + xx_scan_u16le(central + 32);
+        if (xx_scan_u16le(central + 34) > 1U || entry->compressed == 0xFFFFFFFFU || entry->uncompressed == 0xFFFFFFFFU ||
+            xx_scan_u32le(central + 42) == 0xFFFFFFFFU || (entry->method == 0U && !(entry->flags & 1U) && entry->compressed != entry->uncompressed) ||
+            record_size > bound - current)
+            goto done;
+        if (!directory_bytes && !xx_scan_zip_read(device, size, current + 46, scratch + 46, entry->name_length)) goto done;
+        if ((entry->flags & 0x0800U) && !xx_scan_zip_utf8(central + 46, entry->name_length)) goto done;
+        entry->header = (int64_t)xx_scan_u32le(central + 42);
+        entry->central = current;
+        if (directory - entry->header < 30) goto done;
+        current += record_size;
+    }
+    /* Local headers in file order, each read at its exact size. */
+    xx_rt_qsort(entries, total, sizeof(*entries), xx_scan_zip_entry_compare);
+    for (index = 0; index < total; ++index) {
+        const xx_scan_zip_entry *entry = entries + index;
+        uint8_t *local = scratch + XX_SCAN_ZIP_SLOT, *extra = scratch + 2 * XX_SCAN_ZIP_SLOT, descriptor[24];
+        const uint8_t *central_name = scratch;
+        uint16_t central_flags = entry->flags, method = entry->method, name_length = entry->name_length, local_flags, local_name_length, local_extra_length;
+        uint32_t crc = entry->crc, compressed = entry->compressed, uncompressed = entry->uncompressed, local_crc, local_compressed, local_uncompressed;
+        int64_t header = entry->header, data, end;
         bool local_zip64, flags_ok;
         size_t position;
-        valid = false;
-        if (pd && pd->is_stop) break;
-        if (eocd - current < 46 || !xx_scan_zip_read(device, size, current, central, 46) || xx_scan_u32le(central) != XX_SCAN_ZIP_CFH) break;
-        central_flags = xx_scan_u16le(central + 8);
-        method = xx_scan_u16le(central + 10);
-        crc = xx_scan_u32le(central + 16);
-        compressed = xx_scan_u32le(central + 20);
-        uncompressed = xx_scan_u32le(central + 24);
-        name_length = xx_scan_u16le(central + 28);
-        record_size = 46 + (int64_t)name_length + xx_scan_u16le(central + 30) + xx_scan_u16le(central + 32);
-        if (xx_scan_u16le(central + 34) > 1U || compressed == 0xFFFFFFFFU || uncompressed == 0xFFFFFFFFU || xx_scan_u32le(central + 42) == 0xFFFFFFFFU ||
-            (method == 0U && !(central_flags & 1U) && compressed != uncompressed) || record_size > eocd - current)
-            break;
-        if (!xx_scan_zip_read(device, size, current + 46, central_name, name_length) ||
-            ((central_flags & 0x0800U) && !xx_scan_zip_utf8(central_name, name_length)))
-            break;
-        header = (int64_t)xx_scan_u32le(central + 42);
-        if (directory - header < 30 || !xx_scan_zip_read(device, size, header, local, 30)) break;
+        if ((context->pd && context->pd->is_stop) || !xx_scan_zip_read(device, size, header, local, 30U + (size_t)name_length)) goto done;
         local_flags = xx_scan_u16le(local + 6);
         local_crc = xx_scan_u32le(local + 14);
         local_compressed = xx_scan_u32le(local + 18);
@@ -339,20 +395,20 @@ static bool xx_scan_zip_directory(xx_io_device *device, int64_t size, int64_t eo
         local_name_length = xx_scan_u16le(local + 26);
         local_extra_length = xx_scan_u16le(local + 28);
         data = header + 30 + (int64_t)local_name_length + local_extra_length;
-        if (!xx_scan_zip_read(device, size, header + 30, local_name, local_name_length)) break;
         flags_ok = local_flags == central_flags || (xx_scan_u16le(local + 8) == 8U && ((local_flags ^ central_flags) & 0x7FF9U) == 0U); /* ~0x8006 */
-        if (xx_scan_u32le(local) != XX_SCAN_ZIP_LFH || local[4] != central[6] || local[5] != central[7] || !flags_ok || xx_scan_u16le(local + 8) != method ||
-            local_name_length != name_length || data > directory || (int64_t)compressed > directory - data ||
+        if (xx_scan_u32le(local) != XX_SCAN_ZIP_LFH || local[4] != entry->version[0] || local[5] != entry->version[1] || !flags_ok ||
+            xx_scan_u16le(local + 8) != method || local_name_length != name_length || data > directory || (int64_t)compressed > directory - data ||
             (!(local_flags & 8U) && (local_crc != crc || local_compressed != compressed || local_uncompressed != uncompressed)))
-            break;
+            goto done;
+        if (directory_bytes) central_name = directory_bytes + (entry->central - directory) + 46;
+        else if (!xx_scan_zip_read(device, size, entry->central + 46, scratch, name_length)) goto done;
         /* Names agree byte for byte, except where both carry a codepage byte. */
         for (position = 0; position < name_length; ++position)
-            if (local_name[position] != central_name[position] && (local_name[position] < 0x80U || central_name[position] < 0x80U)) break;
-        if (position != name_length) break;
+            if (local[30 + position] != central_name[position] && (local[30 + position] < 0x80U || central_name[position] < 0x80U)) goto done;
         local_zip64 = local_compressed == 0xFFFFFFFFU || local_uncompressed == 0xFFFFFFFFU;
         if (local_zip64) {
             bool found = false, sizes_ok = true;
-            if (local[4] < 45U || !(local_flags & 8U) || !xx_scan_zip_read(device, size, data - local_extra_length, extra, local_extra_length)) break;
+            if (local[4] < 45U || !(local_flags & 8U) || !xx_scan_zip_read(device, size, data - local_extra_length, extra, local_extra_length)) goto done;
             position = 0;
             while (position < local_extra_length) {
                 uint16_t tag, length;
@@ -388,7 +444,7 @@ static bool xx_scan_zip_directory(xx_io_device *device, int64_t size, int64_t eo
                 }
                 position += length;
             }
-            if (!sizes_ok || !found) break;
+            if (!sizes_ok || !found) goto done;
         }
         end = data + (int64_t)compressed;
         if (local_flags & 8U) {
@@ -396,9 +452,9 @@ static bool xx_scan_zip_directory(xx_io_device *device, int64_t size, int64_t eo
             int64_t available = directory - end, length = local_zip64 ? 24 : 16, descriptor_size = 0;
             if ((local_crc && local_crc != crc) || (local_compressed && local_compressed != 0xFFFFFFFFU && local_compressed != compressed) ||
                 (local_uncompressed && local_uncompressed != 0xFFFFFFFFU && local_uncompressed != uncompressed))
-                break;
+                goto done;
             if (available < length) length = available < 0 ? 0 : available;
-            if (length >= 12 && !xx_scan_zip_read(device, size, end, descriptor, (size_t)length)) break;
+            if (length >= 12 && !xx_scan_zip_read(device, size, end, descriptor, (size_t)length)) goto done;
             if (local_zip64) {
                 if (length >= 24 && xx_scan_u32le(descriptor) == 0x08074b50U && xx_scan_u32le(descriptor + 4) == crc &&
                     xx_scan_u64le(descriptor + 8) == compressed && xx_scan_u64le(descriptor + 16) == uncompressed)
@@ -414,37 +470,85 @@ static bool xx_scan_zip_directory(xx_io_device *device, int64_t size, int64_t eo
                     xx_scan_u32le(descriptor + 8) == uncompressed)
                     descriptor_size = 12;
             }
-            if (!descriptor_size) break;
+            if (!descriptor_size) goto done;
             end += descriptor_size;
         }
-        ranges[count].start = header;
-        ranges[count].end = end;
-        ++count;
-        current += record_size;
-        valid = true;
-    }
-    if (valid) {
         /* Each member owns its own bytes: shared or overlapping data is no ZIP
          * (this also rejects two entries naming the same local header). */
-        xx_rt_qsort(ranges, count, sizeof(*ranges), xx_scan_zip_range_compare);
-        for (index = 0; index < count && valid; ++index)
-            if (ranges[index].end <= ranges[index].start || ranges[index].end > directory || (index && ranges[index].start < ranges[index - 1].end)) valid = false;
+        if (end <= header || end > directory || (index && header < entries[index - 1].end)) goto done;
+        entries[index].end = end;
     }
-    xx_mem_free(ranges);
-    /* Only a digital signature or an archive extra data record may follow. */
-    while (valid && current < eocd) {
+    *end_out = current;
+    valid = true;
+done:
+    xx_mem_free(directory_bytes);
+    xx_mem_free(entries);
+    return valid;
+}
+
+/* Where "only a digital signature or an archive extra data record may follow"
+ * the directory can end: one bit per tail-window offset, walked once from
+ * current up to limit (the largest end record that asks). */
+static uint8_t *xx_scan_zip_trail(xx_scan_zip_context *context, int64_t current, int64_t limit)
+{
+    uint8_t *trail = (uint8_t *)xx_mem_calloc((size_t)(context->window / 8) + 1U, 1U);
+    if (!trail) return NULL;
+    for (;;) {
         uint8_t optional[8];
         int64_t record_size;
         uint32_t signature;
-        if (eocd - current < 6 || !xx_scan_zip_read(device, size, current, optional, eocd - current < 8 ? (size_t)(eocd - current) : 8U)) return false;
+        size_t length;
+        if (current >= context->base) trail[(size_t)((current - context->base) >> 3)] |= (uint8_t)(1U << ((current - context->base) & 7));
+        if (current >= limit || limit - current < 6 || (context->pd && context->pd->is_stop)) break;
+        length = limit - current < 8 ? (size_t)(limit - current) : 8U;
+        if (current >= context->base) xx_mem_copy(optional, context->tail + (current - context->base), length);
+        else if (!xx_scan_zip_read(context->device, context->size, current, optional, length)) break;
         signature = xx_scan_u32le(optional);
         if (signature == 0x05054b50U) record_size = 6 + (int64_t)xx_scan_u16le(optional + 4);
-        else if (signature == 0x08064b50U && eocd - current >= 8) record_size = 8 + (int64_t)xx_scan_u32le(optional + 4);
-        else return false;
-        if (record_size > eocd - current) return false;
+        else if (signature == 0x08064b50U && limit - current >= 8) record_size = 8 + (int64_t)xx_scan_u32le(optional + 4);
+        else break;
+        if (record_size > limit - current) break;
         current += record_size;
     }
-    return valid && current == eocd;
+    return trail;
+}
+
+/* One XZip::findECDOffset candidate. The entry walk is shared by every
+ * candidate naming the same (directory offset, entry count). */
+static bool xx_scan_zip_directory(xx_scan_zip_context *context, int64_t eocd, const uint8_t *ecd)
+{
+    uint16_t total = xx_scan_u16le(ecd + 10);
+    uint32_t directory_size = xx_scan_u32le(ecd + 12), directory_offset = xx_scan_u32le(ecd + 16);
+    int64_t directory = (int64_t)directory_offset, offset;
+    xx_scan_zip_walk *walk = NULL;
+    size_t index;
+    if (xx_scan_u16le(ecd + 4) || xx_scan_u16le(ecd + 6) || xx_scan_u16le(ecd + 8) != total || total == 0xFFFFU || directory_size == 0xFFFFFFFFU ||
+        directory_offset == 0xFFFFFFFFU)
+        return false;
+    if (!total) return !directory_size && directory == eocd;
+    if (directory > eocd || (int64_t)directory_size != eocd - directory) return false;
+    for (index = 0; index < context->walk_count && !walk; ++index)
+        if (context->walks[index].directory == directory && context->walks[index].total == total) walk = context->walks + index;
+    if (!walk) {
+        if (context->walk_count == context->walk_capacity) {
+            size_t capacity = context->walk_capacity ? context->walk_capacity * 2U : 8U;
+            xx_scan_zip_walk *walks = (xx_scan_zip_walk *)xx_mem_realloc(context->walks, capacity * sizeof(*walks));
+            if (!walks) return false;
+            context->walks = walks;
+            context->walk_capacity = capacity;
+        }
+        walk = context->walks + context->walk_count++;
+        walk->directory = directory;
+        walk->total = total;
+        walk->end = 0;
+        walk->trail = NULL;
+        walk->valid = xx_scan_zip_walk_entries(context, directory, total, eocd, &walk->end);
+    }
+    if (!walk->valid || walk->end > eocd) return false;
+    if (walk->end == eocd) return true;
+    if (!walk->trail && !(walk->trail = xx_scan_zip_trail(context, walk->end, eocd))) return false;
+    offset = eocd - context->base;
+    return offset >= 0 && ((walk->trail[(size_t)(offset >> 3)] >> (offset & 7)) & 1U) != 0U;
 }
 
 /* XZip::_getNumberOfLocalFileHeaders: complete local records from offset 0,
@@ -500,6 +604,15 @@ static bool xx_scan_is_zip(xx_io_device *device, int64_t size, const uint8_t *he
     if (size >= 22) {
         int64_t window = size < 0xFFFF + 22 ? size : 0xFFFF + 22, base = size - window, position;
         uint8_t *tail = (uint8_t *)xx_mem_alloc((size_t)window);
+        xx_scan_zip_context context;
+        size_t index;
+        xx_mem_zero(&context, sizeof(context));
+        context.device = device;
+        context.size = size;
+        context.base = base;
+        context.window = window;
+        context.tail = tail;
+        context.pd = pd;
         if (tail && xx_scan_read_at(device, base, tail, (size_t)window)) {
             /* The last candidate first, as XZip tries them. */
             for (position = window - 4; position >= 0 && !found; --position) {
@@ -507,13 +620,16 @@ static bool xx_scan_is_zip(xx_io_device *device, int64_t size, const uint8_t *he
                 if (xx_scan_u32le(tail + position) != XX_SCAN_ZIP_ECD || size - current < 22 ||
                     (int64_t)xx_scan_u16le(tail + position + 20) > size - current - 22)
                     continue;
-                if (!scratch && !(scratch = (uint8_t *)xx_mem_alloc(3U * 65536U))) break;
-                found = xx_scan_zip_directory(device, size, current, tail + position, scratch, pd);
+                if (!scratch && !(scratch = (uint8_t *)xx_mem_alloc(3U * XX_SCAN_ZIP_SLOT))) break;
+                context.scratch = scratch;
+                found = xx_scan_zip_directory(&context, current, tail + position);
             }
         }
+        for (index = 0; index < context.walk_count; ++index) xx_mem_free(context.walks[index].trail);
+        xx_mem_free(context.walks);
         xx_mem_free(tail);
     }
-    if (!found && head_size >= 4U && xx_scan_u32le(head) == XX_SCAN_ZIP_LFH && (scratch || (scratch = (uint8_t *)xx_mem_alloc(3U * 65536U)))) {
+    if (!found && head_size >= 4U && xx_scan_u32le(head) == XX_SCAN_ZIP_LFH && (scratch || (scratch = (uint8_t *)xx_mem_alloc(3U * XX_SCAN_ZIP_SLOT)))) {
         stream_end = xx_scan_zip_local_stream(device, size, scratch, &records, pd);
         found = records && stream_end > 0 && !xx_scan_zip_has_end_signature(device, size, stream_end);
     }

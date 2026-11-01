@@ -10,6 +10,10 @@
 #include "xxfclib/formats/executable/machofat/xx_machofat.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
+#include "xxfclib/algo/bzip2/xx_bzip2.h"
+#include "xxfclib/algo/shrink/xx_shrink.h"
+#include "xxfclib/algo/reduce/xx_reduce.h"
+#include "xxfclib/algo/implode/xx_implode.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/rt/xx_rt.h"
@@ -23,6 +27,10 @@
 /* The head xx_scan_archive_is_scanable_header needs: a PDF marker may start
  * anywhere in the first 1024 bytes, and a TAR header is a 512-byte block. */
 #define XX_SCAN_ARCHIVE_HEAD_SIZE 1029U
+/* XFormats types an ISO 9660 image by its volume descriptor at 0x8001
+ * ("CD001", version 1), beyond the head. */
+#define XX_SCAN_ARCHIVE_ISO_OFFSET 0x8001U
+#define XX_SCAN_ARCHIVE_ISO_END 0x8007U
 
 /* XScanEngine's messages for a member it unpacks but never scans. */
 static const char xx_scan_archive_invalid_crc[] = "Invalid CRC";
@@ -47,9 +55,15 @@ typedef struct xx_scan_archive_sink {
     bool filtered;        /* Its head is never scannable: decoded for the checksum only. */
     bool head_decided;
     bool track_crc; /* Keep the CRC-32 of every decoded byte in crc. */
+    bool allow_excess; /* Decode on past expected_size, counting only, for the CRC. */
+    bool excess;       /* More output than expected_size: never scanned. */
+    bool no_temporary; /* No temporary file could be made: kept in memory instead. */
+    bool iso_pending;  /* Kept until "CD001" at 0x8001 decides it. */
+    uint8_t iso[6];
     uint32_t crc;
     size_t head_size;
     const char *name;
+    const char *method; /* Static label handed to the published member. */
     xx_pd_struct *pd;
     uint8_t head[XX_SCAN_ARCHIVE_HEAD_SIZE];
 } xx_scan_archive_sink;
@@ -90,7 +104,13 @@ static bool xx_scan_archive_temp_write(xx_scan_archive_sink *sink, xx_io_device 
 static bool xx_scan_archive_spill(xx_scan_archive_sink *sink)
 {
     xx_io_device *temporary = xx_io_temp_open();
-    if (!temporary) return xx_scan_archive_sink_error(sink, XXFC_ERR_IO, "Cannot create temporary archive member");
+    if (!temporary) {
+        /* No usable temporary folder: XScanEngine still scans the member,
+         * so it stays in memory (within the member limit). */
+        sink->no_temporary = true;
+        sink->memory_threshold = UINT64_MAX;
+        return true;
+    }
     if (!xx_scan_archive_temp_write(sink, temporary, sink->data, (size_t)sink->stored)) {
         xx_io_close(temporary);
         return false;
@@ -194,6 +214,10 @@ static bool xx_scan_archive_is_scanable_header(const uint8_t *data, size_t size,
     if (size >= 7 && data[2] == '-' && data[3] == 'l' && (data[4] == 'h' || data[4] == 'z') && data[6] == '-') {
         return true;
     }
+    /* compress (a .tar.Z is FT_ARCHIVE), RIB and SPIS/TCompress */
+    if (data[0] == 0x1f && data[1] == 0x9d) return true;
+    if (size >= 8 && !memcmp(data, "RIB\0", 4)) return true;
+    if (size >= 21 && !memcmp(data, "SPIS\x1A", 5)) return true;
     /* Name-based fallbacks for formats where magic is not at offset 0 */
     if (name) {
         if (xx_scan_archive_has_suffix_ci(name, ".tar") ||
@@ -204,6 +228,17 @@ static bool xx_scan_archive_is_scanable_header(const uint8_t *data, size_t size,
         }
     }
     return false;
+}
+
+/* xx_scan_archive_is_scanable_header for a stored member read in place,
+ * including the ISO 9660 descriptor at 0x8001. */
+static bool xx_scan_archive_is_scanable_at(xx_io_device *device, int64_t offset, uint64_t size, const char *name)
+{
+    uint8_t head[XX_SCAN_ARCHIVE_HEAD_SIZE];
+    size_t head_size = size < XX_SCAN_ARCHIVE_HEAD_SIZE ? (size_t)size : XX_SCAN_ARCHIVE_HEAD_SIZE;
+    if (!xx_io_read_at(device, offset, head, head_size)) return false;
+    if (xx_scan_archive_is_scanable_header(head, head_size, name)) return true;
+    return size >= XX_SCAN_ARCHIVE_ISO_END && xx_io_read_at(device, offset + XX_SCAN_ARCHIVE_ISO_OFFSET, head, 6) && !memcmp(head, "CD001\x01", 6);
 }
 
 /* Keep size more decoded bytes. Small members stay in memory; a member that
@@ -246,10 +281,17 @@ static bool xx_scan_archive_store(xx_scan_archive_sink *sink, const void *data, 
 static bool xx_scan_archive_decide(xx_scan_archive_sink *sink)
 {
     sink->head_decided = true;
+    if (sink->discard) return true;
     if (!xx_scan_archive_is_scanable_header(sink->head, sink->head_size, sink->name)) {
-        sink->filtered = true;
-        sink->discard = true;
-        return true;
+        if (sink->head_size == XX_SCAN_ARCHIVE_HEAD_SIZE &&
+            (sink->expected_size == UINT64_MAX || sink->expected_size >= XX_SCAN_ARCHIVE_ISO_END)) {
+            /* Possibly ISO 9660: kept until the bytes at 0x8001 decide. */
+            sink->iso_pending = true;
+        } else {
+            sink->filtered = true;
+            sink->discard = true;
+            return true;
+        }
     }
     if (sink->expected_size != UINT64_MAX && sink->expected_size >= sink->memory_threshold && !sink->temporary &&
         !xx_scan_archive_spill(sink))
@@ -280,6 +322,14 @@ static ssize_t xx_scan_archive_write(xx_io_device *device, const void *data, siz
     }
     if (!size) return 0;
     if (sink->track_crc) sink->crc = xx_crc32_calc(sink->crc, bytes, size);
+    if (sink->allow_excess && !sink->excess && sink->expected_size != UINT64_MAX && (uint64_t)size > sink->expected_size - sink->size) {
+        /* More output than declared: XDecompress decodes on to the end of
+         * the stream and checks the CRC; such a member is never scanned. */
+        sink->excess = true;
+        sink->discard = true;
+        sink->head_decided = true;
+        sink->iso_pending = false;
+    }
     if (!sink->head_decided) {
         held = XX_SCAN_ARCHIVE_HEAD_SIZE - sink->head_size;
         if (held > size) held = size;
@@ -288,6 +338,19 @@ static ssize_t xx_scan_archive_write(xx_io_device *device, const void *data, siz
         if (sink->head_size == XX_SCAN_ARCHIVE_HEAD_SIZE && !xx_scan_archive_decide(sink)) return -1;
     }
     if (held < size && !sink->discard && !xx_scan_archive_store(sink, bytes + held, size - held)) return -1;
+    if (sink->iso_pending) {
+        uint64_t position;
+        for (position = XX_SCAN_ARCHIVE_ISO_OFFSET; position < XX_SCAN_ARCHIVE_ISO_END; ++position)
+            if (position >= sink->size && position - sink->size < (uint64_t)size)
+                sink->iso[position - XX_SCAN_ARCHIVE_ISO_OFFSET] = bytes[position - sink->size];
+        if (sink->size + (uint64_t)size >= XX_SCAN_ARCHIVE_ISO_END) {
+            sink->iso_pending = false;
+            if (memcmp(sink->iso, "CD001\x01", 6) != 0) {
+                sink->filtered = true;
+                sink->discard = true;
+            }
+        }
+    }
     sink->size += (uint64_t)size;
     return (ssize_t)size;
 }
@@ -326,7 +389,14 @@ static bool xx_scan_archive_sink_init(xx_scan_archive_sink *sink, xx_io_device *
 /* After a complete decode: decide a member shorter than the head. */
 static bool xx_scan_archive_sink_finish(xx_scan_archive_sink *sink)
 {
-    return sink->head_decided || xx_scan_archive_decide(sink);
+    if (!sink->head_decided && !xx_scan_archive_decide(sink)) return false;
+    if (sink->iso_pending) {
+        /* Shorter than an ISO 9660 descriptor. */
+        sink->iso_pending = false;
+        sink->filtered = true;
+        sink->discard = true;
+    }
+    return true;
 }
 
 static bool xx_scan_archive_sink_cleanup(xx_scan_archive_sink *sink)
@@ -359,6 +429,7 @@ static bool xx_scan_archive_publish(xx_scan_archive_sink *sink, const char *name
     member.source_size = source_size;
     member.size = (int64_t)sink->size;
     member.is_compressed = compressed;
+    member.method = sink->method;
     result = callback(context, &member, pd);
     xx_io_close(member.device);
     return result && !xx_scan_archive_stopped(pd);
@@ -379,6 +450,32 @@ static bool xx_scan_archive_zip_method_known(uint64_t method)
         case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 8: case 9: case 12: case 14:
         case 93: case 95: case 96: case 97: case 98: case 99: return true;
         default: return false;
+    }
+}
+
+/* The member label XScanEngine prints: XBinary::getHandleMethods of the
+ * method XZip::zipToCompressMethod maps (flags pick the Implode variant).
+ * NULL lets the result fall back to Deflate/Store. */
+static const char *xx_scan_archive_zip_method_name(uint64_t method, uint64_t flags)
+{
+    static const char *const imploded[4] = {"Imploded 4K/2", "Imploded 8K/2", "Imploded 4K/3", "Imploded 8K/3"};
+    switch (method) {
+        case 1: return "Shrink";
+        case 2: return "Reduce 1";
+        case 3: return "Reduce 2";
+        case 4: return "Reduce 3";
+        case 5: return "Reduce 4";
+        case 6: return imploded[(flags >> 1) & 3U];
+        case 8: return "Deflate";
+        case 9: return "Deflate64";
+        case 12: return "Bzip2";
+        case 14: return "LZMA";
+        case 93: return "Zstandard";
+        case 95: return "XZ";
+        case 96: return "WinZip JPEG";
+        case 97: return "WavPack";
+        case 98: return "PPMD8";
+        default: return NULL;
     }
 }
 
@@ -445,6 +542,66 @@ static xx_scan_member_status xx_scan_archive_verify_stored(Abstractformat *forma
     return XX_SCAN_MEMBER_OK;
 }
 
+/* The ZIP methods decoded here as XDecompress decodes them: to the end of the
+ * stream, whatever the declared size. Others go through the reader. */
+static bool xx_scan_archive_zip_decodes_to_end(uint64_t method)
+{
+#if defined(XXFC_PROFILE_APK_EMUL)
+    return method == 8U;
+#else
+    return (method >= 1U && method <= 6U) || method == 8U || method == 9U || method == 12U;
+#endif
+}
+
+/* Decode one ZIP member into sink (initialised with the member limit and the
+ * declared size) as XScanEngine does: the whole stream is decoded and its CRC
+ * checked whatever its length. A wrong CRC is "Invalid CRC"; the right CRC
+ * over a different size, or a stream that does not decode, is skipped
+ * silently, except that Qt's Shrink, Reduce and Implode decoders report
+ * success after a failure, so their failure is "Invalid CRC" too. */
+static xx_scan_member_status xx_scan_archive_zip_decode(xx_scan_archive_sink *sink, xx_io_device *destination, xx_io_device *source,
+                                                        int64_t offset, int64_t compressed, uint64_t method, uint64_t flags,
+                                                        uint64_t declared, uint32_t crc, xx_pd_struct *pd)
+{
+    bool complete;
+    sink->track_crc = true;
+    sink->allow_excess = true;
+    if (compressed == 0) {
+        if (declared != 0U) return XX_SCAN_MEMBER_SKIPPED;
+        complete = true;
+    } else {
+        switch (method) {
+#if !defined(XXFC_PROFILE_APK_EMUL)
+            case 1: complete = xx_shrink_unpack_device(source, offset, compressed, destination, (int64_t)declared, pd); break;
+            case 2:
+            case 3:
+            case 4:
+            case 5: complete = xx_reduce_unpack_device(source, offset, compressed, destination, (int64_t)declared, (int)method - 1, pd); break;
+            case 6:
+                complete = xx_implode_unpack_device(source, offset, compressed, destination, (int64_t)declared, (flags & 0x0002U) != 0U,
+                                                    (flags & 0x0004U) != 0U, pd);
+                break;
+            case 9:
+            case 12:
+#endif
+            case 8:
+                complete = method == 12U ? xx_bzip2_unpack_device(source, offset, compressed, destination, pd) :
+                                           xx_deflate_unpack_device(source, offset, compressed, destination, method == 9U, pd);
+                break;
+            default: return XX_SCAN_MEMBER_SKIPPED;
+        }
+    }
+    if (sink->failed || xx_pd_is_stopped(pd)) return XX_SCAN_MEMBER_FAILED;
+    complete = complete && !sink->overflow && !xx_scan_archive_stopped(pd);
+    xx_scan_archive_forgive(pd);
+    if (sink->overflow) return XX_SCAN_MEMBER_SKIPPED;
+    if (complete) {
+        if (sink->crc != crc) return XX_SCAN_MEMBER_INVALID_CRC;
+        return sink->size == declared ? XX_SCAN_MEMBER_OK : XX_SCAN_MEMBER_SKIPPED;
+    }
+    return method >= 1U && method <= 6U ? XX_SCAN_MEMBER_INVALID_CRC : XX_SCAN_MEMBER_SKIPPED;
+}
+
 /* A ZIP without usable end records, which XZip reads from its local headers
  * as far as complete records reach (a stream, or an archive cut short).
  * Members follow the same rules as in xx_scan_archive_stream. cdie decodes
@@ -492,12 +649,8 @@ static bool xx_scan_archive_zip_local_stream(xx_io_device *device, int64_t origi
                 xx_scan_archive_member member;
                 if (compressed != decoded) status = XX_SCAN_MEMBER_SKIPPED;
                 else if (xx_crc32_device(device, data, compressed, 0U) != crc) status = XX_SCAN_MEMBER_INVALID_CRC;
-                if (status == XX_SCAN_MEMBER_OK && filter_scanable) {
-                    uint8_t head[XX_SCAN_ARCHIVE_HEAD_SIZE];
-                    size_t head_size = decoded < XX_SCAN_ARCHIVE_HEAD_SIZE ? (size_t)decoded : XX_SCAN_ARCHIVE_HEAD_SIZE;
-                    if (!xx_io_read_at(device, data, head, head_size) || !xx_scan_archive_is_scanable_header(head, head_size, name))
-                        status = XX_SCAN_MEMBER_SKIPPED;
-                }
+                if (status == XX_SCAN_MEMBER_OK && filter_scanable && !xx_scan_archive_is_scanable_at(device, data, decoded, name))
+                    status = XX_SCAN_MEMBER_SKIPPED;
                 if (status == XX_SCAN_MEMBER_OK) {
                     member.device = xx_io_sub_open_ro(device, data, compressed);
                     if (!member.device) {
@@ -509,27 +662,22 @@ static bool xx_scan_archive_zip_local_stream(xx_io_device *device, int64_t origi
                     member.source_size = compressed;
                     member.size = decoded;
                     member.is_compressed = false;
+                    member.method = NULL;
                     visited = callback(context, &member, pd);
                     xx_io_close(member.device);
                 }
             } else if (method == 8U || method == 9U) {
                 xx_scan_archive_sink sink;
                 xx_io_device destination;
-                bool complete;
-                if (!xx_scan_archive_sink_init(&sink, &destination, decoded, decoded, false, name, filter_scanable, pd)) {
+                if (!xx_scan_archive_sink_init(&sink, &destination, member_limit, decoded, false, name, filter_scanable, pd)) {
                     xx_scan_archive_sink_cleanup(&sink);
                     goto done;
                 }
-                sink.track_crc = true;
-                complete = xx_deflate_unpack_device(device, data, compressed, &destination, method == 9U, pd) && !sink.failed && !sink.overflow &&
-                           !xx_scan_archive_stopped(pd);
-                /* A stream that decodes completely is checked against the CRC. */
-                if (complete && (sink.size != decoded || sink.crc != crc)) status = XX_SCAN_MEMBER_INVALID_CRC;
-                else if (!complete) status = XX_SCAN_MEMBER_SKIPPED;
-                if (status == XX_SCAN_MEMBER_OK && xx_scan_archive_sink_finish(&sink) && !sink.filtered)
+                sink.method = xx_scan_archive_zip_method_name(method, flags);
+                status = xx_scan_archive_zip_decode(&sink, &destination, device, data, compressed, method, flags, decoded, crc, pd);
+                if (status == XX_SCAN_MEMBER_OK && xx_scan_archive_sink_finish(&sink) && !sink.filtered && !sink.discard)
                     visited = xx_scan_archive_publish(&sink, name, origin + data, compressed, true, callback, context, pd);
                 if (!xx_scan_archive_sink_cleanup(&sink) || sink.failed || xx_pd_is_stopped(pd)) goto done;
-                if (!complete) xx_scan_archive_forgive(pd);
             }
             if (status == XX_SCAN_MEMBER_INVALID_CRC && report) report(context, xx_scan_archive_invalid_crc);
             if (!visited) {
@@ -611,7 +759,7 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
                     goto done;
                 }
                 name = owned_name;
-            } else name = "archive-member";
+            } else name = ""; /* XScanEngine prints a nameless member without a name. */
         }
         method = xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX);
         decoded_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
@@ -639,13 +787,9 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
             if (decoded_size != (uint64_t)record->compressed_size) goto next;
             status = xx_scan_archive_verify_stored(format, type, state, record, decoded_size, pd);
             if (status == XX_SCAN_MEMBER_FAILED) goto done;
-            if (status == XX_SCAN_MEMBER_OK && filter_scanable) {
-                uint8_t head[XX_SCAN_ARCHIVE_HEAD_SIZE];
-                size_t head_size = decoded_size < XX_SCAN_ARCHIVE_HEAD_SIZE ? (size_t)decoded_size : XX_SCAN_ARCHIVE_HEAD_SIZE;
-                if (!xx_io_read_at(format->device, record->data_offset, head, head_size) ||
-                    !xx_scan_archive_is_scanable_header(head, head_size, name))
-                    status = XX_SCAN_MEMBER_SKIPPED;
-            }
+            if (status == XX_SCAN_MEMBER_OK && filter_scanable &&
+                !xx_scan_archive_is_scanable_at(format->device, record->data_offset, decoded_size, name))
+                status = XX_SCAN_MEMBER_SKIPPED;
             if (status == XX_SCAN_MEMBER_OK) {
                 member.device = xx_io_sub_open_ro(format->device, record->data_offset, record->compressed_size);
                 if (!member.device) {
@@ -657,6 +801,7 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
                 member.source_size = record->compressed_size;
                 member.size = (int64_t)decoded_size;
                 member.is_compressed = false;
+                member.method = NULL;
                 visited = callback(context, &member, pd);
                 xx_io_close(member.device);
             }
@@ -664,17 +809,28 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
             xx_scan_archive_sink sink;
             xx_io_device destination;
             bool decoded;
-            if (!xx_scan_archive_sink_init(&sink, &destination, decoded_size, decoded_size, false, name, filter_scanable, pd)) {
+            bool to_end = xx_scan_archive_is_zip(type) && xx_scan_archive_zip_decodes_to_end(method);
+            if (!xx_scan_archive_sink_init(&sink, &destination, to_end ? member_limit : decoded_size, decoded_size, false, name, filter_scanable, pd)) {
                 xx_scan_archive_sink_cleanup(&sink);
                 goto done;
             }
-            decoded = type == XX_FILE_TYPE_LHA ? xx_lha_unpack_current_archive_record_to_device(format, state, &destination, pd) :
-                                                xx_zip_unpack_current_archive_record_to_device(format, state, &destination, pd);
-            decoded = decoded && !sink.failed && !sink.overflow && sink.size == decoded_size && !xx_scan_archive_stopped(pd);
-            if (decoded && xx_scan_archive_sink_finish(&sink) && !sink.filtered)
+            if (xx_scan_archive_is_zip(type))
+                sink.method = xx_scan_archive_zip_method_name(method, xx_archive_record_get_meta_u64(record, XX_META_ID_FLAGS, 0U));
+            if (to_end) {
+                uint64_t crc = xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, UINT64_MAX);
+                status = crc > UINT32_MAX ? XX_SCAN_MEMBER_SKIPPED :
+                                            xx_scan_archive_zip_decode(&sink, &destination, format->device, record->data_offset, record->compressed_size, method,
+                                                                       xx_archive_record_get_meta_u64(record, XX_META_ID_FLAGS, 0U), decoded_size, (uint32_t)crc, pd);
+                decoded = status == XX_SCAN_MEMBER_OK;
+            } else {
+                decoded = type == XX_FILE_TYPE_LHA ? xx_lha_unpack_current_archive_record_to_device(format, state, &destination, pd) :
+                                                    xx_zip_unpack_current_archive_record_to_device(format, state, &destination, pd);
+                decoded = decoded && !sink.failed && !sink.overflow && sink.size == decoded_size && !xx_scan_archive_stopped(pd);
+            }
+            if (decoded && xx_scan_archive_sink_finish(&sink) && !sink.filtered && !sink.discard)
                 visited = xx_scan_archive_publish(&sink, name, origin + record->data_offset, record->compressed_size, true, callback, context, pd);
             if (!xx_scan_archive_sink_cleanup(&sink) || sink.failed || xx_pd_is_stopped(pd)) goto done;
-            if (!decoded) {
+            if (!decoded && !to_end) {
                 status = xx_scan_archive_is_crc_failure(pd) ? XX_SCAN_MEMBER_INVALID_CRC : XX_SCAN_MEMBER_SKIPPED;
                 xx_scan_archive_forgive(pd);
             }
@@ -797,11 +953,41 @@ bool xx_scan_visit_archives(xx_io_device *device, const xx_scan_options *options
     return xx_scan_visit_archives_ex(device, options, callback, NULL, context, pd);
 }
 
+/* XBinary also types RIB and SPIS/TCompress streams FT_ARCHIVE, on these
+ * header checks, where the common detector names them Binary. (A .tar.Z is
+ * FT_ARCHIVE only once its decoded head is a TAR header, XTAR_COMPRESS, and
+ * an SPIS stream also through XSPIS's full parse: neither is ported.) */
+static bool xx_scan_archive_is_xbinary_archive(xx_io_device *device)
+{
+    uint8_t header[21];
+    int64_t size = xx_io_total_size(device);
+    uint32_t value;
+    if (size < 8 || !xx_io_read_at(device, 0, header, size < 21 ? (size_t)size : 21U)) return false;
+    if (size >= 8 && !memcmp(header, "RIB\0", 4)) {
+        uint64_t packed = (uint64_t)size - 8U;
+        value = (uint32_t)header[4] | ((uint32_t)header[5] << 8) | ((uint32_t)header[6] << 16) | ((uint32_t)header[7] << 24);
+        return packed <= value && value <= 512U * 1024U * 1024U && (packed == 0U) == (value == 0U);
+    }
+    if (size >= 21 && !memcmp(header, "SPIS\x1A", 5) &&
+        (!memcmp(header + 5, "NON", 3) || !memcmp(header + 5, "RLE", 3) || !memcmp(header + 5, "LZH", 3) || !memcmp(header + 5, "CUS", 3) ||
+         !memcmp(header + 5, "LH5", 3))) {
+        value = (uint32_t)header[8] | ((uint32_t)header[9] << 8) | ((uint32_t)header[10] << 16) | ((uint32_t)header[11] << 24);
+        return value > 0U && value <= 512U * 1024U * 1024U && header[12] <= 1U && !header[17] && !header[18] && !header[19] && !header[20];
+    }
+    return false;
+}
+
+/* Also true for the XBinary-only archives above: the engine's last check
+ * for a member XFormats types FT_ARCHIVE but the common detector does not. */
 bool xx_scan_archive_is_tar(xx_io_device *device)
 {
     int64_t position = xx_io_tell(device);
     xx_tar tar;
     bool valid;
+    if (xx_scan_archive_is_xbinary_archive(device)) {
+        if (position >= 0) (void)xx_io_seek64(device, position, SEEK_SET);
+        return true;
+    }
     xx_tar_init(&tar, device, 0);
     valid = xx_tar_check_is_valid(&tar.format, NULL);
     xx_tar_destroy(&tar);

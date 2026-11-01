@@ -13,6 +13,7 @@ typedef struct xx_scan_archive_member {
     int64_t source_size;   /* Stored source extent; decoded size may differ. */
     int64_t size;          /* Size of device. */
     bool is_compressed;   /* Decoded offsets do not map to parent bytes when true. */
+    const char *method;   /* Static XBinary::getHandleMethods label; NULL: Deflate/Store by is_compressed. */
 } xx_scan_archive_member;
 
 /* The member, its device and name are lent only for this synchronous call.

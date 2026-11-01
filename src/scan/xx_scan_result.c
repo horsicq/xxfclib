@@ -427,7 +427,7 @@ static void append_group_header(CDBuf *buf, const xx_scan_result *result, const 
     if (record && record->scan_part == XX_SCAN_PART_ARCHIVE) {
         char sOffset[32];
         char sSize[32];
-        const char *method = record->archive_compressed ? "Deflate" : "Store";
+        const char *method = record->archive_method ? record->archive_method : record->archive_compressed ? "Deflate" : "Store";
         scan_value_to_hex_ex((uint64_t)record->archive_offset, sOffset, sizeof(sOffset));
         scan_value_to_hex_ex((uint64_t)record->archive_size, sSize, sizeof(sSize));
         if (record->archive_member && record->archive_member[0]) {
@@ -439,12 +439,13 @@ static void append_group_header(CDBuf *buf, const xx_scan_result *result, const 
                           method, record_file_type(result, record),
                           sOffset, sSize);
         }
-    } else if (record && record->scan_part == XX_SCAN_PART_OVERLAY) {
+    } else if (record && (record->scan_part == XX_SCAN_PART_OVERLAY || record->scan_part == XX_SCAN_PART_RESOURCE)) {
         char sOffset[32];
         char sSize[32];
         scan_value_to_hex_ex((uint64_t)record->offset, sOffset, sizeof(sOffset));
         scan_value_to_hex_ex((uint64_t)record->size, sSize, sizeof(sSize));
-        cdbuf_appendf(buf, "Overlay: %s [Offset = 0x%s, Size = 0x%s]",
+        cdbuf_appendf(buf, "%s: %s [Offset = 0x%s, Size = 0x%s]",
+                      record->scan_part == XX_SCAN_PART_OVERLAY ? "Overlay" : "Resource",
                       record_file_type(result, record), sOffset, sSize);
     } else {
         cdbuf_append_str(buf, record_file_type(result, record));

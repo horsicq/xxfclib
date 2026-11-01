@@ -261,6 +261,10 @@ typedef struct xx_scan_options {
      * match rejects it, including when the same tag is also included. */
     const char *include_tags;
     const char *exclude_tags;
+    /** Static method label of the archive member being scanned, as
+     * XBinary::getHandleMethods names it ("Deflate", "Bzip2", "Imploded 4K/2"...);
+     * NULL selects "Deflate"/"Store" from archive_compressed. */
+    const char *archive_method;
 } xx_scan_options;
 typedef struct xx_scan_options xx_scan_options_t;
 
@@ -300,6 +304,9 @@ typedef struct xx_scan_record {
      * member path or "Binary/audio.1.sg"). NULL for synthesized records such
      * as Unknown. Frontends use it to show the signature. */
     const char *signature;
+    /** options.archive_method: a static string, never freed or copied; NULL
+     * selects "Deflate"/"Store" from archive_compressed. */
+    const char *archive_method;
 } xx_scan_record;
 typedef struct xx_scan_record xx_scan_record_t;
 

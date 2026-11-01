@@ -558,6 +558,7 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
     child_options.archive_offset = member->source_offset;
     child_options.archive_size = member->source_size;
     child_options.archive_compressed = member->is_compressed;
+    child_options.archive_method = member->method;
     child_options.recursive_scan = false;
     child_options.overlay_scan = false;
     child_options.resources_scan = false;
@@ -799,6 +800,7 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
         resolved.archive_offset = 0;
         resolved.archive_size = 0;
         resolved.archive_compressed = false;
+        resolved.archive_method = NULL;
     }
     if (!xx_scan_resolve_options(engine, scan_device, &resolved, pd)) goto done;
     result = xx_scan_run_plan(engine, scan_device, &resolved, forbidden_result, pd);

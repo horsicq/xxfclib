@@ -303,6 +303,7 @@ void die_engine_record_init(DieEngine *pEngine, xx_scan_record *pRecord)
     pRecord->archive_offset = pEngine->pOptions->archive_offset;
     pRecord->archive_size = pEngine->pOptions->archive_size;
     pRecord->archive_compressed = pEngine->pOptions->archive_compressed;
+    pRecord->archive_method = pEngine->pOptions->archive_method;
 }
 
 static void end_script_profile(DieEngine *pEngine, DBSignature *pRecord, cd_i64 nStart)
