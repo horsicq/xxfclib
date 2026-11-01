@@ -54,7 +54,7 @@ typedef xx_scan_result ScanResult;
 #define bShowVersion show_version
 #define bShowInfo show_info
 #define bUseCustomDatabase use_custom_database
-#define bUseExtraDatabase use_extra_database
+#define bUseExtraDatabase use_extra_database /* deprecated, see xx_scan_options */
 #define bSort sort
 #define bFormatResult format_result
 

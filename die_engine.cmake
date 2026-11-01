@@ -14,6 +14,11 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${XXFC_CODEPAGE_SOURCES}
     # Engine
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_binary.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_elf_macho.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_formats.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_msdos.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_pe.c
     ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex_die.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_compat.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_engine.c
@@ -172,7 +177,6 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/lzma/platforms/xx_lzma_sse2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/lzma/platforms/xx_lzma_avx2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/lzma/platforms/xx_lzma_neon.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/algo/packmp3/xx_packmp3.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/ppmd7/xx_ppmd7.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/ppmd7/xx_ppmd7_common.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/ppmd7/xx_ppmd7_dec.c
@@ -193,9 +197,6 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/sha/platforms/xx_sha_arm_crypto.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/shrink/xx_shrink.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/store/xx_store.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/algo/wavpack/xx_wavpack.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/algo/wavpack/xx_wavpack_dec.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/algo/winzipjpeg/xx_winzipjpeg.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/zipcrypto/xx_zipcrypto.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/zstd/xx_zstd.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/zstd/xx_zstd_dec.c

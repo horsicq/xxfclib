@@ -98,6 +98,9 @@ static bool xx_apks_probe(xx_io_device *device, int64_t base_address, xx_pd_stru
         unpacked = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
         method = xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX);
         packed = record ? record->compressed_size : -1;
+        /* xx_zip resolves a member's local header, and so data_offset, lazily. */
+        if ((is_toc || is_apk) && record && record->data_offset < 0)
+            (void)xx_zip_resolve_record_data_offset(&outer, (xx_archive_record *)record);
         if ((is_toc || is_apk) && unpacked > 0U && unpacked <= INT64_MAX && packed > 0 && record->data_offset >= base_address && record->data_offset <= device_size &&
             packed <= device_size - record->data_offset && !xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
             !xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false) && (method == 0U || method == 8U)) {

@@ -6,6 +6,7 @@
 #include "xxfclib/formats/filesystem/dfsee_imz/xx_dfsee_imz.h"
 #include "xxfclib/formats/archive/dh/xx_dh.h"
 #include "xxfclib/formats/archive/djcomp/xx_djcomp.h"
+#include "xxfclib/formats/archive/dpc/xx_dpc.h"
 #include "xxfclib/formats/archive/stor_resource/xx_stor_resource.h"
 #include "xxfclib/formats/archive/installshield_obl/xx_installshield_obl.h"
 #include "xxfclib/formats/archive/pftw_pkg/xx_pftw_pkg.h"
@@ -1498,6 +1499,12 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
         }
         xx_pce_anadisk_free(reader);
         if (valid) result = XX_FILE_TYPE_PCE_ANADISK;
+    }
+    if (result == XX_FILE_TYPE_UNKNOWN && prefix_size >= 28U && !xx_rt_memcmp(prefix, "Delphi Package Collection\r\n\x1a", 28U)) {
+        xx_dpc *reader = xx_dpc_create(device, 0);
+        bool valid = reader && xx_dpc_check_is_valid(&reader->format, NULL);
+        xx_dpc_free(reader);
+        if (valid) result = XX_FILE_TYPE_DPC;
     }
     if (result == XX_FILE_TYPE_UNKNOWN && prefix_size >= 8U && !xx_rt_memcmp(prefix, "DJcomp\0\0", 8U)) {
         xx_djcomp *reader = xx_djcomp_create(device, 0);

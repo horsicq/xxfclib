@@ -34,7 +34,7 @@ void xx_scan_options_init(xx_scan_options *options)
     options->show_version = true;
     options->show_info = true;
     options->use_custom_database = true;
-    options->use_extra_database = true;
+    options->use_extra_database = false;
     options->sort = true;
 }
 

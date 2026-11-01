@@ -161,6 +161,73 @@ XXFC_API bool xx_fs_list_dir_sorted(const char *path, xx_list_t *list, xx_fs_sor
  */
 XXFC_API bool xx_fs_find_files(const char *path, xx_list_t *list, bool recursive);
 
+/* ------------------------------------------------------------- mutation */
+
+/**
+ * @brief Create one directory.
+ *
+ * Exclusive: false when anything already exists at @p path, or when its parent
+ * directory is missing. That makes it usable as a claim -- two processes asking
+ * for the same name cannot both succeed. For "create with parents, existing is
+ * fine" use xx_io_create_dirs_a().
+ */
+XXFC_API bool xx_fs_make_dir(const char *path);
+
+/**
+ * @brief Rename (move) a file or a directory.
+ *
+ * Never replaces anything: false when something exists at @p to. Both paths
+ * must be on the same volume; a directory is never copied. On POSIX the
+ * existence check and the rename are two steps, so a name created by another
+ * process between them can still be replaced if it is a file or an empty
+ * directory.
+ */
+XXFC_API bool xx_fs_rename(const char *from, const char *to);
+
+/**
+ * @brief Delete a file, or a directory and everything below it.
+ *
+ * Links are never followed: a symbolic link, a junction or any other reparse
+ * point met at any depth -- including @p path itself, also when it is given
+ * with trailing separators, which are ignored -- is removed as a link and its
+ * target is left untouched. The folders leading to @p path are resolved as
+ * usual; only what @p path names, and what is below it, is protected.
+ *
+ * That holds while other processes change the tree during the walk, too:
+ * - POSIX: everything below @p path is reached through directory descriptors
+ *   (openat with O_NOFOLLOW, fstatat, unlinkat), never by a path, so a
+ *   directory renamed away and replaced by a link mid-walk is not entered.
+ *   One descriptor is held per level being emptied.
+ * - Windows: the walk goes by path, but each directory is opened first
+ *   without following a reparse point, refused if the handle shows one, and
+ *   held without delete sharing until its contents are gone, so it can be
+ *   neither renamed nor replaced while paths below it are used. A directory
+ *   that something else holds open with delete access cannot be held, and
+ *   makes the call fail.
+ * A link swapped in for a file or a link is removed itself; a directory that
+ * turns into anything else between the look and the descent makes the call
+ * fail rather than be entered.
+ *
+ * Refused (false, nothing touched): NULL, "", a root ("/", "C:\", "C:",
+ * "\"), and a path whose final component is "." or "..". On Windows
+ * read-only attributes are cleared on the way; POSIX permissions are not
+ * changed. The walk is depth-limited (256 levels) so a hostile tree cannot
+ * exhaust the stack.
+ *
+ * @return true when nothing is left at @p path (also when nothing was there to
+ *         begin with); false if any entry could not be removed, or if @p path
+ *         or anything below it could not be examined (no permission, an I/O
+ *         error) -- in which case whatever could be removed has been.
+ */
+XXFC_API bool xx_fs_remove_tree(const char *path);
+
+/**
+ * @brief The current working directory, or NULL.
+ *
+ * Release with xx_str_free().
+ */
+XXFC_API char *xx_fs_current_dir(void);
+
 /* ----------------------------------------------------------------- paths */
 
 /** @brief True for '/' and, on any platform, '\\'. */

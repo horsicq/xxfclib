@@ -40,6 +40,7 @@
 #include "xxfclib/formats/filesystem/dfsee_imz/xx_dfsee_imz.h"
 #include "xxfclib/formats/archive/dh/xx_dh.h"
 #include "xxfclib/formats/archive/djcomp/xx_djcomp.h"
+#include "xxfclib/formats/archive/dpc/xx_dpc.h"
 #include "xxfclib/formats/game/fury_dat/xx_fury_dat.h"
 #include "xxfclib/formats/archive/starforce_ovl/xx_starforce_ovl.h"
 #include "xxfclib/formats/archive/self_unstuffer/xx_self_unstuffer.h"

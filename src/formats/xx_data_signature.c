@@ -574,14 +574,55 @@ static bool sig_apply_rel_offset(SigInput *input, const xx_data_sig_record *reco
     return true;
 }
 
+static int64_t sig_map_address_to_offset(void *context, uint64_t address);
+static int64_t sig_map_address_to_offset_first(void *context, uint64_t address);
+
+/* True when the context resolves through an MS-DOS segmented memory map;
+ * *load_offset then receives the map's start load offset (the file offset
+ * of the load module, -1 when it has none). */
+static bool sig_dos_load_offset(const xx_data_sig_context *context, int64_t *load_offset)
+{
+    const xx_memory_map *map;
+
+    if (!context || !context->context ||
+        (context->address_to_offset != sig_map_address_to_offset && context->address_to_offset != sig_map_address_to_offset_first)) {
+        return false;
+    }
+    map = (const xx_memory_map *)context->context;
+    if (map->file_type != XX_FILE_TYPE_MSDOS || map->mode != XX_MEMORY_MAP_MODE_SEGMENTS) return false;
+    *load_offset = map->start_load_offset;
+    return true;
+}
+
 /* An absolute jump: the stored value is an address, not a displacement. */
 static bool sig_apply_address(SigInput *input, const xx_data_sig_record *record, const xx_data_sig_context *context, int64_t *cursor)
 {
     uint64_t address = 0U;
     int64_t target;
+    int64_t load_offset = -1;
 
     if (!sig_read_pointer(input, *cursor, record->address_size, context && context->big_endian, false, context && context->read_past_end_as_zero, &address)) {
         return false;
+    }
+    if (sig_dos_load_offset(context, &load_offset) && record->address_size != 2) {
+        /* XBinary, MS-DOS: a four-byte pointer is a real-mode far pointer
+         * (offset word, then segment word) into the load module, at
+         * start load offset + segment * 16 + offset wrapped at 1 MiB, and
+         * the target may be any file offset up to the end of the data. A
+         * two-byte pointer goes through the map below; XBinary leaves the
+         * cursor where it is for the other widths. XBinary also needs the
+         * whole pointer field inside the data on this path. */
+        uint64_t linear;
+
+        if (!sig_range_within(input->size, *cursor, record->address_size)) return false;
+        if (record->address_size != 4) return true;
+        linear = ((address >> 16) & 0xffffU) * 16U + (address & 0xffffU);
+        if (linear >= 0x100000U) linear -= 0x100000U;
+        if (load_offset < 0 || load_offset > INT64_MAX - (int64_t)linear) return false;
+        target = load_offset + (int64_t)linear;
+        if ((uint64_t)target > input->size) return false;
+        *cursor = target;
+        return true;
     }
     if (!context || !context->address_to_offset) return false;
     target = context->address_to_offset(context->context, address);

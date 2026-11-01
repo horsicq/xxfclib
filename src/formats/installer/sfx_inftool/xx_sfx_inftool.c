@@ -371,7 +371,12 @@ static const xx_archive_record *inf_current(Abstractformat *f, xx_archive_record
 {
     xx_sfx_inftool *a = (xx_sfx_inftool *)f;
     if (!a) return NULL;
-    if (a->zip_ready) return xx_zip_get_current_archive_record(&a->legacy_zip.format, s);
+    if (a->zip_ready) {
+        /* xx_zip reads a member's local header, and so data_offset, lazily;
+         * this wrapper publishes the record, so it resolves it. */
+        if (s && s->has_record && s->current_record.data_offset < 0) (void)xx_zip_resolve_record_data_offset(&a->legacy_zip, &s->current_record);
+        return xx_zip_get_current_archive_record(&a->legacy_zip.format, s);
+    }
     return a->inner_ready ? xx_cab_get_current_archive_record(&a->inner.format, s) : NULL;
 }
 static bool inf_next(Abstractformat *f, xx_archive_record_state *s, xx_pd_struct *pd)

@@ -97,11 +97,36 @@ static xxfc_status_t copy_value(xx_settings_value *destination, const xx_setting
     return XXFC_OK;
 }
 
+#if defined(_WIN32)
+static char ascii_lower(char character)
+{
+    return character >= 'A' && character <= 'Z' ? (char)(character - 'A' + 'a') : character;
+}
+#endif
+
+static bool same_key(const xx_settings *settings, const char *left, const char *right)
+{
+#if defined(_WIN32)
+    /* Registry key and value names ignore case: "Color/arrows/X" is stored in an existing
+     * "Color\Arrows" subkey and comes back with that spelling, so both are one entry. */
+    if (settings->format == XX_SETTINGS_FORMAT_NATIVE) {
+        while (*left && ascii_lower(*left) == ascii_lower(*right)) {
+            ++left;
+            ++right;
+        }
+        return ascii_lower(*left) == ascii_lower(*right);
+    }
+#else
+    (void)settings;
+#endif
+    return xx_rt_strcmp(left, right) == 0;
+}
+
 static xx_settings_entry *find_entry(const xx_settings *settings, const char *key)
 {
     if (!settings || !key) return NULL;
     for (xx_settings_entry *entry = settings->entries; entry; entry = entry->next) {
-        if (xx_rt_strcmp(entry->key, key) == 0) return entry;
+        if (same_key(settings, entry->key, key)) return entry;
     }
     return NULL;
 }
@@ -292,6 +317,13 @@ void xx_settings_destroy(xx_settings *settings)
     xx_rt_free(settings);
 }
 
+xxfc_status_t xx_settings_set_qt_compatible(xx_settings *settings, bool enabled)
+{
+    if (!settings) return XXFC_ERR_INVALID_ARG;
+    settings->qt_compatible = enabled;
+    return XXFC_OK;
+}
+
 xx_settings_format_t xx_settings_get_format(const xx_settings *settings)
 {
     return settings ? settings->format : XX_SETTINGS_FORMAT_MEMORY;
@@ -414,13 +446,7 @@ xxfc_status_t xx_settings_save(xx_settings *settings)
     {
         xx_settings temporary = *settings;
         temporary.entries = NULL;
-        status = xx_settings_read_ini(&temporary);
-        if (status == XXFC_OK) {
-            for (xx_settings_entry *entry = settings->entries; entry && status == XXFC_OK; entry = entry->next) {
-                if (entry->dirty) status = xx_settings_set(&temporary, entry->key, &entry->value);
-            }
-        }
-        if (status == XXFC_OK) status = xx_settings_write_ini(&temporary);
+        status = xx_settings_save_ini(settings, &temporary);
         if (status == XXFC_OK) {
             free_entries(settings->entries);
             settings->entries = temporary.entries;

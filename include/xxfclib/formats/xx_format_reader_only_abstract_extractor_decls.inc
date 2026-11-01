@@ -1796,3 +1796,8 @@ XXFC_API xx_file_type_t xx_djcomp_file_type(xx_io_device *, int64_t, bool);
 XXFC_API int64_t xx_djcomp_size(xx_io_device *, int64_t, bool);
 XXFC_API Abstractextractor *xx_djcomp_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_djcomp_get_abstract_detector(void);
+XXFC_API bool xx_dpc_fast_detect(xx_io_device *, int64_t, bool);
+XXFC_API xx_file_type_t xx_dpc_file_type(xx_io_device *, int64_t, bool);
+XXFC_API int64_t xx_dpc_size(xx_io_device *, int64_t, bool);
+XXFC_API Abstractextractor *xx_dpc_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_dpc_get_abstract_detector(void);

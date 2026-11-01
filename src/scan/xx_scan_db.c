@@ -348,7 +348,8 @@ static int db_metadata_matches(const DBSignatureMetadata *pMetadata,
 static unsigned int db_metadata_kind_mask(DBKind kind)
 {
     /* The authoritative db/_metadata files are generated from db plus
-     * db_custom. Extra databases own their metadata independently. */
+     * db_custom. A database loaded as the deprecated DB_EXTRA kind (no cdie
+     * frontend loads one) owns its metadata independently. */
     if ((unsigned int)kind > (unsigned int)DB_CUSTOM) return 0U;
     if (kind == DB_MAIN) return (1U << DB_MAIN) | (1U << DB_CUSTOM);
     return 1U << (unsigned int)kind;
@@ -527,7 +528,8 @@ static void db_sort_loaded_records(DBase *pDb, int nBefore, DBKind kind)
     int i;
     DBase added = {0};
 
-    /* An unused C-only extra database must not reorder the main database. */
+    /* An empty load of the deprecated DB_EXTRA kind (a C-only legacy path;
+     * no cdie frontend loads one) must not reorder the main database. */
     if (nBefore == pDb->nCount && kind == DB_EXTRA) return;
 
     for (i = nBefore + 1; i < pDb->nCount; ++i) {

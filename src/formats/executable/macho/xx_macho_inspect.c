@@ -318,7 +318,7 @@ static int mach_export_trie_node(MachExportTrie *trie, uint64_t node, unsigned d
             if (!byte) break;
             trie->name[prefix + edge_length++] = (char)byte;
         }
-        if (!edge_length || cursor > (uint64_t)trie->offset + trie->size || prefix + edge_length + 1 >= sizeof(trie->name) ||
+        if (cursor > (uint64_t)trie->offset + trie->size || prefix + edge_length + 1 >= sizeof(trie->name) ||
             !mach_uleb(trie->file, &cursor, (uint64_t)trie->offset + trie->size, &child_node)) goto invalid;
         trie->name[prefix + edge_length] = '\0';
         if (!mach_export_trie_node(trie, child_node, depth + 1)) return 0;

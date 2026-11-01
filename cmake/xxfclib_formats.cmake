@@ -230,3 +230,4 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dh_tests.cmake")
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_diskdupe_im_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_djcomp_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dpc_tests.cmake")

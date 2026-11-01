@@ -415,14 +415,23 @@ int xx_io_platform_file_resize(void *handle, int64_t new_size)
 #include <time.h>
 #include <string.h>
 
+static char *xx_io_posix_wide_to_utf8(const wchar_t *path);
+
+/* The same UTF-8 that xx_io_platform_file_open_w and create_dirs_w write, so
+ * the name probed, removed or renamed is the name that was created. wcstombs()
+ * followed the locale instead: the C locale refused every non-ASCII name and a
+ * legacy one encoded a different name from the one on disk. */
 static bool xx_posix_wide_path(const wchar_t *path, char output[4096])
 {
+    char *converted;
     size_t length;
     if (!path || !output) return false;
-    length = wcstombs(output, path, 4095U);
-    if (length == (size_t)-1 || length >= 4095U) return false;
-    output[length] = '\0';
-    return true;
+    converted = xx_io_posix_wide_to_utf8(path);
+    if (!converted) return false;
+    length = strlen(converted);
+    if (length < 4095U) memcpy(output, converted, length + 1U);
+    xx_rt_free(converted);
+    return length < 4095U;
 }
 
 bool xx_io_platform_file_exists_a(const char *path)
@@ -533,6 +542,10 @@ bool xx_io_platform_create_dirs_a(const char *path, bool is_dir)
      * here, before a folder is made that would be left behind empty. */
     size_t len = strlen(path);
     size_t root = xx_io_posix_root_length(path);
+    /* Links are refused only below an extraction root. Outside a scope the
+     * path is the caller's own, and a link in it is followed as mkdir -p
+     * would: on macOS /tmp and /var (so every temporary folder) are links. */
+    bool scoped = xx_io_extract_root() != NULL;
     char *temp;
     /* made[i]: this call made the folder that ends at i. */
     unsigned char *made;
@@ -560,7 +573,7 @@ bool xx_io_platform_create_dirs_a(const char *path, bool is_dir)
         if (temp[i] == '/' || temp[i] == '\\') {
             temp[i] = '\0';
             if (i > 0) {
-                result = xx_io_posix_make_dir(temp, i <= root, &created);
+                result = xx_io_posix_make_dir(temp, !scoped || i <= root, &created);
                 made[i] = created;
                 made_any = made_any || created;
                 if (!result) end = i;
@@ -569,7 +582,7 @@ bool xx_io_platform_create_dirs_a(const char *path, bool is_dir)
         }
     }
     if (result && is_dir) {
-        result = xx_io_posix_make_dir(temp, len <= root, &created);
+        result = xx_io_posix_make_dir(temp, !scoped || len <= root, &created);
         made[len] = created;
     } else if (result && made_any) {
         /* The file's own name, too long for the file system the new folders
@@ -597,7 +610,11 @@ bool xx_io_platform_create_dirs_a(const char *path, bool is_dir)
 /* wchar_t is UCS-4 here, so each unit encodes to at most four UTF-8 bytes.
  * The earlier version truncated with a (char) cast into a 1024-byte buffer,
  * which mangled every non-ASCII name and silently cut long paths; the archive
- * readers worked around it by converting before the call. */
+ * readers worked around it by converting before the call. Every unit at or
+ * above 0x80 becomes bytes that are all 0x80 or above, so only an ASCII '.',
+ * '/' or '\' in the wide name can give one in the result: a name the archive
+ * readers checked for traversal stays checked. A plain cast did not keep
+ * that, U+012E and U+012F narrowing to '.' and '/'. */
 static char *xx_io_posix_wide_to_utf8(const wchar_t *path)
 {
     size_t index;
@@ -688,6 +705,15 @@ bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_da
             mode = 0444;
         }
         if (mode != 0) {
+            /* A directory is applied when it is created, before its members
+             * are written into it. Writers commonly record 0600 or 0644 for
+             * directories (Python's zipfile does), which would make it
+             * unusable; keep it searchable and writable by its owner, as
+             * Info-ZIP's end result is. */
+            struct stat info;
+            if (stat(path, &info) == 0 && S_ISDIR(info.st_mode)) {
+                mode |= 0700;
+            }
             chmod(path, mode);
         }
     }
@@ -695,19 +721,26 @@ bool xx_io_platform_apply_dos_time_and_attrs_a(const char *path, uint16_t dos_da
     return true;
 }
 
+/* Converted exactly as create_dirs_w and file_open_w convert, so the times and
+ * mode land on the entry those made. A (char) cast used to narrow U+012E and
+ * U+012F to '.' and '/', so a ZIP member named "db/" U+012E U+012E U+012F ...
+ * had utime() and chmod() applied through "db/../" outside the extraction
+ * root, and a path past 1023 units was cut to some other, existing one. */
 bool xx_io_platform_apply_dos_time_and_attrs_w(const wchar_t *path, uint16_t dos_date, uint16_t dos_time, uint32_t attrs)
 {
+    char *narrow;
+    bool result;
+
     if (!path || !path[0]) {
         return false;
     }
-    char temp[1024];
-    size_t len = 0;
-    while (path[len] != L'\0' && len < sizeof(temp) - 1) {
-        temp[len] = (char)path[len];
-        len++;
+    narrow = xx_io_posix_wide_to_utf8(path);
+    if (!narrow) {
+        return false;
     }
-    temp[len] = '\0';
-    return xx_io_platform_apply_dos_time_and_attrs_a(temp, dos_date, dos_time, attrs);
+    result = xx_io_platform_apply_dos_time_and_attrs_a(narrow, dos_date, dos_time, attrs);
+    xx_rt_free(narrow);
+    return result;
 }
 
 /* --- Path safety and entropy, shared by the archive readers --------------- */

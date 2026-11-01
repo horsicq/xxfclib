@@ -843,6 +843,9 @@ bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir)
     wchar_t stack[MAX_PATH];
     wchar_t *temp = xx_win_api_path(path, stack, MAX_PATH, true);
     size_t root, length = 0U, i, start, link_part, end;
+    /* Reparse points are refused only below an extraction root; outside a
+     * scope the path is the caller's own and they are followed (as on POSIX). */
+    bool scoped = xx_io_extract_root() != NULL;
     bool result = false, made;
     /* made_at[i]: this call made the folder that ends at i. */
     unsigned char *made_at = NULL;
@@ -896,7 +899,7 @@ bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir)
         if (temp[i] == L'/' || temp[i] == L'\\') {
             saved = temp[i];
             temp[i] = L'\0';
-            result = xx_win_ensure_directory(temp, i <= link_part, &made);
+            result = xx_win_ensure_directory(temp, !scoped || i <= link_part, &made);
             made_at[i] = made;
             temp[i] = saved;
             if (!result) {
@@ -906,7 +909,7 @@ bool xx_io_platform_create_dirs_w(const wchar_t *path, bool is_dir)
         }
     }
     if (result && is_dir && length > root && temp[length - 1U] != L'\\') {
-        result = xx_win_ensure_directory(temp, length <= link_part, &made);
+        result = xx_win_ensure_directory(temp, !scoped || length <= link_part, &made);
         made_at[length] = made;
     }
     if (!result) {

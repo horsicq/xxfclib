@@ -351,7 +351,8 @@ static bool sfx_carrier_relative_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
     if (!state) goto discard;
     valid = true;
     while ((record = xx_zip_get_current_archive_record(&r->inner.format, state)) != NULL) {
-        if (carrier_stop(pd) || ++count > 4096U || record->compressed_size < 0 || record->data_offset < 0 || record->data_offset > end ||
+        if (carrier_stop(pd) || ++count > 4096U || record->compressed_size < 0 ||
+            (record->data_offset < 0 && !xx_zip_resolve_record_data_offset(&r->inner, &state->current_record)) || record->data_offset < 0 || record->data_offset > end ||
             record->compressed_size > end - record->data_offset) {
             valid = false;
             break;
@@ -441,6 +442,7 @@ static bool sfx_carrier_normalize_record(xx_sfx_zipcentral *r, xx_archive_record
     bool high = false;
     if (!state || !state->has_record) return true;
     record = &state->current_record;
+    if (carrier_stop(pd) || (record->data_offset < 0 && !xx_zip_resolve_record_data_offset(&r->inner, record))) return false;
     if (r->legacy_name && record->header_offset == r->legacy_local_offset) return xx_archive_record_set_original_name_w(record, r->legacy_name);
     device = r->inner.format.device;
     local = record->header_offset;

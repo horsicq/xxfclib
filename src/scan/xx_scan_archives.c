@@ -6,25 +6,52 @@
 #include "xxfclib/formats/archive/lha/xx_lha.h"
 #include "xxfclib/formats/archive/gz/xx_gz.h"
 #include "xxfclib/formats/archive/bz2/xx_bz2.h"
+#include "xxfclib/formats/archive/tar/xx_tar.h"
 #include "xxfclib/formats/executable/machofat/xx_machofat.h"
+#include "xxfclib/algo/crc/xx_crc.h"
+#include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/global/xx_global.h"
 
+#include <string.h>
+
 #define XX_SCAN_ARCHIVE_MEMBER_DEFAULT (UINT64_C(256) * 1024U * 1024U)
-#define XX_SCAN_ARCHIVE_TOTAL_DEFAULT (UINT64_C(1024) * 1024U * 1024U)
+#define XX_SCAN_ARCHIVE_TOTAL_DEFAULT UINT64_MAX
 #define XX_SCAN_ARCHIVE_COUNT_DEFAULT UINT32_C(100000)
+/* The head xx_scan_archive_is_scanable_header needs: a PDF marker may start
+ * anywhere in the first 1024 bytes, and a TAR header is a 512-byte block. */
+#define XX_SCAN_ARCHIVE_HEAD_SIZE 1029U
+
+/* XScanEngine's messages for a member it unpacks but never scans. */
+static const char xx_scan_archive_invalid_crc[] = "Invalid CRC";
+static const char xx_scan_archive_unknown_method[] = "Unknown compression method: Unknown";
+/* xx_zip_unpack_current_archive_record_to_device's message for a stream that
+ * decoded completely to the wrong CRC or size, i.e. XDecompress's CRC check. */
+static const char xx_scan_archive_zip_crc_mismatch[] = "ZIP output CRC or size mismatch";
 
 typedef struct xx_scan_archive_sink {
     uint8_t *data;
-    uint64_t size;
+    uint64_t size;   /* Decoded bytes received. */
+    uint64_t stored; /* Bytes kept in data or temporary; equals size for a kept member. */
     size_t capacity;
     uint64_t limit;
     uint64_t memory_threshold;
+    uint64_t expected_size; /* UINT64_MAX when unknown. */
     xx_io_device *temporary;
     bool discard;
     bool failed;
+    bool overflow;        /* More output than the limit: damaged data, not a storage fault. */
+    bool filter_scanable; /* Keep the member only when its head can be scannable. */
+    bool filtered;        /* Its head is never scannable: decoded for the checksum only. */
+    bool head_decided;
+    bool track_crc; /* Keep the CRC-32 of every decoded byte in crc. */
+    uint32_t crc;
+    size_t head_size;
+    const char *name;
     xx_pd_struct *pd;
+    uint8_t head[XX_SCAN_ARCHIVE_HEAD_SIZE];
 } xx_scan_archive_sink;
 
 static bool xx_scan_archive_error(xx_pd_struct *pd, int error, const char *message)
@@ -64,7 +91,7 @@ static bool xx_scan_archive_spill(xx_scan_archive_sink *sink)
 {
     xx_io_device *temporary = xx_io_temp_open();
     if (!temporary) return xx_scan_archive_sink_error(sink, XXFC_ERR_IO, "Cannot create temporary archive member");
-    if (!xx_scan_archive_temp_write(sink, temporary, sink->data, (size_t)sink->size)) {
+    if (!xx_scan_archive_temp_write(sink, temporary, sink->data, (size_t)sink->stored)) {
         xx_io_close(temporary);
         return false;
     }
@@ -75,38 +102,127 @@ static bool xx_scan_archive_spill(xx_scan_archive_sink *sink)
     return true;
 }
 
-/* Small decoded members stay in memory. Known large members start in a temp
- * file; unknown GZIP/BZIP2 output spills as soon as it reaches the global
- * file-buffer threshold. Independent archive size limits still apply. */
-static ssize_t xx_scan_archive_write(xx_io_device *device, const void *data, size_t size)
+static bool xx_scan_archive_has_suffix_ci(const char *name, const char *suffix)
 {
-    xx_scan_archive_sink *sink = (xx_scan_archive_sink *)device->priv;
-    uint64_t required;
+    size_t nlen, slen, i;
+    if (!name || !suffix) return false;
+    nlen = strlen(name);
+    slen = strlen(suffix);
+    if (nlen < slen) return false;
+    name += (nlen - slen);
+    for (i = 0; i < slen; ++i) {
+        char c1 = name[i];
+        char c2 = suffix[i];
+        if (c1 >= 'A' && c1 <= 'Z') c1 = (char)(c1 + ('a' - 'A'));
+        if (c2 >= 'A' && c2 <= 'Z') c2 = (char)(c2 + ('a' - 'A'));
+        if (c1 != c2) return false;
+    }
+    return true;
+}
+
+/* A TAR header block whose checksum holds, as XTAR's record walk requires. */
+static bool xx_scan_archive_is_tar_header(const uint8_t *data, size_t size)
+{
+    uint32_t stored = 0, sum = 0;
+    int32_t signed_sum = 0;
+    size_t i;
+    bool digits = false;
+    if (size < 512) return false;
+    if (!memcmp(data + 257, "ustar", 5)) return true;
+    for (i = 148; i < 156 && (data[i] == ' ' || data[i] == '\0'); ++i) continue;
+    for (; i < 156 && data[i] >= '0' && data[i] <= '7'; ++i) {
+        stored = (stored << 3) | (uint32_t)(data[i] - '0');
+        digits = true;
+    }
+    if (!digits) return false;
+    for (i = 0; i < 512; ++i) {
+        uint8_t value = i >= 148 && i < 156 ? (uint8_t)' ' : data[i];
+        sum += value;
+        signed_sum += (int8_t)value;
+    }
+    return stored == sum || stored == (uint32_t)signed_sum;
+}
+
+/* A cheap superset of XScanEngine::isScanable over the first
+ * XX_SCAN_ARCHIVE_HEAD_SIZE bytes (or the whole member when it is shorter):
+ * the engine's type check decides only for the members kept here. */
+static bool xx_scan_archive_is_scanable_header(const uint8_t *data, size_t size, const char *name)
+{
+    size_t index;
+    if (size >= 5) {
+        /* PDF, also behind a BOM or other bytes within the first 1024. */
+        if (data[0] == '%' && data[1] == 'P' && data[2] == 'D' && data[3] == 'F') return true;
+        for (index = 1; index <= 1024U && index + 5U <= size; ++index)
+            if (!memcmp(data + index, "%PDF-", 5)) return true;
+    }
+    if (xx_scan_archive_is_tar_header(data, size)) return true;
+    if (size < 2) return false;
+    /* MZ / ZM: DOS, PE, PE32, PE64, .NET, NE, LE, LX */
+    if ((data[0] == 'M' && data[1] == 'Z') || (data[0] == 'Z' && data[1] == 'M')) return true;
+    /* GZ / NPM */
+    if (data[0] == 0x1f && data[1] == 0x8b) return true;
+    /* BZ2 */
+    if (size >= 3 && data[0] == 'B' && data[1] == 'Z' && data[2] == 'h') return true;
+    /* ELF */
+    if (size >= 4 && data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F') return true;
+    /* DEX */
+    if (size >= 4 && data[0] == 'd' && data[1] == 'e' && data[2] == 'x' && data[3] == '\n') return true;
+    /* PDF */
+    if (size >= 4 && data[0] == '%' && data[1] == 'P' && data[2] == 'D' && data[3] == 'F') return true;
+    /* ZIP / JAR / APK / IPA: PK\x03\x04, PK\x05\x06, PK\x07\x08 */
+    if (size >= 4 && data[0] == 'P' && data[1] == 'K' &&
+        (data[2] == 0x03 || data[2] == 0x05 || data[2] == 0x07) &&
+        (data[3] == 0x04 || data[3] == 0x06 || data[3] == 0x08)) return true;
+    /* RAR */
+    if (size >= 4 && data[0] == 'R' && data[1] == 'a' && data[2] == 'r' && data[3] == '!') return true;
+    /* 7Z */
+    if (size >= 4 && data[0] == '7' && data[1] == 'z' && data[2] == 0xbc && data[3] == 0xaf) return true;
+    /* CAB */
+    if (size >= 4 && data[0] == 'M' && data[1] == 'S' && data[2] == 'C' && data[3] == 'F') return true;
+    /* XZ */
+    if (size >= 6 && data[0] == 0xfd && data[1] == '7' && data[2] == 'z' && data[3] == 'X' && data[4] == 'Z' && data[5] == 0x00) return true;
+    /* Mach-O 32/64 and Fat */
+    if (size >= 4) {
+        if (!memcmp(data, "\xFE\xED\xFA\xCE", 4) || !memcmp(data, "\xCE\xFA\xED\xFE", 4) ||
+            !memcmp(data, "\xFE\xED\xFA\xCF", 4) || !memcmp(data, "\xCF\xFA\xED\xFE", 4) ||
+            !memcmp(data, "\xCA\xFE\xBA\xBE", 4) || !memcmp(data, "\xBE\xBA\xFE\xCA", 4) ||
+            !memcmp(data, "\xCA\xFE\xBA\xBF", 4) || !memcmp(data, "\xBF\xBA\xFE\xCA", 4)) {
+            return true;
+        }
+    }
+    /* LHA: header method at offset 2 */
+    if (size >= 7 && data[2] == '-' && data[3] == 'l' && (data[4] == 'h' || data[4] == 'z') && data[6] == '-') {
+        return true;
+    }
+    /* Name-based fallbacks for formats where magic is not at offset 0 */
+    if (name) {
+        if (xx_scan_archive_has_suffix_ci(name, ".tar") ||
+            xx_scan_archive_has_suffix_ci(name, ".com") ||
+            xx_scan_archive_has_suffix_ci(name, ".pdf") ||
+            xx_scan_archive_has_suffix_ci(name, ".iso")) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Keep size more decoded bytes. Small members stay in memory; a member that
+ * reaches the global file-buffer threshold, or is known to, continues in a
+ * temporary file. */
+static bool xx_scan_archive_store(xx_scan_archive_sink *sink, const void *data, size_t size)
+{
+    uint64_t required = sink->stored + (uint64_t)size;
     size_t capacity;
     uint8_t *grown;
-    if (sink->failed || xx_scan_archive_stopped(sink->pd)) return -1;
-    if ((!data && size) || size > (size_t)PTRDIFF_MAX || sink->size > sink->limit ||
-        (uint64_t)size > sink->limit - sink->size || sink->size > (uint64_t)INT64_MAX ||
-        (uint64_t)size > (uint64_t)INT64_MAX - sink->size) {
-        xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_BOUNDS, "Decoded archive member exceeds the scan size limit");
-        return -1;
-    }
-    if (!size) return 0;
-    required = sink->size + (uint64_t)size;
-    if (sink->discard) {
-        sink->size = required;
-        return (ssize_t)size;
-    }
-    if (!sink->temporary && required >= sink->memory_threshold && !xx_scan_archive_spill(sink)) return -1;
+    if (!size) return true;
+    if (!sink->temporary && required >= sink->memory_threshold && !xx_scan_archive_spill(sink)) return false;
     if (sink->temporary) {
-        if (!xx_scan_archive_temp_write(sink, sink->temporary, data, size)) return -1;
-        sink->size = required;
-        return (ssize_t)size;
+        if (!xx_scan_archive_temp_write(sink, sink->temporary, data, size)) return false;
+        sink->stored = required;
+        return true;
     }
-    if (required > (uint64_t)SIZE_MAX) {
-        xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_BOUNDS, "Archive memory size cannot be represented");
-        return -1;
-    }
+    if (required > (uint64_t)SIZE_MAX)
+        return xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_BOUNDS, "Archive memory size cannot be represented");
     if (required > sink->capacity) {
         capacity = sink->capacity ? sink->capacity : 4096U;
         while (capacity < required) {
@@ -115,15 +231,64 @@ static ssize_t xx_scan_archive_write(xx_io_device *device, const void *data, siz
         }
         if ((uint64_t)capacity > sink->limit || (uint64_t)capacity >= sink->memory_threshold) capacity = (size_t)required;
         grown = (uint8_t *)xx_mem_realloc(sink->data, capacity);
-        if (!grown) {
-            xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate decoded archive member");
-            return -1;
-        }
+        if (!grown) return xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate decoded archive member");
         sink->data = grown;
         sink->capacity = capacity;
     }
-    xx_mem_copy(sink->data + (size_t)sink->size, data, size);
-    sink->size = required;
+    xx_mem_copy(sink->data + (size_t)sink->stored, data, size);
+    sink->stored = required;
+    return true;
+}
+
+/* Decide from the collected head whether the member may be scannable. A
+ * member that can never be is still decoded to its end, into nothing, so its
+ * checksum is verified as XScanEngine verifies every member it unpacks. */
+static bool xx_scan_archive_decide(xx_scan_archive_sink *sink)
+{
+    sink->head_decided = true;
+    if (!xx_scan_archive_is_scanable_header(sink->head, sink->head_size, sink->name)) {
+        sink->filtered = true;
+        sink->discard = true;
+        return true;
+    }
+    if (sink->expected_size != UINT64_MAX && sink->expected_size >= sink->memory_threshold && !sink->temporary &&
+        !xx_scan_archive_spill(sink))
+        return false;
+    return xx_scan_archive_store(sink, sink->head, sink->head_size);
+}
+
+/* Decoders write here. Without the scannable filter every byte is kept (or,
+ * for discard, only counted); with it, the first XX_SCAN_ARCHIVE_HEAD_SIZE
+ * bytes are held back until the head is decided, so a member that is never
+ * scannable is never stored, whatever sizes the decoder writes in. */
+static ssize_t xx_scan_archive_write(xx_io_device *device, const void *data, size_t size)
+{
+    xx_scan_archive_sink *sink = (xx_scan_archive_sink *)device->priv;
+    const uint8_t *bytes = (const uint8_t *)data;
+    size_t held = 0;
+    if (sink->failed || xx_scan_archive_stopped(sink->pd)) return -1;
+    if ((!data && size) || size > (size_t)PTRDIFF_MAX || sink->size > (uint64_t)INT64_MAX ||
+        (uint64_t)size > (uint64_t)INT64_MAX - sink->size) {
+        xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_BOUNDS, "Decoded archive member exceeds the scan size limit");
+        return -1;
+    }
+    if (sink->size > sink->limit || (uint64_t)size > sink->limit - sink->size) {
+        /* More output than the member declares (or than the stream limit):
+         * the decoder fails and the member is treated as damaged. */
+        sink->overflow = true;
+        return -1;
+    }
+    if (!size) return 0;
+    if (sink->track_crc) sink->crc = xx_crc32_calc(sink->crc, bytes, size);
+    if (!sink->head_decided) {
+        held = XX_SCAN_ARCHIVE_HEAD_SIZE - sink->head_size;
+        if (held > size) held = size;
+        xx_mem_copy(sink->head + sink->head_size, bytes, held);
+        sink->head_size += held;
+        if (sink->head_size == XX_SCAN_ARCHIVE_HEAD_SIZE && !xx_scan_archive_decide(sink)) return -1;
+    }
+    if (held < size && !sink->discard && !xx_scan_archive_store(sink, bytes + held, size - held)) return -1;
+    sink->size += (uint64_t)size;
     return (ssize_t)size;
 }
 
@@ -132,20 +297,36 @@ static int64_t xx_scan_archive_sink_size(xx_io_device *device)
     return (int64_t)((xx_scan_archive_sink *)device->priv)->size;
 }
 
+/* filter_scanable keeps a member only when its head can be scannable
+ * (xx_scan_archive_is_scanable_header); a large one then starts in a
+ * temporary file once that is known. Without the filter a member of
+ * expected_size at or above the threshold starts there at once. */
 static bool xx_scan_archive_sink_init(xx_scan_archive_sink *sink, xx_io_device *device, uint64_t limit,
-                                      uint64_t expected_size, bool discard, xx_pd_struct *pd)
+                                      uint64_t expected_size, bool discard, const char *name,
+                                      bool filter_scanable, xx_pd_struct *pd)
 {
     xx_mem_zero(sink, sizeof(*sink));
     xx_mem_zero(device, sizeof(*device));
     sink->limit = limit;
     sink->memory_threshold = (uint64_t)xx_get_file_buffer_size();
+    sink->expected_size = expected_size;
     sink->discard = discard;
+    sink->filter_scanable = filter_scanable && !discard;
+    sink->head_decided = !sink->filter_scanable;
+    sink->name = name;
     sink->pd = pd;
     device->priv = sink;
     device->write = xx_scan_archive_write;
     device->tell = xx_scan_archive_sink_size;
     device->total_size = xx_scan_archive_sink_size;
-    return discard || expected_size == UINT64_MAX || expected_size < sink->memory_threshold || xx_scan_archive_spill(sink);
+    return discard || sink->filter_scanable || expected_size == UINT64_MAX || expected_size < sink->memory_threshold ||
+           xx_scan_archive_spill(sink);
+}
+
+/* After a complete decode: decide a member shorter than the head. */
+static bool xx_scan_archive_sink_finish(xx_scan_archive_sink *sink)
+{
+    return sink->head_decided || xx_scan_archive_decide(sink);
 }
 
 static bool xx_scan_archive_sink_cleanup(xx_scan_archive_sink *sink)
@@ -164,7 +345,7 @@ static bool xx_scan_archive_publish(xx_scan_archive_sink *sink, const char *name
 {
     xx_scan_archive_member member;
     bool result;
-    if (sink->failed || sink->discard || xx_scan_archive_stopped(pd)) return false;
+    if (sink->failed || sink->discard || sink->stored != sink->size || xx_scan_archive_stopped(pd)) return false;
     if (sink->temporary) {
         /* Repositioning is also the update-stream write/read barrier. Only
          * expose the completed, verified extent to the scanner. */
@@ -189,9 +370,195 @@ static bool xx_scan_archive_is_zip(xx_file_type_t type)
            type == XX_FILE_TYPE_APK || type == XX_FILE_TYPE_IPA;
 }
 
+/* The ZIP methods XZip maps to a decoder (XZip::zipToCompressMethod). For any
+ * other method XDecompress reports "Unknown compression method: Unknown" and
+ * XScanEngine does not scan the member, even where xx_zip could decode it. */
+static bool xx_scan_archive_zip_method_known(uint64_t method)
+{
+    switch (method) {
+        case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 8: case 9: case 12: case 14:
+        case 93: case 95: case 96: case 97: case 98: case 99: return true;
+        default: return false;
+    }
+}
+
+/* What becomes of one member. As in XScanEngine, damage inside a member
+ * never fails the scan: the member is not scanned, and only a checksum
+ * mismatch is reported (XDecompress sets "Invalid CRC"). A storage fault, an
+ * allocation failure or a stop request fails it. */
+typedef enum xx_scan_member_status {
+    XX_SCAN_MEMBER_OK,
+    XX_SCAN_MEMBER_SKIPPED,
+    XX_SCAN_MEMBER_INVALID_CRC,
+    XX_SCAN_MEMBER_FAILED
+} xx_scan_member_status;
+
+/* A member decoded completely but to the wrong checksum, as the readers say. */
+static bool xx_scan_archive_is_crc_failure(const xx_pd_struct *pd)
+{
+    return pd && pd->last_error &&
+           (!xx_rt_strcmp(pd->error_string, xx_scan_archive_zip_crc_mismatch) || !xx_rt_strcmp(pd->error_string, "LHA member payload CRC mismatch"));
+}
+
+/* A reader's error about one member, or about the rest of the directory, is
+ * no scan error. A stop request is kept. */
+static void xx_scan_archive_forgive(xx_pd_struct *pd)
+{
+    if (pd && !xx_pd_is_stopped(pd)) {
+        pd->last_error = 0;
+        pd->error_string[0] = '\0';
+    }
+}
+
+/* A stored member is handed to the scanner as a view of the source, so its
+ * checksum is verified here, before the callback, as a decoded member's is by
+ * the decoder. ZIP Store: the record's CRC-32 over the payload (no size limit
+ * applies, the view holds no copy). LHA LH0/LZ4: the reader's own
+ * copy-and-verify into a discarding sink, which keeps nothing. */
+static xx_scan_member_status xx_scan_archive_verify_stored(Abstractformat *format, xx_file_type_t type, xx_archive_record_state *state,
+                                                           const xx_archive_record *record, uint64_t decoded_size, xx_pd_struct *pd)
+{
+    if (xx_scan_archive_is_zip(type)) {
+        uint64_t expected = xx_archive_record_get_meta_u64(record, XX_META_ID_CRC32, UINT64_MAX);
+        if (expected > UINT32_MAX) return XX_SCAN_MEMBER_SKIPPED;
+        if (xx_crc32_device(format->device, record->data_offset, record->compressed_size, 0U) != (uint32_t)expected)
+            return xx_scan_archive_stopped(pd) ? XX_SCAN_MEMBER_FAILED : XX_SCAN_MEMBER_INVALID_CRC;
+        return xx_scan_archive_stopped(pd) ? XX_SCAN_MEMBER_FAILED : XX_SCAN_MEMBER_OK;
+    }
+    if (type == XX_FILE_TYPE_LHA) {
+        xx_scan_archive_sink sink;
+        xx_io_device destination;
+        bool verified, crc;
+        if (!xx_scan_archive_sink_init(&sink, &destination, decoded_size, UINT64_MAX, true, NULL, false, pd)) {
+            xx_scan_archive_sink_cleanup(&sink);
+            return XX_SCAN_MEMBER_FAILED;
+        }
+        verified = xx_lha_unpack_current_archive_record_to_device(format, state, &destination, pd) &&
+                   !sink.failed && !sink.overflow && sink.size == decoded_size;
+        xx_scan_archive_sink_cleanup(&sink);
+        if (sink.failed || xx_pd_is_stopped(pd)) return XX_SCAN_MEMBER_FAILED;
+        if (verified && !(pd && pd->last_error)) return XX_SCAN_MEMBER_OK;
+        crc = xx_scan_archive_is_crc_failure(pd);
+        xx_scan_archive_forgive(pd);
+        return crc ? XX_SCAN_MEMBER_INVALID_CRC : XX_SCAN_MEMBER_SKIPPED;
+    }
+    return XX_SCAN_MEMBER_OK;
+}
+
+/* A ZIP without usable end records, which XZip reads from its local headers
+ * as far as complete records reach (a stream, or an archive cut short).
+ * Members follow the same rules as in xx_scan_archive_stream. cdie decodes
+ * Store and Deflate members here; any other method is skipped silently. */
+static bool xx_scan_archive_zip_local_stream(xx_io_device *device, int64_t origin, int64_t range_size, uint64_t member_limit,
+                                             uint64_t total_limit, uint32_t count_limit, bool filter_scanable,
+                                             xx_scan_archive_callback callback, xx_scan_archive_report_callback report,
+                                             void *context, xx_pd_struct *pd)
+{
+    int64_t current = 0;
+    uint64_t consumed = 0U;
+    uint32_t count = 0U;
+    char *name = (char *)xx_mem_alloc(65536U);
+    bool result = false;
+    if (!name) return xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate archive member name");
+    while (count < count_limit && range_size - current >= 30) {
+        uint8_t local[30];
+        uint16_t flags, method, name_length;
+        uint32_t crc, compressed, decoded;
+        int64_t record_size, data;
+        xx_scan_member_status status = XX_SCAN_MEMBER_OK;
+        bool visited = true;
+        if (xx_scan_archive_stopped(pd)) goto done;
+        if (!xx_io_read_at(device, current, local, 30) || local[0] != 'P' || local[1] != 'K' || local[2] != 3U || local[3] != 4U) break;
+        flags = (uint16_t)(local[6] | (local[7] << 8));
+        method = (uint16_t)(local[8] | (local[9] << 8));
+        crc = (uint32_t)local[14] | ((uint32_t)local[15] << 8) | ((uint32_t)local[16] << 16) | ((uint32_t)local[17] << 24);
+        compressed = (uint32_t)local[18] | ((uint32_t)local[19] << 8) | ((uint32_t)local[20] << 16) | ((uint32_t)local[21] << 24);
+        decoded = (uint32_t)local[22] | ((uint32_t)local[23] << 8) | ((uint32_t)local[24] << 16) | ((uint32_t)local[25] << 24);
+        name_length = (uint16_t)(local[26] | (local[27] << 8));
+        data = current + 30 + (int64_t)name_length + (int64_t)(uint16_t)(local[28] | (local[29] << 8));
+        record_size = data - current + (int64_t)compressed;
+        /* Without a central directory a data descriptor's sizes are unknown. */
+        if (record_size > range_size - current || (flags & 8U) || !xx_io_read_at(device, current + 30, name, name_length)) break;
+        name[name_length] = '\0';
+        ++count;
+        if (!(flags & 1U)) {
+            uint64_t remaining = total_limit > consumed ? total_limit - consumed : 0;
+            if (!xx_scan_archive_zip_method_known(method)) {
+                if (report) report(context, xx_scan_archive_unknown_method);
+                status = XX_SCAN_MEMBER_SKIPPED;
+            } else if ((method != 0U && decoded > member_limit) || decoded > remaining) {
+                status = XX_SCAN_MEMBER_SKIPPED;
+            } else if (method == 0U) {
+                xx_scan_archive_member member;
+                if (compressed != decoded) status = XX_SCAN_MEMBER_SKIPPED;
+                else if (xx_crc32_device(device, data, compressed, 0U) != crc) status = XX_SCAN_MEMBER_INVALID_CRC;
+                if (status == XX_SCAN_MEMBER_OK && filter_scanable) {
+                    uint8_t head[XX_SCAN_ARCHIVE_HEAD_SIZE];
+                    size_t head_size = decoded < XX_SCAN_ARCHIVE_HEAD_SIZE ? (size_t)decoded : XX_SCAN_ARCHIVE_HEAD_SIZE;
+                    if (!xx_io_read_at(device, data, head, head_size) || !xx_scan_archive_is_scanable_header(head, head_size, name))
+                        status = XX_SCAN_MEMBER_SKIPPED;
+                }
+                if (status == XX_SCAN_MEMBER_OK) {
+                    member.device = xx_io_sub_open_ro(device, data, compressed);
+                    if (!member.device) {
+                        xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create stored archive member view");
+                        goto done;
+                    }
+                    member.name = name;
+                    member.source_offset = origin + data;
+                    member.source_size = compressed;
+                    member.size = decoded;
+                    member.is_compressed = false;
+                    visited = callback(context, &member, pd);
+                    xx_io_close(member.device);
+                }
+            } else if (method == 8U || method == 9U) {
+                xx_scan_archive_sink sink;
+                xx_io_device destination;
+                bool complete;
+                if (!xx_scan_archive_sink_init(&sink, &destination, decoded, decoded, false, name, filter_scanable, pd)) {
+                    xx_scan_archive_sink_cleanup(&sink);
+                    goto done;
+                }
+                sink.track_crc = true;
+                complete = xx_deflate_unpack_device(device, data, compressed, &destination, method == 9U, pd) && !sink.failed && !sink.overflow &&
+                           !xx_scan_archive_stopped(pd);
+                /* A stream that decodes completely is checked against the CRC. */
+                if (complete && (sink.size != decoded || sink.crc != crc)) status = XX_SCAN_MEMBER_INVALID_CRC;
+                else if (!complete) status = XX_SCAN_MEMBER_SKIPPED;
+                if (status == XX_SCAN_MEMBER_OK && xx_scan_archive_sink_finish(&sink) && !sink.filtered)
+                    visited = xx_scan_archive_publish(&sink, name, origin + data, compressed, true, callback, context, pd);
+                if (!xx_scan_archive_sink_cleanup(&sink) || sink.failed || xx_pd_is_stopped(pd)) goto done;
+                if (!complete) xx_scan_archive_forgive(pd);
+            }
+            if (status == XX_SCAN_MEMBER_INVALID_CRC && report) report(context, xx_scan_archive_invalid_crc);
+            if (!visited) {
+                result = !xx_scan_archive_stopped(pd);
+                goto done;
+            }
+            if (xx_scan_archive_stopped(pd)) goto done;
+            consumed += decoded;
+        }
+        current += record_size;
+    }
+    result = !xx_pd_is_stopped(pd);
+done:
+    xx_mem_free(name);
+    return result;
+}
+
+/* ZIP (JAR/APK/IPA) and LHA members, in archive order, as XScanEngine walks
+ * them: every member it would unpack is decoded or checksummed, a damaged or
+ * undecodable one is skipped (report receives "Invalid CRC" or "Unknown
+ * compression method: Unknown" where XScanEngine reports it), and only a member
+ * whose head can be scannable is kept (filter_scanable) and handed to the
+ * callback. A callback returning false ends the walk cleanly. So does an
+ * unreadable directory or a damaged later record, after the members before it.
+ * Only storage faults, allocation failures and a stop request fail. */
 static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, int64_t origin, int64_t range_size,
                                    uint64_t member_limit, uint64_t total_limit, uint32_t count_limit,
-                                   xx_scan_archive_callback callback, void *context, xx_pd_struct *pd)
+                                   bool filter_scanable, xx_scan_archive_callback callback,
+                                   xx_scan_archive_report_callback report, void *context, xx_pd_struct *pd)
 {
     xx_archive_record limits;
     xx_archive_record_state *state = NULL;
@@ -208,79 +575,78 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
         xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate archive scan limits");
         goto done;
     }
+
     state = xx_format_create_archive_records_reading(format, &limits.list_meta, pd);
-    if (!state || xx_scan_archive_stopped(pd)) goto done;
-    /* These native readers all expose an exact count. Comparing the visited
-     * count also distinguishes normal EOF from a damaged later entry or an
-     * allocation failure while advancing the native iterator. */
-    if (state->total_records < 0 || (uint64_t)state->total_records > (uint64_t)count_limit) {
-        xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Archive record count exceeds the scan limit");
+    if (!state) {
+        /* Records that cannot be read: nothing is expanded (initUnpack
+         * fails), except that XZip reads a ZIP without end records from its
+         * local headers. */
+        if (!xx_pd_is_stopped(pd)) {
+            xx_scan_archive_forgive(pd);
+            result = !xx_scan_archive_is_zip(type) ||
+                     xx_scan_archive_zip_local_stream(format->device, origin, range_size, member_limit, total_limit, count_limit, filter_scanable,
+                                                      callback, report, context, pd);
+        }
         goto done;
     }
+    if (xx_scan_archive_stopped(pd)) goto done;
     while ((record = xx_format_get_current_archive_record(format, state)) != NULL) {
         uint64_t decoded_size, remaining, method;
         const char *name;
+        xx_scan_member_status status = XX_SCAN_MEMBER_OK;
+        bool visited = true;
         xx_str_free(owned_name);
         owned_name = NULL;
         if (xx_scan_archive_stopped(pd)) goto done;
-        if (count == count_limit) {
-            xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Archive record count exceeds the scan limit");
-            goto done;
-        }
+        /* XScanEngine visits at most this many records of one archive. */
+        if (count == count_limit) break;
         ++count;
-        if (record->data_offset < 0 || record->compressed_size < 0 || record->data_offset > range_size ||
-            record->compressed_size > range_size - record->data_offset) {
-            xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Invalid archive member source range");
-            goto done;
-        }
-        if (xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
-            xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Encrypted archive members require a password and cannot be scanned");
-            goto done;
-        }
-        if (!xx_archive_record_get_meta_bool(record, XX_META_ID_IS_FOLDER, false)) {
-            decoded_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
-            remaining = total_limit - consumed;
-            if (decoded_size > member_limit || decoded_size > remaining || decoded_size > (uint64_t)INT64_MAX) {
-                xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Archive member exceeds the scan size limit");
-                goto done;
-            }
-            name = xx_archive_record_get_original_name(record);
-            if (!name) {
-                const wchar_t *wide_name = xx_archive_record_get_original_name_w(record);
-                if (wide_name) {
-                    owned_name = xx_str_unicode_to_utf8(wide_name);
-                    if (!owned_name) {
-                        xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot convert archive member name");
-                        goto done;
-                    }
-                    name = owned_name;
-                } else name = "archive-member";
-            }
-            method = xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX);
-            if (type == XX_FILE_TYPE_MACHOFAT ||
-                (xx_scan_archive_is_zip(type) && method == 0U) ||
-                (type == XX_FILE_TYPE_LHA && !((xx_lha *)format)->sfx_boa_mask &&
-                 (method == UINT64_C(0x6c6830) || method == UINT64_C(0x6c7a34)))) {
-                xx_scan_archive_member member;
-                bool visited;
-                if (decoded_size != (uint64_t)record->compressed_size) {
-                    xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Stored archive member has inconsistent sizes");
+        name = xx_archive_record_get_original_name(record);
+        if (!name) {
+            const wchar_t *wide_name = xx_archive_record_get_original_name_w(record);
+            if (wide_name) {
+                owned_name = xx_str_unicode_to_utf8(wide_name);
+                if (!owned_name) {
+                    xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot convert archive member name");
                     goto done;
                 }
-                if (type != XX_FILE_TYPE_MACHOFAT) {
-                    xx_scan_archive_sink sink;
-                    xx_io_device destination;
-                    bool verified;
-                    /* Native readers verify sizes and CRC while the sink
-                     * counts and discards bytes. Scan the original extent
-                     * only after verification, without copying the member. */
-                    if (!xx_scan_archive_sink_init(&sink, &destination, decoded_size, decoded_size, true, pd)) goto done;
-                    verified = type == XX_FILE_TYPE_LHA ? xx_lha_unpack_current_archive_record_to_device(format, state, &destination, pd) :
-                                                         xx_zip_unpack_current_archive_record_to_device(format, state, &destination, pd);
-                    verified = verified && !sink.failed && sink.size == decoded_size;
-                    if (!xx_scan_archive_sink_cleanup(&sink)) verified = false;
-                    if (!verified || xx_scan_archive_stopped(pd)) goto done;
-                }
+                name = owned_name;
+            } else name = "archive-member";
+        }
+        method = xx_archive_record_get_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX);
+        decoded_size = xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX);
+        /* Without a password an encrypted member is not unpacked, silently. */
+        if (record->compressed_size < 0 || decoded_size > (uint64_t)INT64_MAX ||
+            xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false))
+            goto next;
+        if (xx_scan_archive_is_zip(type) && !xx_scan_archive_zip_method_known(method)) {
+            if (report) report(context, xx_scan_archive_unknown_method);
+            goto next;
+        }
+        /* cdie's own size limits: an oversized member is skipped. */
+        remaining = total_limit > consumed ? total_limit - consumed : 0;
+        if ((method != 0U && decoded_size > member_limit) || decoded_size > remaining) goto next;
+        if (xx_scan_archive_is_zip(type) && record->data_offset < 0 &&
+            !xx_zip_resolve_record_data_offset((xx_zip *)format, (xx_archive_record *)record)) {
+            xx_scan_archive_forgive(pd);
+            goto next;
+        }
+        if (record->data_offset < 0 || record->data_offset > range_size || record->compressed_size > range_size - record->data_offset) goto next;
+        if ((xx_scan_archive_is_zip(type) && method == 0U) ||
+            (type == XX_FILE_TYPE_LHA && !((xx_lha *)format)->sfx_boa_mask &&
+             (method == UINT64_C(0x6c6830) || method == UINT64_C(0x6c7a34)))) {
+            xx_scan_archive_member member;
+            if (decoded_size != (uint64_t)record->compressed_size) goto next;
+            status = xx_scan_archive_verify_stored(format, type, state, record, decoded_size, pd);
+            if (status == XX_SCAN_MEMBER_FAILED) goto done;
+            if (status == XX_SCAN_MEMBER_OK && filter_scanable) {
+                uint8_t head[XX_SCAN_ARCHIVE_HEAD_SIZE];
+                size_t head_size = decoded_size < XX_SCAN_ARCHIVE_HEAD_SIZE ? (size_t)decoded_size : XX_SCAN_ARCHIVE_HEAD_SIZE;
+                if (!xx_io_read_at(format->device, record->data_offset, head, head_size) ||
+                    !xx_scan_archive_is_scanable_header(head, head_size, name))
+                    status = XX_SCAN_MEMBER_SKIPPED;
+            }
+            if (status == XX_SCAN_MEMBER_OK) {
                 member.device = xx_io_sub_open_ro(format->device, record->data_offset, record->compressed_size);
                 if (!member.device) {
                     xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create stored archive member view");
@@ -293,79 +659,85 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
                 member.is_compressed = false;
                 visited = callback(context, &member, pd);
                 xx_io_close(member.device);
-                if (!visited || xx_scan_archive_stopped(pd)) goto done;
-            } else {
-                xx_scan_archive_sink sink;
-                xx_io_device destination;
-                bool decoded, visited = false;
-                if (!xx_scan_archive_sink_init(&sink, &destination, decoded_size, decoded_size, false, pd)) {
-                    xx_scan_archive_sink_cleanup(&sink);
-                    goto done;
-                }
-                decoded = type == XX_FILE_TYPE_LHA ? xx_lha_unpack_current_archive_record_to_device(format, state, &destination, pd) :
-                                                    xx_zip_unpack_current_archive_record_to_device(format, state, &destination, pd);
-                if (decoded && !sink.failed && sink.size == decoded_size && !xx_scan_archive_stopped(pd))
-                    visited = xx_scan_archive_publish(&sink, name, origin + record->data_offset, record->compressed_size, true, callback, context, pd);
-                if (!xx_scan_archive_sink_cleanup(&sink)) visited = false;
-                if (!visited) goto done;
             }
-            consumed += decoded_size;
-        } else if (xx_scan_archive_is_zip(type)) {
+        } else {
             xx_scan_archive_sink sink;
             xx_io_device destination;
-            bool verified;
-            /* Empty Deflate directory streams are valid ZIP records. Use
-             * the native verifier to reject hidden data or a forged CRC,
-             * even though a directory does not produce a child scan. */
-            if (!xx_scan_archive_sink_init(&sink, &destination, 0U, 0U, true, pd)) goto done;
-            verified = xx_zip_unpack_current_archive_record_to_device(format, state, &destination, pd);
-            verified = verified && !sink.failed && sink.size == 0U;
-            if (!xx_scan_archive_sink_cleanup(&sink)) verified = false;
-            if (!verified || xx_scan_archive_stopped(pd)) goto done;
-        } else if (type == XX_FILE_TYPE_LHA && (record->compressed_size != 0 ||
-                   xx_archive_record_get_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, UINT64_MAX) != 0U)) {
-            xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "LHA directory contains an unexpected payload");
+            bool decoded;
+            if (!xx_scan_archive_sink_init(&sink, &destination, decoded_size, decoded_size, false, name, filter_scanable, pd)) {
+                xx_scan_archive_sink_cleanup(&sink);
+                goto done;
+            }
+            decoded = type == XX_FILE_TYPE_LHA ? xx_lha_unpack_current_archive_record_to_device(format, state, &destination, pd) :
+                                                xx_zip_unpack_current_archive_record_to_device(format, state, &destination, pd);
+            decoded = decoded && !sink.failed && !sink.overflow && sink.size == decoded_size && !xx_scan_archive_stopped(pd);
+            if (decoded && xx_scan_archive_sink_finish(&sink) && !sink.filtered)
+                visited = xx_scan_archive_publish(&sink, name, origin + record->data_offset, record->compressed_size, true, callback, context, pd);
+            if (!xx_scan_archive_sink_cleanup(&sink) || sink.failed || xx_pd_is_stopped(pd)) goto done;
+            if (!decoded) {
+                status = xx_scan_archive_is_crc_failure(pd) ? XX_SCAN_MEMBER_INVALID_CRC : XX_SCAN_MEMBER_SKIPPED;
+                xx_scan_archive_forgive(pd);
+            }
+        }
+        if (status == XX_SCAN_MEMBER_INVALID_CRC && report) report(context, xx_scan_archive_invalid_crc);
+        if (!visited) {
+            if (xx_scan_archive_stopped(pd)) goto done;
+            result = true;
             goto done;
         }
+        if (xx_scan_archive_stopped(pd)) goto done;
+        consumed += decoded_size;
+    next:
         if (!xx_format_archive_record_move_to_next(format, state, pd)) break;
     }
-    result = !xx_scan_archive_stopped(pd) && (uint64_t)count == (uint64_t)state->total_records;
-    if (xx_scan_archive_is_zip(type) && ((xx_zip *)format)->directory_damaged) result = false;
+    /* The end, or a later record or directory that cannot be read: the walk
+     * stops after the members before it, as XScanEngine's moveToNext does. */
+    if (xx_pd_is_stopped(pd)) goto done;
+    xx_scan_archive_forgive(pd);
+    result = true;
 done:
     xx_str_free(owned_name);
     if (state) xx_format_free_archive_records_reading(format, state);
     xx_archive_record_cleanup(&limits);
-    return result || xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Cannot decode archive member or enumerate complete archive");
+    return result || xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Cannot enumerate archive members");
 }
 
+/* One logical member from concatenated GZIP/BZIP2 streams. A stream that does
+ * not decode, or decodes beyond the limit, is skipped like a damaged member;
+ * a callback returning false is a clean stop. */
 static bool xx_scan_archive_compressed_stream(xx_io_device *view, xx_file_type_t type, int64_t origin,
                                               uint64_t limit, xx_scan_archive_callback callback, void *context, xx_pd_struct *pd)
 {
     xx_scan_archive_sink sink;
     xx_io_device destination;
     int64_t stream_size = -1;
-    bool decoded, result = false;
-    if (!xx_scan_archive_sink_init(&sink, &destination, limit, UINT64_MAX, false, pd)) {
+    bool decoded, result = true;
+    if (!xx_scan_archive_sink_init(&sink, &destination, limit, UINT64_MAX, false, NULL, false, pd)) {
         xx_scan_archive_sink_cleanup(&sink);
         return false;
     }
     decoded = type == XX_FILE_TYPE_GZ ? xx_gz_decode_stream(view, 0, &destination, &stream_size, NULL, NULL, pd) :
                                        xx_bz2_decode_stream(view, 0, &destination, &stream_size, NULL, pd);
-    if (decoded && !sink.failed && stream_size > 0 && stream_size <= xx_io_total_size(view) && !xx_scan_archive_stopped(pd))
-        result = xx_scan_archive_publish(&sink, type == XX_FILE_TYPE_GZ ? "gzip-content" : "bzip2-content",
-                                         origin, stream_size, true, callback, context, pd);
-    if (!xx_scan_archive_sink_cleanup(&sink)) result = false;
+    decoded = decoded && !sink.failed && !sink.overflow && stream_size > 0 && stream_size <= xx_io_total_size(view) &&
+              !xx_scan_archive_stopped(pd);
+    if (decoded)
+        (void)xx_scan_archive_publish(&sink, type == XX_FILE_TYPE_GZ ? "gzip-content" : "bzip2-content",
+                                      origin, stream_size, true, callback, context, pd);
+    if (!xx_scan_archive_sink_cleanup(&sink) || sink.failed || xx_pd_is_stopped(pd)) result = false;
+    else if (!decoded) xx_scan_archive_forgive(pd);
+    else if (xx_scan_archive_stopped(pd)) result = false;
     return result || xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Cannot decode complete compressed archive stream");
 }
 
-bool xx_scan_visit_archives(xx_io_device *device, const xx_scan_options *options,
-                            xx_scan_archive_callback callback, void *context, xx_pd_struct *pd)
+bool xx_scan_visit_archives_ex(xx_io_device *device, const xx_scan_options *options, xx_scan_archive_callback callback,
+                               xx_scan_archive_report_callback report, void *context, xx_pd_struct *pd)
 {
     xx_io_device *view = NULL;
     int64_t saved, total_size, range_size;
     uint64_t member_limit, total_limit;
     uint32_t count_limit;
     xx_file_type_t type;
+    bool filter_scanable;
     bool result = false;
     if (!device || !options || !callback) return xx_scan_archive_error(pd, XXFC_ERR_NULL_PARAM, "Missing archive scan argument");
     if (xx_scan_archive_stopped(pd)) return false;
@@ -373,8 +745,9 @@ bool xx_scan_visit_archives(xx_io_device *device, const xx_scan_options *options
         return xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Invalid archive scan range");
     type = options->file_type;
     if (type == XX_FILE_TYPE_NPM) type = XX_FILE_TYPE_GZ;
-    if (!xx_scan_archive_is_zip(type) && type != XX_FILE_TYPE_LHA && type != XX_FILE_TYPE_GZ && type != XX_FILE_TYPE_BZ2 && type != XX_FILE_TYPE_MACHOFAT)
+    if (!xx_scan_archive_is_zip(type) && type != XX_FILE_TYPE_LHA && type != XX_FILE_TYPE_GZ && type != XX_FILE_TYPE_BZ2)
         return true;
+    filter_scanable = !options->aggressive_scan;
     member_limit = options->archive_max_member_size ? options->archive_max_member_size : XX_SCAN_ARCHIVE_MEMBER_DEFAULT;
     total_limit = options->archive_max_total_size ? options->archive_max_total_size : XX_SCAN_ARCHIVE_TOTAL_DEFAULT;
     count_limit = options->archive_max_members ? options->archive_max_members : XX_SCAN_ARCHIVE_COUNT_DEFAULT;
@@ -393,21 +766,22 @@ bool xx_scan_visit_archives(xx_io_device *device, const xx_scan_options *options
         goto done;
     }
     if (type == XX_FILE_TYPE_GZ || type == XX_FILE_TYPE_BZ2) {
-        result = xx_scan_archive_compressed_stream(view, type, options->offset, member_limit < total_limit ? member_limit : total_limit, callback, context, pd);
+        result = xx_scan_archive_compressed_stream(view, type, options->offset, member_limit < total_limit ? member_limit : total_limit,
+                                                   callback, context, pd);
     } else if (type == XX_FILE_TYPE_LHA) {
         xx_lha reader;
         xx_lha_init(&reader, view, 0);
-        result = xx_scan_archive_stream(&reader.format, type, options->offset, range_size, member_limit, total_limit, count_limit, callback, context, pd);
+        result = xx_scan_archive_stream(&reader.format, type, options->offset, range_size, member_limit, total_limit, count_limit,
+                                        filter_scanable, callback, report, context, pd);
         xx_lha_destroy(&reader);
-    } else if (type == XX_FILE_TYPE_MACHOFAT) {
-        xx_machofat reader;
-        xx_machofat_init(&reader, view, 0);
-        result = xx_scan_archive_stream(&reader.format, type, options->offset, range_size, member_limit, total_limit, count_limit, callback, context, pd);
-        xx_machofat_destroy(&reader);
     } else {
         xx_zip reader;
         xx_zip_init(&reader, view, 0);
-        result = xx_scan_archive_stream(&reader.format, type, options->offset, range_size, member_limit, total_limit, count_limit, callback, context, pd);
+        /* XZip finds the end records anywhere: a ZIP after other data, its
+         * offsets counted from the file start (zip -A), is read as XZip reads it. */
+        reader.allow_leading_data = true;
+        result = xx_scan_archive_stream(&reader.format, type, options->offset, range_size, member_limit, total_limit, count_limit,
+                                        filter_scanable, callback, report, context, pd);
         xx_zip_destroy(&reader);
     }
 done:
@@ -415,4 +789,22 @@ done:
     if (xx_io_seek64(device, saved, SEEK_SET) != 0)
         return xx_scan_archive_error(pd, XXFC_ERR_IO, "Cannot restore archive scan input position");
     return result && !xx_scan_archive_stopped(pd);
+}
+
+bool xx_scan_visit_archives(xx_io_device *device, const xx_scan_options *options,
+                            xx_scan_archive_callback callback, void *context, xx_pd_struct *pd)
+{
+    return xx_scan_visit_archives_ex(device, options, callback, NULL, context, pd);
+}
+
+bool xx_scan_archive_is_tar(xx_io_device *device)
+{
+    int64_t position = xx_io_tell(device);
+    xx_tar tar;
+    bool valid;
+    xx_tar_init(&tar, device, 0);
+    valid = xx_tar_check_is_valid(&tar.format, NULL);
+    xx_tar_destroy(&tar);
+    if (position >= 0) (void)xx_io_seek64(device, position, SEEK_SET);
+    return valid;
 }

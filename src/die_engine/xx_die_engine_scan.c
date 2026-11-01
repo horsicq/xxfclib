@@ -409,7 +409,10 @@ static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect
 /* XMSDOS uses a signature-visible layout distinct from the native parser:
  * the page count bounds the image, the header is clipped to it, and the
  * loadable bytes occupy the synthetic address range beginning at 0x10000000.
- * Keep malformed last-page and header handling identical to XMSDOS. */
+ * Keep malformed last-page and header handling identical to XMSDOS. Like
+ * XMSDOS (and DIE 3.x), the module base is that 0x10000000 load address and
+ * the entry point is module base + CS:IP, so getAddressOfEntryPoint,
+ * getEntryPointOffset and compareEP all resolve through the same mapping. */
 static int script_msdos_memory_map(xx_io_device *device, xx_memory_map *map, xx_pd_struct *pd)
 {
     cd_i64 size = xx_io_total_size(device);
@@ -436,8 +439,8 @@ static int script_msdos_memory_map(xx_io_device *device, xx_memory_map *map, xx_
     if (entry >= 0x100000U) entry -= 0x100000U;
 
     map->binary_size = size;
-    map->module_address = 0;
-    map->entry_point_address = entry;
+    map->module_address = UINT64_C(0x10000000);
+    map->entry_point_address = UINT64_C(0x10000000) + entry;
     map->start_load_offset = header_size;
     map->code_base = 0;
     map->file_type = XX_FILE_TYPE_MSDOS;
@@ -448,9 +451,10 @@ static int script_msdos_memory_map(xx_io_device *device, xx_memory_map *map, xx_
                                 XX_FILE_PART_SEGMENT, 1, "MSDOS image", false) ||
         !xx_memory_map_add_part(map, image_size, size - image_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, 2, "Overlay", false) ||
         xx_pd_is_stopped(pd) || !xx_memory_map_finalize(map)) return -1;
-    /* Finalization derives a module base from mapped addresses. XMSDOS's
-     * public module base remains zero, independently of the synthetic range. */
-    map->module_address = 0;
+    /* Finalization derives a module base from mapped addresses (none when the
+     * header covers the whole image). XMSDOS's module base is the 0x10000000
+     * load address in every case. */
+    map->module_address = UINT64_C(0x10000000);
     map->image_size = image_size;
     return 1;
 }

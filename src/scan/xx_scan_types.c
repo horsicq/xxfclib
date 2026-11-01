@@ -15,6 +15,8 @@
 #include "xxfclib/formats/archive/lha/xx_lha.h"
 #include "xxfclib/formats/archive/gz/xx_gz.h"
 #include "xxfclib/formats/archive/bz2/xx_bz2.h"
+#include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/rt/xx_rt.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -216,6 +218,309 @@ static int64_t xx_scan_pdf_header_offset(xx_io_device *device, int64_t file_size
     return -1;
 }
 
+/* XZip::isValid, the check XFormats types a ZIP by: an end record whose whole
+ * central directory agrees with every local header (XZip::findECDOffset), or,
+ * without one, a bare stream of local headers with no end record after it.
+ * A damaged local header, overlapping or shared member data, or ZIP64 or
+ * multi-disk end records make the input no ZIP for DIE. */
+#define XX_SCAN_ZIP_LFH 0x04034b50U
+#define XX_SCAN_ZIP_CFH 0x02014b50U
+#define XX_SCAN_ZIP_ECD 0x06054b50U
+
+typedef struct xx_scan_zip_range {
+    int64_t start;
+    int64_t end;
+} xx_scan_zip_range;
+
+static uint16_t xx_scan_u16le(const uint8_t *bytes)
+{
+    return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
+}
+
+static uint64_t xx_scan_u64le(const uint8_t *bytes)
+{
+    return (uint64_t)xx_scan_u32le(bytes) | ((uint64_t)xx_scan_u32le(bytes + 4) << 32U);
+}
+
+static bool xx_scan_zip_read(xx_io_device *device, int64_t size, int64_t offset, uint8_t *bytes, size_t length)
+{
+    if (offset < 0 || offset > size || (int64_t)length > size - offset) return false;
+    return !length || xx_scan_read_at(device, offset, bytes, length);
+}
+
+/* decodeZipUtf8Strict: a name flagged UTF-8 must be well-formed UTF-8. */
+static bool xx_scan_zip_utf8(const uint8_t *data, size_t size)
+{
+    size_t offset = 0;
+    while (offset < size) {
+        uint8_t first = data[offset++];
+        uint32_t code, minimum;
+        size_t count, index;
+        if (first < 0x80U) continue;
+        if ((first & 0xE0U) == 0xC0U) {
+            code = first & 0x1FU;
+            count = 1;
+            minimum = 0x80U;
+        } else if ((first & 0xF0U) == 0xE0U) {
+            code = first & 0x0FU;
+            count = 2;
+            minimum = 0x800U;
+        } else if ((first & 0xF8U) == 0xF0U) {
+            code = first & 0x07U;
+            count = 3;
+            minimum = 0x10000U;
+        } else {
+            return false;
+        }
+        if (count > size - offset) return false;
+        for (index = 0; index < count; ++index) {
+            uint8_t next = data[offset++];
+            if ((next & 0xC0U) != 0x80U) return false;
+            code = (code << 6U) | (next & 0x3FU);
+        }
+        if (code < minimum || code > 0x10FFFFU || (code >= 0xD800U && code <= 0xDFFFU)) return false;
+    }
+    return true;
+}
+
+static int xx_scan_zip_range_compare(const void *left, const void *right)
+{
+    int64_t a = ((const xx_scan_zip_range *)left)->start, b = ((const xx_scan_zip_range *)right)->start;
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/* One XZip::findECDOffset candidate. scratch holds 3 x 65536 bytes. */
+static bool xx_scan_zip_directory(xx_io_device *device, int64_t size, int64_t eocd, const uint8_t *ecd, uint8_t *scratch, xx_pd_struct *pd)
+{
+    uint8_t *local_name = scratch, *central_name = scratch + 65536, *extra = scratch + 131072;
+    uint16_t total = xx_scan_u16le(ecd + 10);
+    uint32_t directory_size = xx_scan_u32le(ecd + 12), directory_offset = xx_scan_u32le(ecd + 16);
+    int64_t directory = (int64_t)directory_offset, current;
+    xx_scan_zip_range *ranges;
+    uint32_t count = 0, index;
+    bool valid = true;
+    if (xx_scan_u16le(ecd + 4) || xx_scan_u16le(ecd + 6) || xx_scan_u16le(ecd + 8) != total || total == 0xFFFFU || directory_size == 0xFFFFFFFFU ||
+        directory_offset == 0xFFFFFFFFU)
+        return false;
+    if (!total) return !directory_size && directory == eocd;
+    if (directory > eocd || (int64_t)directory_size != eocd - directory) return false;
+    ranges = (xx_scan_zip_range *)xx_mem_alloc((size_t)total * sizeof(*ranges));
+    if (!ranges) return false;
+    current = directory;
+    for (index = 0; index < total && valid; ++index) {
+        uint8_t central[46], local[30], descriptor[24];
+        uint16_t central_flags, method, name_length, local_flags, local_name_length, local_extra_length;
+        uint32_t crc, compressed, uncompressed, local_crc, local_compressed, local_uncompressed;
+        int64_t record_size, header, data, end;
+        bool local_zip64, flags_ok;
+        size_t position;
+        valid = false;
+        if (pd && pd->is_stop) break;
+        if (eocd - current < 46 || !xx_scan_zip_read(device, size, current, central, 46) || xx_scan_u32le(central) != XX_SCAN_ZIP_CFH) break;
+        central_flags = xx_scan_u16le(central + 8);
+        method = xx_scan_u16le(central + 10);
+        crc = xx_scan_u32le(central + 16);
+        compressed = xx_scan_u32le(central + 20);
+        uncompressed = xx_scan_u32le(central + 24);
+        name_length = xx_scan_u16le(central + 28);
+        record_size = 46 + (int64_t)name_length + xx_scan_u16le(central + 30) + xx_scan_u16le(central + 32);
+        if (xx_scan_u16le(central + 34) > 1U || compressed == 0xFFFFFFFFU || uncompressed == 0xFFFFFFFFU || xx_scan_u32le(central + 42) == 0xFFFFFFFFU ||
+            (method == 0U && !(central_flags & 1U) && compressed != uncompressed) || record_size > eocd - current)
+            break;
+        if (!xx_scan_zip_read(device, size, current + 46, central_name, name_length) ||
+            ((central_flags & 0x0800U) && !xx_scan_zip_utf8(central_name, name_length)))
+            break;
+        header = (int64_t)xx_scan_u32le(central + 42);
+        if (directory - header < 30 || !xx_scan_zip_read(device, size, header, local, 30)) break;
+        local_flags = xx_scan_u16le(local + 6);
+        local_crc = xx_scan_u32le(local + 14);
+        local_compressed = xx_scan_u32le(local + 18);
+        local_uncompressed = xx_scan_u32le(local + 22);
+        local_name_length = xx_scan_u16le(local + 26);
+        local_extra_length = xx_scan_u16le(local + 28);
+        data = header + 30 + (int64_t)local_name_length + local_extra_length;
+        if (!xx_scan_zip_read(device, size, header + 30, local_name, local_name_length)) break;
+        flags_ok = local_flags == central_flags || (xx_scan_u16le(local + 8) == 8U && ((local_flags ^ central_flags) & 0x7FF9U) == 0U); /* ~0x8006 */
+        if (xx_scan_u32le(local) != XX_SCAN_ZIP_LFH || local[4] != central[6] || local[5] != central[7] || !flags_ok || xx_scan_u16le(local + 8) != method ||
+            local_name_length != name_length || data > directory || (int64_t)compressed > directory - data ||
+            (!(local_flags & 8U) && (local_crc != crc || local_compressed != compressed || local_uncompressed != uncompressed)))
+            break;
+        /* Names agree byte for byte, except where both carry a codepage byte. */
+        for (position = 0; position < name_length; ++position)
+            if (local_name[position] != central_name[position] && (local_name[position] < 0x80U || central_name[position] < 0x80U)) break;
+        if (position != name_length) break;
+        local_zip64 = local_compressed == 0xFFFFFFFFU || local_uncompressed == 0xFFFFFFFFU;
+        if (local_zip64) {
+            bool found = false, sizes_ok = true;
+            if (local[4] < 45U || !(local_flags & 8U) || !xx_scan_zip_read(device, size, data - local_extra_length, extra, local_extra_length)) break;
+            position = 0;
+            while (position < local_extra_length) {
+                uint16_t tag, length;
+                if (local_extra_length - position < 4) {
+                    sizes_ok = false;
+                    break;
+                }
+                tag = xx_scan_u16le(extra + position);
+                length = xx_scan_u16le(extra + position + 2);
+                position += 4;
+                if (length > local_extra_length - position) {
+                    sizes_ok = false;
+                    break;
+                }
+                if (tag == 1U) {
+                    bool missing_uncompressed = local_uncompressed == 0xFFFFFFFFU, missing_compressed = local_compressed == 0xFFFFFFFFU;
+                    bool pair = length == 16U, single = length == 8U && missing_uncompressed != missing_compressed;
+                    size_t value = position;
+                    if (found || (!pair && !single)) {
+                        sizes_ok = false;
+                        break;
+                    }
+                    found = true;
+                    if (pair || missing_uncompressed) {
+                        uint64_t field = xx_scan_u64le(extra + value);
+                        if (field && field != uncompressed) sizes_ok = false;
+                        value += 8;
+                    }
+                    if (pair || missing_compressed) {
+                        uint64_t field = xx_scan_u64le(extra + value);
+                        if (field && field != compressed) sizes_ok = false;
+                    }
+                }
+                position += length;
+            }
+            if (!sizes_ok || !found) break;
+        }
+        end = data + (int64_t)compressed;
+        if (local_flags & 8U) {
+            /* Bit 3: the data descriptor, not the local header, holds the values. */
+            int64_t available = directory - end, length = local_zip64 ? 24 : 16, descriptor_size = 0;
+            if ((local_crc && local_crc != crc) || (local_compressed && local_compressed != 0xFFFFFFFFU && local_compressed != compressed) ||
+                (local_uncompressed && local_uncompressed != 0xFFFFFFFFU && local_uncompressed != uncompressed))
+                break;
+            if (available < length) length = available < 0 ? 0 : available;
+            if (length >= 12 && !xx_scan_zip_read(device, size, end, descriptor, (size_t)length)) break;
+            if (local_zip64) {
+                if (length >= 24 && xx_scan_u32le(descriptor) == 0x08074b50U && xx_scan_u32le(descriptor + 4) == crc &&
+                    xx_scan_u64le(descriptor + 8) == compressed && xx_scan_u64le(descriptor + 16) == uncompressed)
+                    descriptor_size = 24;
+                if (!descriptor_size && length >= 20 && xx_scan_u32le(descriptor) == crc && xx_scan_u64le(descriptor + 4) == compressed &&
+                    xx_scan_u64le(descriptor + 12) == uncompressed)
+                    descriptor_size = 20;
+            } else {
+                if (length >= 16 && xx_scan_u32le(descriptor) == 0x08074b50U && xx_scan_u32le(descriptor + 4) == crc &&
+                    xx_scan_u32le(descriptor + 8) == compressed && xx_scan_u32le(descriptor + 12) == uncompressed)
+                    descriptor_size = 16;
+                if (!descriptor_size && length >= 12 && xx_scan_u32le(descriptor) == crc && xx_scan_u32le(descriptor + 4) == compressed &&
+                    xx_scan_u32le(descriptor + 8) == uncompressed)
+                    descriptor_size = 12;
+            }
+            if (!descriptor_size) break;
+            end += descriptor_size;
+        }
+        ranges[count].start = header;
+        ranges[count].end = end;
+        ++count;
+        current += record_size;
+        valid = true;
+    }
+    if (valid) {
+        /* Each member owns its own bytes: shared or overlapping data is no ZIP
+         * (this also rejects two entries naming the same local header). */
+        xx_rt_qsort(ranges, count, sizeof(*ranges), xx_scan_zip_range_compare);
+        for (index = 0; index < count && valid; ++index)
+            if (ranges[index].end <= ranges[index].start || ranges[index].end > directory || (index && ranges[index].start < ranges[index - 1].end)) valid = false;
+    }
+    xx_mem_free(ranges);
+    /* Only a digital signature or an archive extra data record may follow. */
+    while (valid && current < eocd) {
+        uint8_t optional[8];
+        int64_t record_size;
+        uint32_t signature;
+        if (eocd - current < 6 || !xx_scan_zip_read(device, size, current, optional, eocd - current < 8 ? (size_t)(eocd - current) : 8U)) return false;
+        signature = xx_scan_u32le(optional);
+        if (signature == 0x05054b50U) record_size = 6 + (int64_t)xx_scan_u16le(optional + 4);
+        else if (signature == 0x08064b50U && eocd - current >= 8) record_size = 8 + (int64_t)xx_scan_u32le(optional + 4);
+        else return false;
+        if (record_size > eocd - current) return false;
+        current += record_size;
+    }
+    return valid && current == eocd;
+}
+
+/* XZip::_getNumberOfLocalFileHeaders: complete local records from offset 0,
+ * stopping at the first that is not one (or uses a data descriptor). */
+static int64_t xx_scan_zip_local_stream(xx_io_device *device, int64_t size, uint8_t *name, uint32_t *records, xx_pd_struct *pd)
+{
+    int64_t current = 0;
+    *records = 0;
+    while (!(pd && pd->is_stop) && size - current >= 30) {
+        uint8_t local[30];
+        uint16_t flags, name_length;
+        int64_t record_size;
+        if (!xx_scan_zip_read(device, size, current, local, 30) || xx_scan_u32le(local) != XX_SCAN_ZIP_LFH) break;
+        flags = xx_scan_u16le(local + 6);
+        name_length = xx_scan_u16le(local + 26);
+        record_size = 30 + (int64_t)name_length + xx_scan_u16le(local + 28) + (int64_t)xx_scan_u32le(local + 18);
+        if (record_size > size - current || (flags & 8U)) break;
+        if (!xx_scan_zip_read(device, size, current + 30, name, name_length) || ((flags & 0x0800U) && !xx_scan_zip_utf8(name, name_length))) break;
+        ++*records;
+        current += record_size;
+    }
+    return current;
+}
+
+/* XZip::_isECDSignaturePresent: the end-record signature anywhere from offset. */
+static bool xx_scan_zip_has_end_signature(xx_io_device *device, int64_t size, int64_t offset)
+{
+    uint8_t window[4096 + 3];
+    size_t carried = 0;
+    while (offset < size) {
+        size_t amount = size - offset > 4096 ? 4096U : (size_t)(size - offset), index;
+        if (!xx_scan_read_at(device, offset, window + carried, amount)) return false;
+        for (index = 0; index + 4 <= carried + amount; ++index)
+            if (xx_scan_u32le(window + index) == XX_SCAN_ZIP_ECD) return true;
+        offset += (int64_t)amount;
+        if (carried + amount >= 3) {
+            xx_mem_move(window, window + carried + amount - 3, 3);
+            carried = 3;
+        } else {
+            carried += amount;
+        }
+    }
+    return false;
+}
+
+static bool xx_scan_is_zip(xx_io_device *device, int64_t size, const uint8_t *head, size_t head_size, xx_pd_struct *pd)
+{
+    uint8_t *scratch = NULL;
+    bool found = false;
+    uint32_t records = 0;
+    int64_t stream_end;
+    if (size < 0) return head_size >= 4U && (!memcmp(head, "PK\x03\x04", 4) || !memcmp(head, "PK\x05\x06", 4));
+    if (size >= 22) {
+        int64_t window = size < 0xFFFF + 22 ? size : 0xFFFF + 22, base = size - window, position;
+        uint8_t *tail = (uint8_t *)xx_mem_alloc((size_t)window);
+        if (tail && xx_scan_read_at(device, base, tail, (size_t)window)) {
+            /* The last candidate first, as XZip tries them. */
+            for (position = window - 4; position >= 0 && !found; --position) {
+                int64_t current = base + position;
+                if (xx_scan_u32le(tail + position) != XX_SCAN_ZIP_ECD || size - current < 22 ||
+                    (int64_t)xx_scan_u16le(tail + position + 20) > size - current - 22)
+                    continue;
+                if (!scratch && !(scratch = (uint8_t *)xx_mem_alloc(3U * 65536U))) break;
+                found = xx_scan_zip_directory(device, size, current, tail + position, scratch, pd);
+            }
+        }
+        xx_mem_free(tail);
+    }
+    if (!found && head_size >= 4U && xx_scan_u32le(head) == XX_SCAN_ZIP_LFH && (scratch || (scratch = (uint8_t *)xx_mem_alloc(3U * 65536U)))) {
+        stream_end = xx_scan_zip_local_stream(device, size, scratch, &records, pd);
+        found = records && stream_end > 0 && !xx_scan_zip_has_end_signature(device, size, stream_end);
+    }
+    xx_mem_free(scratch);
+    return found && !(pd && pd->is_stop);
+}
+
 /* Keep this focused detector independent of the full format dispatcher. */
 static xx_file_type_t xx_scan_parent_type(xx_file_type_t type)
 {
@@ -353,7 +658,24 @@ static xx_list_t *xx_scan_detect_type_window(xx_io_device *device, const xx_scan
         if (head[3] == 0xCEU || head[0] == 0xCEU) return xx_scan_type_list(XX_FILE_TYPE_MACHO32, pd);
         if (head_size >= 32U) return xx_scan_type_list(XX_FILE_TYPE_MACHO64, pd);
     }
-    if (head_size >= 4U && (!memcmp(head, "PK\x03\x04", 4) || !memcmp(head, "PK\x05\x06", 4))) {
+    if (head_size >= 2U && head[0] == 0x1fU && head[1] == 0x8bU) {
+        xx_npm npm;
+        xx_gz gzip;
+        bool valid;
+        xx_npm_init(&npm, device, 0);
+        valid = xx_npm_check_is_valid(&npm.tar_gz.format, NULL);
+        xx_npm_destroy(&npm);
+        if (valid) return xx_scan_type_list(XX_FILE_TYPE_NPM, pd);
+        xx_gz_init(&gzip, device, 0);
+        valid = xx_gz_check_is_valid(&gzip.format, pd);
+        xx_gz_destroy(&gzip);
+        if (valid) return xx_scan_type_list(XX_FILE_TYPE_GZ, pd);
+    }
+    if (head_size >= 8U && !memcmp(head, "dex\n", 4) && head[7] == 0U) return xx_scan_type_list(XX_FILE_TYPE_DEX, pd);
+    if (xx_scan_pdf_header_offset(device, size, pd) >= 0) return xx_scan_type_list(XX_FILE_TYPE_PDF, pd);
+    /* After PDF and DEX, as XFormats orders them: a ZIP is what XZip::isValid
+     * accepts, whatever its first bytes. */
+    if (xx_scan_is_zip(device, size, head, head_size, pd)) {
         xx_apk apk;
         xx_ipa ipa;
         xx_jar jar;
@@ -372,42 +694,9 @@ static xx_list_t *xx_scan_detect_type_window(xx_io_device *device, const xx_scan
         if (valid) return xx_scan_type_list(XX_FILE_TYPE_JAR, pd);
         return xx_scan_type_list(XX_FILE_TYPE_ZIP, pd);
     }
-    if (head_size >= 2U && head[0] == 0x1fU && head[1] == 0x8bU) {
-        xx_npm npm;
-        xx_gz gzip;
-        bool valid;
-        xx_npm_init(&npm, device, 0);
-        valid = xx_npm_check_is_valid(&npm.tar_gz.format, NULL);
-        xx_npm_destroy(&npm);
-        if (valid) return xx_scan_type_list(XX_FILE_TYPE_NPM, pd);
-        xx_gz_init(&gzip, device, 0);
-        valid = xx_gz_check_is_valid(&gzip.format, pd);
-        xx_gz_destroy(&gzip);
-        if (valid) return xx_scan_type_list(XX_FILE_TYPE_GZ, pd);
-    }
-    if (head_size >= 4U && !memcmp(head, "BZh", 3U) && head[3] >= '1' && head[3] <= '9') {
-        xx_bz2 bzip2;
-        bool valid;
-        xx_bz2_init(&bzip2, device, 0);
-        valid = xx_bz2_check_is_valid(&bzip2.format, pd);
-        xx_bz2_destroy(&bzip2);
-        if (valid) return xx_scan_type_list(XX_FILE_TYPE_BZ2, pd);
-    }
-    if (head_size >= 7U && head[2] == '-' && head[3] == 'l' && (head[4] == 'h' || head[4] == 'z') && head[6] == '-') {
-        xx_lha lha;
-        bool valid;
-        xx_lha_init(&lha, device, 0);
-        valid = xx_lha_check_is_valid(&lha.format, pd);
-        xx_lha_destroy(&lha);
-        if (valid) return xx_scan_type_list(XX_FILE_TYPE_LHA, pd);
-    }
-    if (head_size >= 8U && !memcmp(head, "dex\n", 4) && head[7] == 0U) return xx_scan_type_list(XX_FILE_TYPE_DEX, pd);
-    if (xx_scan_pdf_header_offset(device, size, pd) >= 0) return xx_scan_type_list(XX_FILE_TYPE_PDF, pd);
-    if (head_size >= 8U && !memcmp(head, "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1", 8)) return xx_scan_type_list(XX_FILE_TYPE_CFBF, pd);
     if (head_size >= 8U && !memcmp(head, "\x89PNG\r\n\x1a\n", 8)) return xx_scan_type_list(XX_FILE_TYPE_PNG, pd);
     if (head_size >= 3U && head[0] == 0xffU && head[1] == 0xd8U && head[2] == 0xffU) return xx_scan_type_list(XX_FILE_TYPE_JPEG, pd);
-    if (head_size >= 6U && !memcmp(head, "Rar!\x1a\x07", 6)) return xx_scan_type_list(XX_FILE_TYPE_RAR, pd);
-    if (head_size >= 4U && !memcmp(head, "\x00\x00\x03\xF3", 4)) return xx_scan_type_list(XX_FILE_TYPE_AMIGAHUNK, pd);
+    if (head_size >= 4U && (!memcmp(head, "\x00\x00\x03\xF3", 4) || !memcmp(head, "\x00\x00\x03\xE7", 4))) return xx_scan_type_list(XX_FILE_TYPE_AMIGAHUNK, pd);
     if (head_size >= 2U && head[0] == 0x60U && head[1] == 0x1aU) {
         xx_atarist atari;
         bool valid;

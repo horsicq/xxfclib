@@ -42,7 +42,9 @@ extern "C" {
 typedef enum xx_fs_platform_kind_e {
     XX_FS_PLATFORM_MISSING = 0, /**< Nothing exists at the path. */
     XX_FS_PLATFORM_FILE = 1,    /**< A regular file. */
-    XX_FS_PLATFORM_DIR = 2      /**< A directory. */
+    XX_FS_PLATFORM_DIR = 2,     /**< A directory. */
+    XX_FS_PLATFORM_LINK = 3,    /**< A symbolic link, junction or other reparse point (lstat only). */
+    XX_FS_PLATFORM_ERROR = 4    /**< Could not be examined: no permission, an I/O error, a name too long (lstat only). */
 } xx_fs_platform_kind_t;
 
 /**
@@ -78,6 +80,62 @@ bool xx_fs_platform_enumerate(const char *path, xx_fs_platform_entry_fn callback
 
 /** @brief The separator this platform writes, '\\' on Windows and '/' elsewhere. */
 char xx_fs_platform_separator(void);
+
+/**
+ * @brief Classify a path WITHOUT following a final link.
+ *
+ * A symbolic link, a junction or any other reparse point reports
+ * XX_FS_PLATFORM_LINK whatever it points at, so a tree walk built on this
+ * never leaves the tree it was asked to walk. Anything that is neither a
+ * regular file, a directory nor a link (a device, a FIFO) reports FILE: it is
+ * removed with the file call.
+ *
+ * Unlike @ref xx_fs_platform_stat, MISSING here means the path or one of its
+ * folders does not exist (ENOENT/ENOTDIR, ERROR_FILE_NOT_FOUND/
+ * ERROR_PATH_NOT_FOUND). Any other failure reports ERROR, so a caller that
+ * must not mistake "could not look" for "nothing there" can tell them apart.
+ */
+xx_fs_platform_kind_t xx_fs_platform_lstat(const char *path);
+
+/**
+ * @brief Remove one entry of the kind @p kind reported by
+ *        @ref xx_fs_platform_lstat.
+ *
+ * FILE deletes the file (on Windows a read-only attribute is cleared first),
+ * DIR removes an EMPTY directory, LINK removes the link itself and never its
+ * target.
+ */
+bool xx_fs_platform_remove(const char *path, xx_fs_platform_kind_t kind);
+
+/**
+ * @brief The walk behind xx_fs_remove_tree (see its contract in xx_fs.h).
+ *
+ * @p path is non-empty. Trailing separators are dropped first (they would
+ * make the final link resolve); a path that is then a file-system or drive
+ * root, or that ends in "." or "..", is refused. Directories deeper than
+ * @p max_depth below @p path are not entered, and the call fails.
+ *
+ * POSIX walks with descriptors (openat with O_NOFOLLOW, fstatat and unlinkat
+ * relative to the parent's descriptor). Windows walks by path, but opens each
+ * directory before entering it, refuses it if the handle shows a reparse
+ * point, and keeps that handle (without FILE_SHARE_DELETE) open until its
+ * contents are gone, so it cannot be renamed or replaced meanwhile.
+ */
+bool xx_fs_platform_remove_tree(const char *path, unsigned max_depth);
+
+/** @brief Create one directory. False when it exists or its parent does not. */
+bool xx_fs_platform_make_dir(const char *path);
+
+/**
+ * @brief Rename a file or directory. Never replaces: false when @p to exists.
+ *
+ * POSIX has no portable no-replace rename, so there the existence check and
+ * the rename are two steps.
+ */
+bool xx_fs_platform_rename(const char *from, const char *to);
+
+/** @brief The current working directory, xx_rt_malloc'd UTF-8, or NULL. */
+char *xx_fs_platform_current_dir(void);
 
 #ifdef __cplusplus
 }

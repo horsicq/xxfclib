@@ -241,6 +241,48 @@ bool xx_fs_find_files(const char *path, xx_list_t *list, bool recursive)
     return result;
 }
 
+/* ------------------------------------------------------------- mutation */
+
+bool xx_fs_make_dir(const char *path)
+{
+    return xx_fs_platform_make_dir(path);
+}
+
+bool xx_fs_rename(const char *from, const char *to)
+{
+    if (!from || !to || !from[0] || !to[0]) {
+        return false;
+    }
+    return xx_fs_platform_rename(from, to);
+}
+
+#define XX_FS_REMOVE_TREE_MAX_DEPTH 256U
+
+/* The walk is the platform's: POSIX goes by descriptors, which a path-based
+ * walk here could not share with Windows. */
+bool xx_fs_remove_tree(const char *path)
+{
+    if (!path || !path[0]) {
+        return false;
+    }
+    return xx_fs_platform_remove_tree(path, XX_FS_REMOVE_TREE_MAX_DEPTH);
+}
+
+char *xx_fs_current_dir(void)
+{
+    char *native = xx_fs_platform_current_dir();
+    char *result;
+
+    if (!native) {
+        return NULL;
+    }
+    /* The platform layer allocates with xx_rt_malloc; everything xx_fs hands
+     * out is an xx_mem block released with xx_str_free. */
+    result = xx_str_dup(native);
+    xx_rt_free(native);
+    return result;
+}
+
 /* ----------------------------------------------------------------- paths */
 
 bool xx_fs_is_separator(char c)

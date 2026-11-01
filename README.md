@@ -355,7 +355,9 @@ The Windows backend resolves registry APIs from System32 dynamically to retain
 the existing CRT-free, kernel32-only import constraint. Windows registry keys
 and value names follow the registry's case-insensitive naming rules.
 
-INI saves merge changed keys into the current file and replace it atomically.
+INI saves patch only the changed keys' lines of the current file (comments,
+order, line endings and values xx cannot represent survive) and replace it
+atomically.
 Loads are transactional: malformed input preserves the current snapshot.
 Native saves update only changed keys; a failed registry/preferences save can
 have applied earlier keys, and retains dirty values for retry. `clear()` removes
@@ -363,6 +365,9 @@ keys present in the current snapshot. Concurrent access needs external
 synchronization; load-merge-replace does not lock against simultaneous writers.
 Files/encoded values are capped at 16 MiB. INI values use `@XX...` markers for
 types and quoting/escaping for text; text beginning with `@` is escaped.
+Header-less INI files are read with QSettings' escaping rules, and
+`xx_settings_set_qt_compatible()` also writes the QSettings dialect so a file
+can be shared with a Qt program; see `docs/settings.md`.
 
 For standalone consumers, `xxsettings.cmake` supplies `XXSETTINGS_SOURCES`,
 `XXSETTINGS_INCLUDE_DIR` and `XXSETTINGS_LIBRARIES`; define `XXFC_STATIC` on the

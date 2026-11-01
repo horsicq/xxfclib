@@ -275,7 +275,8 @@ XXFC_API xx_io_memory_only_error_t xx_io_memory_only_error(const xx_io_memory_on
  * copied) and end it after. Scopes nest in LIFO order. While one is active:
  * - xx_io_create_dirs_a/_w follow a link (on Windows, a reparse point) that is
  *   root itself or one of its existing ancestors, as given. Below root such a
- *   component, like a file, still fails the call.
+ *   component, like a file, still fails the call. (Outside a scope every link
+ *   in the path is followed, as mkdir -p does: the path is the caller's own.)
  * - A file opened for writing with truncation ("w" without "x") is never
  *   written through a link, nor into a file with other hard links, that is
  *   already at its path: that entry is replaced by a new file.

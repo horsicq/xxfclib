@@ -548,6 +548,15 @@ static bool set_limits(xx_archive_record* limits, uint64_t maximum)
     return xx_archive_record_set_meta_u64(limits, XX_META_ID_OPT_MAX_MEMBER_SIZE, maximum)
         && xx_archive_record_set_meta_u64(limits, XX_META_ID_OPT_MEMORY_LIMIT, maximum);
 }
+/* ZIP records keep data_offset at -1 until the local header is read on demand,
+ * so resolve it before the extent checks below. A failed resolve stays -1. */
+static const xx_archive_record* current_record(Abstractformat* f, xx_file_type_t type, xx_archive_record_state* state)
+{
+    const xx_archive_record* native = xx_format_get_current_archive_record(f, state);
+    if (native && type == XX_FILE_TYPE_ZIP && native->data_offset < 0)
+        (void)xx_zip_resolve_record_data_offset((xx_zip*)f, (xx_archive_record*)native);
+    return native;
+}
 static bool decode_member(Abstractformat* f, xx_file_type_t type, xx_archive_record_state* state, xx_io_device* out, xx_pd_struct* pd)
 {
     const xx_archive_record* native = xx_format_get_current_archive_record(f, state);
@@ -618,7 +627,7 @@ static xx_extractor_status archive_scan(xx_io_device* d, const xx_extractor_opti
         status = fail(pd, XX_EXTRACTOR_INVALID, "Cannot enumerate container streams");
         goto done;
     }
-    while ((native = xx_format_get_current_archive_record(f, state)) != NULL && !s->limit_reached) {
+    while ((native = current_record(f, type, state)) != NULL && !s->limit_reached) {
         xx_io_device* decoded = NULL;
         xx_extractor_record r;
         uint64_t declared;
@@ -850,7 +859,7 @@ xx_extractor_status xx_extractor_extract_device(
             break;
     }
     {
-        const xx_archive_record* n = xx_format_get_current_archive_record(f, state);
+        const xx_archive_record* n = current_record(f, rd->type.file_type, state);
         if (!n || (uint64_t)state->current_index != r->archive_index || n->data_offset < 0 || n->compressed_size < 0
             || r->container_offset + (uint64_t)n->data_offset != r->offset || (uint64_t)n->compressed_size != r->size) {
             status = fail(pd, XX_EXTRACTOR_INVALID, "Container changed since analysis");

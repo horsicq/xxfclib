@@ -46,7 +46,7 @@ static bool sfx_zip_bundle_name(sfx_zip_bundle_entry *entry, xx_archive_record_s
     size_t n, i, segment = 0, prefix;
     bool folder;
     xx_archive_record *r = &st->current_record;
-    if (carrier_stop(pd) || r->header_offset < 0 ||
+    if (carrier_stop(pd) || (r->data_offset < 0 && !xx_zip_resolve_record_data_offset(&entry->zip, r)) || r->header_offset < 0 ||
         !xx_io_read_at(&entry->view.device, r->header_offset, h, sizeof(h)) || xx_rt_memcmp(h, "PK\3\4", 4)) return false;
     n = xx_data_get_u16(h + 26, 2, 0, false);
     if (!n || n > 4096 || r->data_offset != r->header_offset + 30 + (int64_t)n + xx_data_get_u16(h + 28, 2, 0, false) ||
@@ -169,7 +169,8 @@ static int sfx_zip_bundle_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
             if (!st) goto done;
             while (st->has_record) {
                 const xx_archive_record *m = &st->current_record;
-                if (carrier_stop(pd) || ++seen > 4096U || m->compressed_size < 0 || m->data_offset < 0 ||
+                if (carrier_stop(pd) || ++seen > 4096U || m->compressed_size < 0 ||
+                    (m->data_offset < 0 && !xx_zip_resolve_record_data_offset(&e->zip, &st->current_record)) || m->data_offset < 0 ||
                     m->data_offset > row->size || m->compressed_size > row->size - m->data_offset || !sfx_zip_bundle_name(e, st, pd)) {
                     good = false;
                     break;

@@ -79,7 +79,7 @@ static xxfc_status_t read_value(xx_settings *settings, const char *key, CFTypeRe
         value.data.buffer.size = (size_t)size;
     } else if (type == CFArrayGetTypeID()) {
         CFIndex count = CFArrayGetCount((CFArrayRef)object);
-        if (count < 0 || count > XX_SETTINGS_MAX_FILE_SIZE / sizeof(char *)) return XXFC_ERR_INVALID_ARG;
+        if (count < 0 || (size_t)count > XX_SETTINGS_MAX_FILE_SIZE / sizeof(char *)) return XXFC_ERR_INVALID_ARG;
         char **items = (char **)xx_rt_calloc(count ? (size_t)count : 1, sizeof(char *));
         if (!items) return XXFC_ERR_OUT_OF_MEMORY;
         bool supported = true;

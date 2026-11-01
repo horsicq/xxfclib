@@ -1590,6 +1590,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/filesystem/dfsee_imz/xx_dfsee_imz.h
     include/xxfclib/formats/archive/dh/xx_dh.h
     include/xxfclib/formats/archive/djcomp/xx_djcomp.h
+    include/xxfclib/formats/archive/dpc/xx_dpc.h
     include/xxfclib/formats/image/bmp/xx_bmp.h
     include/xxfclib/formats/image/bmp/xx_bmp_make.h
     include/xxfclib/formats/firmware/cfe/xx_cfe.h
@@ -1954,6 +1955,11 @@ set(XXFCLIB_SOURCES
     src/die_engine/xx_die_engine_legacy.c
     src/die_engine/xx_die_engine_scan.c
     src/die_engine/xx_die_engine_api.c
+    src/die_engine/xx_die_engine_api_binary.c
+    src/die_engine/xx_die_engine_api_elf_macho.c
+    src/die_engine/xx_die_engine_api_formats.c
+    src/die_engine/xx_die_engine_api_msdos.c
+    src/die_engine/xx_die_engine_api_pe.c
     src/regex/xx_regex_die.c
     # Its binary-format parsers. These answer predicate queries for signature
     # scripts ("is this import present?"), which is a different job from the
@@ -4711,6 +4717,8 @@ set(XXFCLIB_SOURCES
     src/formats/archive/dh/xx_dh_reader_adapters.c
     src/formats/archive/djcomp/xx_djcomp.c
     src/formats/archive/djcomp/xx_djcomp_reader_adapters.c
+    src/formats/archive/dpc/xx_dpc.c
+    src/formats/archive/dpc/xx_dpc_reader_adapters.c
     src/formats/filesystem/vdi/xx_vdi_extractor.c
     src/formats/image/bmp/xx_bmp.c
     src/formats/image/bmp/xx_bmp_make.c
@@ -5753,6 +5761,14 @@ if(XXFC_BUILD_TESTS OR XXFC_BUILD_EXTRACTOR_TESTS)
     endif()
     add_test(NAME test_extractor COMMAND test_extractor)
     set_tests_properties(test_extractor PROPERTIES TIMEOUT 60)
+    # Readers of lazily resolved xx_zip records (APKS, DahuaZIP, generic ZIP).
+    add_executable(test_zip_lazy_offsets tests/test_zip_lazy_offsets.c)
+    target_link_libraries(test_zip_lazy_offsets PRIVATE xxfclib::xxfclib)
+    if(MSVC)
+        target_compile_definitions(test_zip_lazy_offsets PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
+    add_test(NAME test_zip_lazy_offsets COMMAND test_zip_lazy_offsets)
+    set_tests_properties(test_zip_lazy_offsets PROPERTIES TIMEOUT 60)
 endif()
 
 if(XXFC_BUILD_TESTS OR XXFC_BUILD_STRINGS_TESTS)
@@ -5781,6 +5797,37 @@ if(XXFC_BUILD_TESTS OR XXFC_BUILD_THREAD_TESTS)
     target_link_libraries(test_thread_pool PRIVATE xxfclib::xxfclib)
     add_test(NAME test_thread_pool COMMAND test_thread_pool)
     set_tests_properties(test_thread_pool PROPERTIES TIMEOUT 60)
+endif()
+
+# xx_fs_make_dir / xx_fs_rename / xx_fs_remove_tree / xx_fs_current_dir,
+# including the "never follow a link out of the tree" guarantee.
+if(XXFC_BUILD_TESTS OR XXFC_BUILD_FS_TESTS)
+    enable_testing()
+    add_executable(test_fs_tree tests/test_fs_tree.c)
+    if(TARGET die_engine)
+        target_link_libraries(test_fs_tree PRIVATE xxfclib::die_engine)
+    else()
+        target_link_libraries(test_fs_tree PRIVATE xxfclib::xxfclib)
+    endif()
+    if(MSVC)
+        target_compile_definitions(test_fs_tree PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
+    add_test(NAME test_fs_tree COMMAND test_fs_tree "${CMAKE_CURRENT_BINARY_DIR}")
+    set_tests_properties(test_fs_tree PROPERTIES TIMEOUT 60)
+
+    # ZIP extraction into a folder (XX_META_ID_OPT_UNPACK_PATH), as die-update
+    # unpacks db.zip: every member written, byte for byte.
+    add_executable(test_zip_unpack_path tests/test_zip_unpack_path.c)
+    if(TARGET die_engine)
+        target_link_libraries(test_zip_unpack_path PRIVATE xxfclib::die_engine)
+    else()
+        target_link_libraries(test_zip_unpack_path PRIVATE xxfclib::xxfclib)
+    endif()
+    if(MSVC)
+        target_compile_definitions(test_zip_unpack_path PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
+    add_test(NAME test_zip_unpack_path COMMAND test_zip_unpack_path "${CMAKE_CURRENT_BINARY_DIR}")
+    set_tests_properties(test_zip_unpack_path PROPERTIES TIMEOUT 60)
 endif()
 
 if(XXFC_BUILD_DISASM_TESTS)
@@ -6547,7 +6594,11 @@ if(CMAKE_GENERATOR_PLATFORM)
         set(XXFC_ARCH "x86")
     endif()
 else()
-    if(CMAKE_OSX_ARCHITECTURES)
+    # A macOS build for several architectures (arm64;x86_64) is "universal".
+    list(LENGTH CMAKE_OSX_ARCHITECTURES _xxfc_osx_arch_count)
+    if(_xxfc_osx_arch_count GREATER 1)
+        set(XXFC_PROCESSOR "universal")
+    elseif(CMAKE_OSX_ARCHITECTURES)
         list(GET CMAKE_OSX_ARCHITECTURES 0 XXFC_PROCESSOR)
     else()
         set(XXFC_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}")
@@ -6555,9 +6606,11 @@ else()
 
     string(TOLOWER "${XXFC_PROCESSOR}" XXFC_PROCESSOR)
 
-    if(XXFC_PROCESSOR MATCHES "^(x86_64|amd64)$")
+    if(XXFC_PROCESSOR STREQUAL "universal")
+        set(XXFC_ARCH "universal")
+    elseif(XXFC_PROCESSOR MATCHES "^(x86_64|amd64)$")
         set(XXFC_ARCH "x64")
-    elseif(XXFC_PROCESSOR MATCHES "^(aarch64|arm64)$")
+    elseif(XXFC_PROCESSOR MATCHES "^(aarch64|arm64e?)$")
         set(XXFC_ARCH "arm64")
     elseif(XXFC_PROCESSOR MATCHES "^(i[3-6]86|x86)$")
         set(XXFC_ARCH "x86")
@@ -7920,3 +7973,4 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dh_tests.cmake")
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_diskdupe_im_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_djcomp_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dpc_tests.cmake")

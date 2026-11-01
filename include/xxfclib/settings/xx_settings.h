@@ -90,6 +90,28 @@ XXFC_API xx_settings *xx_settings_create_application(const char *application_dir
 /** @brief Destroy the store; detach it if it is the global settings pointer. Does not save. */
 XXFC_API void xx_settings_destroy(xx_settings *settings);
 
+/**
+ * @brief Write files in the Qt QSettings INI dialect so Qt 5 and Qt 6 can share them.
+ * When enabled, INI and POSIX native files are written with Qt escaping (non-ASCII and
+ * control characters as \x<UTF-16 code unit>, quoting, a leading '@' doubled) and a new
+ * file gets Qt-style [Group] sections without the "; xxfclib settings v1" header; an
+ * existing v1 file loses that header on the next save and its entries are rewritten in
+ * the Qt dialect. Saving to any other existing file rewrites only the changed entries and
+ * keeps every other byte; a file without the v1 header (which may follow comment lines) is
+ * always read with QSettings escaping rules and patched in the Qt dialect, even when this
+ * flag is off. Only a Qt-compatible store reads it exactly as QSettings does: a section line
+ * without ']' is tolerated and unquoted commas make a list, read as a STRING_LIST (Qt's
+ * one-item "@Variant(...)" and empty "@Invalid()" lists stay text); other stores reject
+ * that section line and keep commas as written ("Ctrl+,"). As in QSettings, ';'
+ * starts a comment and a "#name=value" line is a key. Not matched: QSettings' precedence
+ * between duplicate keys in different sections and its case-insensitive keys on Windows;
+ * xxfclib reads and patches the last occurrence of a key exactly as spelled. The Windows
+ * registry and macOS preferences are unaffected. Typed values (bool, numbers, lists, bytes)
+ * keep the xxfclib encoding, so callers that share a store with Qt should write plain strings.
+ * Call before xx_settings_load/save. Returns XXFC_ERR_INVALID_ARG when @p settings is NULL.
+ */
+XXFC_API xxfc_status_t xx_settings_set_qt_compatible(xx_settings *settings, bool enabled);
+
 XXFC_API xx_settings_format_t xx_settings_get_format(const xx_settings *settings);
 XXFC_API const char *xx_settings_get_location(const xx_settings *settings);
 XXFC_API const char *xx_settings_get_organization(const xx_settings *settings);
@@ -107,6 +129,9 @@ XXFC_API const char *xx_settings_key_at(const xx_settings *settings, size_t inde
 XXFC_API xxfc_status_t xx_settings_load(xx_settings *settings);
 /**
  * @brief Save changed keys, preserving unrelated stored keys. INI writes use atomic replacement.
+ * Saving to an existing INI file rewrites only the lines of changed keys (a key set to the
+ * value it already has keeps its bytes); comments, order and values written by Qt stay as
+ * they are. On Windows, native (registry) keys are matched without regard to ASCII case.
  * NULL means disabled and is a successful no-op for load/save. Synchronize access externally.
  */
 XXFC_API xxfc_status_t xx_settings_save(xx_settings *settings);

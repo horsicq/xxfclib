@@ -77,6 +77,7 @@ typedef struct pdf_document {
     uint32_t root_id, root_generation;
     uint32_t info_id, info_generation;
     pdf_value *encryption;
+    uint32_t suspicious_raw;
     bool has_info, recovered;
     bool has_root, encrypted, encryption_known;
 } pdf_document;
@@ -316,26 +317,8 @@ static pdf_value *pdf_parse_value(pdf_cursor *c, unsigned depth)
             ch = pdf_at(c, c->pos++);
             if (ch < 0) goto fail;
             if (ch == '\\') {
-                unsigned i;
                 ch = pdf_at(c, c->pos++);
                 if (ch < 0) goto fail;
-                if (ch == 10 || ch == 13) {
-                    if (ch == 13 && pdf_at(c, c->pos) == 10) ++c->pos;
-                    continue;
-                }
-                if (ch == 'n') ch = 10;
-                else if (ch == 'r') ch = 13;
-                else if (ch == 't') ch = 9;
-                else if (ch == 'b') ch = 8;
-                else if (ch == 'f') ch = 12;
-                else if (ch >= '0' && ch <= '7') {
-                    int oct = ch - '0';
-                    for (i = 0; i < 2U && (ch = pdf_at(c, c->pos)) >= '0' && ch <= '7'; ++i) {
-                        oct = oct * 8 + ch - '0';
-                        ++c->pos;
-                    }
-                    ch = oct & 255;
-                }
             } else if (ch == '(') {
                 if (++nesting > PDF_MAX_DEPTH) goto fail;
             } else if (ch == ')') {
@@ -831,6 +814,21 @@ static bool pdf_object_stream(pdf_document *d, pdf_entry *container)
     /* Charge retained decoded payload while allocating its object ASTs. */
     if (capacity > d->limit - d->used) goto done;
     d->used += capacity;
+    {
+        static const char *raw_triggers[] = {"/OpenAction", "/AA", "/JavaScript", "/JS", "/Launch", "/EmbeddedFile", "/URI", "/SubmitForm", "/GoToR", "/RichMedia", "/AcroForm", "/XFA"};
+        size_t t, slen, j;
+        for (t = 0; t < sizeof(raw_triggers) / sizeof(raw_triggers[0]); ++t) {
+            slen = xx_rt_strlen(raw_triggers[t]);
+            if (slen <= size) {
+                for (j = 0; j <= size - slen; ++j) {
+                    if (!xx_rt_memcmp(data + j, raw_triggers[t], slen)) {
+                        d->suspicious_raw |= 1U << t;
+                        break;
+                    }
+                }
+            }
+        }
+    }
     ids = (uint32_t *)pdf_alloc(d, (size_t)count * sizeof(*ids));
     positions = (int64_t *)pdf_alloc(d, (size_t)count * sizeof(*positions));
     c.doc = d;
@@ -1848,7 +1846,7 @@ bool xx_pdf_get_values_by_key(xx_pdf *pdf, const char *key, bool strings_only, s
     for (i = 0; i < d->count; ++i) {
         size_t count = 0;
         q.pending = false;
-        if (!d->entries[i].loaded) continue;
+        if (!d->entries[i].loaded || d->entries[i].kind != 1) continue;
         if (!pdf_visit(d, d->entries[i].value, &count, part_limit, pdf_query_token, &q)) return false;
     }
     return !xx_pd_is_stopped(pd);
@@ -1880,7 +1878,7 @@ bool xx_pdf_is_values_hex_by_key(xx_pdf *pdf, const char *key, size_t part_limit
     for (i = 0; i < d->count; ++i) {
         size_t count = 0;
         q.pending = false;
-        if (!d->entries[i].loaded) continue;
+        if (!d->entries[i].loaded || d->entries[i].kind != 1) continue;
         if (!pdf_visit(d, d->entries[i].value, &count, part_limit, pdf_hex_token, &q)) return q.found && !xx_pd_is_stopped(pd);
     }
     return false;
@@ -2091,18 +2089,10 @@ static char *pdf_meta_text(pdf_document *d, const char *key)
     xx_mem_zero(&q, sizeof(q));
     q.key = key;
     q.ok = true;
-    if (d->has_info) {
-        pdf_entry *info = pdf_lookup(d, d->info_id);
-        if (info && info->generation == d->info_generation && pdf_load(d, info))
-            if (!pdf_visit(d, info->value, &count, 256, pdf_meta_token, &q)) {
-                xx_str_free(q.value);
-                return NULL;
-            }
-    }
     for (i = 0; !q.value && i < d->count; ++i) {
         count = 0;
         q.pending = false;
-        if (!d->entries[i].loaded) continue;
+        if (!d->entries[i].loaded || d->entries[i].kind != 1) continue;
         if (!pdf_visit(d, d->entries[i].value, &count, 256, pdf_meta_token, &q)) {
             xx_str_free(q.value);
             return NULL;
@@ -2165,7 +2155,15 @@ char *xx_pdf_get_info(xx_pdf *pdf, xx_pd_struct *pd)
     }
     /* DIE's bundled PDF script appends the dedicated security getters.
      * Ciphertext metadata is omitted from this general options string. */
-    if (!pdf->encrypted)
+    if (pdf->encrypted) {
+        char *enc = xx_pdf_get_encryption(pdf, pd);
+        char *perm = xx_pdf_get_permissions(pdf, pd);
+        if (enc && *enc) (void)pdf_labeled_info(&out, "Encrypted", enc);
+        if (perm && *perm && xx_rt_strcmp(perm, "none")) (void)pdf_labeled_info(&out, "Permissions", perm);
+        (void)pdf_labeled_info(&out, "Metadata", "encrypted");
+        xx_str_free(enc);
+        xx_str_free(perm);
+    } else {
         for (i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i) {
             text = pdf_meta_text(d, keys[i]);
             if (!text) goto fail;
@@ -2175,6 +2173,8 @@ char *xx_pdf_get_info(xx_pdf *pdf, xx_pd_struct *pd)
                 if (!ok) goto fail;
             }
         }
+    }
+    mask |= d->suspicious_raw;
     for (i = 0; i < d->count; ++i) {
         pdf_info_query q;
         size_t count = 0;

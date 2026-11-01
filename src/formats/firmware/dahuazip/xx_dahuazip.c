@@ -364,6 +364,8 @@ static bool xx_dahuazip_session_open(Abstractformat *self, const xx_dahuazip_pri
     session->zip_state = xx_format_create_archive_records_reading(&session->zip->format, options, pd);
     if (!session->zip_state) goto fail;
     first = xx_format_get_current_archive_record(&session->zip->format, session->zip_state);
+    /* xx_zip resolves a member's local header, and so data_offset, lazily. */
+    if (first && first->data_offset < 0) (void)xx_zip_resolve_record_data_offset(session->zip, (xx_archive_record *)first);
     if (!first || first->header_offset != 0 || first->data_offset < (int64_t)XX_DAHUAZIP_LOCAL_HEADER_SIZE) {
         goto fail;
     }
@@ -723,6 +725,8 @@ bool xx_dahuazip_archive_record_move_to_next(Abstractformat *self, xx_archive_re
         return false;
     }
     next = xx_format_get_current_archive_record(&stream->session.zip->format, stream->session.zip_state);
+    /* As for the first member: publish the resolved local header extent. */
+    if (next && next->data_offset < 0) (void)xx_zip_resolve_record_data_offset(stream->session.zip, (xx_archive_record *)next);
     if (!next || !xx_dahuazip_copy_record(&state->current_record, next, stream->base)) {
         return false;
     }

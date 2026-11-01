@@ -100,6 +100,8 @@ XXFC_API int xft_check(XFileType databaseType, XFileType fileType);
 /* Signature database models. Release loaded records with db_free(). */
 typedef enum {
     DB_MAIN = 0,
+    /** Deprecated: reserved so DB_CUSTOM stays 2. No cdie frontend loads an
+     * extra database any more (Detect It Easy uses only main and custom). */
     DB_EXTRA,
     DB_CUSTOM
 } DBKind;
@@ -185,7 +187,8 @@ typedef enum xx_scan_part {
  * @brief Options shared by all scanning engines.
  *
  * Initialise with xx_scan_options_init(). file_name, engine_options and child
- * metadata strings are borrowed. The three database paths are owned by the caller's options and
+ * metadata strings are borrowed. The database paths (main and custom, plus the
+ * deprecated extra path) are owned by the caller's options and
  * released by xx_scan_options_free(). Copies passed to scan callbacks borrow
  * those paths; only free the original owning options. An engine must report
  * XXFC_ERR_INVALID_ARG through pd for an unsupported scan mode.
@@ -200,7 +203,7 @@ typedef struct xx_scan_options {
     bool recursive_scan;
     bool overlay_scan; /**< Detect and scan trailing overlays as bounded devices. */
     bool resources_scan; /**< Scan PE and ELF resource payloads as bounded child devices. */
-    bool archives_scan; /**< Scan decoded ZIP, LHA, GZIP, BZIP2 members and Mach-O Fat slices. */
+    bool archives_scan; /**< Scan the members of ZIP-family archives (ZIP, JAR, APK, IPA), as XScanEngine. */
     bool all_types_scan; /**< Scan applicable parent formats before the preferred type. */
     bool first_wrapper_only;
     bool verbose;
@@ -223,6 +226,8 @@ typedef struct xx_scan_options {
     bool show_version;
     bool show_info;
     bool use_custom_database;
+    /** Deprecated: runs DB_EXTRA records when set (default false). Kept for
+     * API compatibility; cdie uses only the main and custom databases. */
     bool use_extra_database;
     bool result_as_json;
     bool result_as_xml;
@@ -234,7 +239,7 @@ typedef struct xx_scan_options {
     bool sort;
     /** Owned runtime-allocated paths; NULL selects the consumer's defaults. */
     char *main_database_path;
-    char *extra_database_path;
+    char *extra_database_path; /**< Deprecated; still freed, no cdie frontend sets it. */
     char *custom_database_path;
     xx_scan_part scan_part; /**< Set by the scanner; caller-supplied values are ignored. */
     const char *resource_type; /**< Borrowed resource type name or decimal ID, otherwise NULL. */
@@ -242,11 +247,12 @@ typedef struct xx_scan_options {
     int64_t archive_offset; /**< Physical member/stream start in the containing input. */
     int64_t archive_size; /**< Packed extent in the containing input. */
     bool archive_compressed; /**< Child offsets are relative to decoded data when true. */
-    /** Archive limits; zero selects 256 MiB/member, 1 GiB total and 100,000
-     * entries. Nonzero values override the defaults; native decoder limits
-     * still apply (LHA compressed or masked payloads currently have a 256 MiB
-     * decoded-member ceiling). Exceeding a limit fails the scan; members are
-     * never silently truncated. */
+    /** Archive limits; zero selects 256 MiB/member, no total limit and
+     * 100,000 entries (XScanEngine's own entry limit). Nonzero values override
+     * the defaults; native decoder limits still apply (LHA compressed or
+     * masked payloads currently have a 256 MiB decoded-member ceiling). A
+     * member over a size limit is skipped, never truncated; the walk ends
+     * after the entry limit. */
     uint64_t archive_max_member_size;
     uint64_t archive_max_total_size;
     uint32_t archive_max_members;
@@ -315,7 +321,7 @@ typedef struct xx_scan_result {
     XFileType fileType;
     char *pFileName;
     int64_t nFileSize;
-    bool sort; /**< Keep merged records in stable priority order; set from options.sort by signature scans. */
+    bool sort; /**< options.sort of the scan, set by signature scans. Each pass sorted its own records; merging never re-sorts. */
 } xx_scan_result;
 typedef struct xx_scan_result xx_scan_result_t;
 
@@ -493,7 +499,8 @@ struct xx_scan_engine {
 };
 
 /** Defaults: whole input, automatic file type, optional scan modes disabled;
- * type/version/info display, extra/custom databases and sorting enabled. */
+ * type/version/info display, custom database and sorting enabled; the
+ * deprecated extra database disabled. */
 XXFC_API void xx_scan_options_init(xx_scan_options *options);
 
 /** Free owned database paths and clear the options. Borrowed pointers are not freed.
@@ -547,32 +554,51 @@ XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device, 
  * overlay_scan locates an overlay once for the preferred type, detects its
  * type, and recursively invokes the common scanner through a read-only
  * xx_io_sub device. The child starts with file_type UNKNOWN and recursive_scan,
- * overlay_scan, resources_scan, archives_scan and all_types_scan cleared.
+ * overlay_scan, resources_scan and all_types_scan cleared; it keeps
+ * archives_scan, so an archive overlay expands as in XScanEngine.
  * get_file_types and append_result are required when an overlay exists;
  * merged offsets remain absolute in the original input. Scan callbacks
  * receive overlay_scan, resources_scan and archives_scan cleared.
  * resources_scan visits nonempty PE/.NET resources and ELF GResources once
  * for the preferred type. Payloads are scanned as stored, including compressed
  * GResources; malformed input or more than 65,536 resource leaves fails.
- * archives_scan visits ZIP (including JAR/APK/IPA), LHA, GZIP, BZIP2 and
- * Mach-O Fat members. Compressed output stays in memory only while its decoded
- * size is less than xx_get_file_buffer_size(); equality or a larger size uses
- * xx_io_temp_open(), with automatic cleanup after the child scan. Temporary
- * streams respect an active memory-only policy. GZIP/BZIP2 spill to temporary
- * storage as their decoded size becomes known. ZIP Store, ordinary LHA LH0/LZ4
- * and Mach-O Fat slices use bounded xx_io_sub views of the source, after any
- * required integrity validation. Masked LHA payloads require decoding. No
- * archive-derived output paths are opened. The storage threshold does not
- * bound decoder-internal buffers. Directories are skipped; encrypted/unsupported methods,
- * malformed data, integrity failures and archive limits fail the whole scan.
- * Concatenated GZIP/BZIP2 streams form one logical decoded child.
+ * archives_scan visits the members of ZIP-family archives (ZIP, JAR, APK,
+ * IPA), as XScanEngine expands ZIP, 7Z, RAR, CAB and ISO 9660 containers;
+ * GZIP, BZIP2, LHA, Mach-O Fat and other inputs are not expanded. Like
+ * XScanEngine, the walk decodes or checksums every member it reaches; a
+ * member that fails its CRC, uses a ZIP method XZip does not map, does not
+ * decode, is encrypted or exceeds an archive limit is skipped, and the
+ * first two leave a "Last error: Invalid CRC" or "Last error: Unknown
+ * compression method: Unknown" record in the result of the scan that
+ * finishes next (the archive's, or a later member's), as XScanEngine's single
+ * progress error string does; the scan still succeeds. A ZIP without end
+ * records is read from its local headers. Without aggressive_scan a member is
+ * scanned only when XScanEngine::isScanable holds (executables, DEX, PDF,
+ * archives, TAR); at most 21 members per archive are scanned (100,000 when
+ * aggressive). Compressed output stays in memory only while its decoded size
+ * is less than xx_get_file_buffer_size(); equality or a larger size uses
+ * xx_io_temp_open(), with automatic cleanup after the child scan; a member
+ * that is never scannable is decoded into nothing. Temporary streams respect
+ * an active memory-only policy. ZIP Store members use bounded xx_io_sub views
+ * of the source after their CRC is verified. No archive-derived output paths
+ * are opened. The storage threshold does not bound decoder-internal buffers.
  * Children get distinct IDs and scan_part RESOURCE or ARCHIVE. A member name
  * is supplied through file_name and archive_member. Resource types are passed
- * through resource_type. All child traversal flags are cleared, so nested
- * resources, archives and overlays are not traversed. Input passes run first,
- * then resource, archive and overlay children. Unsupported container formats
- * have no corresponding child pass. get_file_types and append_result are
- * required when a child exists. Partial results are freed on any failure.
+ * through resource_type. At most 21 resources are scanned (2001 when
+ * aggressive). Child traversal flags are cleared, so a child's own resources
+ * and overlay are not traversed (XScanEngine finds file parts only for the
+ * input's type), but resource, overlay and archive member children keep
+ * archives_scan, as in XScanEngine: nested archives expand, down to 20 archive
+ * levels below the input. As a deliberate cdie safety limit that XScanEngine
+ * does not have, at most 10,000 archive members are scanned for one input
+ * (100,000 when aggressive), all nesting levels together; reaching it stops
+ * the expansion and leaves "Last error: Archive member scan limit reached
+ * (10000)" (or "(100000)") in the result. Input passes run first, then
+ * resource, archive and overlay children. Unsupported container formats have
+ * no corresponding child pass. get_file_types and append_result are
+ * required when a child exists. Partial results are freed on any failure;
+ * only storage faults, allocation failures and cancellation fail an archive
+ * expansion.
  * Each scan of a device draws a new random nonzero options.scan_id; all of
  * its passes share it. The input's scan has parent_id 0, a child's has
  * the input scan's scan_id. Caller-supplied IDs and child metadata are ignored.
@@ -604,7 +630,10 @@ XXFC_API const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine, const 
  * source_offset to record offsets. Neither result is freed or borrowed from
  * the other. Preserve record IDs and destination file name/sort policy;
  * replace destination fileType/nFileSize only when source_offset is zero.
- * Sort the merged records stably by priority when destination.sort is true.
+ * Source records are appended after the destination's, in source order; the
+ * merged list is never re-sorted, whatever destination.sort says. As in
+ * XScanEngine, each pass sorts its own records, so passes, overlays,
+ * resources and archive members keep their own order.
  * Return false on invalid arguments, offset overflow, allocation failure or
  * cancellation; destination remains safe to free. pd may be NULL.
  * May be installed as append_result; engine is unused and may be NULL.

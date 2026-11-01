@@ -42,6 +42,7 @@ static const xxfc_reader_alias aliases[] = {
     {"dfsee_imz", XX_FILE_TYPE_DFSEE_IMZ},
     {"dh", XX_FILE_TYPE_DH},
     {"djcomp", XX_FILE_TYPE_DJCOMP},
+    {"dpc", XX_FILE_TYPE_DPC},
     {"fury_dat", XX_FILE_TYPE_FURY_DAT},
     {"fury", XX_FILE_TYPE_FURY_DAT},
     {"sod_package", XX_FILE_TYPE_SOD_INSTALLER},

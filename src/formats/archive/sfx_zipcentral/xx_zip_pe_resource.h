@@ -26,7 +26,7 @@ static int sfx_zip_resource_ensure(xx_sfx_zipcentral*r,xx_pd_struct*pd)
    if(!xx_zip_handle_base_info(&r->inner.format,pd)||r->inner.format.format_size!=row->size||r->inner.format.number_of_archive_records>4096U)goto done;
    st=xx_zip_create_archive_records_reading(&r->inner.format,NULL,pd);if(!st)goto done;
    while((member=xx_zip_get_current_archive_record(&r->inner.format,st))!=NULL){
-    if(carrier_stop(pd)||++seen>4096U||member->compressed_size<0||member->data_offset<0||member->data_offset>row->size||member->compressed_size>row->size-member->data_offset){good=false;break;}
+    if(carrier_stop(pd)||++seen>4096U||member->compressed_size<0||(member->data_offset<0&&!xx_zip_resolve_record_data_offset(&r->inner,&st->current_record))||member->data_offset<0||member->data_offset>row->size||member->compressed_size>row->size-member->data_offset){good=false;break;}
     if(!xx_zip_archive_record_move_to_next(&r->inner.format,st,pd))break;
    }
    if(seen!=r->inner.format.number_of_archive_records||r->inner.directory_damaged)good=false;

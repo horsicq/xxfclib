@@ -94,6 +94,10 @@ struct xx_zip {
     /** Set by the archive opener before validation: the ZIP may follow other
      * data (a self-extractor stub, a script), found from its end records. */
     bool allow_leading_data;
+    int64_t lhdr_cache_offset;  /**< Cached local file header block start offset */
+    size_t lhdr_cache_size;     /**< Cached local file header block byte count */
+    uint8_t *lhdr_cache;        /**< Owned dynamic buffer for read-ahead local header caching */
+    uint8_t *cd_cache;          /**< Cached entire central directory block buffer */
 };
 
 /* --- Constructors & Lifecycle --- */
@@ -130,6 +134,8 @@ XXFC_API bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_arch
  * when they require publication only after successful verification.
  */
 XXFC_API bool xx_zip_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_zip_resolve_record_data_offset(xx_zip *zip, xx_archive_record *rec);
+XXFC_API bool xx_zip_resolve_record_data_offset_ex(xx_zip *zip, xx_archive_record *rec, uint8_t *magic, bool *has_magic);
 XXFC_API bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 

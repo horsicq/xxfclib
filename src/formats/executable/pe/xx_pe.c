@@ -152,40 +152,6 @@ static uint64_t xx_pe_count_resources(const xx_pe *pe, const xx_memory_map *memo
     return xx_pe_count_resource_dir(memory_map, device, total, rva, size, 0U, 0U, &budget, pd);
 }
 
-static void xx_pe_extend_file_extent(uint64_t pointer, uint64_t size, int64_t available, int64_t *extent)
-{
-    if (pointer && size && pointer <= (uint64_t)available && size <= (uint64_t)available - pointer && pointer + size > (uint64_t)*extent)
-        *extent = (int64_t)(pointer + size);
-}
-
-/* Locate one physically contiguous range before the reader's map exists. */
-static bool xx_pe_parsed_rva_offset(const xx_pe_parsed *parsed, uint32_t rva, uint32_t size, uint64_t *relative)
-{
-    const xx_pe_section *winner = NULL;
-    uint64_t delta;
-    uint16_t index;
-    if (!size) return false;
-    for (index = 0U; index < parsed->section_count; ++index) {
-        const xx_pe_section *section = &parsed->sections[index];
-        if (rva >= section->virtual_address && (uint64_t)rva - section->virtual_address < section->raw_size &&
-            (!winner || section->virtual_address >= winner->virtual_address))
-            winner = section;
-    }
-    if (winner) {
-        delta = (uint64_t)rva - winner->virtual_address;
-        if (size > winner->raw_size - delta) return false;
-        *relative = (uint64_t)winner->raw_offset + delta;
-    } else {
-        if (rva > parsed->headers_size || size > parsed->headers_size - rva) return false;
-        *relative = rva;
-    }
-    for (index = 0U; index < parsed->section_count; ++index) {
-        const xx_pe_section *section = &parsed->sections[index];
-        if (section->raw_size && section->virtual_address > rva && section->virtual_address < (uint64_t)rva + size) return false;
-    }
-    return true;
-}
-
 static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_struct *pd)
 {
     int64_t total;
@@ -272,49 +238,6 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
             raw_end = (int64_t)section->raw_offset + section->raw_size;
             if (raw_end > image_end) image_end = raw_end;
         }
-        if (!format->is_mapped) {
-            uint32_t reloc_pointer = xx_io_get_u32(format->device, entry_offset + 24, false);
-            uint32_t line_pointer = xx_io_get_u32(format->device, entry_offset + 28, false);
-            uint32_t reloc_count = xx_io_get_u16(format->device, entry_offset + 32, false);
-            uint32_t line_count = xx_io_get_u16(format->device, entry_offset + 34, false);
-            if (reloc_count == UINT16_MAX && (section->characteristics & UINT32_C(0x01000000)) && reloc_pointer <= (uint64_t)relative_size &&
-                (uint64_t)relative_size - reloc_pointer >= 10U)
-                reloc_count = xx_io_get_u32(format->device, format->base_address + reloc_pointer, false);
-            xx_pe_extend_file_extent(reloc_pointer, (uint64_t)reloc_count * 10U, relative_size, &image_end);
-            xx_pe_extend_file_extent(line_pointer, (uint64_t)line_count * 6U, relative_size, &image_end);
-        }
-    }
-    if (!format->is_mapped) {
-        uint32_t symbols = xx_io_get_u32(format->device, nt_offset + 12, false);
-        uint32_t symbol_count = xx_io_get_u32(format->device, nt_offset + 16, false);
-        uint64_t symbol_bytes = (uint64_t)symbol_count * 18U;
-        uint64_t strings = (uint64_t)symbols + symbol_bytes;
-        xx_pe_extend_file_extent(symbols, symbol_bytes, relative_size, &image_end);
-        if (symbols && strings <= (uint64_t)relative_size && (uint64_t)relative_size - strings >= 4U) {
-            uint32_t string_size = xx_io_get_u32(format->device, format->base_address + (int64_t)strings, false);
-            if (string_size >= 4U) xx_pe_extend_file_extent(strings, string_size, relative_size, &image_end);
-        }
-        if (parsed->directory_count > XX_PE_DIRECTORY_DEBUG) {
-            uint64_t debug_relative;
-            uint32_t debug_size = parsed->directory_size[XX_PE_DIRECTORY_DEBUG];
-            if (parsed->directory_rva[XX_PE_DIRECTORY_DEBUG] &&
-                xx_pe_parsed_rva_offset(parsed, parsed->directory_rva[XX_PE_DIRECTORY_DEBUG], debug_size, &debug_relative) && debug_relative <= (uint64_t)relative_size &&
-                debug_size <= (uint64_t)relative_size - debug_relative) {
-                for (uint64_t index = 0U; index < debug_size / 28U; ++index) {
-                    int64_t entry = format->base_address + (int64_t)debug_relative + (int64_t)(index * 28U);
-                    if (xx_pd_is_stopped(pd)) goto done;
-                    xx_pe_extend_file_extent(xx_io_get_u32(format->device, entry + 24, false), xx_io_get_u32(format->device, entry + 16, false), relative_size,
-                                             &image_end);
-                }
-            }
-        }
-    }
-    if (!format->is_mapped && parsed->directory_count > XX_PE_DIRECTORY_SECURITY && parsed->directory_rva[XX_PE_DIRECTORY_SECURITY] &&
-        parsed->directory_size[XX_PE_DIRECTORY_SECURITY]) {
-        uint64_t certificate_end = (uint64_t)parsed->directory_rva[XX_PE_DIRECTORY_SECURITY] + parsed->directory_size[XX_PE_DIRECTORY_SECURITY];
-        /* Invalid optional certificate metadata is not part of the loadable
-         * image. Packers can reuse these directory bytes for other data. */
-        if (certificate_end <= (uint64_t)relative_size && certificate_end > (uint64_t)image_end) image_end = (int64_t)certificate_end;
     }
     if (format->is_mapped && parsed->image_size) {
         image_end = parsed->image_size < (uint64_t)relative_size ? (int64_t)parsed->image_size : relative_size;

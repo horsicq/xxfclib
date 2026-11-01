@@ -1241,6 +1241,11 @@ int xx_elf_inspect_string_in_table_present(xx_elf_inspection *pElf, const char *
     int64_t nOffset = 0;
     int64_t nEnd = 0;
     size_t nQueryLen = 0;
+    uint8_t buf[8192];
+    size_t buf_pos = 0, buf_len = 0;
+    int64_t cur = 0;
+    size_t entry_len = 0;
+    bool entry_matches = true;
 
     if (!pFile || !pString || nSection < 0) {
         return 0;
@@ -1257,20 +1262,40 @@ int xx_elf_inspect_string_in_table_present(xx_elf_inspection *pElf, const char *
     }
 
     nEnd = nOffset + (int64_t)pElf->pSections[nSection].nSize;
+    cur = nOffset;
 
-    /* Walk the NUL-delimited entries; the match must be a whole entry. */
-    while (nOffset < nEnd && !pFile->failed) {
-        int64_t nStart = nOffset;
-
-        while ((nOffset < nEnd) && (xx_exec_u8(pFile, nOffset) != 0)) {
-            nOffset++;
+    /* Walk the NUL-delimited entries with chunked buffer; the match must be a whole entry. */
+    while (cur < nEnd && !pFile->failed) {
+        if (buf_pos >= buf_len) {
+            size_t to_read = (size_t)(nEnd - cur);
+            if (to_read > sizeof(buf)) to_read = sizeof(buf);
+            if (!xx_exec_read(pFile, cur, buf, to_read)) break;
+            buf_pos = 0;
+            buf_len = to_read;
         }
+        uint8_t c = buf[buf_pos++];
+        cur++;
 
-        if (nOffset < nEnd && ((size_t)(nOffset - nStart) == nQueryLen) && (xx_exec_match(pFile, nStart, pString, nQueryLen))) {
-            return 1;
+        if (c != 0) {
+            if (entry_len < nQueryLen) {
+                if (c != (uint8_t)pString[entry_len]) {
+                    entry_matches = false;
+                }
+            } else {
+                entry_matches = false;
+            }
+            entry_len++;
+        } else {
+            if (entry_matches && entry_len == nQueryLen) {
+                return 1;
+            }
+            entry_len = 0;
+            entry_matches = true;
         }
+    }
 
-        nOffset++; /* skip the NUL */
+    if (entry_matches && entry_len == nQueryLen && cur == nEnd && nOffset < nEnd) {
+        return 1;
     }
 
     return 0;

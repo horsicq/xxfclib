@@ -67,10 +67,6 @@ static xx_scan_result *die_scan_device(xx_scan_engine *engine, xx_io_device *dev
     }
     for (i = 0; i < result->nCount; ++i) {
         xx_scan_record *record = &result->pRecords[i];
-        /* These native archive formats share the Binary signature database,
-         * but their records still describe the detected container type. */
-        if (type == XFT_BINARY && local.file_type != XX_FILE_TYPE_UNKNOWN && local.file_type != XX_FILE_TYPE_BINARY)
-            record->file_type = local.file_type;
         if (record->offset < 0 || record->offset > INT64_MAX - local.offset) {
             xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "DIE record range overflows");
             xx_scan_free_result(engine, result);

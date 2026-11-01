@@ -34,6 +34,8 @@
 #include <xxfclib/formats/executable/molebox/xx_molebox.h>
 #include <xxfclib/formats/archive/cpio/xx_cpio.h>
 #include <xxfclib/formats/archive/tar/xx_tar.h>
+#include <xxfclib/formats/archive/zip/xx_zip.h>
+#include <xxfclib/formats/archive/xorarchive/xx_xorarchive.h>
 #include <xxfclib/formats/installer/lifkd/xx_lifkd.h>
 
 #ifdef _WIN32
@@ -579,6 +581,24 @@ static void member_metadata(const xx_archive_record *record, xfu_entry *entry,
     if (attributes != UINT64_MAX)
         snprintf(entry->attributes, sizeof(entry->attributes), "0x%llX", (unsigned long long)attributes);
     else if (entry->is_directory) strcpy(entry->attributes, "D");
+}
+
+/* xx_zip reads a member's local header, and so the record's header size and
+ * data offset, only on demand. These readers publish xx_zip's own records
+ * (the format is the xx_zip), so resolve them before the fields are shown.
+ * The reader's enum identity decides the cast, as in xxfc_is_incomplete. */
+static void resolve_zip_record(const xxfc_opened *opened, const xx_archive_record *record) {
+    xx_file_type_t type;
+    if (!opened->format || !record || record->data_offset >= 0) return;
+    type = opened->format->file_type != XX_FILE_TYPE_UNKNOWN ? opened->format->file_type : opened->type;
+    if (type == XX_FILE_TYPE_XORARCHIVE) {
+        if (((const xx_xorarchive *)opened->format)->family != XX_XORARCHIVE_FAMILY_ZIP) return;
+    } else if (type != XX_FILE_TYPE_ZIP && type != XX_FILE_TYPE_ZIP64 && type != XX_FILE_TYPE_JAR &&
+               type != XX_FILE_TYPE_APK && type != XX_FILE_TYPE_APKS && type != XX_FILE_TYPE_IPA &&
+               type != XX_FILE_TYPE_ZIP_PSC && type != XX_FILE_TYPE_CRX) {
+        return;
+    }
+    (void)xx_zip_resolve_record_data_offset((xx_zip *)opened->format, (xx_archive_record *)record);
 }
 
 static bool is_compressed_tar_type(xx_file_type_t type) {
@@ -2065,6 +2085,7 @@ reader_opened:
                  (long long)entry.packed_size, entry.name,
                  entry.is_encrypted ? " [encrypted]" : "");
         if (request->callbacks.entry) {
+            resolve_zip_record(&opened, record);
             if (!xfu_record_properties(record, opened.type == XX_FILE_TYPE_ZIP || opened.type == XX_FILE_TYPE_ZIP64,
                                        &properties, &entry.property_count)) {
                 emit(request, true, "cannot allocate member metadata");

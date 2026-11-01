@@ -80,6 +80,8 @@ typedef struct {
     int bit_count;
     bool eof;
     bool error;
+    bool owns_buffer;
+    uint8_t inline_buffer[32768];
 } xx_bit_reader;
 
 /* Bit Writer for streaming compression */

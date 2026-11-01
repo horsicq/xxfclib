@@ -22,6 +22,7 @@ struct xx_settings_s {
     char *organization;
     char *application;
     xx_settings_entry *entries;
+    bool qt_compatible;
 };
 
 typedef struct xx_settings_buffer_s {
@@ -38,6 +39,9 @@ char *xx_settings_encode_value(const xx_settings_value *value);
 xxfc_status_t xx_settings_decode_value(const char *text, size_t size, xx_settings_value *value);
 xxfc_status_t xx_settings_read_ini(xx_settings *settings);
 xxfc_status_t xx_settings_write_ini(const xx_settings *settings);
+/* Saves the dirty entries of @p settings into the INI file at its location, changing only
+ * their lines. @p merged (empty, same location) receives the file merged with the changes. */
+xxfc_status_t xx_settings_save_ini(const xx_settings *settings, xx_settings *merged);
 xxfc_status_t xx_settings_save_native_file(const xx_settings *settings);
 
 #endif

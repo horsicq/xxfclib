@@ -1066,9 +1066,18 @@ static JSVal fn_string_fromcharcode(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal
     xx_buf_init(&buf);
 
     for (i = 0; i < nArgc; i++) {
-        int32_t nCode = js_to_int32(pCtx, pArgv[i]);
+        uint32_t nCode = (uint32_t)js_to_int32(pCtx, pArgv[i]) & 0xFFFF;
 
-        xx_buf_append_char(&buf, (char)(nCode & 0xFF));
+        if (nCode < 0x80) {
+            xx_buf_append_char(&buf, (char)nCode);
+        } else if (nCode < 0x800) {
+            xx_buf_append_char(&buf, (char)(0xC0 | (nCode >> 6)));
+            xx_buf_append_char(&buf, (char)(0x80 | (nCode & 0x3F)));
+        } else {
+            xx_buf_append_char(&buf, (char)(0xE0 | (nCode >> 12)));
+            xx_buf_append_char(&buf, (char)(0x80 | ((nCode >> 6) & 0x3F)));
+            xx_buf_append_char(&buf, (char)(0x80 | (nCode & 0x3F)));
+        }
     }
 
     result = js_strn(pCtx, buf.data, buf.size);

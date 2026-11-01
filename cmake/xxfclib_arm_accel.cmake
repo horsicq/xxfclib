@@ -1,6 +1,7 @@
 # Keep optional ARM instruction-set flags local to runtime-dispatched backends.
 # The rest of the library remains compatible with the baseline ARM64 ISA.
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/xxfclib_target_arch.cmake")
 
 function(xxfclib_configure_arm_accel_sources source_dir)
     get_filename_component(_xxfc_arm_root "${source_dir}" ABSOLUTE)
@@ -10,21 +11,14 @@ function(xxfclib_configure_arm_accel_sources source_dir)
     endif()
     set_property(DIRECTORY APPEND PROPERTY XXFC_ARM_ACCEL_ROOTS "${_xxfc_arm_root}")
 
-    # A native ARM64 Windows host can generate x64 Visual Studio projects.
-    # Prefer the selected compiler/generator target and consult the system
-    # processor only for single-configuration generators without a platform.
-    set(_xxfc_arm_target FALSE)
-    if(CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(ARM64|arm64|AArch64|aarch64)$" OR
-       CMAKE_GENERATOR_PLATFORM MATCHES "^(ARM64|arm64|AArch64|aarch64)$" OR
-       CMAKE_C_COMPILER_TARGET MATCHES "(^|-)(aarch64|arm64)(-|$)")
-        set(_xxfc_arm_target TRUE)
-    elseif(NOT CMAKE_GENERATOR_PLATFORM AND
-           CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|AArch64|aarch64)$")
-        set(_xxfc_arm_target TRUE)
-    endif()
-    if(NOT _xxfc_arm_target OR
-       CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(ARM64EC|arm64ec)$" OR
-       CMAKE_GENERATOR_PLATFORM MATCHES "^(ARM64EC|arm64ec)$")
+    # The target, never the host: a native ARM64 Windows host can generate x64
+    # Visual Studio projects, and on macOS CMAKE_SYSTEM_PROCESSOR names the
+    # build machine even when CMAKE_OSX_ARCHITECTURES selects x86_64. A
+    # universal macOS build also compiles these sources for x86_64 (empty
+    # there), so its flags go to the arm64 compilation only. ARM64EC is not
+    # ARM64 (see xxfclib_target_arch.cmake).
+    xxfclib_target_architectures(_xxfc_arm_archs)
+    if(NOT "arm64" IN_LIST _xxfc_arm_archs)
         return()
     endif()
 
@@ -55,14 +49,18 @@ function(xxfclib_configure_arm_accel_sources source_dir)
             set_property(SOURCE ${_xxfc_arm_crypto}
                 APPEND PROPERTY COMPILE_OPTIONS /clang:-march=armv8-a+crypto)
         else()
+            xxfclib_target_isa_options(arm64 _xxfc_arm_option -march=armv8-a+crc+crypto)
             set_property(SOURCE ${_xxfc_arm_pmull}
-                APPEND PROPERTY COMPILE_OPTIONS -march=armv8-a+crc+crypto)
+                APPEND PROPERTY COMPILE_OPTIONS ${_xxfc_arm_option})
+            xxfclib_target_isa_options(arm64 _xxfc_arm_option -march=armv8-a+crc)
             set_property(SOURCE ${_xxfc_arm_crc}
-                APPEND PROPERTY COMPILE_OPTIONS -march=armv8-a+crc)
+                APPEND PROPERTY COMPILE_OPTIONS ${_xxfc_arm_option})
+            xxfclib_target_isa_options(arm64 _xxfc_arm_option -march=armv8.2-a+dotprod)
             set_property(SOURCE ${_xxfc_arm_dotprod}
-                APPEND PROPERTY COMPILE_OPTIONS -march=armv8.2-a+dotprod)
+                APPEND PROPERTY COMPILE_OPTIONS ${_xxfc_arm_option})
+            xxfclib_target_isa_options(arm64 _xxfc_arm_option -march=armv8-a+crypto)
             set_property(SOURCE ${_xxfc_arm_crypto}
-                APPEND PROPERTY COMPILE_OPTIONS -march=armv8-a+crypto)
+                APPEND PROPERTY COMPILE_OPTIONS ${_xxfc_arm_option})
         endif()
     endif()
 endfunction()

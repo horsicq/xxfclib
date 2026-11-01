@@ -37,17 +37,25 @@ bool xx_br_init(xx_bit_reader *br, xx_io_device *dev, const uint8_t *mem_src, si
     br->remaining_input = remaining_input;
 
     if (dev) {
-        br->buffer_cap = xx_get_file_buffer_size();
-        if (br->buffer_cap < (1024 * 1024)) {
-            br->buffer_cap = (1024 * 1024);
-        }
-        br->buffer = (uint8_t *)xx_mem_alloc(br->buffer_cap);
-        if (!br->buffer && br->buffer_cap > (256 * 1024)) {
-            br->buffer_cap = (256 * 1024);
-            br->buffer = (uint8_t *)xx_mem_alloc(br->buffer_cap);
-        }
-        if (!br->buffer) {
-            return false;
+        if (remaining_input >= 0 && (uint64_t)remaining_input <= sizeof(br->inline_buffer)) {
+            br->buffer = br->inline_buffer;
+            br->buffer_cap = sizeof(br->inline_buffer);
+            br->owns_buffer = false;
+        } else {
+            size_t cap = 64 * 1024;
+            if (remaining_input >= 0 && (uint64_t)remaining_input < (uint64_t)cap) {
+                cap = (size_t)remaining_input;
+                if (cap < sizeof(br->inline_buffer)) cap = sizeof(br->inline_buffer);
+            }
+            br->buffer = (uint8_t *)xx_mem_alloc(cap);
+            if (!br->buffer) {
+                br->buffer = br->inline_buffer;
+                br->buffer_cap = sizeof(br->inline_buffer);
+                br->owns_buffer = false;
+            } else {
+                br->buffer_cap = cap;
+                br->owns_buffer = true;
+            }
         }
     }
     return true;
@@ -55,10 +63,11 @@ bool xx_br_init(xx_bit_reader *br, xx_io_device *dev, const uint8_t *mem_src, si
 
 void xx_br_free(xx_bit_reader *br)
 {
-    if (br->buffer) {
+    if (br->owns_buffer && br->buffer) {
         xx_mem_free(br->buffer);
-        br->buffer = NULL;
     }
+    br->buffer = NULL;
+    br->owns_buffer = false;
 }
 
 static bool xx_br_refill(xx_bit_reader *br, int need_bits)
@@ -591,8 +600,10 @@ typedef struct {
     int64_t total_written;
     size_t pending_start;
     bool error;
+    bool owns_buf;
     xx_decode_copy_fn copy;
     xx_decode_match_fn match;
+    uint8_t inline_buf[8192];
 } xx_out_acc;
 
 static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap)
@@ -619,28 +630,20 @@ static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, si
 #endif
 
     if (dev) {
-        out->buf_cap = xx_get_file_buffer_size();
-        if (out->buf_cap < (1024 * 1024)) {
-            out->buf_cap = (1024 * 1024);
-        }
-        out->buf = (uint8_t *)xx_mem_alloc(out->buf_cap);
-        if (!out->buf && out->buf_cap > (256 * 1024)) {
-            out->buf_cap = (256 * 1024);
-            out->buf = (uint8_t *)xx_mem_alloc(out->buf_cap);
-        }
-        if (!out->buf) {
-            return false;
-        }
+        out->buf = out->inline_buf;
+        out->buf_cap = sizeof(out->inline_buf);
+        out->owns_buf = false;
     }
     return true;
 }
 
 static void xx_out_free(xx_out_acc *out)
 {
-    if (out->buf) {
+    if (out->owns_buf && out->buf) {
         xx_mem_free(out->buf);
-        out->buf = NULL;
     }
+    out->buf = NULL;
+    out->owns_buf = false;
 }
 
 static bool xx_out_flush(xx_out_acc *out)
@@ -768,13 +771,14 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
         return false;
     }
 
-    uint8_t *window = (uint8_t *)xx_mem_alloc(win_size);
+    uint8_t inline_window[32768];
+    uint8_t *window = (win_size <= sizeof(inline_window)) ? inline_window : (uint8_t *)xx_mem_alloc(win_size);
     if (!window) {
         xx_out_free(&out);
         return false;
     }
     if ((dictionary_size != 0U && !dictionary) || dictionary_size > win_size) {
-        xx_mem_free(window);
+        if (window != inline_window) xx_mem_free(window);
         xx_out_free(&out);
         return false;
     }
@@ -1043,7 +1047,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
         xx_pd_leave_level(pd, pd_level);
     }
 
-    xx_mem_free(window);
+    if (window != inline_window) xx_mem_free(window);
     xx_out_free(&out);
     return success;
 }

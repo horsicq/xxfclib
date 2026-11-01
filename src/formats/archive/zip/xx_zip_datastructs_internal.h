@@ -33,9 +33,11 @@
 #include "xxfclib/algo/zipcrypto/xx_zipcrypto.h"
 #include "xxfclib/algo/aes_winzip/xx_aes_winzip.h"
 #include "xxfclib/algo/cmpsc/xx_cmpsc.h"
+#if !defined(XXFC_PROFILE_DIE_ENGINE)
 #include "xxfclib/algo/packmp3/xx_packmp3.h"
 #include "xxfclib/algo/wavpack/xx_wavpack.h"
 #include "xxfclib/algo/winzipjpeg/xx_winzipjpeg.h"
+#endif
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>

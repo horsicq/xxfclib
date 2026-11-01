@@ -173,7 +173,6 @@ bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, 
     }
     xx_rt_free(copy.pRecords);
     xx_rt_free(copy.ppErrors);
-    if (destination->sort) xx_scan_sort_records(destination->pRecords, destination->nCount);
     return true;
 out_of_memory:
     xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot copy scan results");
@@ -414,14 +413,39 @@ static int same_record_group(const xx_scan_record *left, const xx_scan_record *r
              xx_rt_strcmp(left->archive_member ? left->archive_member : "", right->archive_member ? right->archive_member : "") == 0));
 }
 
+static void scan_value_to_hex_ex(uint64_t val, char *buf, size_t buf_size)
+{
+    int width = 2;
+    if (val >= 0xFFFFFFFFull) width = 16;
+    else if (val >= 0xFFFFull) width = 8;
+    else if (val >= 0xFFull) width = 4;
+    xx_rt_snprintf(buf, buf_size, "%0*llx", width, (unsigned long long)val);
+}
+
 static void append_group_header(CDBuf *buf, const xx_scan_result *result, const xx_scan_record *record)
 {
     if (record && record->scan_part == XX_SCAN_PART_ARCHIVE) {
-        cdbuf_appendf(buf, "Archive member: %s: %s [Packed offset = 0x%llx, Packed size = 0x%llx, %s offset = 0x%llx, Size = 0x%llx]",
-                      record->archive_member ? record->archive_member : "", record_file_type(result, record),
-                      (unsigned long long)record->archive_offset, (unsigned long long)record->archive_size,
-                      record->archive_compressed ? "Member" : "Input", (unsigned long long)record->offset,
-                      (unsigned long long)record->size);
+        char sOffset[32];
+        char sSize[32];
+        const char *method = record->archive_compressed ? "Deflate" : "Store";
+        scan_value_to_hex_ex((uint64_t)record->archive_offset, sOffset, sizeof(sOffset));
+        scan_value_to_hex_ex((uint64_t)record->archive_size, sSize, sizeof(sSize));
+        if (record->archive_member && record->archive_member[0]) {
+            cdbuf_appendf(buf, "Stream [%s]: %s (\"%s\") [Offset = 0x%s, Size = 0x%s]",
+                          method, record_file_type(result, record),
+                          record->archive_member, sOffset, sSize);
+        } else {
+            cdbuf_appendf(buf, "Stream [%s]: %s [Offset = 0x%s, Size = 0x%s]",
+                          method, record_file_type(result, record),
+                          sOffset, sSize);
+        }
+    } else if (record && record->scan_part == XX_SCAN_PART_OVERLAY) {
+        char sOffset[32];
+        char sSize[32];
+        scan_value_to_hex_ex((uint64_t)record->offset, sOffset, sizeof(sOffset));
+        scan_value_to_hex_ex((uint64_t)record->size, sSize, sizeof(sSize));
+        cdbuf_appendf(buf, "Overlay: %s [Offset = 0x%s, Size = 0x%s]",
+                      record_file_type(result, record), sOffset, sSize);
     } else {
         cdbuf_append_str(buf, record_file_type(result, record));
     }
@@ -434,6 +458,36 @@ static int first_record_in_group(const xx_scan_result *result, int index)
         if (same_record_group(&result->pRecords[i], &result->pRecords[index])) return 0;
     }
     return 1;
+}
+
+/* Only ancestors present in this result add a level. A parent_id naming no
+ * record here (a caller-supplied ID on a direct engine scan) stays at the top
+ * level, as in the GUI result tree. */
+static int record_depth(const xx_scan_result *result, const xx_scan_record *record)
+{
+    int depth = 0;
+    uint64_t current_parent = record ? record->parent_id : 0;
+    while (current_parent != 0) {
+        int found = 0;
+        int k;
+        for (k = 0; k < result->nCount; ++k) {
+            if (result->pRecords[k].scan_id == current_parent) {
+                current_parent = result->pRecords[k].parent_id;
+                found = 1;
+                break;
+            }
+        }
+        if (!found || ++depth > 20) break;
+    }
+    return depth;
+}
+
+static void append_indent(CDBuf *buf, int count)
+{
+    int k;
+    for (k = 0; k < count; ++k) {
+        cdbuf_append_str(buf, "    ");
+    }
 }
 
 char *xx_scan_format_text(xx_scan_result *pResult, xx_scan_options *pOptions)
@@ -449,13 +503,16 @@ char *xx_scan_format_text(xx_scan_result *pResult, xx_scan_options *pOptions)
     }
 
     for (i = 0; i < pResult->nCount; i++) {
+        int depth;
         if (!first_record_in_group(pResult, i)) continue;
+        depth = record_depth(pResult, &pResult->pRecords[i]);
+        append_indent(&buf, depth);
         append_group_header(&buf, pResult, &pResult->pRecords[i]);
         cdbuf_append_ch(&buf, '\n');
         for (j = i; j < pResult->nCount; ++j) {
             if (!same_record_group(&pResult->pRecords[i], &pResult->pRecords[j])) continue;
             if (pResult->pRecords[j].is_unknown && pOptions->hide_unknown) continue;
-            cdbuf_append_str(&buf, "    ");
+            append_indent(&buf, depth + 1);
             append_record(&buf, &pResult->pRecords[j], pOptions);
             cdbuf_append_ch(&buf, '\n');
         }
@@ -479,18 +536,19 @@ xxfc_status_t xx_scan_print_text(xx_scan_result *result, xx_scan_options *option
         if (status == XXFC_OK) status = xx_terminal_print(terminal, "\n");
     }
     for (i = 0; status == XXFC_OK && i < result->nCount; ++i) {
+        int depth;
         if (!first_record_in_group(result, i)) continue;
-        if (result->pRecords[i].scan_part == XX_SCAN_PART_ARCHIVE) {
+        depth = record_depth(result, &result->pRecords[i]);
+        {
             CDBuf header;
             char *text;
             cdbuf_init(&header);
+            append_indent(&header, depth);
             append_group_header(&header, result, &result->pRecords[i]);
             text = cdbuf_detach(&header, NULL);
             if (!text) return XXFC_ERR_OUT_OF_MEMORY;
             status = xx_terminal_print(terminal, text);
             cd_free(text);
-        } else {
-            status = xx_terminal_print(terminal, record_file_type(result, &result->pRecords[i]));
         }
         if (status == XXFC_OK) status = xx_terminal_print(terminal, "\n");
         for (j = i; status == XXFC_OK && j < result->nCount; ++j) {
@@ -499,6 +557,7 @@ xxfc_status_t xx_scan_print_text(xx_scan_result *result, xx_scan_options *option
             CDBuf buf;
             char *text;
             size_t size;
+            int k;
             if (!same_record_group(&result->pRecords[i], record)) continue;
             if (record->is_unknown && options->hide_unknown) continue;
             cdbuf_init(&buf);
@@ -506,7 +565,9 @@ xxfc_status_t xx_scan_print_text(xx_scan_result *result, xx_scan_options *option
             text = cdbuf_detach(&buf, &size);
             if (!text) return XXFC_ERR_OUT_OF_MEMORY;
             color = xx_scan_type_to_color_record(record->type, colors);
-            status = xx_terminal_print(terminal, "    ");
+            for (k = 0; k < depth + 1 && status == XXFC_OK; ++k) {
+                status = xx_terminal_print(terminal, "    ");
+            }
             if (status == XXFC_OK)
                 status = xx_terminal_write_color(terminal, text, size, color.foreground, color.background);
             cd_free(text);

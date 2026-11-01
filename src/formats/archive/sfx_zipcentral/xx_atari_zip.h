@@ -34,7 +34,7 @@ static int sfx_atari_zip_ensure(xx_sfx_zipcentral*r,xx_pd_struct*pd)
  view=(sfx_carrier_view*)xx_mem_alloc(sizeof(*view));if(!view)goto done;sfx_carrier_view_init(view,f->device,f->base_address+start,end-start);view->patch_offset=patch;view->patch_value=(uint32_t)actual;xx_zip_init(&r->inner,&view->device,0);initialized=true;
  if(!xx_zip_handle_base_info(&r->inner.format,pd)||r->inner.format.format_size!=end-start||r->inner.format.number_of_archive_records!=entries)goto done;
  st=xx_zip_create_archive_records_reading(&r->inner.format,NULL,pd);if(!st)goto done;
- {const xx_archive_record*member;uint64_t count=0;while((member=xx_zip_get_current_archive_record(&r->inner.format,st))!=NULL){if(carrier_stop(pd)||++count>4096U||member->compressed_size<0||member->data_offset<0||member->data_offset>end-start||member->compressed_size>end-start-member->data_offset)goto done;if(!xx_zip_archive_record_move_to_next(&r->inner.format,st,pd))break;}if(count!=entries||r->inner.directory_damaged)goto done;}
+ {const xx_archive_record*member;uint64_t count=0;while((member=xx_zip_get_current_archive_record(&r->inner.format,st))!=NULL){if(carrier_stop(pd)||++count>4096U||member->compressed_size<0||(member->data_offset<0&&!xx_zip_resolve_record_data_offset(&r->inner,&st->current_record))||member->data_offset<0||member->data_offset>end-start||member->compressed_size>end-start-member->data_offset)goto done;if(!xx_zip_archive_record_move_to_next(&r->inner.format,st,pd))break;}if(count!=entries||r->inner.directory_damaged)goto done;}
  xx_zip_free_archive_records_reading(&r->inner.format,st);st=NULL;r->relative_view=view;view=NULL;r->inner_ready=true;ok=true;
 done:
  if(st)xx_zip_free_archive_records_reading(&r->inner.format,st);

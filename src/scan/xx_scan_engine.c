@@ -31,6 +31,10 @@
 #include <intrin.h>
 #endif
 
+#ifdef fileType
+#undef fileType
+#endif
+
 /* Scan ids.
  *
  * An id only has to tell the scans of one process apart, and the CRT-free
@@ -285,15 +289,134 @@ static bool xx_scan_resolve_options(xx_scan_engine *engine, xx_io_device *device
     return !pd || !pd->is_stop;
 }
 
+/* What one input's scan shares with every child scan below it. */
+typedef struct xx_scan_shared {
+    /* XScanEngine keeps one progress error string. An archive member it
+     * unpacks but does not scan (a checksum mismatch, an unmapped method)
+     * sets it, a later one overwrites it, and whichever scan finishes next
+     * (the container's or a later member's) reports it as "Last error". */
+    const char *pending_error;
+    uint64_t archive_member_scans; /* Against XX_SCAN_ARCHIVE_SCAN_BUDGET. */
+    bool budget_reported;
+} xx_scan_shared;
+
 static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, const xx_scan_result *forbidden_result,
-                                        uint64_t parent_id, xx_scan_part scan_part, xx_pd_struct *pd);
+                                        uint64_t parent_id, xx_scan_part scan_part, unsigned int archive_depth, xx_scan_shared *shared, xx_pd_struct *pd);
+
+/* Archive members inherit archives_scan, as in XScanEngine, so nested archives
+ * expand too. A member this many archive levels below the input is still
+ * scanned but not expanded: deeper nesting would only exhaust the stack (the
+ * text tree also stops indenting past 20 levels). */
+#define XX_SCAN_ARCHIVE_MAX_DEPTH 20U
+
+/* A deliberate cdie safety limit that XScanEngine does not have: the archive
+ * members scanned for one input, at every nesting level together. Nesting
+ * multiplies XScanEngine's per-archive limits (21 members, 100,000 when
+ * aggressive), so a few kilobytes of nested ZIPs could otherwise ask for
+ * millions of scans. A real archive tree stays far below: the default cap is
+ * 476 nested archives that each yield the full 21 members, and the aggressive
+ * cap equals XScanEngine's own limit for a single archive. Reaching it stops
+ * the expansion and is reported like other archive errors ("Last error"). */
+#define XX_SCAN_ARCHIVE_SCAN_BUDGET UINT64_C(10000)
+#define XX_SCAN_ARCHIVE_SCAN_BUDGET_AGGRESSIVE UINT64_C(100000)
+static const char xx_scan_budget_message[] = "Archive member scan limit reached (10000)";
+static const char xx_scan_budget_message_aggressive[] = "Archive member scan limit reached (100000)";
 
 typedef struct xx_scan_resources_context {
     xx_scan_engine *engine;
     xx_io_device *device;
     const xx_scan_options *options;
     xx_scan_result *result;
+    size_t scanned_count;
+    unsigned int archive_depth; /* Archive levels between the input and this scan. */
+    xx_scan_shared *shared;
 } xx_scan_resources_context;
+
+/* XScanEngine expands ZIP, 7Z, RAR, CAB and ISO 9660 containers, so also
+ * JAR, APK and IPA, which are ZIP files. cdie reads members of the ZIP family
+ * only; the shipped XScanEngine types 7Z and CAB files as Binary and expands
+ * neither. GZIP, BZIP2, LHA, Mach-O FAT and the rest are never expanded. */
+static bool xx_scan_expands_archive(xx_file_type_t type)
+{
+    return type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64 || type == XX_FILE_TYPE_JAR || type == XX_FILE_TYPE_APK ||
+           type == XX_FILE_TYPE_IPA;
+}
+
+/* Report the pending archive error in result, as the "Last error" record of
+ * XScanEngine::scanProcess, when the engine keeps the standard result model. */
+static bool xx_scan_take_pending_error(xx_scan_engine *engine, xx_scan_result *result, xx_scan_shared *shared, xx_pd_struct *pd)
+{
+    char text[160];
+    const char *message;
+    if (!shared || !shared->pending_error) return true;
+    message = shared->pending_error;
+    shared->pending_error = NULL;
+    if (engine->append_result != xx_scan_append_result) return true;
+    xx_rt_snprintf(text, sizeof(text), "Last error: %s", message);
+    return xx_scan_result_add_error(result, text, pd);
+}
+
+static bool xx_scan_is_scanable_type(xx_file_type_t type)
+{
+    switch (type) {
+        case XX_FILE_TYPE_MSDOS:
+        case XX_FILE_TYPE_DOS4G:
+        case XX_FILE_TYPE_DOS16M:
+        case XX_FILE_TYPE_NE:
+        case XX_FILE_TYPE_LE:
+        case XX_FILE_TYPE_LX:
+        case XX_FILE_TYPE_PE:
+        case XX_FILE_TYPE_PE32:
+        case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET:
+        case XX_FILE_TYPE_ELF:
+        case XX_FILE_TYPE_ELF32:
+        case XX_FILE_TYPE_ELF64:
+        case XX_FILE_TYPE_MACHO:
+        case XX_FILE_TYPE_MACHO32:
+        case XX_FILE_TYPE_MACHO64:
+        case XX_FILE_TYPE_MACHOFAT:
+        case XX_FILE_TYPE_DEX:
+        case XX_FILE_TYPE_PDF:
+        case XX_FILE_TYPE_ARCHIVE:
+        case XX_FILE_TYPE_ZIP:
+        case XX_FILE_TYPE_JAR:
+        case XX_FILE_TYPE_APK:
+        case XX_FILE_TYPE_IPA:
+        case XX_FILE_TYPE_NPM:
+        case XX_FILE_TYPE_RAR:
+        case XX_FILE_TYPE_ISO9660:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool xx_scan_is_scanable_types(const xx_list_t *types)
+{
+    size_t i;
+    if (!types) return false;
+    for (i = 0; i < types->count; ++i) {
+        xx_file_type_t type = XX_FILE_TYPE_UNKNOWN;
+        if (xx_list_get(types, i, &type)) {
+            if (xx_scan_is_scanable_type(type)) return true;
+        }
+    }
+    return false;
+}
+
+/* XScanEngine::isScanable for a resource or archive member, which a
+ * non-aggressive scan scans only when it is an executable, DEX, PDF or
+ * archive. XFormats also types a TAR as an archive, which the common
+ * detector names Binary. */
+static bool xx_scan_child_is_scanable(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
+{
+    xx_list_t *types = engine->get_file_types(engine, device, options, pd);
+    bool scanable = xx_scan_is_scanable_types(types);
+    if (types) xx_list_destroy(types);
+    if (!scanable && !xx_pd_is_stopped(pd) && !(pd && pd->last_error)) scanable = xx_scan_archive_is_tar(device);
+    return scanable;
+}
 
 #if XXFC_ENABLE_STREAM_RESOURCES
 /* The resource reader lends its record only for this call. Scan the payload
@@ -310,8 +433,13 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
     XFileType parent_type = XFT_UNKNOWN;
     int64_t parent_size = 0;
     char resource_type_id[16];
+    size_t limit;
 
     if (xx_pd_is_stopped(pd)) return false;
+    /* XScanEngine scans resources while its count is at most 20 (2000 when
+     * aggressive), i.e. 21 (2001) of them. */
+    limit = scan->options->aggressive_scan ? 2001 : 21;
+    if (scan->scanned_count >= limit) return true;
     if (!engine->get_file_types || !engine->append_result) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, !engine->get_file_types ? "Missing scan file-type callback" : "Missing scan result append callback");
         return false;
@@ -330,12 +458,21 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
         xx_rt_snprintf(resource_type_id, sizeof(resource_type_id), "%u", (unsigned int)resource->type_id);
         child_options.resource_type = resource_type_id;
     }
+    /* As XScanEngine's child scans: archives expand (they inherit the
+     * options), while a child's own resources and overlay are not scanned
+     * (XScanEngine finds file parts only for the input's type). */
     child_options.recursive_scan = false;
     child_options.overlay_scan = false;
     child_options.resources_scan = false;
-    child_options.archives_scan = false;
     child_options.all_types_scan = false;
-    part = xx_scan_internal(engine, child_device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_RESOURCE, pd);
+
+    if (!scan->options->aggressive_scan && !xx_scan_child_is_scanable(engine, child_device, &child_options, pd)) {
+        xx_io_close(child_device);
+        return !xx_pd_is_stopped(pd) && !(pd && pd->last_error);
+    }
+
+    part = xx_scan_internal(engine, child_device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_RESOURCE, scan->archive_depth,
+                            scan->shared, pd);
     if (!part) {
         xx_io_close(child_device);
         return false;
@@ -365,17 +502,21 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan resource result");
         return false;
     }
+    scan->scanned_count++;
     return true;
 }
 
 static xx_scan_result *xx_scan_run_resources(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_scan_result *result,
-                                             xx_pd_struct *pd)
+                                             unsigned int archive_depth, xx_scan_shared *shared, xx_pd_struct *pd)
 {
     xx_scan_resources_context context;
     context.engine = engine;
     context.device = device;
     context.options = options;
     context.result = result;
+    context.scanned_count = 0;
+    context.archive_depth = archive_depth; /* A resource is no archive level. */
+    context.shared = shared;
     if (!xx_scan_visit_resources(device, options->file_type, options->offset, options->size, xx_scan_run_resource, &context, pd)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan resource enumeration failed");
         engine->free_result(engine, result);
@@ -399,8 +540,11 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
     int64_t parent_size = 0;
     bool preserve_metadata;
     bool appended;
+    size_t limit;
 
     if (xx_pd_is_stopped(pd)) return false;
+    limit = scan->options->aggressive_scan ? 100000 : 21;
+    if (scan->scanned_count >= limit) return false;
     if (!engine->get_file_types || !engine->append_result) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, !engine->get_file_types ? "Missing scan file-type callback" : "Missing scan result append callback");
         return false;
@@ -417,9 +561,25 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
     child_options.recursive_scan = false;
     child_options.overlay_scan = false;
     child_options.resources_scan = false;
-    child_options.archives_scan = false;
+    child_options.archives_scan = scan->options->archives_scan && scan->archive_depth + 1U < XX_SCAN_ARCHIVE_MAX_DEPTH;
     child_options.all_types_scan = false;
-    part = xx_scan_internal(engine, member->device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_ARCHIVE, pd);
+
+    if (!scan->options->aggressive_scan && !xx_scan_child_is_scanable(engine, member->device, &child_options, pd))
+        return !xx_pd_is_stopped(pd) && !(pd && pd->last_error);
+    if (scan->shared) {
+        bool aggressive = scan->options->aggressive_scan;
+        if (scan->shared->archive_member_scans >= (aggressive ? XX_SCAN_ARCHIVE_SCAN_BUDGET_AGGRESSIVE : XX_SCAN_ARCHIVE_SCAN_BUDGET)) {
+            if (!scan->shared->budget_reported) {
+                scan->shared->budget_reported = true;
+                scan->shared->pending_error = aggressive ? xx_scan_budget_message_aggressive : xx_scan_budget_message;
+            }
+            return false;
+        }
+        scan->shared->archive_member_scans++;
+    }
+
+    part = xx_scan_internal(engine, member->device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_ARCHIVE,
+                            scan->archive_depth + 1U, scan->shared, pd);
     if (!part) return false;
     if (xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
         engine->free_result(engine, part);
@@ -443,18 +603,32 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan archive result");
         return false;
     }
+    scan->scanned_count++;
+    if (scan->scanned_count >= limit) {
+        return false;
+    }
     return true;
 }
 
+/* A member XScanEngine unpacks but does not scan leaves its error string. */
+static void xx_scan_report_archive_member(void *context, const char *message)
+{
+    xx_scan_resources_context *scan = (xx_scan_resources_context *)context;
+    if (scan->shared) scan->shared->pending_error = message;
+}
+
 static xx_scan_result *xx_scan_run_archives(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_scan_result *result,
-                                            xx_pd_struct *pd)
+                                            unsigned int archive_depth, xx_scan_shared *shared, xx_pd_struct *pd)
 {
     xx_scan_resources_context context;
     context.engine = engine;
     context.device = device;
     context.options = options;
     context.result = result;
-    if (!xx_scan_visit_archives(device, options, xx_scan_run_archive_member, &context, pd)) {
+    context.scanned_count = 0;
+    context.archive_depth = archive_depth;
+    context.shared = shared;
+    if (!xx_scan_visit_archives_ex(device, options, xx_scan_run_archive_member, xx_scan_report_archive_member, &context, pd)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan archive extraction failed");
         engine->free_result(engine, result);
         return NULL;
@@ -462,7 +636,8 @@ static xx_scan_result *xx_scan_run_archives(xx_scan_engine *engine, xx_io_device
     return result;
 }
 
-static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_scan_result *result, xx_pd_struct *pd)
+static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_scan_result *result,
+                                           unsigned int archive_depth, xx_scan_shared *shared, xx_pd_struct *pd)
 {
     xx_scan_options overlay_options = *options;
     xx_io_device *overlay_device = NULL;
@@ -511,15 +686,16 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
     overlay_options.size = size;
     overlay_options.file_type = XX_FILE_TYPE_UNKNOWN;
     overlay_options.file_name = NULL;
+    /* As XScanEngine's child scans: an archive overlay expands (archives_scan
+     * is inherited); the overlay's own file parts are not scanned. */
     overlay_options.recursive_scan = false;
     overlay_options.overlay_scan = false;
     overlay_options.resources_scan = false;
-    overlay_options.archives_scan = false;
     overlay_options.all_types_scan = false;
 
     /* Use the same detection, buffering and dispatch path as a normal scan.
        The borrowed outer result must not be returned or freed by the child. */
-    part = xx_scan_internal(engine, overlay_device, &overlay_options, result, options->scan_id, XX_SCAN_PART_OVERLAY, pd);
+    part = xx_scan_internal(engine, overlay_device, &overlay_options, result, options->scan_id, XX_SCAN_PART_OVERLAY, archive_depth, shared, pd);
     if (!part) goto failed;
     if (pd && pd->is_stop) {
         engine->free_result(engine, part);
@@ -542,7 +718,7 @@ failed:
 /* parent_id is 0 for the caller's input and, for a child, the scan_id of
  * the scan that found it. Every call draws its own scan_id. */
 static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, const xx_scan_result *forbidden_result,
-                                        uint64_t parent_id, xx_scan_part scan_part, xx_pd_struct *pd)
+                                        uint64_t parent_id, xx_scan_part scan_part, unsigned int archive_depth, xx_scan_shared *shared, xx_pd_struct *pd)
 {
     xx_scan_options defaults;
     xx_scan_options resolved;
@@ -628,15 +804,22 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
     result = xx_scan_run_plan(engine, scan_device, &resolved, forbidden_result, pd);
     if (result && resolved.resources_scan) {
 #if XXFC_ENABLE_STREAM_RESOURCES
-        result = xx_scan_run_resources(engine, scan_device, &resolved, result, pd);
+        result = xx_scan_run_resources(engine, scan_device, &resolved, result, archive_depth, shared, pd);
 #else
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Resource stream support is disabled in this build");
         engine->free_result(engine, result);
         result = NULL;
 #endif
     }
-    if (result && resolved.archives_scan) result = xx_scan_run_archives(engine, scan_device, &resolved, result, pd);
-    if (result && resolved.overlay_scan) result = xx_scan_run_overlay(engine, scan_device, &resolved, result, pd);
+    if (result && resolved.archives_scan && xx_scan_expands_archive(resolved.file_type))
+        result = xx_scan_run_archives(engine, scan_device, &resolved, result, archive_depth, shared, pd);
+    if (result && resolved.overlay_scan) result = xx_scan_run_overlay(engine, scan_device, &resolved, result, archive_depth, shared, pd);
+    /* As XScanEngine::scanProcess ends: a pending archive error becomes this
+     * scan's "Last error". */
+    if (result && !xx_scan_take_pending_error(engine, result, shared, pd)) {
+        engine->free_result(engine, result);
+        result = NULL;
+    }
 
 done:
     if (memory_device) xx_io_close(memory_device);
@@ -646,7 +829,9 @@ done:
 
 xx_scan_result *xx_scan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
 {
-    return xx_scan_internal(engine, device, options, NULL, 0, XX_SCAN_PART_INPUT, pd);
+    xx_scan_shared shared;
+    xx_mem_zero(&shared, sizeof(shared));
+    return xx_scan_internal(engine, device, options, NULL, 0, XX_SCAN_PART_INPUT, 0U, &shared, pd);
 }
 
 xx_scan_result *xx_scan_device(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)

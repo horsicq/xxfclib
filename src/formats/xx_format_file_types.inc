@@ -1546,3 +1546,4 @@ XX_FORMAT_FILE_TYPE(XX_FILE_TYPE_DFSEE_IMZ, "DFSee compressed sector image")
 
 XX_FORMAT_FILE_TYPE(XX_FILE_TYPE_DH, "DH archive")
 XX_FORMAT_FILE_TYPE(XX_FILE_TYPE_DJCOMP, "DJcomp compressed data")
+XX_FORMAT_FILE_TYPE(XX_FILE_TYPE_DPC, "Delphi Package Collection")

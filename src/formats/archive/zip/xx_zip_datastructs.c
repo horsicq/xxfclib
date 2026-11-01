@@ -185,6 +185,7 @@ xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, x
             goto data_structs_fail;
         }
         cd_curr_offset += cd_entry_size;
+        (void)xx_zip_resolve_record_data_offset(zip, &rec);
 
         if (rec.header_offset >= 0) {
             if (rec.header_offset > expected_next) {
