@@ -1,0 +1,8 @@
+option(XXFC_BUILD_DPC_TESTS "Build bounded Delphi Package Collection regressions" OFF)
+if(XXFC_BUILD_DPC_TESTS AND NOT TARGET test_dpc)
+    enable_testing()
+    add_executable(test_dpc "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dpc.c")
+    target_link_libraries(test_dpc PRIVATE xxfclib::xxfclib)
+    target_compile_definitions(test_dpc PRIVATE XXFC_DPC_FACTORY_TESTS=1)
+    add_test(NAME xxfc_dpc COMMAND test_dpc "${CMAKE_CURRENT_BINARY_DIR}/dpc-output")
+endif()
