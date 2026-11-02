@@ -27,12 +27,50 @@ Method bodies must fit one raw-backed PE range. Local-signature/catch tokens,
 exception ranges and chained sections are checked. These are structural
 readers; instruction verification and exception execution belong to a runtime.
 
+`xxfclib/formats/executable/dotnet/xx_dotnet_cil.h` adds pure C operations over
+borrowed CIL byte buffers: operand widths, instruction decode, relative
+branch/switch targets, complete instruction-boundary validation and safe
+replacement-span checks. These allocate nothing; validation uses a disjoint
+caller-owned boundary map. Status codes distinguish bad arguments, truncated
+operands, invalid opcodes, oversized switches and invalid control-flow targets.
+This validates byte structure and control flow, without verifying the managed
+evaluation stack or executing instructions.
+
+`xxfclib/formats/executable/dotnet/xx_dotnet_edit.h` provides:
+
+- `xx_dotnet_utf8_to_utf16`: canonical UTF8 decoding, with a size-query mode.
+- `xx_dotnet_us_encode`: an ECMA-335 `#US` entry encoder with compressed length,
+  UTF16 units and the terminal special-character flag; lone surrogates remain.
+- `xx_dotnet_rebuild_user_strings`: a new owned PE buffer with relocated CLI
+  metadata and a replacement `#US` heap, adding its stream header if absent.
+- `xx_dotnet_edit_free`: releases the library-owned rebuild buffer.
+
+The codecs allocate nothing and reject overlapping buffers before writes.
+Capacity/invalid-input failures clear result sizes and preserve output. The
+rebuilder independently validates its unsigned IL-only PE32/PE32+ container,
+stream layout and metadata-table extents using the existing inspection reader.
+It preserves metadata tables, other heaps and method bodies, and updates PE/CLI
+sizes within an explicit caller limit. It does not modify identifiers, decode
+an obfuscator or execute code. Returned storage must be released through the
+library's release function, including when crossing DLL/CRT boundaries.
+
+These APIs use xxfclib's allocator/runtime conventions and are included in the
+`full`, `formats` and `dotnet_emul` source profiles. The `DotNet.*` JavaScript
+object in xxdebugscript binds to these operations while retaining its script
+argument handling, snapshots and debugger-owned buffers.
+
 The focused hosted static C11 build uses the `dotnet_emul` source profile:
 
 ```powershell
 cmake -S D:/qt5/_mylibs/xxfclib -B build/xxfclib-dotnet -DXXFC_BUILD_PROFILE=dotnet_emul
 cmake --build build/xxfclib-dotnet --config Release
 ```
+
+Add `-DXXFC_BUILD_DOTNET_PRIMITIVE_TESTS=ON` to build the standalone
+`test_dotnet_primitives` test. Run it with `ctest --test-dir build/xxfclib-dotnet
+--output-on-failure`. Its synthetic CIL, Unicode and PE32/PE32+ fixtures require
+neither JavaScript nor a CLR. It checks rebuilding with and without an existing
+`#US` heap and reads the result through the independent inspection API.
 
 It exports the `xxfclib::xxfclib` CMake target. The default `full` profile keeps
 the complete library source catalog. Shared and CRT-free builds require `full`.

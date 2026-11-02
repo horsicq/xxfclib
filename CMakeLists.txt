@@ -1978,6 +1978,8 @@ set(XXFCLIB_SOURCES
     src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c
     src/formats/executable/dotnet/platforms/xx_dotnet_us_avx2.c
     src/formats/executable/dotnet/xx_dotnet_reader.c
+    src/formats/executable/dotnet/xx_dotnet_cil.c
+    src/formats/executable/dotnet/xx_dotnet_edit.c
     src/formats/executable/dotnet/xx_dotnet_datastructs.c
     src/formats/executable/dotnet/xx_dotnet_extractor.c
     src/formats/installer/apk/xx_apk_inspect.c
@@ -5845,6 +5847,8 @@ if(XXFC_BUILD_DISASM_TESTS)
     add_test(NAME test_die_disasm COMMAND test_die_disasm)
     unset(_xxfc_disasm_test_library)
 endif()
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dotnet_primitive_tests.cmake")
 
 if(XXFC_BUILD_TESTS)
     enable_testing()

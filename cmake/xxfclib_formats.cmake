@@ -72,6 +72,7 @@ install(TARGETS xxfclib EXPORT xxfclibTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/xxfclib"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dotnet_primitive_tests.cmake")
 install(EXPORT xxfclibTargets
     FILE xxfclibTargets.cmake
     NAMESPACE xxfclib::
