@@ -34,6 +34,7 @@
 #include "xx_bzip2_random.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "asm/xx_bzip2_asm.h"
+#include "../../io/xx_io_buffer.h"
 #include <string.h>
 
 extern uint32_t xx_crc32_mpeg2_raw(uint32_t reg, const void *data, size_t size);
@@ -89,8 +90,11 @@ bool bz2_br_init(bz2_bit_reader *br, xx_io_device *dev, const uint8_t *mem, size
         br->ibuf_capacity = xx_get_file_buffer_size();
         if (br->ibuf_capacity < (256 * 1024)) br->ibuf_capacity = (256 * 1024);
         if (br->ibuf_capacity > (SIZE_MAX >> 1)) br->ibuf_capacity = SIZE_MAX >> 1;
+        /* bz2_br_refill never reads more than remains of a sized stream. */
+        if (remaining >= 0) br->ibuf_capacity = xx_io_buffer_size_for(br->ibuf_capacity, (uint64_t)remaining);
         br->ibuf = (uint8_t *)xx_mem_alloc(br->ibuf_capacity);
         br->error = br->ibuf == NULL;
+        if (br->error) xx_io_note_alloc_failure();
     }
     return !br->error;
 }
@@ -242,6 +246,7 @@ typedef struct {
     bool error;
     bool overflow;
     bool allocated_obuf;
+    size_t obuf_limit; /* growth bound of an allocated obuf */
 } bz2_out;
 
 static bool bz2_out_flush(bz2_out *o)
@@ -255,6 +260,18 @@ static bool bz2_out_flush(bz2_out *o)
         }
         if (o->block_crc_active) {
             o->block_crc = xx_crc32_mpeg2_raw(o->block_crc, o->obuf, o->obuf_pos);
+        }
+        /* The output size is unknown: a full staging buffer doubles, up to
+         * the configured size. Growth is optional; on failure the current
+         * buffer stays in use. */
+        if (o->allocated_obuf && o->obuf_pos == o->obuf_capacity && o->obuf_capacity < o->obuf_limit) {
+            size_t grown = o->obuf_capacity <= o->obuf_limit / 2U ? o->obuf_capacity * 2U : o->obuf_limit;
+            uint8_t *larger = (uint8_t *)xx_mem_alloc(grown);
+            if (larger) {
+                xx_mem_free(o->obuf);
+                o->obuf = larger;
+                o->obuf_capacity = grown;
+            }
         }
         o->obuf_pos = 0;
     } else if (o->mem) {
@@ -761,9 +778,17 @@ bool xx_bzip2_decompress_stream(bz2_bit_reader *br, xx_io_device *dst_dev, uint8
         out.obuf_capacity = mem_cap;
         out.allocated_obuf = false;
     } else {
-        out.obuf_capacity = br->ibuf_capacity;
+        /* As the reader's buffer before it was sized to the input: the
+         * configured size, at least 256 KiB, reached by growth. */
+        out.obuf_limit = xx_get_file_buffer_size();
+        if (out.obuf_limit < (256 * 1024)) out.obuf_limit = (256 * 1024);
+        if (out.obuf_limit > (SIZE_MAX >> 1)) out.obuf_limit = SIZE_MAX >> 1;
+        out.obuf_capacity = out.obuf_limit < (256 * 1024) ? out.obuf_limit : (256 * 1024);
         out.obuf = (uint8_t *)xx_mem_alloc(out.obuf_capacity);
-        if (!out.obuf) return false;
+        if (!out.obuf) {
+            xx_io_note_alloc_failure();
+            return false;
+        }
         out.allocated_obuf = true;
     }
 

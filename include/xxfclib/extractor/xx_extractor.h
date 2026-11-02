@@ -32,8 +32,17 @@ typedef struct xx_extractor_options {
     uint64_t offset, length; /**< UINT64_MAX length means through EOF. */
     uint64_t result_limit; /**< Zero means unlimited. A reached limit is a
                               successful truncated scan. */
-    uint64_t max_member_size; /**< Default 256 MiB; decoded members cannot exceed
-                                 this. */
+    uint64_t max_member_size; /**< Zero or the default (UINT64_MAX): no limit.
+                                 A member is decoded into memory below
+                                 xx_get_file_buffer_size(), otherwise into a
+                                 temporary file that must fit and, from 16 MiB
+                                 on, leave 1 GiB free; a
+                                 member that cannot have that file, or whose
+                                 write to it fails, is left out of the
+                                 inventory. A smaller value fails the scan with
+                                 XX_EXTRACTOR_LIMIT at the first member over
+                                 it. Native reader limits still apply (PDF
+                                 streams decode up to 256 MiB). */
     size_t chunk_size; /**< Default 64 KiB; bounded to 1..16 MiB. */
 } xx_extractor_options;
 typedef struct xx_extractor_record {

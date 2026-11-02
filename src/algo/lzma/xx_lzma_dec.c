@@ -24,6 +24,7 @@
 #include "platforms/xx_lzma_platform.h"
 #include "xx_lzma2_filters_internal.h"
 #include "asm/xx_lzma_asm.h"
+#include "../../io/xx_io_buffer.h"
 #include <string.h>
 #include "LzmaDec.c"
 #include "Lzma2Dec.c"
@@ -45,8 +46,13 @@ static bool rd_refill(lzma_range_dec *rd)
     if (!rd->ibuf) {
         if (!rd->ibuf_capacity) rd->ibuf_capacity = xx_get_file_buffer_size();
         if (rd->ibuf_capacity < (256 * 1024)) rd->ibuf_capacity = (256 * 1024);
+        /* No more than a sized stream, or the memory input, still holds. */
+        if (rd->remaining >= 0) rd->ibuf_capacity = xx_io_buffer_size_for(rd->ibuf_capacity, (uint64_t)rd->remaining);
+        if (!rd->dev && rd->mem && rd->mem_pos <= rd->mem_size)
+            rd->ibuf_capacity = xx_io_buffer_size_for(rd->ibuf_capacity, (uint64_t)(rd->mem_size - rd->mem_pos));
         rd->ibuf = (uint8_t *)xx_mem_alloc(rd->ibuf_capacity);
         if (!rd->ibuf) {
+            xx_io_note_alloc_failure();
             rd->error = true;
             return false;
         }

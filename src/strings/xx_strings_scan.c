@@ -1,6 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>. SPDX-License-Identifier: MIT */
 #include "xxfclib/strings/xx_strings_scan.h"
 #include "xxfclib/buf/xx_buf.h"
+#include "xxfclib/global/xx_global.h"
 
 /* SSE2 is architectural on x86-64. Other targets retain the same scalar path;
  * no AVX/OS-state assumptions or unconditional target-specific instructions. */
@@ -34,9 +35,13 @@ struct strings_scan {
     bool text;
 };
 
+/* The chunk is the general buffer size (xx_get_buffer_size(), Detect It
+ * Easy's Feature/ReadBufferSize), at most STRINGS_CHUNK_MAX. */
 xx_strings_scan_options xx_strings_scan_defaults(void)
 {
     xx_strings_scan_options o = {4, XX_STRINGS_ALL, 0, UINT64_MAX, STRINGS_CHUNK_DEFAULT, STRINGS_TEXT_DEFAULT, 0};
+    size_t chunk = xx_get_buffer_size();
+    if (chunk) o.chunk_size = chunk < STRINGS_CHUNK_MAX ? chunk : STRINGS_CHUNK_MAX;
     return o;
 }
 const char *xx_strings_scan_status_name(xx_strings_scan_status status)
@@ -331,7 +336,7 @@ xx_strings_scan_status xx_strings_scan_device(xx_io_device *device, const xx_str
         }
         total = s.options.length;
     }
-    buffer = xx_rt_malloc(s.options.chunk_size);
+    buffer = xx_rt_malloc(total && total < s.options.chunk_size ? (size_t)total : s.options.chunk_size);
     if (!buffer) {
         s.status = XX_STRINGS_SCAN_NO_MEMORY;
         goto finish;

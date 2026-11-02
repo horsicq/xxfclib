@@ -8,6 +8,7 @@
 #include "xxfclib/algo/blake2/xx_blake2.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "../../global/xx_read_buffer_internal.h"
 
 #define XX_BLAKE2SP_READY UINT32_C(0x32535042)
 
@@ -413,15 +414,14 @@ bool xx_blake2sp_calc_device(xx_io_device *device, int64_t offset, int64_t size,
 {
     xx_blake2sp_context context;
     uint8_t *buffer;
-    size_t capacity = xx_get_file_buffer_size();
+    size_t capacity = 0;
     int64_t total, remaining = size;
     int level;
     bool ok = false;
-    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
     if (!device || !device->read || !digest || offset < 0 || size < 0 || offset > INT64_MAX - size || xx_pd_is_stopped(pd)) return false;
     total = xx_io_total_size(device);
     if ((total >= 0 && (offset > total || size > total - offset)) || xx_io_seek64(device, offset, SEEK_SET) != 0) return false;
-    buffer = (uint8_t *)xx_mem_alloc(capacity);
+    buffer = (uint8_t *)xx_read_buffer_alloc(size ? (uint64_t)size : 1U, &capacity);
     if (!buffer) return false;
     xx_blake2sp_init(&context);
     level = xx_pd_enter_level(pd, (uint64_t)size, "BLAKE2sp checksum");

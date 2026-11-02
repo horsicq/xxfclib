@@ -2035,7 +2035,8 @@ static bool xx_zip_unpack_method_to_device_unchecked(xx_io_device *source, int64
             return xx_lzma2_unpack_device(source, source_offset + (int64_t)sizeof(header), compressed_size - (int64_t)sizeof(header), header[4], destination, pd);
         }
         case 20:
-        case 93: return xx_zstd_unpack_device_to_device(source, source_offset, compressed_size, destination, uncompressed_size, pd);
+        case 93: /* Streamed, as XArchive does: memory holds the frame's window, not the member. */
+            return xx_zstd_unpack_device_streaming(source, source_offset, compressed_size, destination, uncompressed_size, 0U, pd);
         case 95: return xx_zip_xz_unpack(source, source_offset, compressed_size, destination, uncompressed_size, pd);
         case 98: {
             uint8_t header[2];

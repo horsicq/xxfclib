@@ -21,7 +21,27 @@
 
 #include <string.h>
 
-#define XX_SCAN_ARCHIVE_MEMBER_DEFAULT (UINT64_C(256) * 1024U * 1024U)
+/* No member size limit: a compressed member of any size it can declare is
+ * decoded, into memory below the file buffer size and into a temporary file
+ * from it on, as XBinary::createFileBuffer stores it. No ZIP entry without
+ * ZIP64 can declare 4 GiB, so this bound only stops a stream that decodes on
+ * past anything it could declare (XDecompress decodes to its end). */
+#define XX_SCAN_ARCHIVE_MEMBER_DEFAULT (UINT64_C(4) * 1024U * 1024U * 1024U)
+/* Readers that decode a whole member in RAM (ZIP methods 10/16/94/96/97,
+ * natively capped at 64 MiB) keep their own budget, apart from that bound. */
+#define XX_SCAN_ARCHIVE_READER_MEMORY (UINT64_C(512) * 1024U * 1024U)
+/* Free space a member's temporary file of XX_SCAN_ARCHIVE_TEMP_RESERVE_FROM or
+ * more must leave on the temporary volume (1 GiB): such a member that does not
+ * fit with it is skipped, so a large member never takes the last GiB the
+ * system and other programs use. A smaller member (output of unknown size,
+ * each write while it is smaller) only needs to fit, and may fill the volume. */
+#define XX_SCAN_ARCHIVE_TEMP_RESERVE (UINT64_C(1) * 1024U * 1024U * 1024U)
+/* 16 MiB, XBinary::createFileBuffer's cut-off between memory and a temporary
+ * file: Detect It Easy keeps a smaller member in memory, so such a member is
+ * not held to the reserve. */
+#define XX_SCAN_ARCHIVE_TEMP_RESERVE_FROM (UINT64_C(16) * 1024U * 1024U)
+/* A temporary file of unknown final size checks for room in steps this big. */
+#define XX_SCAN_ARCHIVE_TEMP_STEP (UINT64_C(64) * 1024U * 1024U)
 #define XX_SCAN_ARCHIVE_TOTAL_DEFAULT UINT64_MAX
 #define XX_SCAN_ARCHIVE_COUNT_DEFAULT UINT32_C(100000)
 /* The head xx_scan_archive_is_scanable_header needs: a PDF marker may start
@@ -57,10 +77,11 @@ typedef struct xx_scan_archive_sink {
     bool track_crc; /* Keep the CRC-32 of every decoded byte in crc. */
     bool allow_excess; /* Decode on past expected_size, counting only, for the CRC. */
     bool excess;       /* More output than expected_size: never scanned. */
-    bool no_temporary; /* No temporary file could be made: kept in memory instead. */
+    bool unavailable;  /* It needs a temporary file and has none (or no room): skipped. */
     bool iso_pending;  /* Kept until "CD001" at 0x8001 decides it. */
     uint8_t iso[6];
     uint32_t crc;
+    uint64_t room;     /* Temporary-file size up to which free space was checked. */
     size_t head_size;
     const char *name;
     const char *method; /* Static label handed to the published member. */
@@ -85,7 +106,45 @@ static bool xx_scan_archive_sink_error(xx_scan_archive_sink *sink, int error, co
     return xx_scan_archive_error(sink->pd, error, message);
 }
 
-/* A short temporary-file write is a storage failure. Do not retry a buffered
+/* The member needs a temporary file it cannot have: it cannot be unpacked,
+ * as when XBinary::createFileBuffer returns nullptr and XScanEngine skips the
+ * member. It is skipped without a report, never kept in memory instead, and
+ * the walk goes on. Returns false, to stop the decoder. */
+static bool xx_scan_archive_unavailable(xx_scan_archive_sink *sink)
+{
+    sink->unavailable = true;
+    sink->discard = true;
+    return false;
+}
+
+/* Whether the temporary volume takes size more bytes, and step more when the
+ * final size is unknown, for a temporary file that reaches total bytes (its
+ * declared size, or where output of unknown size checks again): from
+ * XX_SCAN_ARCHIVE_TEMP_RESERVE_FROM on it must also keep
+ * XX_SCAN_ARCHIVE_TEMP_RESERVE free. In a memory-only scope temporary streams
+ * are RAM within the scope's own ceiling, which the writes enforce past size.
+ * When the free space cannot be read, the writes decide. */
+static bool xx_scan_archive_temp_room(uint64_t size, uint64_t step, uint64_t total)
+{
+    uint64_t available, reserve = total >= XX_SCAN_ARCHIVE_TEMP_RESERVE_FROM ? XX_SCAN_ARCHIVE_TEMP_RESERVE : 0U;
+    if (xx_io_memory_only_active()) return size <= xx_io_memory_only_available();
+    if (!xx_io_temp_free_space(&available)) return true;
+    return available >= reserve && available - reserve >= size && available - reserve - size >= step;
+}
+
+/* Where output of unknown size that needs required bytes checks for room
+ * again. While it is smaller than XX_SCAN_ARCHIVE_TEMP_RESERVE_FROM it needs
+ * room only for the bytes it writes, so each write checks; from that size on,
+ * with the reserve, one XX_SCAN_ARCHIVE_TEMP_STEP on. (A memory-only scope
+ * keeps no reserve and checks every step.) */
+static uint64_t xx_scan_archive_next_room(uint64_t required)
+{
+    if (required < XX_SCAN_ARCHIVE_TEMP_RESERVE_FROM && !xx_io_memory_only_active()) return required;
+    return required > UINT64_MAX - XX_SCAN_ARCHIVE_TEMP_STEP ? UINT64_MAX : required + XX_SCAN_ARCHIVE_TEMP_STEP;
+}
+
+/* A short temporary-file write (a full disk, a race with another program)
+ * leaves the member unavailable, never a failed walk. Do not retry a buffered
  * file write after an error: stdio may already have discarded buffered bytes. */
 static bool xx_scan_archive_temp_write(xx_scan_archive_sink *sink, xx_io_device *temporary, const void *data, size_t size)
 {
@@ -93,24 +152,22 @@ static bool xx_scan_archive_temp_write(xx_scan_archive_sink *sink, xx_io_device 
     while (size) {
         size_t amount = size > 65536U ? 65536U : size;
         if (xx_scan_archive_stopped(sink->pd)) return false;
-        if (xx_io_write(temporary, bytes, amount) != (ssize_t)amount)
-            return xx_scan_archive_sink_error(sink, XXFC_ERR_IO, "Cannot write temporary archive member");
+        if (xx_io_write(temporary, bytes, amount) != (ssize_t)amount) return xx_scan_archive_unavailable(sink);
         bytes += amount;
         size -= amount;
     }
     return true;
 }
 
-static bool xx_scan_archive_spill(xx_scan_archive_sink *sink)
+/* Continue the member in a temporary file with room up to room bytes: its
+ * declared size (size), or, when the final size is unknown, past the size
+ * bytes kept so far up to xx_scan_archive_next_room. Without one it is
+ * unavailable. */
+static bool xx_scan_archive_spill(xx_scan_archive_sink *sink, uint64_t size, uint64_t room)
 {
-    xx_io_device *temporary = xx_io_temp_open();
-    if (!temporary) {
-        /* No usable temporary folder: XScanEngine still scans the member,
-         * so it stays in memory (within the member limit). */
-        sink->no_temporary = true;
-        sink->memory_threshold = UINT64_MAX;
-        return true;
-    }
+    xx_io_device *temporary;
+    if (!xx_scan_archive_temp_room(size, room - size, room) || !(temporary = xx_io_temp_open())) return xx_scan_archive_unavailable(sink);
+    sink->room = room;
     if (!xx_scan_archive_temp_write(sink, temporary, sink->data, (size_t)sink->stored)) {
         xx_io_close(temporary);
         return false;
@@ -241,17 +298,27 @@ static bool xx_scan_archive_is_scanable_at(xx_io_device *device, int64_t offset,
     return size >= XX_SCAN_ARCHIVE_ISO_END && xx_io_read_at(device, offset + XX_SCAN_ARCHIVE_ISO_OFFSET, head, 6) && !memcmp(head, "CD001\x01", 6);
 }
 
-/* Keep size more decoded bytes. Small members stay in memory; a member that
- * reaches the global file-buffer threshold, or is known to, continues in a
- * temporary file. */
+/* Keep size more decoded bytes. A member stays in memory while it is smaller
+ * than the file buffer size (xx_get_file_buffer_size()); one that reaches it,
+ * or is known to, continues in a temporary file, so memory never holds that
+ * much. A temporary file of unknown final size keeps checking for room. */
 static bool xx_scan_archive_store(xx_scan_archive_sink *sink, const void *data, size_t size)
 {
     uint64_t required = sink->stored + (uint64_t)size;
     size_t capacity;
     uint8_t *grown;
     if (!size) return true;
-    if (!sink->temporary && required >= sink->memory_threshold && !xx_scan_archive_spill(sink)) return false;
+    if (!sink->temporary && required >= sink->memory_threshold &&
+        !(sink->expected_size != UINT64_MAX ? xx_scan_archive_spill(sink, sink->expected_size, sink->expected_size) :
+                                              xx_scan_archive_spill(sink, required, xx_scan_archive_next_room(required))))
+        return false;
     if (sink->temporary) {
+        if (required > sink->room) {
+            /* The bytes already written are no longer free. */
+            uint64_t room = xx_scan_archive_next_room(required);
+            if (!xx_scan_archive_temp_room(required - sink->stored, room - required, room)) return xx_scan_archive_unavailable(sink);
+            sink->room = room;
+        }
         if (!xx_scan_archive_temp_write(sink, sink->temporary, data, size)) return false;
         sink->stored = required;
         return true;
@@ -264,7 +331,12 @@ static bool xx_scan_archive_store(xx_scan_archive_sink *sink, const void *data, 
             if (capacity > SIZE_MAX / 2U) { capacity = (size_t)required; break; }
             capacity *= 2U;
         }
-        if ((uint64_t)capacity > sink->limit || (uint64_t)capacity >= sink->memory_threshold) capacity = (size_t)required;
+        /* No more than the member can keep here: its declared size, and less
+         * than the file buffer size, where it moves to a temporary file. */
+        if (sink->expected_size != UINT64_MAX && (uint64_t)capacity > sink->expected_size) capacity = (size_t)sink->expected_size;
+        if ((uint64_t)capacity >= sink->memory_threshold) capacity = (size_t)(sink->memory_threshold - 1U);
+        if ((uint64_t)capacity > sink->limit) capacity = (size_t)sink->limit;
+        if ((uint64_t)capacity < required) capacity = (size_t)required;
         grown = (uint8_t *)xx_mem_realloc(sink->data, capacity);
         if (!grown) return xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate decoded archive member");
         sink->data = grown;
@@ -293,9 +365,6 @@ static bool xx_scan_archive_decide(xx_scan_archive_sink *sink)
             return true;
         }
     }
-    if (sink->expected_size != UINT64_MAX && sink->expected_size >= sink->memory_threshold && !sink->temporary &&
-        !xx_scan_archive_spill(sink))
-        return false;
     return xx_scan_archive_store(sink, sink->head, sink->head_size);
 }
 
@@ -308,7 +377,7 @@ static ssize_t xx_scan_archive_write(xx_io_device *device, const void *data, siz
     xx_scan_archive_sink *sink = (xx_scan_archive_sink *)device->priv;
     const uint8_t *bytes = (const uint8_t *)data;
     size_t held = 0;
-    if (sink->failed || xx_scan_archive_stopped(sink->pd)) return -1;
+    if (sink->failed || sink->unavailable || xx_scan_archive_stopped(sink->pd)) return -1;
     if ((!data && size) || size > (size_t)PTRDIFF_MAX || sink->size > (uint64_t)INT64_MAX ||
         (uint64_t)size > (uint64_t)INT64_MAX - sink->size) {
         xx_scan_archive_sink_error(sink, XXFC_ERR_OUT_OF_BOUNDS, "Decoded archive member exceeds the scan size limit");
@@ -361,9 +430,12 @@ static int64_t xx_scan_archive_sink_size(xx_io_device *device)
 }
 
 /* filter_scanable keeps a member only when its head can be scannable
- * (xx_scan_archive_is_scanable_header); a large one then starts in a
- * temporary file once that is known. Without the filter a member of
- * expected_size at or above the threshold starts there at once. */
+ * (xx_scan_archive_is_scanable_header). A member of expected_size at or above
+ * the file buffer size starts in a temporary file, opened before anything is
+ * decoded, as XScanEngine creates the member's buffer before it unpacks:
+ * when there is none, or no room for expected_size, the member is
+ * unavailable and not decoded at all, not even for its CRC. Only a stop
+ * request returns false. */
 static bool xx_scan_archive_sink_init(xx_scan_archive_sink *sink, xx_io_device *device, uint64_t limit,
                                       uint64_t expected_size, bool discard, const char *name,
                                       bool filter_scanable, xx_pd_struct *pd)
@@ -382,8 +454,8 @@ static bool xx_scan_archive_sink_init(xx_scan_archive_sink *sink, xx_io_device *
     device->write = xx_scan_archive_write;
     device->tell = xx_scan_archive_sink_size;
     device->total_size = xx_scan_archive_sink_size;
-    return discard || sink->filter_scanable || expected_size == UINT64_MAX || expected_size < sink->memory_threshold ||
-           xx_scan_archive_spill(sink);
+    if (!discard && expected_size != UINT64_MAX && expected_size >= sink->memory_threshold) (void)xx_scan_archive_spill(sink, expected_size, expected_size);
+    return !xx_pd_is_stopped(pd);
 }
 
 /* After a complete decode: decide a member shorter than the head. */
@@ -399,15 +471,34 @@ static bool xx_scan_archive_sink_finish(xx_scan_archive_sink *sink)
     return true;
 }
 
+/* A temporary file is scratch, deleted on close, and a published member was
+ * read back from it before this point: a failed close never fails the walk.
+ * (POSIX stdio may write a buffered tail only now, to a full disk, for a
+ * member that was skipped or failed its CRC.) */
 static bool xx_scan_archive_sink_cleanup(xx_scan_archive_sink *sink)
 {
-    bool result = true;
-    if (sink->temporary && xx_io_close(sink->temporary) != 0)
-        result = xx_scan_archive_sink_error(sink, XXFC_ERR_IO, "Cannot close temporary archive member");
+    if (sink->temporary) (void)xx_io_close(sink->temporary);
     sink->temporary = NULL;
     xx_mem_free(sink->data);
     sink->data = NULL;
-    return result;
+    return true;
+}
+
+/* Whether a member of the declared size can have the storage it needs:
+ * memory below the file buffer size, else a temporary file with room for it,
+ * opened and closed here. XScanEngine creates a member's buffer before
+ * XDecompress reports anything about it, so a member that cannot have one is
+ * skipped without a report. */
+static bool xx_scan_archive_storable(uint64_t declared, xx_pd_struct *pd)
+{
+    xx_scan_archive_sink sink;
+    xx_io_device device;
+    bool storable;
+    if (declared == UINT64_MAX || declared < (uint64_t)xx_get_file_buffer_size()) return true;
+    (void)xx_scan_archive_sink_init(&sink, &device, declared, declared, false, NULL, false, pd);
+    storable = !sink.unavailable;
+    (void)xx_scan_archive_sink_cleanup(&sink);
+    return storable;
 }
 
 static bool xx_scan_archive_publish(xx_scan_archive_sink *sink, const char *name, int64_t offset, int64_t source_size,
@@ -415,12 +506,17 @@ static bool xx_scan_archive_publish(xx_scan_archive_sink *sink, const char *name
 {
     xx_scan_archive_member member;
     bool result;
-    if (sink->failed || sink->discard || sink->stored != sink->size || xx_scan_archive_stopped(pd)) return false;
+    if (sink->failed || sink->unavailable || sink->discard || sink->stored != sink->size || xx_scan_archive_stopped(pd)) return false;
     if (sink->temporary) {
         /* Repositioning is also the update-stream write/read barrier. Only
-         * expose the completed, verified extent to the scanner. */
-        if (xx_io_seek64(sink->temporary, 0, SEEK_SET) != 0 || xx_io_total_size(sink->temporary) != (int64_t)sink->size)
-            return xx_scan_archive_sink_error(sink, XXFC_ERR_IO, "Cannot prepare temporary archive member for scanning");
+         * expose the completed, verified extent to the scanner. POSIX stdio
+         * may write its buffered tail only here: a failure (a full disk) is
+         * a temporary file the member cannot have, skipped, and the walk goes
+         * on. */
+        if (xx_io_seek64(sink->temporary, 0, SEEK_SET) != 0 || xx_io_total_size(sink->temporary) != (int64_t)sink->size) {
+            (void)xx_scan_archive_unavailable(sink);
+            return !xx_scan_archive_stopped(pd);
+        }
         member.device = xx_io_sub_open_ro(sink->temporary, 0, (int64_t)sink->size);
     } else member.device = xx_io_mem_open_ro(sink->data, (size_t)sink->size);
     if (!member.device) return xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create decoded archive member device");
@@ -481,8 +577,10 @@ static const char *xx_scan_archive_zip_method_name(uint64_t method, uint64_t fla
 
 /* What becomes of one member. As in XScanEngine, damage inside a member
  * never fails the scan: the member is not scanned, and only a checksum
- * mismatch is reported (XDecompress sets "Invalid CRC"). A storage fault, an
- * allocation failure or a stop request fails it. */
+ * mismatch is reported (XDecompress sets "Invalid CRC"). Neither does a
+ * member that cannot have the temporary file it needs, or whose temporary file
+ * cannot be written or read back (skipped silently). A fault reading the
+ * archive, an allocation failure or a stop request fails it. */
 typedef enum xx_scan_member_status {
     XX_SCAN_MEMBER_OK,
     XX_SCAN_MEMBER_SKIPPED,
@@ -558,12 +656,14 @@ static bool xx_scan_archive_zip_decodes_to_end(uint64_t method)
  * checked whatever its length. A wrong CRC is "Invalid CRC"; the right CRC
  * over a different size, or a stream that does not decode, is skipped
  * silently, except that Qt's Shrink, Reduce and Implode decoders report
- * success after a failure, so their failure is "Invalid CRC" too. */
+ * success after a failure, so their failure is "Invalid CRC" too. A member
+ * without the temporary file it needs is skipped silently, undecoded. */
 static xx_scan_member_status xx_scan_archive_zip_decode(xx_scan_archive_sink *sink, xx_io_device *destination, xx_io_device *source,
                                                         int64_t offset, int64_t compressed, uint64_t method, uint64_t flags,
                                                         uint64_t declared, uint32_t crc, xx_pd_struct *pd)
 {
     bool complete;
+    if (sink->unavailable) return XX_SCAN_MEMBER_SKIPPED;
     sink->track_crc = true;
     sink->allow_excess = true;
     if (compressed == 0) {
@@ -594,7 +694,7 @@ static xx_scan_member_status xx_scan_archive_zip_decode(xx_scan_archive_sink *si
     if (sink->failed || xx_pd_is_stopped(pd)) return XX_SCAN_MEMBER_FAILED;
     complete = complete && !sink->overflow && !xx_scan_archive_stopped(pd);
     xx_scan_archive_forgive(pd);
-    if (sink->overflow) return XX_SCAN_MEMBER_SKIPPED;
+    if (sink->overflow || sink->unavailable) return XX_SCAN_MEMBER_SKIPPED;
     if (complete) {
         if (sink->crc != crc) return XX_SCAN_MEMBER_INVALID_CRC;
         return sink->size == declared ? XX_SCAN_MEMBER_OK : XX_SCAN_MEMBER_SKIPPED;
@@ -641,7 +741,7 @@ static bool xx_scan_archive_zip_local_stream(xx_io_device *device, int64_t origi
         if (!(flags & 1U)) {
             uint64_t remaining = total_limit > consumed ? total_limit - consumed : 0;
             if (!xx_scan_archive_zip_method_known(method)) {
-                if (report) report(context, xx_scan_archive_unknown_method);
+                if (report && xx_scan_archive_storable(decoded, pd)) report(context, xx_scan_archive_unknown_method);
                 status = XX_SCAN_MEMBER_SKIPPED;
             } else if ((method != 0U && decoded > member_limit) || decoded > remaining) {
                 status = XX_SCAN_MEMBER_SKIPPED;
@@ -702,7 +802,8 @@ done:
  * whose head can be scannable is kept (filter_scanable) and handed to the
  * callback. A callback returning false ends the walk cleanly. So does an
  * unreadable directory or a damaged later record, after the members before it.
- * Only storage faults, allocation failures and a stop request fail. */
+ * Only faults reading the archive, allocation failures and a stop request
+ * fail; a member whose temporary file fails is skipped. */
 static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, int64_t origin, int64_t range_size,
                                    uint64_t member_limit, uint64_t total_limit, uint32_t count_limit,
                                    bool filter_scanable, xx_scan_archive_callback callback,
@@ -715,7 +816,7 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
     uint32_t count = 0U;
     bool result = false;
     char *owned_name = NULL;
-    uint64_t memory_limit = member_limit > UINT64_MAX / 2U ? UINT64_MAX : member_limit * 2U;
+    uint64_t memory_limit = member_limit > XX_SCAN_ARCHIVE_READER_MEMORY / 2U ? XX_SCAN_ARCHIVE_READER_MEMORY : member_limit * 2U;
 
     xx_archive_record_init(&limits);
     if (!xx_archive_record_set_meta_u64(&limits, XX_META_ID_OPT_MAX_MEMBER_SIZE, member_limit) ||
@@ -768,10 +869,12 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
             xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false))
             goto next;
         if (xx_scan_archive_is_zip(type) && !xx_scan_archive_zip_method_known(method)) {
-            if (report) report(context, xx_scan_archive_unknown_method);
+            if (report && xx_scan_archive_storable(decoded_size, pd)) report(context, xx_scan_archive_unknown_method);
             goto next;
         }
-        /* cdie's own size limits: an oversized member is skipped. */
+        /* A caller's explicit limits (options.archive_max_*): a member over
+         * them is skipped. The default member bound is beyond any size a ZIP
+         * entry can declare. */
         remaining = total_limit > consumed ? total_limit - consumed : 0;
         if ((method != 0U && decoded_size > member_limit) || decoded_size > remaining) goto next;
         if (xx_scan_archive_is_zip(type) && record->data_offset < 0 &&
@@ -822,16 +925,19 @@ static bool xx_scan_archive_stream(Abstractformat *format, xx_file_type_t type, 
                                             xx_scan_archive_zip_decode(&sink, &destination, format->device, record->data_offset, record->compressed_size, method,
                                                                        xx_archive_record_get_meta_u64(record, XX_META_ID_FLAGS, 0U), decoded_size, (uint32_t)crc, pd);
                 decoded = status == XX_SCAN_MEMBER_OK;
+            } else if (sink.unavailable) {
+                decoded = false; /* No temporary file for it: not decoded at all. */
             } else {
                 decoded = type == XX_FILE_TYPE_LHA ? xx_lha_unpack_current_archive_record_to_device(format, state, &destination, pd) :
                                                     xx_zip_unpack_current_archive_record_to_device(format, state, &destination, pd);
-                decoded = decoded && !sink.failed && !sink.overflow && sink.size == decoded_size && !xx_scan_archive_stopped(pd);
+                decoded = decoded && !sink.failed && !sink.unavailable && !sink.overflow && sink.size == decoded_size &&
+                          !xx_scan_archive_stopped(pd);
             }
             if (decoded && xx_scan_archive_sink_finish(&sink) && !sink.filtered && !sink.discard)
                 visited = xx_scan_archive_publish(&sink, name, origin + record->data_offset, record->compressed_size, true, callback, context, pd);
             if (!xx_scan_archive_sink_cleanup(&sink) || sink.failed || xx_pd_is_stopped(pd)) goto done;
             if (!decoded && !to_end) {
-                status = xx_scan_archive_is_crc_failure(pd) ? XX_SCAN_MEMBER_INVALID_CRC : XX_SCAN_MEMBER_SKIPPED;
+                status = !sink.unavailable && xx_scan_archive_is_crc_failure(pd) ? XX_SCAN_MEMBER_INVALID_CRC : XX_SCAN_MEMBER_SKIPPED;
                 xx_scan_archive_forgive(pd);
             }
         }
@@ -859,8 +965,9 @@ done:
 }
 
 /* One logical member from concatenated GZIP/BZIP2 streams. A stream that does
- * not decode, or decodes beyond the limit, is skipped like a damaged member;
- * a callback returning false is a clean stop. */
+ * not decode, decodes beyond the limit or cannot have the temporary file its
+ * output grows into is skipped like a damaged member; a callback returning
+ * false is a clean stop. */
 static bool xx_scan_archive_compressed_stream(xx_io_device *view, xx_file_type_t type, int64_t origin,
                                               uint64_t limit, xx_scan_archive_callback callback, void *context, xx_pd_struct *pd)
 {
@@ -874,7 +981,7 @@ static bool xx_scan_archive_compressed_stream(xx_io_device *view, xx_file_type_t
     }
     decoded = type == XX_FILE_TYPE_GZ ? xx_gz_decode_stream(view, 0, &destination, &stream_size, NULL, NULL, pd) :
                                        xx_bz2_decode_stream(view, 0, &destination, &stream_size, NULL, pd);
-    decoded = decoded && !sink.failed && !sink.overflow && stream_size > 0 && stream_size <= xx_io_total_size(view) &&
+    decoded = decoded && !sink.failed && !sink.unavailable && !sink.overflow && stream_size > 0 && stream_size <= xx_io_total_size(view) &&
               !xx_scan_archive_stopped(pd);
     if (decoded)
         (void)xx_scan_archive_publish(&sink, type == XX_FILE_TYPE_GZ ? "gzip-content" : "bzip2-content",

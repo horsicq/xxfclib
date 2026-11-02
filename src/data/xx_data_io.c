@@ -28,6 +28,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/global/xx_global.h"
+#include "../global/xx_read_buffer_internal.h"
 
 /* ========================================================================= */
 /* --- Internal Helpers                                                  --- */
@@ -829,13 +830,15 @@ int64_t xx_io_find_u32_in_range(xx_io_device *dev, int64_t offset, int64_t size,
     return xx_io_find_bytes_in_range(dev, offset, size, bytes, sizeof(bytes), pd);
 }
 
-/* File scratch remains bounded by the captured global setting.  The KMP
+/* Scratch is the read buffer (xx_get_buffer_size()), no larger than an
+ * explicit buffer_size or the bytes to search.  The KMP
  * prefix table describes the pattern, rather than staging input bytes. */
 static int64_t xx_io_find_bytes_capped(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const void *pattern, size_t pattern_size, size_t buffer_size,
                                        xx_pd_struct *pd, const char *label)
 {
     const uint8_t *needle = (const uint8_t *)pattern;
-    size_t capacity = xx_get_file_buffer_size();
+    size_t capacity = 0;
+    uint64_t limit = buffer_size;
     uint8_t *chunk;
     size_t *prefix = NULL;
     size_t matched = 0, retained = 0;
@@ -843,12 +846,10 @@ static int64_t xx_io_find_bytes_capped(xx_io_device *dev, int64_t start_offset, 
     int level;
 
     if (!dev || !needle || !pattern_size || pattern_size > (size_t)INT64_MAX || xx_pd_is_stopped(pd)) return -1;
-    if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
-    if (buffer_size && buffer_size < capacity) capacity = buffer_size;
-    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
+    if (max_search_len > 0 && (!limit || (uint64_t)max_search_len < limit)) limit = (uint64_t)max_search_len;
     if (start_offset < 0) start_offset = 0;
     if (xx_io_seek64(dev, start_offset, SEEK_SET) != 0) return -1;
-    chunk = (uint8_t *)xx_mem_alloc(capacity);
+    chunk = (uint8_t *)xx_read_buffer_alloc(limit, &capacity);
     if (!chunk) return -1;
 
     if (pattern_size >= capacity) {

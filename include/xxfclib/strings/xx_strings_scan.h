@@ -37,7 +37,7 @@ typedef enum xx_strings_scan_status {
 typedef struct xx_strings_scan_options {
     unsigned minimum_length, encodings;
     uint64_t offset, length; /**< Scan this range; UINT64_MAX length means through EOF. */
-    size_t chunk_size;       /**< 1..16 MiB, default 64 KiB. */
+    size_t chunk_size;       /**< 1..16 MiB, default xx_get_buffer_size() capped at 16 MiB (64 KiB unless set). */
     size_t max_text_bytes;   /**< Maximum UTF-8 prefix per active run, default 1 MiB. */
     unsigned flags;
 } xx_strings_scan_options;

@@ -39,6 +39,7 @@
 #include "xxfclib/data/xx_data.h"
 
 #include <limits.h>
+#include <string.h>
 
 static const char *machofat_cpu_to_arch(uint32_t cpu)
 {

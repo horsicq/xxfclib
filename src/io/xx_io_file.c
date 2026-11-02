@@ -243,6 +243,14 @@ xx_io_device *xx_io_temp_open(void)
     return xx_io_file_wrap(xx_io_platform_temp_open(), NULL, "w+b");
 }
 
+bool xx_io_temp_free_space(uint64_t *bytes)
+{
+    uint64_t value;
+    if (!bytes || !xx_io_platform_temp_free_space(&value)) return false;
+    *bytes = value;
+    return true;
+}
+
 const char *xx_io_source_path(xx_io_device *device)
 {
     xx_io_file_state *state;

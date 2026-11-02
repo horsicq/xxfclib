@@ -1341,6 +1341,9 @@ static bool wzjpegProcessStream(WZJPEG_SESSION *pSession)
             size_t available = WZJPEG_MAX_WORKING_MEMORY - sizeof(*pSession) - pSession->metadata_size;
             size_t lzma_fixed = sizeof(lzma_decoder) + ((size_t)0x300U << 3U) * sizeof(lzma_prob);
             size_t lzma_output_buffer = xx_get_file_buffer_size();
+            /* The range decoder's staging holds no more than the compressed
+             * bytes, so a large file buffer setting cannot exhaust the budget. */
+            if ((uint64_t)lzma_output_buffer > (uint64_t)nCompressedSize) lzma_output_buffer = (size_t)nCompressedSize;
             if (dictionary < 1024) dictionary = 1024;
             if (dictionary > 512 * 1024) dictionary = 512 * 1024;
             if ((uint64_t)nCompressedSize > available) return false;

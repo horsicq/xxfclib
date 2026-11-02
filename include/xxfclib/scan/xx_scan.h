@@ -247,12 +247,15 @@ typedef struct xx_scan_options {
     int64_t archive_offset; /**< Physical member/stream start in the containing input. */
     int64_t archive_size; /**< Packed extent in the containing input. */
     bool archive_compressed; /**< Child offsets are relative to decoded data when true. */
-    /** Archive limits; zero selects 256 MiB/member, no total limit and
-     * 100,000 entries (XScanEngine's own entry limit). Nonzero values override
-     * the defaults; native decoder limits still apply (LHA compressed or
-     * masked payloads currently have a 256 MiB decoded-member ceiling). A
-     * member over a size limit is skipped, never truncated; the walk ends
-     * after the entry limit. */
+    /** Archive limits; zero selects 4 GiB/member, no total limit and
+     * 100,000 entries (XScanEngine's own entry limit). XScanEngine has no
+     * member size limit, and no ZIP entry without ZIP64 can declare 4 GiB, so
+     * the default member bound only stops a stream that decodes on past
+     * anything it could declare. Nonzero values override the defaults;
+     * native decoder limits still apply (LHA compressed or masked payloads
+     * currently have a 256 MiB decoded-member ceiling). A member over a size
+     * limit is skipped, never truncated; the walk ends after the entry
+     * limit. */
     uint64_t archive_max_member_size;
     uint64_t archive_max_total_size;
     uint32_t archive_max_members;
@@ -583,10 +586,15 @@ XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device, 
  * scanned only when XScanEngine::isScanable holds (executables, DEX, PDF,
  * archives, TAR); at most 21 members per archive are scanned (100,000 when
  * aggressive). Compressed output stays in memory only while its decoded size
- * is less than xx_get_file_buffer_size(); equality or a larger size uses
- * xx_io_temp_open(), with automatic cleanup after the child scan; a member
- * that is never scannable is decoded into nothing. Temporary streams respect
- * an active memory-only policy. ZIP Store members use bounded xx_io_sub views
+ * is less than xx_get_file_buffer_size(); a member declared at that size or
+ * larger is decoded into an xx_io_temp_open() file, with automatic cleanup
+ * after the child scan; a member that is never scannable is decoded into
+ * nothing. As in XScanEngine, a member that needs a temporary file and cannot
+ * have one is skipped silently, undecoded (an unmapped ZIP method is then not
+ * reported either); so is one whose declared size does not fit on the
+ * temporary volume (from 16 MiB on, with 1 GiB left free there), or whose
+ * temporary file cannot be written, read back or closed. Temporary streams
+ * respect an active memory-only policy. ZIP Store members use bounded xx_io_sub views
  * of the source after their CRC is verified. No archive-derived output paths
  * are opened. The storage threshold does not bound decoder-internal buffers.
  * Children get distinct IDs and scan_part RESOURCE or ARCHIVE. A member name
@@ -604,8 +612,8 @@ XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device, 
  * resource, archive and overlay children. Unsupported container formats have
  * no corresponding child pass. get_file_types and append_result are
  * required when a child exists. Partial results are freed on any failure;
- * only storage faults, allocation failures and cancellation fail an archive
- * expansion.
+ * only faults reading the input, allocation failures and cancellation fail an
+ * archive expansion.
  * Each scan of a device draws a new random nonzero options.scan_id; all of
  * its passes share it. The input's scan has parent_id 0, a child's has
  * the input scan's scan_id. Caller-supplied IDs and child metadata are ignored.

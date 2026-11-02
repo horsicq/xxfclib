@@ -24,6 +24,28 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xx_io_buffer.h"
+#include "../global/xx_tls.h"
+
+static xx_tls_key xx_io_alloc_failure_key;
+
+void xx_io_note_alloc_failure(void)
+{
+    uintptr_t count = (uintptr_t)xx_tls_get(&xx_io_alloc_failure_key);
+    (void)xx_tls_set(&xx_io_alloc_failure_key, (void *)(count + 1U));
+}
+
+uintptr_t xx_io_alloc_failures(void)
+{
+    return (uintptr_t)xx_tls_get(&xx_io_alloc_failure_key);
+}
+
+size_t xx_io_buffer_size_for(size_t capacity, uint64_t need)
+{
+    if (!capacity) capacity = xx_get_file_buffer_size();
+    if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
+    if (need < (uint64_t)capacity) capacity = (size_t)need;
+    return capacity ? capacity : 1U;
+}
 
 struct xx_io_buffer_state {
     xx_io_device device;
@@ -93,7 +115,7 @@ static void xx_io_buffer_clear(xx_io_buffer_state *state)
     state->load_failed = false;
 }
 
-static bool xx_io_buffer_load_whole(xx_io_buffer_state *state)
+static bool xx_io_buffer_load_whole(xx_io_buffer_state *state, bool required)
 {
     unsigned char *whole;
     size_t size, done = 0;
@@ -101,6 +123,7 @@ static bool xx_io_buffer_load_whole(xx_io_buffer_state *state)
     if ((uint64_t)state->size >= (uint64_t)SIZE_MAX) return false;
     size = (size_t)state->size;
     whole = (unsigned char *)xx_mem_alloc(size + 1);
+    if (!whole && required) xx_io_note_alloc_failure();
     if (!whole || xx_io_buffer_source_seek(state, 0) != 0) {
         xx_mem_free(whole);
         return false;
@@ -136,7 +159,7 @@ static bool xx_io_buffer_load(xx_io_buffer_state *state, uint64_t upcoming)
     if (!xx_io_buffer_enabled(state) || state->resident || state->load_failed || state->failed || !state->memory_limit) return false;
     if ((uint64_t)state->size > state->memory_limit) return false;
     if (state->streamed < (uint64_t)state->size && upcoming < (uint64_t)state->size - state->streamed) return false;
-    if (xx_io_buffer_load_whole(state)) return true;
+    if (xx_io_buffer_load_whole(state, false)) return true;
     state->load_failed = true;
     return false;
 }
@@ -151,7 +174,12 @@ static bool xx_io_buffer_fill(xx_io_buffer_state *state, int64_t offset)
     base = offset - (int64_t)((uint64_t)offset % state->capacity);
     wanted = state->capacity;
     if ((uint64_t)(state->size - base) < wanted) wanted = (size_t)(state->size - base);
-    if (!state->buffer) state->buffer = (unsigned char *)xx_mem_alloc(state->capacity);
+    /* A window never holds more than the source: [base, base + wanted) lies
+     * within it, and a resize frees the window before the size changes. */
+    if (!state->buffer) {
+        state->buffer = (unsigned char *)xx_mem_alloc(xx_io_buffer_size_for(state->capacity, (uint64_t)state->size));
+        if (!state->buffer) xx_io_note_alloc_failure();
+    }
     /* Keep a small prior tail for repeated searches across block boundaries. */
     if (state->valid) {
         size_t tail_capacity = state->capacity < sizeof(state->previous_tail) ? state->capacity : sizeof(state->previous_tail);
@@ -193,6 +221,7 @@ static const unsigned char *xx_io_buffer_fresh_view(xx_io_buffer_state *state, i
     if (wanted > state->scratch_capacity) {
         scratch = (unsigned char *)xx_mem_alloc(wanted);
         if (!scratch) {
+            xx_io_note_alloc_failure();
             state->failed = true;
             return NULL;
         }
@@ -351,7 +380,10 @@ xx_io_device *xx_io_buffer_open(xx_io_device *source, size_t capacity, uint64_t 
     if (!capacity) capacity = xx_get_file_buffer_size();
     if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
     state = (xx_io_buffer_state *)xx_mem_calloc(1, sizeof(*state));
-    if (!state) return NULL;
+    if (!state) {
+        xx_io_note_alloc_failure();
+        return NULL;
+    }
     state->source = source;
     state->size = size;
     state->capacity = capacity;
@@ -377,7 +409,7 @@ xx_io_device *xx_io_buffer_open_auto(xx_io_device *source, size_t capacity, uint
     xx_io_buffer_state *state;
     if (!device) return NULL;
     state = xx_io_buffer_state_of(device);
-    if ((uint64_t)state->size < (uint64_t)state->capacity && !xx_io_buffer_load_whole(state)) {
+    if ((uint64_t)state->size < (uint64_t)state->capacity && !xx_io_buffer_load_whole(state, true)) {
         xx_io_close(device);
         return NULL;
     }

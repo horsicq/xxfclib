@@ -26,6 +26,7 @@
 #include "xx_scan_resources_internal.h"
 #include "xxfclib/formats/xx_format_stream_features.h"
 #include "xx_scan_archives_internal.h"
+#include "../io/xx_io_buffer.h"
 
 #if defined(_MSC_VER)
 #include <intrin.h>
@@ -728,6 +729,9 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
     xx_io_device *scan_device = device;
     xx_scan_result *result = NULL;
     void *buffer = NULL;
+    /* A failed file-buffer-sized allocation (a cache window, a decoder's I/O
+     * buffer) hides bytes from a reader: the scan fails visibly instead. */
+    uintptr_t alloc_failures = xx_io_alloc_failures();
 
     if (!xx_scan_validate(engine, options, pd)) return NULL;
     if (!device) {
@@ -821,6 +825,11 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
     if (result && !xx_scan_take_pending_error(engine, result, shared, pd)) {
         engine->free_result(engine, result);
         result = NULL;
+    }
+    if (result && xx_io_alloc_failures() != alloc_failures) {
+        engine->free_result(engine, result);
+        result = NULL;
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate scan buffer");
     }
 
 done:

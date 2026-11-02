@@ -2,7 +2,7 @@
  * RISC-V BCJ decoder for XZ filter ID 0x0B. Algorithm and wire encoding
  * derived from XZ Utils liblzma src/liblzma/simple/riscv.c (0BSD),
  * authored by Lasse Collin and Jia Tan. This file is an independent,
- * decoder-only implementation for one complete in-memory XZ Block. */
+ * decoder-only implementation for an XZ Block decoded in chunks. */
 #ifndef XX_XZ_RISCV_NATIVE_H
 #define XX_XZ_RISCV_NATIVE_H
 
@@ -11,17 +11,15 @@
 #include <stdint.h>
 #include "xxfclib/data/xx_data.h"
 
-static bool xx_xz_riscv_decode(uint8_t *data, size_t size, const uint8_t *properties, size_t properties_size)
+/* Converts the instructions that lie whole within data, the Block's bytes
+ * from address start on, and returns how many bytes it is done with. The
+ * rest (under 8 bytes) waits for the next chunk, as liblzma's simple coder
+ * keeps it; at the end of the Block it is left as it is. */
+static size_t xx_xz_riscv_convert(uint8_t *data, size_t size, uint32_t start)
 {
-    uint32_t start = 0U;
     size_t offset;
     size_t limit;
-    if ((!data && size != 0U) || (properties_size != 0U && properties_size != 4U) || (!properties && properties_size != 0U)) return false;
-    if (properties_size == 4U) {
-        start = xx_data_get_u32(properties, 4, 0, false);
-        if ((start & 1U) != 0U) return false;
-    }
-    if (size < 8U) return true;
+    if (!data || size < 8U) return 0U;
     limit = size - 8U;
     for (offset = 0U; offset <= limit; offset += 2U) {
         uint32_t instruction = data[offset];
@@ -65,7 +63,7 @@ static bool xx_xz_riscv_decode(uint8_t *data, size_t size, const uint8_t *proper
             offset += 6U;
         }
     }
-    return true;
+    return offset < size ? offset : size;
 }
 
 #endif /* XX_XZ_RISCV_NATIVE_H */

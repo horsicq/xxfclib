@@ -47,6 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <unistd.h>
 
 /* A file opened for writing with truncation inside an extraction scope: an
@@ -152,6 +153,26 @@ void *xx_io_platform_temp_open(void)
         }
     }
     return (void *)tmpfile();
+}
+
+/* The volume of the folder xx_io_platform_temp_open uses: TMPDIR when it is a
+ * folder this process can create files in, else /tmp (where glibc's tmpfile()
+ * falls back to, and the BSD/macOS folder when TMPDIR is unset; their
+ * tmpfile() opens nothing in an unusable TMPDIR). f_bavail does not see disk
+ * quotas: a write past one fails, and the member is skipped. */
+bool xx_io_platform_temp_free_space(uint64_t *bytes)
+{
+    const char *folder = getenv("TMPDIR");
+    struct statvfs info;
+    struct stat entry;
+    uint64_t unit, blocks;
+    if (!bytes) return false;
+    if (!folder || !folder[0] || stat(folder, &entry) != 0 || !S_ISDIR(entry.st_mode) || access(folder, W_OK | X_OK) != 0) folder = "/tmp";
+    if (statvfs(folder, &info) != 0) return false;
+    unit = (uint64_t)(info.f_frsize ? info.f_frsize : info.f_bsize);
+    blocks = (uint64_t)info.f_bavail;
+    *bytes = unit && blocks > UINT64_MAX / unit ? UINT64_MAX : blocks * unit;
+    return true;
 }
 
 ssize_t xx_io_platform_file_read(void *handle, void *buf, size_t n)

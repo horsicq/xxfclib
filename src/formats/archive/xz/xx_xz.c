@@ -23,9 +23,13 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Filter chains are decoded as a whole block so branch filters see one
- * continuous address space. Keep the two temporary buffers bounded. */
-#define XX_XZ_FILTER_CHAIN_MAX_BLOCK_BYTES (64U * 1024U * 1024U)
+/* A Block's filters after LZMA2 run on its output as it streams in, as
+ * liblzma runs them, so a Block of any size decodes in constant memory: a
+ * branch converter keeps the tail of an instruction it has not yet seen whole
+ * (under XX_XZ_FILTER_CARRY bytes) for the next chunk, Delta its history.
+ * Each filter takes at most XX_XZ_FILTER_CHUNK bytes at a time. */
+#define XX_XZ_FILTER_CHUNK 65536U
+#define XX_XZ_FILTER_CARRY 16U
 
 static uint64_t xx_xz_bcj_method(uint64_t id, uint32_t *alignment)
 {
@@ -589,116 +593,189 @@ static uint64_t xx_xz_limit(Abstractformat *self, const xx_list_s *options, uint
     }
 }
 
-static bool xx_xz_delta_decode(uint8_t *data, size_t size, uint16_t distance, xx_pd_struct *pd)
+typedef struct xx_xz_filter_stage_s {
+    uint8_t kind; /* 1: branch converter, 2: Delta, 3: RISC-V */
+    uint16_t distance;
+    size_t delta_at;
+    uint32_t position; /* RISC-V: the address of buffer[0]. */
+    xx_7zip_branch_state branch;
+    uint8_t history[256];
+    size_t used; /* Unconverted bytes kept at the start of buffer. */
+    uint8_t buffer[XX_XZ_FILTER_CHUNK + XX_XZ_FILTER_CARRY];
+} xx_xz_filter_stage;
+
+typedef struct xx_xz_filter_sink_s {
+    xx_io_device device; /* What the LZMA2 decoder writes to. */
+    xx_io_device *target;
+    xx_pd_struct *pd;
+    uint8_t check_type;
+    uint32_t crc32;
+    uint64_t crc64;
+    xx_sha256_context sha256;
+    uint64_t received; /* LZMA2 output. */
+    uint64_t written;  /* Output of the last filter. */
+    size_t count;
+    bool failed;
+    xx_xz_filter_stage stages[3]; /* In decoding order. */
+} xx_xz_filter_sink;
+
+static bool xx_xz_filter_stage_init(xx_xz_filter_stage *stage, uint8_t kind, uint64_t method, const uint8_t *properties, size_t properties_size,
+                                    uint16_t distance)
 {
-    uint8_t history[256] = {0};
-    size_t position;
-    if ((!data && size != 0U) || distance == 0U || distance > 256U) return false;
-    for (position = 0U; position < size; ++position) {
-        size_t slot;
-        uint8_t value;
-        if ((position & 65535U) == 0U && pd && xx_pd_is_stopped(pd)) return false;
-        slot = position % distance;
-        value = (uint8_t)(data[position] + history[slot]);
-        data[position] = value;
-        history[slot] = value;
+    if (kind == 2U) {
+        if (distance == 0U || distance > 256U) return false;
+        stage->kind = 2U;
+        stage->distance = distance;
+        return true;
     }
-    return !pd || !xx_pd_is_stopped(pd);
+    if (kind != 1U) return false;
+    if (method == XX_7ZIP_METHOD_RISCV) {
+        uint32_t start = 0U;
+        if ((properties_size != 0U && properties_size != 4U) || (!properties && properties_size != 0U)) return false;
+        if (properties_size == 4U) start = xx_data_get_u32(properties, 4, 0, false);
+        if ((start & 1U) != 0U) return false;
+        stage->kind = 3U;
+        stage->position = start;
+        return true;
+    }
+    stage->kind = 1U;
+    return xx_7zip_branch_state_init(&stage->branch, method, properties, properties_size);
+}
+
+/* The last filter's output: the Block's check, then the target. */
+static bool xx_xz_filter_emit(xx_xz_filter_sink *sink, const uint8_t *data, size_t size)
+{
+    if (size == 0U) return true;
+    if (sink->pd && xx_pd_is_stopped(sink->pd)) return false;
+    switch (sink->check_type) {
+        case XX_XZ_CHECK_CRC32: sink->crc32 = xx_crc32_calc(sink->crc32, data, size); break;
+        case XX_XZ_CHECK_CRC64: sink->crc64 = xx_crc64_xz_calc(sink->crc64, data, size); break;
+        case XX_XZ_CHECK_SHA256: xx_sha256_update(&sink->sha256, data, size); break;
+        default: break;
+    }
+    sink->written += size;
+    while (sink->target && size != 0U) {
+        ssize_t written = xx_io_write(sink->target, data, size);
+        if (written <= 0 || (size_t)written > size) return false;
+        data += written;
+        size -= (size_t)written;
+    }
+    return true;
+}
+
+/* Feed size bytes to filter index; final ends the Block, so what each filter
+ * still keeps passes on as it is. */
+static bool xx_xz_filter_push(xx_xz_filter_sink *sink, size_t index, const uint8_t *data, size_t size, bool final)
+{
+    xx_xz_filter_stage *stage;
+    if (index == sink->count) return xx_xz_filter_emit(sink, data, size);
+    stage = &sink->stages[index];
+    do {
+        size_t take = size < XX_XZ_FILTER_CHUNK ? size : XX_XZ_FILTER_CHUNK;
+        bool last = final && take == size;
+        size_t total, processed;
+        if (take != 0U) xx_mem_copy(stage->buffer + stage->used, data, take);
+        data += take;
+        size -= take;
+        total = stage->used + take;
+        if (stage->kind == 2U) {
+            size_t i;
+            for (i = 0U; i < total; ++i) {
+                uint8_t value = (uint8_t)(stage->buffer[i] + stage->history[stage->delta_at]);
+                stage->buffer[i] = value;
+                stage->history[stage->delta_at] = value;
+                if (++stage->delta_at == stage->distance) stage->delta_at = 0U;
+            }
+            processed = total;
+        } else if (stage->kind == 3U) {
+            processed = xx_xz_riscv_convert(stage->buffer, total, stage->position);
+            stage->position += (uint32_t)processed;
+            if (last) processed = total;
+        } else {
+            processed = xx_7zip_branch_process(&stage->branch, stage->buffer, total, last);
+            if (processed == SIZE_MAX || processed > total) return false;
+        }
+        if (total - processed > XX_XZ_FILTER_CARRY || !xx_xz_filter_push(sink, index + 1U, stage->buffer, processed, last)) return false;
+        stage->used = total - processed;
+        if (stage->used != 0U) xx_rt_memmove(stage->buffer, stage->buffer + processed, stage->used);
+    } while (size != 0U);
+    return true;
+}
+
+static ssize_t xx_xz_filter_write(xx_io_device *device, const void *data, size_t size)
+{
+    xx_xz_filter_sink *sink = (xx_xz_filter_sink *)device->priv;
+    if (sink->failed || (!data && size != 0U) || size > (size_t)PTRDIFF_MAX ||
+        !xx_xz_filter_push(sink, 0U, (const uint8_t *)data, size, false)) {
+        sink->failed = true;
+        return -1;
+    }
+    sink->received += size;
+    return (ssize_t)size;
+}
+
+static int64_t xx_xz_filter_size(xx_io_device *device)
+{
+    const xx_xz_filter_sink *sink = (const xx_xz_filter_sink *)device->priv;
+    return sink->received <= (uint64_t)INT64_MAX ? (int64_t)sink->received : -1;
 }
 
 static bool xx_xz_verify_filter_chain_block(Abstractformat *self, const xx_xz_stream *stream, const xx_xz_block *block, const xx_list_s *options, xx_io_device *target,
                                             xx_pd_struct *pd)
 {
-    uint8_t *filtered = NULL;
-    uint8_t *plain = NULL;
-    uint8_t *result = NULL;
-    xx_io_device *buffer = NULL;
+    xx_xz_filter_sink *sink;
     xx_lzma2_decoded_info decoded;
     uint8_t expected[XX_SHA256_DIGEST_SIZE];
     uint8_t digest[XX_SHA256_DIGEST_SIZE];
-    size_t size;
-    bool converted;
     bool valid = false;
-    if (!self || !stream || !block || (block->bcj_method == 0U && block->chain_kind[0] == 0U) || block->uncompressed_size > XX_XZ_FILTER_CHAIN_MAX_BLOCK_BYTES ||
-        block->uncompressed_size > SIZE_MAX || (pd && xx_pd_is_stopped(pd)))
+    (void)options;
+    if (!self || !stream || !block || (block->bcj_method == 0U && block->chain_kind[0] == 0U) || (pd && xx_pd_is_stopped(pd)) ||
+        (stream->check_type != XX_XZ_CHECK_NONE && stream->check_type != XX_XZ_CHECK_CRC32 && stream->check_type != XX_XZ_CHECK_CRC64 &&
+         stream->check_type != XX_XZ_CHECK_SHA256))
         return false;
-    size = (size_t)block->uncompressed_size;
-    if (2U * (uint64_t)(size ? size : 1U) + 4096U > xx_xz_limit(self, options, XX_META_ID_OPT_MEMORY_LIMIT, UINT64_MAX)) return false;
-    filtered = (uint8_t *)xx_mem_alloc(size ? size : 1U);
-    plain = (uint8_t *)xx_mem_alloc(size ? size : 1U);
-    if (!filtered || !plain || !(buffer = xx_io_mem_open(filtered, size))) goto cleanup;
-    if (!xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property,
-                                                 block->delta_after_bcj ? 0U : block->delta_distance, block->uncompressed_size, buffer, 0U, &decoded, pd) ||
-        decoded.written != size || (pd && xx_pd_is_stopped(pd)))
-        goto cleanup;
-    if (xx_io_close(buffer) != 0) {
-        buffer = NULL;
-        goto cleanup;
-    }
-    buffer = NULL;
+    sink = (xx_xz_filter_sink *)xx_mem_calloc(1U, sizeof(*sink));
+    if (!sink) return false;
+    sink->target = target;
+    sink->pd = pd;
+    sink->check_type = stream->check_type;
+    sink->device.priv = sink;
+    sink->device.write = xx_xz_filter_write;
+    sink->device.tell = xx_xz_filter_size;
+    sink->device.total_size = xx_xz_filter_size;
+    sink->device.get_total_size = xx_xz_filter_size;
+    sink->device.size = xx_xz_filter_size;
+    if (stream->check_type == XX_XZ_CHECK_SHA256 && !xx_sha256_init(&sink->sha256)) goto cleanup;
     if (block->chain_kind[0] != 0U) {
-        uint8_t *current = filtered;
-        uint8_t *scratch = plain;
+        /* Filters run in the reverse of their order in the header. */
         size_t index = (size_t)block->filter_count - 1U;
-        converted = true;
         while (index-- > 0U) {
-            if (block->chain_kind[index] == 2U) {
-                converted = xx_xz_delta_decode(current, size, block->chain_distance[index], pd);
-            } else if (block->chain_kind[index] == 1U && block->chain_method[index] == XX_7ZIP_METHOD_RISCV) {
-                converted = xx_xz_riscv_decode(current, size, block->chain_properties[index], block->chain_property_size[index]);
-            } else if (block->chain_kind[index] == 1U) {
-                uint8_t *next;
-                converted =
-                    xx_7zip_branch_decode(block->chain_method[index], block->chain_properties[index], block->chain_property_size[index], current, size, scratch, size);
-                next = current;
-                current = scratch;
-                scratch = next;
-            } else {
-                converted = false;
-            }
-            if (!converted || (pd && xx_pd_is_stopped(pd))) goto cleanup;
+            if (sink->count == 3U ||
+                !xx_xz_filter_stage_init(&sink->stages[sink->count++], block->chain_kind[index], block->chain_method[index], block->chain_properties[index],
+                                         block->chain_property_size[index], block->chain_distance[index]))
+                goto cleanup;
         }
-        result = current;
-    } else if (block->bcj_method == XX_7ZIP_METHOD_RISCV) {
-        if (size) xx_mem_copy(plain, filtered, size);
-        converted = xx_xz_riscv_decode(plain, size, block->bcj_properties, block->bcj_properties_size);
-        result = plain;
-    } else {
-        converted = xx_7zip_branch_decode(block->bcj_method, block->bcj_properties, block->bcj_properties_size, filtered, size, plain, size);
-        result = plain;
+    } else if (!xx_xz_filter_stage_init(&sink->stages[sink->count++], 1U, block->bcj_method, block->bcj_properties, block->bcj_properties_size, 0U) ||
+               (block->delta_after_bcj && !xx_xz_filter_stage_init(&sink->stages[sink->count++], 2U, 0U, NULL, 0U, block->delta_distance))) {
+        goto cleanup;
     }
-    if (!converted || (block->chain_kind[0] == 0U && block->delta_after_bcj && !xx_xz_delta_decode(result, size, block->delta_distance, pd)) ||
+    if (!xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property,
+                                                 block->delta_after_bcj ? 0U : block->delta_distance, block->uncompressed_size, &sink->device, 0U, &decoded,
+                                                 pd) ||
+        sink->failed || decoded.written != block->uncompressed_size || (pd && xx_pd_is_stopped(pd)) || !xx_xz_filter_push(sink, 0U, NULL, 0U, true) ||
+        sink->written != block->uncompressed_size ||
         !xx_lzma_stream_read_exact_at(self->device, block->check_offset, expected, (size_t)block->check_size, pd) || (pd && xx_pd_is_stopped(pd)))
         goto cleanup;
     switch (stream->check_type) {
         case XX_XZ_CHECK_NONE: valid = true; break;
-        case XX_XZ_CHECK_CRC32: valid = xx_data_get_u32(expected, sizeof(expected), 0U, false) == xx_crc32_calc(0U, result, size); break;
-        case XX_XZ_CHECK_CRC64: valid = xx_data_get_u64(expected, sizeof(expected), 0U, false) == xx_crc64_xz_calc(0U, result, size); break;
-        case XX_XZ_CHECK_SHA256: valid = xx_sha256_memory(result, size, digest) && (xx_mem_compare(expected, digest, sizeof(digest)) == 0); break;
+        case XX_XZ_CHECK_CRC32: valid = xx_data_get_u32(expected, sizeof(expected), 0U, false) == sink->crc32; break;
+        case XX_XZ_CHECK_CRC64: valid = xx_data_get_u64(expected, sizeof(expected), 0U, false) == sink->crc64; break;
+        case XX_XZ_CHECK_SHA256:
+            valid = xx_sha256_final(&sink->sha256, digest, sizeof(digest)) && (xx_mem_compare(expected, digest, sizeof(digest)) == 0);
+            break;
         default: valid = false; break;
     }
-    if (valid && target) {
-        size_t offset = 0U;
-        while (offset < size) {
-            size_t length = size - offset;
-            ssize_t written;
-            if (pd && xx_pd_is_stopped(pd)) {
-                valid = false;
-                break;
-            }
-            if (length > 65536U) length = 65536U;
-            written = xx_io_write(target, result + offset, length);
-            if (written <= 0 || (size_t)written > length) {
-                valid = false;
-                break;
-            }
-            offset += (size_t)written;
-        }
-    }
 cleanup:
-    if (buffer) xx_io_close(buffer);
-    if (plain) xx_mem_free(plain);
-    if (filtered) xx_mem_free(filtered);
+    xx_mem_free(sink);
     return valid;
 }
 

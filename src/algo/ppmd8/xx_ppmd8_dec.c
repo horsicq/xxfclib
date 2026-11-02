@@ -27,6 +27,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_ppmd8_internal.h"
+#include "../../io/xx_io_buffer.h"
 #include <string.h>
 
 #define kTop (1u << 24)
@@ -296,17 +297,25 @@ bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd, int64_t uncomp_size, int or
 
     size_t opos = 0, tot = 0;
     size_t io_capacity = rd->io_capacity;
-    uint8_t *staging = io_capacity <= (size_t)-1 / 2U ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
+    /* Input staging holds no more than the stream has left, output staging
+     * no more than the declared size or the memory destination. */
+    size_t in_capacity = io_capacity, out_capacity = io_capacity;
+    if (rd->remaining >= 0) in_capacity = xx_io_buffer_size_for(in_capacity, (uint64_t)rd->remaining);
+    if (!rd->dev && rd->mem && rd->mem_pos <= rd->mem_size) in_capacity = xx_io_buffer_size_for(in_capacity, (uint64_t)(rd->mem_size - rd->mem_pos));
+    if (uncomp_size >= 0) out_capacity = xx_io_buffer_size_for(out_capacity, (uint64_t)uncomp_size);
+    if (mem_dst) out_capacity = xx_io_buffer_size_for(out_capacity, (uint64_t)mem_cap);
+    uint8_t *staging = in_capacity <= (size_t)-1 - out_capacity ? (uint8_t *)xx_mem_alloc(in_capacity + out_capacity) : NULL;
     uint8_t *outbuf;
     if (!staging) {
+        xx_io_note_alloc_failure();
         Ppmd8_Free(&ppmd);
         if (pd && pd_level >= 0) xx_pd_leave_level(pd, pd_level);
         return false;
     }
     rd->ibuf = staging;
-    rd->ibuf_capacity = io_capacity;
+    rd->ibuf_capacity = in_capacity;
     rd->ibuf_pos = rd->ibuf_len = 0U;
-    outbuf = staging + io_capacity;
+    outbuf = staging + in_capacity;
     bool ok = true;
 
     while (ok) {
@@ -330,7 +339,7 @@ bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd, int64_t uncomp_size, int or
         }
 
         outbuf[opos++] = (uint8_t)sym;
-        if (opos >= io_capacity) {
+        if (opos >= out_capacity) {
             if (dst_dev) {
                 ssize_t w = xx_io_write(dst_dev, outbuf, opos);
                 if (w < 0 || (size_t)w != opos) {

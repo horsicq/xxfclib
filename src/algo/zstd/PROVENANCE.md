@@ -8,7 +8,11 @@ It contains no copied Zstandard implementation source and has no libzstd or
 XArchive runtime dependency. The bounded C decoder implements standard and
 skippable frame parsing, raw/RLE/compressed blocks, Huffman literals, FSE
 sequence tables, repeated offsets, window checks, and frame checksums directly
-from the public wire-format specification.
+from the public wire-format specification. Its streaming mode decodes block
+by block into a sliding history buffer (one frame's window plus up to 16 MiB)
+with an incremental XXH64; its window limit and header rules follow the
+documented defaults of libzstd's streaming decoder, whose behaviour was
+observed, not its source copied.
 
 The encoder writes standards-compliant frames using raw blocks. This is a
 portable baseline encoder: every requested compression level is accepted for

@@ -260,6 +260,36 @@ cleanup:
     return result == INVALID_HANDLE_VALUE ? NULL : (void *)result;
 }
 
+/* The folder xx_io_platform_temp_open creates its files in. */
+bool xx_io_platform_temp_free_space(uint64_t *bytes)
+{
+    wchar_t stack_path[MAX_PATH];
+    wchar_t api_stack[MAX_PATH];
+    wchar_t *path = stack_path, *api;
+    ULARGE_INTEGER available;
+    DWORD length = GetTempPathW(MAX_PATH, stack_path), again;
+    bool result = false;
+    if (!bytes || !length) return false;
+    if (length >= MAX_PATH) {
+        /* The required size, terminator included. */
+        if (length > 32767U) return false;
+        path = (wchar_t *)HeapAlloc(GetProcessHeap(), 0, (size_t)length * sizeof(wchar_t));
+        if (!path) return false;
+        again = GetTempPathW(length, path);
+        if (!again || again >= length) goto cleanup;
+    }
+    api = xx_win_api_path(path, api_stack, MAX_PATH, false);
+    if (!api) goto cleanup;
+    if (GetDiskFreeSpaceExW(api, &available, NULL, NULL)) {
+        *bytes = (uint64_t)available.QuadPart;
+        result = true;
+    }
+    xx_win_free_path(api, api_stack);
+cleanup:
+    if (path != stack_path) HeapFree(GetProcessHeap(), 0, path);
+    return result;
+}
+
 /* A file opened for writing with truncation inside an extraction scope: a
  * link (a reparse point) or a file with other hard links already at api is
  * replaced by a new file, never written through. Returns the creation

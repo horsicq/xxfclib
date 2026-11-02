@@ -7,6 +7,7 @@
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/global/xx_global.h"
+#include "../../global/xx_read_buffer_internal.h"
 
 /* SHA is also used by password derivation: preserve explicit clearing even
  * when the compiler can prove that the context or schedule is no longer read. */
@@ -289,7 +290,7 @@ static bool sha_device(bool use_sha256, xx_io_device *device, int64_t offset, in
     uint8_t *chunk = NULL;
     int64_t total;
     int64_t done = 0;
-    size_t capacity = xx_get_file_buffer_size();
+    size_t capacity = 0;
     size_t required = use_sha256 ? XX_SHA256_DIGEST_SIZE : XX_SHA1_DIGEST_SIZE;
     bool ok = false;
 
@@ -305,10 +306,7 @@ static bool sha_device(bool use_sha256, xx_io_device *device, int64_t offset, in
     else xx_sha1_init(&context.sha1);
 
     if (size != 0) {
-        if (capacity == 0U) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
-        if (capacity > (size_t)PTRDIFF_MAX) capacity = (size_t)PTRDIFF_MAX;
-        if ((uint64_t)size < (uint64_t)capacity) capacity = (size_t)size;
-        chunk = (uint8_t *)xx_mem_alloc(capacity);
+        chunk = (uint8_t *)xx_read_buffer_alloc((uint64_t)size, &capacity);
         if (!chunk) goto cleanup;
     }
 

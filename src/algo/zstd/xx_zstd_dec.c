@@ -27,6 +27,7 @@
 
 #include "../entropy/xx_entropy.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/rt/xx_rt.h"
 
 #include <stdint.h>
 #include "xxfclib/data/xx_data.h"
@@ -679,4 +680,372 @@ bool xx_zstd_decode_frames_bounded_retry(const void *source, size_t source_size,
 bool xx_zstd_decode_frames_prefix(const void *source, size_t source_size, void *destination, size_t destination_size, size_t *out_written, bool *cut, size_t *checked)
 {
     return cut && xx_zstd_decode_frames_internal(source, source_size, destination, destination_size, out_written, false, NULL, cut, checked);
+}
+
+/* ---- Streaming decoder ---------------------------------------------------
+ * Frames are read through io->read a block at a time and decoded into a
+ * history buffer that keeps only the frame's window; every decoded block is
+ * handed to io->write at once. The block decoders above index one linear
+ * buffer, so the buffer slides: when less than a block's room is left, the
+ * last window's worth of bytes moves to its start. */
+
+/* Input buffer: two whole blocks, plus padding that the literal-header reads
+ * of xx_zstd_decode_compressed_block may touch past a block's last byte. */
+#define XX_ZSTD_STREAM_INPUT_SIZE (2U * XX_ZSTD_BLOCK_MAX)
+#define XX_ZSTD_STREAM_INPUT_PAD 16U
+/* Room after the window, between slides: the window's size, but at least
+ * 1 MiB and at most 16 MiB, so a slide moves at most 8 bytes per byte
+ * decoded (a 128 MiB window) and memory stays within window + 16 MiB. */
+#define XX_ZSTD_STREAM_SLACK_MIN (UINT64_C(1) << 20)
+#define XX_ZSTD_STREAM_SLACK_MAX (UINT64_C(16) << 20)
+/* libzstd's ZSTD_WINDOWLOG_MAX, enforced when a frame header is parsed. */
+#define XX_ZSTD_STREAM_WINDOW_LOG_MAX (sizeof(size_t) == 4U ? 30U : 31U)
+/* libzstd decodes a frame in one pass, without applying its window limit,
+ * when the frame declares a content size that fits the caller's output
+ * buffer and the whole frame is buffered. Detect It Easy's decoder hands it
+ * 16 KiB buffers, so a frame that declares at most 16 KiB is decoded
+ * whatever its window. Its history is at most that content. */
+#define XX_ZSTD_STREAM_SMALL_FRAME UINT64_C(16384)
+
+typedef struct xx_zstd_xxh64_state {
+    uint64_t lanes[4];
+    uint64_t total;
+    uint8_t memory[32];
+    size_t memory_size;
+} xx_zstd_xxh64_state;
+
+static void xx_zstd_xxh64_reset(xx_zstd_xxh64_state *state)
+{
+    state->lanes[0] = UINT64_C(11400714785074694791) + UINT64_C(14029467366897019727);
+    state->lanes[1] = UINT64_C(14029467366897019727);
+    state->lanes[2] = 0U;
+    state->lanes[3] = 0U - UINT64_C(11400714785074694791);
+    state->total = 0U;
+    state->memory_size = 0U;
+}
+
+static void xx_zstd_xxh64_stripe(xx_zstd_xxh64_state *state, const uint8_t *data)
+{
+    state->lanes[0] = xx_zstd_xxh64_round(state->lanes[0], xx_data_get_u64(data, 8, 0, false));
+    state->lanes[1] = xx_zstd_xxh64_round(state->lanes[1], xx_data_get_u64(data + 8, 8, 0, false));
+    state->lanes[2] = xx_zstd_xxh64_round(state->lanes[2], xx_data_get_u64(data + 16, 8, 0, false));
+    state->lanes[3] = xx_zstd_xxh64_round(state->lanes[3], xx_data_get_u64(data + 24, 8, 0, false));
+}
+
+static void xx_zstd_xxh64_update(xx_zstd_xxh64_state *state, const uint8_t *data, size_t size)
+{
+    state->total += size;
+    if (state->memory_size != 0U) {
+        size_t fill = 32U - state->memory_size;
+        if (fill > size) fill = size;
+        xx_rt_memcpy(state->memory + state->memory_size, data, fill);
+        state->memory_size += fill;
+        data += fill;
+        size -= fill;
+        if (state->memory_size < 32U) return;
+        xx_zstd_xxh64_stripe(state, state->memory);
+        state->memory_size = 0U;
+    }
+    while (size >= 32U) {
+        xx_zstd_xxh64_stripe(state, data);
+        data += 32;
+        size -= 32U;
+    }
+    if (size != 0U) {
+        xx_rt_memcpy(state->memory, data, size);
+        state->memory_size = size;
+    }
+}
+
+/* The same digest as xx_zstd_xxh64 over every byte passed to update. */
+static uint64_t xx_zstd_xxh64_digest(const xx_zstd_xxh64_state *state)
+{
+    const uint8_t *cursor = state->memory;
+    const uint8_t *end = state->memory + state->memory_size;
+    uint64_t hash;
+    if (state->total >= 32U) {
+        const uint64_t a = state->lanes[0], b = state->lanes[1], c = state->lanes[2], d = state->lanes[3];
+        hash = xx_zstd_rotl64(a, 1) + xx_zstd_rotl64(b, 7) + xx_zstd_rotl64(c, 12) + xx_zstd_rotl64(d, 18);
+        hash ^= xx_zstd_xxh64_round(0, a);
+        hash = hash * UINT64_C(11400714785074694791) + UINT64_C(9650029242287828579);
+        hash ^= xx_zstd_xxh64_round(0, b);
+        hash = hash * UINT64_C(11400714785074694791) + UINT64_C(9650029242287828579);
+        hash ^= xx_zstd_xxh64_round(0, c);
+        hash = hash * UINT64_C(11400714785074694791) + UINT64_C(9650029242287828579);
+        hash ^= xx_zstd_xxh64_round(0, d);
+        hash = hash * UINT64_C(11400714785074694791) + UINT64_C(9650029242287828579);
+    } else {
+        hash = UINT64_C(2870177450012600261);
+    }
+    hash += state->total;
+    while ((size_t)(end - cursor) >= 8U) {
+        uint64_t value = xx_zstd_xxh64_round(0, xx_data_get_u64(cursor, 8, 0, false));
+        hash ^= value;
+        hash = xx_zstd_rotl64(hash, 27) * UINT64_C(11400714785074694791) + UINT64_C(9650029242287828579);
+        cursor += 8;
+    }
+    if ((size_t)(end - cursor) >= 4U) {
+        hash ^= (uint64_t)xx_data_get_u32(cursor, 4, 0, false) * UINT64_C(11400714785074694791);
+        hash = xx_zstd_rotl64(hash, 23) * UINT64_C(14029467366897019727) + UINT64_C(1609587929392839161);
+        cursor += 4;
+    }
+    while (cursor < end) {
+        hash ^= (uint64_t)*cursor++ * UINT64_C(2870177450012600261);
+        hash = xx_zstd_rotl64(hash, 11) * UINT64_C(11400714785074694791);
+    }
+    hash ^= hash >> 33;
+    hash *= UINT64_C(14029467366897019727);
+    hash ^= hash >> 29;
+    hash *= UINT64_C(1609587929392839161);
+    return hash ^ (hash >> 32);
+}
+
+typedef struct xx_zstd_stream_input {
+    const xx_zstd_stream_io *io;
+    uint8_t *data; /* XX_ZSTD_STREAM_INPUT_SIZE + XX_ZSTD_STREAM_INPUT_PAD bytes */
+    size_t position;
+    size_t size;
+    bool ended;  /* io->read reported the end, or failed */
+    bool failed; /* io->read failed */
+} xx_zstd_stream_input;
+
+/* Makes at least count (at most XX_ZSTD_STREAM_INPUT_SIZE) unread bytes
+ * available at data + position. */
+static bool xx_zstd_stream_fill(xx_zstd_stream_input *input, size_t count)
+{
+    while (input->size - input->position < count) {
+        size_t space;
+        ptrdiff_t amount;
+        if (input->ended || count > XX_ZSTD_STREAM_INPUT_SIZE) return false;
+        if (input->position != 0U) {
+            size_t left = input->size - input->position;
+            xx_rt_memmove(input->data, input->data + input->position, left);
+            input->size = left;
+            input->position = 0U;
+        }
+        space = XX_ZSTD_STREAM_INPUT_SIZE - input->size;
+        amount = input->io->read(input->io->opaque, input->data + input->size, space);
+        if (amount <= 0 || (size_t)amount > space) {
+            input->ended = true;
+            input->failed = amount != 0;
+            return false;
+        }
+        input->size += (size_t)amount;
+    }
+    return true;
+}
+
+static bool xx_zstd_stream_skip(xx_zstd_stream_input *input, uint64_t count)
+{
+    size_t buffered = input->size - input->position;
+    if (count <= buffered) {
+        input->position += (size_t)count;
+        return true;
+    }
+    count -= buffered;
+    input->position = input->size = 0U;
+    if (input->ended) return false;
+    if (input->io->skip) return input->io->skip(input->io->opaque, count);
+    while (count != 0U) {
+        size_t request = count < XX_ZSTD_STREAM_INPUT_SIZE ? (size_t)count : XX_ZSTD_STREAM_INPUT_SIZE;
+        ptrdiff_t amount = input->io->read(input->io->opaque, input->data, request);
+        if (amount <= 0 || (size_t)amount > request) {
+            input->ended = true;
+            input->failed = amount != 0;
+            return false;
+        }
+        count -= (uint64_t)amount;
+    }
+    return true;
+}
+
+static uint64_t xx_zstd_stream_read_le(const uint8_t *bytes, unsigned count)
+{
+    uint64_t value = 0U;
+    for (unsigned index = 0; index < count; ++index) value |= (uint64_t)bytes[index] << (index * 8U);
+    return value;
+}
+
+bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, uint64_t expected_size, uint64_t *out_written)
+{
+    xx_zstd_stream_input input;
+    xx_zstd_context context;
+    xx_zstd_xxh64_state hash;
+    uint8_t *history = NULL;
+    size_t history_allocated = 0U;
+    uint64_t total = 0U;
+    bool saw_frame = false;
+    bool success = false;
+
+    if (out_written) *out_written = 0U;
+    if (!io || !io->read || !io->write) return false;
+    xx_mem_zero(&input, sizeof(input));
+    input.io = io;
+    input.data = (uint8_t *)xx_mem_calloc(1U, XX_ZSTD_STREAM_INPUT_SIZE + XX_ZSTD_STREAM_INPUT_PAD);
+    context.literals = (uint8_t *)xx_mem_alloc(XX_ZSTD_BLOCK_MAX);
+    xx_zstd_xxh64_reset(&hash);
+    if (!input.data || !context.literals) goto done;
+
+    for (;;) {
+        const uint8_t *cursor;
+        uint32_t magic;
+        uint8_t descriptor;
+        unsigned dictionary_size;
+        unsigned content_size_bytes;
+        size_t header_size;
+        bool single_segment;
+        bool checksum;
+        bool last_block = false;
+        uint64_t frame_content_size = 0U;
+        uint64_t window_size64 = 0U;
+        uint64_t keep64;
+        uint64_t capacity64;
+        uint64_t frame_output = 0U;
+        size_t window_size;
+        size_t keep;
+        size_t capacity; /* The frame's history buffer size. */
+        size_t position = 0U;
+        size_t frame_start = 0U;
+
+        /* The input may end between frames, not inside one. */
+        if (!xx_zstd_stream_fill(&input, 1U)) {
+            if (input.failed) goto done;
+            break;
+        }
+        if (!xx_zstd_stream_fill(&input, 4U)) goto done;
+        magic = xx_data_get_u32(input.data + input.position, 4, 0, false);
+        if ((magic & UINT32_C(0xFFFFFFF0)) == XX_ZSTD_SKIP_MAGIC) {
+            uint32_t skip_size;
+            if (!xx_zstd_stream_fill(&input, 8U)) goto done;
+            skip_size = xx_data_get_u32(input.data + input.position + 4U, 4, 0, false);
+            input.position += 8U;
+            if (!xx_zstd_stream_skip(&input, skip_size)) goto done;
+            continue;
+        }
+        if (magic != XX_ZSTD_MAGIC || !xx_zstd_stream_fill(&input, 5U)) goto done;
+        descriptor = input.data[input.position + 4U];
+        /* Reserved_bit must be zero; Unused_bit (0x10) is ignored, as libzstd ignores it. */
+        if ((descriptor & UINT8_C(0x08)) != 0U) goto done;
+        single_segment = (descriptor & UINT8_C(0x20)) != 0U;
+        checksum = (descriptor & UINT8_C(0x04)) != 0U;
+        dictionary_size = (descriptor & 3U) == 0U ? 0U : (descriptor & 3U) == 1U ? 1U : (descriptor & 3U) == 2U ? 2U : 4U;
+        content_size_bytes = (descriptor >> 6) == 0U ? (single_segment ? 1U : 0U) : (descriptor >> 6) == 1U ? 2U : (descriptor >> 6) == 2U ? 4U : 8U;
+        header_size = 5U + (single_segment ? 0U : 1U) + dictionary_size + content_size_bytes;
+        if (!xx_zstd_stream_fill(&input, header_size)) goto done;
+        cursor = input.data + input.position + 5U;
+        if (!single_segment) {
+            unsigned window_log = 10U + (*cursor >> 3);
+            if (window_log > XX_ZSTD_STREAM_WINDOW_LOG_MAX) goto done;
+            window_size64 = UINT64_C(1) << window_log;
+            window_size64 += (window_size64 >> 3) * (*cursor & 7U);
+            ++cursor;
+        }
+        if (xx_zstd_stream_read_le(cursor, dictionary_size) != 0U) goto done;
+        cursor += dictionary_size;
+        frame_content_size = xx_zstd_stream_read_le(cursor, content_size_bytes);
+        if (content_size_bytes == 2U) frame_content_size += 256U;
+        if (single_segment) window_size64 = frame_content_size;
+        input.position += header_size;
+        if ((window_size64 > window_limit && !(content_size_bytes != 0U && frame_content_size <= XX_ZSTD_STREAM_SMALL_FRAME)) || window_size64 > SIZE_MAX ||
+            (content_size_bytes != 0U && expected_size != UINT64_MAX && frame_content_size > expected_size - total))
+            goto done;
+        window_size = (size_t)window_size64;
+
+        /* History: the window, or the frame's whole content when it is
+         * smaller. The buffer adds room for at least one block. It is
+         * allocated whole, as libzstd allocates its window: growing it would
+         * hold the old and the new buffer at once. */
+        keep64 = content_size_bytes != 0U && frame_content_size < window_size64 ? frame_content_size : window_size64;
+        /* Nor more than the caller's exact size still allows: a frame that
+         * produces more fails anyway, so a small member with a large window
+         * never allocates that window, and no slide is ever needed. */
+        if (expected_size != UINT64_MAX && expected_size - total < keep64) keep64 = expected_size - total;
+        capacity64 = keep64 + (keep64 < XX_ZSTD_STREAM_SLACK_MIN ? XX_ZSTD_STREAM_SLACK_MIN : keep64 > XX_ZSTD_STREAM_SLACK_MAX ? XX_ZSTD_STREAM_SLACK_MAX : keep64);
+        if (content_size_bytes != 0U && frame_content_size < capacity64) capacity64 = frame_content_size;
+        if (capacity64 > SIZE_MAX) goto done;
+        keep = (size_t)keep64;
+        capacity = (size_t)capacity64;
+        if (!history || capacity > history_allocated) {
+            xx_mem_free(history);
+            history = (uint8_t *)xx_mem_alloc(capacity != 0U ? capacity : 1U);
+            history_allocated = history ? capacity : 0U;
+            if (!history) goto done;
+        }
+        context.literal_lengths_valid = false;
+        context.offsets_valid = false;
+        context.match_lengths_valid = false;
+        context.huffman_valid = false;
+        context.repeated[0] = 1U;
+        context.repeated[1] = 4U;
+        context.repeated[2] = 8U;
+        if (checksum) xx_zstd_xxh64_reset(&hash);
+
+        while (!last_block) {
+            uint32_t header;
+            unsigned block_type;
+            size_t block_size;
+            size_t block_limit = window_size < XX_ZSTD_BLOCK_MAX ? window_size : XX_ZSTD_BLOCK_MAX;
+            size_t block_start;
+            size_t produced;
+            if (!xx_zstd_stream_fill(&input, 3U)) goto done;
+            header = xx_data_get_u24(input.data + input.position, 3, 0, false);
+            input.position += 3U;
+            last_block = (header & 1U) != 0U;
+            block_type = (header >> 1) & 3U;
+            block_size = header >> 3;
+            /* Block_Maximum_Size bounds every block type's Block_Size. */
+            if (block_type == 3U || block_size > block_limit) goto done;
+            if (capacity - position < block_limit && position > keep) {
+                /* Keep the last window's worth of output. frame_start
+                 * leaves with the discarded bytes: an offset that reaches
+                 * past the window fails its window check first. */
+                size_t shift = position - keep;
+                xx_rt_memmove(history, history + shift, keep);
+                position = keep;
+                frame_start = frame_start > shift ? frame_start - shift : 0U;
+            }
+            block_start = position;
+            if (block_type == 0U) {
+                if (!xx_zstd_stream_fill(&input, block_size) || block_size > capacity - position) goto done;
+                xx_rt_memcpy(history + position, input.data + input.position, block_size);
+                position += block_size;
+                input.position += block_size;
+            } else if (block_type == 1U) {
+                if (!xx_zstd_stream_fill(&input, 1U) || block_size > capacity - position) goto done;
+                xx_rt_memset(history + position, input.data[input.position], block_size);
+                position += block_size;
+                ++input.position;
+            } else {
+                if (block_size == 0U || !xx_zstd_stream_fill(&input, block_size) ||
+                    !xx_zstd_decode_compressed_block(&context, input.data + input.position, block_size, history, capacity, frame_start, &position,
+                                                     window_size, block_limit, NULL))
+                    goto done;
+                input.position += block_size;
+            }
+            produced = position - block_start;
+            if (produced > block_limit || (content_size_bytes != 0U && produced > frame_content_size - frame_output) ||
+                (expected_size != UINT64_MAX && produced > expected_size - total))
+                goto done;
+            frame_output += produced;
+            total += produced;
+            if (checksum) xx_zstd_xxh64_update(&hash, history + block_start, produced);
+            if (!io->write(io->opaque, history + block_start, produced)) goto done;
+        }
+        if (content_size_bytes != 0U && frame_output != frame_content_size) goto done;
+        if (checksum) {
+            if (!xx_zstd_stream_fill(&input, 4U) ||
+                xx_data_get_u32(input.data + input.position, 4, 0, false) != (uint32_t)xx_zstd_xxh64_digest(&hash))
+                goto done;
+            input.position += 4U;
+        }
+        saw_frame = true;
+    }
+    success = saw_frame && (expected_size == UINT64_MAX || total == expected_size);
+
+done:
+    if (out_written) *out_written = total;
+    xx_mem_free(history);
+    xx_mem_free(context.literals);
+    xx_mem_free(input.data);
+    return success;
 }

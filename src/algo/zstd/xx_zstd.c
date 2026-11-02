@@ -344,6 +344,76 @@ bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset
     return success;
 }
 
+typedef struct xx_zstd_device_stream {
+    xx_io_device *source;
+    int64_t position;   /* Source offset of the next unread byte. */
+    uint64_t remaining; /* Compressed bytes not yet read or skipped. */
+    xx_io_device *destination;
+    xx_pd_struct *progress;
+    size_t io_capacity;
+} xx_zstd_device_stream;
+
+static ptrdiff_t xx_zstd_device_stream_read(void *opaque, void *buffer, size_t size)
+{
+    xx_zstd_device_stream *stream = (xx_zstd_device_stream *)opaque;
+    ssize_t amount;
+    if ((uint64_t)size > stream->remaining) size = (size_t)stream->remaining;
+    if (size == 0U) return 0;
+    if ((stream->progress && xx_pd_is_stopped(stream->progress)) || xx_io_seek64(stream->source, stream->position, SEEK_SET) != 0) return -1;
+    amount = xx_io_read(stream->source, buffer, size);
+    /* The range lies inside the source: running short is a read failure. */
+    if (amount <= 0 || (size_t)amount > size) return -1;
+    stream->position += (int64_t)amount;
+    stream->remaining -= (uint64_t)amount;
+    return (ptrdiff_t)amount;
+}
+
+static bool xx_zstd_device_stream_skip(void *opaque, uint64_t size)
+{
+    xx_zstd_device_stream *stream = (xx_zstd_device_stream *)opaque;
+    if (size > stream->remaining) return false;
+    stream->position += (int64_t)size;
+    stream->remaining -= size;
+    return true;
+}
+
+static bool xx_zstd_device_stream_write(void *opaque, const void *data, size_t size)
+{
+    xx_zstd_device_stream *stream = (xx_zstd_device_stream *)opaque;
+    if (stream->progress && xx_pd_is_stopped(stream->progress)) return false;
+    return xx_zstd_write_exact(stream->destination, data, size, stream->progress, stream->io_capacity);
+}
+
+bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t expected_size,
+                                     uint64_t window_limit, xx_pd_struct *progress)
+{
+    xx_zstd_device_stream stream;
+    xx_zstd_stream_io io;
+    int64_t saved;
+    bool success;
+
+    if (!source || !destination || source == destination || source_offset < 0 || compressed_size < 0 || source_offset > INT64_MAX - compressed_size ||
+        (progress && xx_pd_is_stopped(progress))) {
+        return false;
+    }
+    saved = xx_io_tell(source);
+    stream.source = source;
+    stream.position = source_offset;
+    stream.remaining = (uint64_t)compressed_size;
+    stream.destination = destination;
+    stream.progress = progress;
+    stream.io_capacity = xx_get_file_buffer_size();
+    if (stream.io_capacity == 0U) stream.io_capacity = 65536U;
+    io.read = xx_zstd_device_stream_read;
+    io.skip = xx_zstd_device_stream_skip;
+    io.write = xx_zstd_device_stream_write;
+    io.opaque = &stream;
+    success = xx_zstd_decode_stream(&io, window_limit ? window_limit : XX_ZSTD_STREAM_WINDOW_LIMIT_DEFAULT, expected_size, NULL);
+    /* Leave the source where the caller had it, as ZIP's XZ range reader does. */
+    if (saved >= 0 && xx_io_seek64(source, saved, SEEK_SET) != 0) success = false;
+    return success && !(progress && xx_pd_is_stopped(progress));
+}
+
 bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset, int64_t compressed_size, const char *destination_path, uint64_t uncompressed_size,
                                    xx_pd_struct *progress)
 {

@@ -32,10 +32,15 @@
 #include "xxfclib/formats/video/mp4/xx_mp4.h"
 #include "xxfclib/formats/xx_format.h"
 #include "xxfclib/formats/xx_format_streams.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/strings/xx_string.h"
 
+/* cdie's tests/archive_storage/archive_failures.c compiles this file into its
+ * test with every public function renamed by a #define, to inject the free
+ * temporary space: a public function added here must be renamed there too, or
+ * the test links two definitions of it. */
 #define COUNT(a) (sizeof(a) / sizeof((a)[0]))
 #define FACTORY(n)                                                                                                                         \
     static Abstractformat* open_##n(xx_io_device* d) { return (Abstractformat*)xx_##n##_create(d, 0); }                                    \
@@ -163,7 +168,7 @@ xx_extractor_options xx_extractor_defaults(void)
     xx_mem_zero(&o, sizeof(o));
     o.deep_scan = true;
     o.length = UINT64_MAX;
-    o.max_member_size = UINT64_C(256) * 1024 * 1024;
+    o.max_member_size = UINT64_MAX;
     o.chunk_size = 65536;
     return o;
 }
@@ -542,11 +547,193 @@ done:
     s->bytes_scanned = (uint64_t)total;
     return status;
 }
+/* Readers that decode a whole member in RAM keep a bounded budget whatever the
+ * member limit; the member's output itself goes to member_output. */
+#define XX_EXTRACTOR_READER_MEMORY (UINT64_C(512) * 1024 * 1024)
 static bool set_limits(xx_archive_record* limits, uint64_t maximum)
 {
     xx_archive_record_init(limits);
     return xx_archive_record_set_meta_u64(limits, XX_META_ID_OPT_MAX_MEMBER_SIZE, maximum)
-        && xx_archive_record_set_meta_u64(limits, XX_META_ID_OPT_MEMORY_LIMIT, maximum);
+        && xx_archive_record_set_meta_u64(
+            limits, XX_META_ID_OPT_MEMORY_LIMIT, maximum > XX_EXTRACTOR_READER_MEMORY ? XX_EXTRACTOR_READER_MEMORY : maximum);
+}
+/* A decoded member is kept as the archive scan keeps one: in memory while it
+ * is smaller than the file buffer size (xx_get_file_buffer_size()), in a
+ * temporary file from that size on; a member of unknown size (a PDF stream)
+ * starts in memory and moves to a temporary file when it reaches that size.
+ * The temporary file must fit on its volume (output of unknown size, each
+ * write) and, from XX_EXTRACTOR_TEMP_RESERVE_FROM (16 MiB, where Detect It
+ * Easy moves a member from memory to disk) on, also leave
+ * XX_EXTRACTOR_TEMP_RESERVE free there, for the size known and again every
+ * XX_EXTRACTOR_TEMP_STEP it grows past it, and as output of unknown size
+ * reaches XX_EXTRACTOR_TEMP_RESERVE_FROM (in a memory-only scope, within the
+ * scope's RAM ceiling, with no reserve). The
+ * decoder writes through device, so a temporary file the member cannot have
+ * or cannot write (a full disk) is told apart from damaged data. */
+#define XX_EXTRACTOR_TEMP_RESERVE (UINT64_C(1) * 1024 * 1024 * 1024)
+#define XX_EXTRACTOR_TEMP_RESERVE_FROM (UINT64_C(16) * 1024 * 1024)
+#define XX_EXTRACTOR_TEMP_STEP (UINT64_C(64) * 1024 * 1024)
+typedef struct member_output {
+    xx_io_device device;
+    xx_io_device* target; /* Owned temporary-file device; NULL while in memory. */
+    xx_io_device* view;   /* Owned read-only view of memory, once finished. */
+    unsigned char* memory;
+    size_t capacity;
+    uint64_t limit;    /* Bytes memory may hold: the declared size, or less than the file buffer size. */
+    uint64_t declared; /* UINT64_MAX when unknown. */
+    uint64_t room;     /* Temporary-file size up to which free space was checked. */
+    uint64_t written;
+    bool write_failed; /* No temporary file, no room for it, or a failed write to it. */
+    bool no_memory;
+} member_output;
+/* Whether the temporary volume takes size more bytes for a temporary file that
+ * reaches total bytes: from XX_EXTRACTOR_TEMP_RESERVE_FROM on with
+ * XX_EXTRACTOR_TEMP_RESERVE left over. */
+static bool temp_room(uint64_t size, uint64_t total)
+{
+    uint64_t available, reserve = total >= XX_EXTRACTOR_TEMP_RESERVE_FROM ? XX_EXTRACTOR_TEMP_RESERVE : 0;
+    if (xx_io_memory_only_active())
+        return size <= xx_io_memory_only_available();
+    if (!xx_io_temp_free_space(&available))
+        return true;
+    return available >= reserve && available - reserve >= size;
+}
+/* Where output of unknown size that needs required bytes checks for room
+ * again. While it is smaller than XX_EXTRACTOR_TEMP_RESERVE_FROM it needs room
+ * only for the bytes it writes, so each write checks; from that size on, with
+ * the reserve, one step on. (A memory-only scope keeps no reserve and checks
+ * every step.) */
+static uint64_t temp_next_room(uint64_t required)
+{
+    if (required < XX_EXTRACTOR_TEMP_RESERVE_FROM && !xx_io_memory_only_active())
+        return required;
+    return required > UINT64_MAX - XX_EXTRACTOR_TEMP_STEP ? UINT64_MAX : required + XX_EXTRACTOR_TEMP_STEP;
+}
+/* Move what memory holds to a temporary file with room for required bytes
+ * and on to the next check. */
+static bool member_output_spill(member_output* m, uint64_t required)
+{
+    uint64_t offset, room = temp_next_room(required);
+    if (!temp_room(room, room) || !(m->target = xx_io_temp_open()))
+        return false;
+    m->room = room;
+    for (offset = 0; offset < m->written;) {
+        size_t amount = m->written - offset > 65536U ? 65536U : (size_t)(m->written - offset);
+        if (xx_io_write(m->target, m->memory + offset, amount) != (ssize_t)amount)
+            return false;
+        offset += amount;
+    }
+    xx_mem_free(m->memory);
+    m->memory = NULL;
+    m->capacity = 0;
+    return true;
+}
+static ssize_t member_output_write(xx_io_device* d, const void* data, size_t n)
+{
+    member_output* m = (member_output*)d->priv;
+    uint64_t required = m->written + (uint64_t)n;
+    ssize_t done;
+    if (m->write_failed || m->no_memory || (!data && n))
+        return -1;
+    if (!n)
+        return 0;
+    if (!m->target) {
+        if (required <= m->limit) {
+            if (required > m->capacity) {
+                size_t capacity = m->capacity ? m->capacity : 65536U;
+                unsigned char* grown;
+                while (capacity < required && capacity <= SIZE_MAX / 2U)
+                    capacity *= 2U;
+                if ((uint64_t)capacity > m->limit)
+                    capacity = (size_t)m->limit;
+                if (!(grown = (unsigned char*)xx_mem_realloc(m->memory, capacity))) {
+                    m->no_memory = true;
+                    return -1;
+                }
+                m->memory = grown;
+                m->capacity = capacity;
+            }
+            xx_mem_copy(m->memory + m->written, data, n);
+            m->written = required;
+            return (ssize_t)n;
+        }
+        /* More than a declared size: damaged data, refused as a fixed buffer
+         * refuses it. Output of unknown size continues in a temporary file. */
+        if (m->declared != UINT64_MAX)
+            return -1;
+        if (!member_output_spill(m, required)) {
+            m->write_failed = true;
+            return -1;
+        }
+    }
+    if (required > m->room) {
+        /* The bytes already written are no longer free. */
+        uint64_t room = temp_next_room(required);
+        if (!temp_room(room - m->written, room)) {
+            m->write_failed = true;
+            return -1;
+        }
+        m->room = room;
+    }
+    done = xx_io_write(m->target, data, n);
+    if (done > 0)
+        m->written += (uint64_t)done;
+    if (done != (ssize_t)n)
+        m->write_failed = true;
+    return done;
+}
+static int64_t member_output_size(xx_io_device* d) { return (int64_t)((member_output*)d->priv)->written; }
+/* 1: ready. 0: the member needs a temporary file it cannot have (none, or no
+ * room for its declared size). -1: no memory. */
+static int member_output_open(member_output* m, uint64_t declared)
+{
+    uint64_t threshold = (uint64_t)xx_get_file_buffer_size();
+    xx_mem_zero(m, sizeof(*m));
+    m->declared = declared;
+    if (declared == UINT64_MAX || declared < threshold) {
+        m->limit = declared != UINT64_MAX ? declared : threshold ? threshold - 1U : 0U;
+        if (declared != UINT64_MAX) {
+            if (!(m->memory = (unsigned char*)xx_mem_alloc(declared ? (size_t)declared : 1U)))
+                return -1;
+            m->capacity = (size_t)declared;
+        }
+    } else if (!temp_room(declared, declared) || !(m->target = xx_io_temp_open())) {
+        return 0;
+    } else {
+        m->room = declared;
+    }
+    m->device.priv = m;
+    m->device.write = member_output_write;
+    m->device.tell = member_output_size;
+    m->device.total_size = member_output_size;
+    return 1;
+}
+/* The decoded member at its start, or NULL: a temporary file that cannot be
+ * read back (POSIX stdio may write its buffered tail only now, to a full
+ * disk: write_failed), or no memory for a view. */
+static xx_io_device* member_output_finish(member_output* m)
+{
+    if (m->target) {
+        if (xx_io_seek64(m->target, 0, SEEK_SET) != 0 || xx_io_total_size(m->target) != (int64_t)m->written) {
+            m->write_failed = true;
+            return NULL;
+        }
+        return m->target;
+    }
+    if (!m->view && !(m->view = xx_io_mem_open_ro(m->memory, (size_t)m->written)))
+        m->no_memory = true;
+    return m->view;
+}
+/* A temporary file is scratch, deleted on close, and was read back first: a
+ * failed close fails nothing. */
+static void member_output_close(member_output* m)
+{
+    if (m->view)
+        xx_io_close(m->view);
+    if (m->target)
+        (void)xx_io_close(m->target);
+    xx_mem_free(m->memory);
+    xx_mem_zero(m, sizeof(*m));
 }
 /* ZIP records keep data_offset at -1 until the local header is read on demand,
  * so resolve it before the extent checks below. A failed resolve stays -1. */
@@ -629,6 +816,11 @@ static xx_extractor_status archive_scan(xx_io_device* d, const xx_extractor_opti
     }
     while ((native = current_record(f, type, state)) != NULL && !s->limit_reached) {
         xx_io_device* decoded = NULL;
+        xx_io_device* in_place;
+        member_output out;
+        int opened;
+        bool have_crc;
+        uint32_t stored_crc = 0;
         xx_extractor_record r;
         uint64_t declared;
         const char* name;
@@ -656,21 +848,61 @@ static xx_extractor_status archive_scan(xx_io_device* d, const xx_extractor_opti
             status = fail(pd, XX_EXTRACTOR_LIMIT, NULL);
             break;
         }
-        decoded = xx_io_temp_open();
-        if (!decoded) {
-            status = fail(pd, XX_EXTRACTOR_NO_MEMORY, "Cannot open temporary decoded member");
-            break;
+        xx_mem_zero(&out, sizeof(out));
+        in_place = NULL;
+        have_crc = false;
+        /* A stored member is read in place, as the archive scan reads it, at
+         * any size and with no temporary space: a ZIP Store member once its
+         * CRC over the source matches the record's (otherwise it is decoded,
+         * and fails, as before), a member the reader copies as stored. */
+        if (type == XX_FILE_TYPE_ZIP) {
+            uint64_t expected = xx_archive_record_get_meta_u64(native, XX_META_ID_CRC32, UINT64_MAX);
+            if (xx_archive_record_get_meta_u64(native, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX) == 0U
+                && declared == (uint64_t)native->compressed_size && expected <= UINT32_MAX
+                && crc_range(f->device, (uint64_t)native->data_offset, declared, pd, &stored_crc)
+                && stored_crc == (uint32_t)expected)
+                have_crc = (in_place = xx_io_sub_open_ro(f->device, native->data_offset, native->compressed_size)) != NULL;
+        } else if (type != XX_FILE_TYPE_PDF) {
+            in_place = xx_io_sub_open_ro(f->device, native->data_offset, native->compressed_size);
         }
-        if (!decode_member(f, type, state, decoded, pd) || xx_io_seek64(decoded, 0, SEEK_SET) != 0) {
-            status = fail(pd, XX_EXTRACTOR_INVALID, "Cannot decode container member");
-            xx_io_close(decoded);
-            break;
+        if (in_place) {
+            decoded = in_place;
+            decoded_size = native->compressed_size;
+        } else {
+            /* A member that needs a temporary file it cannot have, or whose
+             * temporary file fails (a full disk), is left out of the
+             * inventory, as the archive scan skips it; the other members are
+             * still listed. */
+            opened = member_output_open(&out, declared);
+            if (opened < 0) {
+                status = fail(pd, XX_EXTRACTOR_NO_MEMORY, "Cannot allocate decoded member");
+                break;
+            }
+            if (!opened)
+                goto advance;
+            if (!decode_member(f, type, state, &out.device, pd) || !(decoded = member_output_finish(&out))) {
+                bool skip = out.write_failed && !xx_pd_is_stopped(pd);
+                bool no_memory = out.no_memory;
+                member_output_close(&out);
+                if (skip) {
+                    if (pd) {
+                        pd->last_error = 0;
+                        pd->error_string[0] = '\0';
+                    }
+                    goto advance;
+                }
+                status = no_memory ? fail(pd, XX_EXTRACTOR_NO_MEMORY, "Cannot allocate decoded member")
+                                   : fail(pd, XX_EXTRACTOR_INVALID, "Cannot decode container member");
+                break;
+            }
+            decoded_size = (int64_t)out.written;
         }
-        decoded_size = xx_io_total_size(decoded);
         if (decoded_size < 0 || (uint64_t)decoded_size > o->max_member_size
             || (declared != UINT64_MAX && (uint64_t)decoded_size != declared)) {
             status = fail(pd, XX_EXTRACTOR_LIMIT, "Decoded member size does not match its declared extent");
-            xx_io_close(decoded);
+            member_output_close(&out);
+            if (in_place)
+                xx_io_close(in_place);
             break;
         }
         xx_mem_zero(&r, sizeof(r));
@@ -696,16 +928,19 @@ static xx_extractor_status archive_scan(xx_io_device* d, const xx_extractor_opti
         }
         r.file_type = payload_type(decoded, pd, ext, sizeof(ext));
         r.extension = ext;
-        if (!crc_range(decoded, 0, r.unpacked_size, pd, &r.crc32)) {
+        if (have_crc)
+            r.crc32 = stored_crc;
+        else if (!crc_range(decoded, 0, r.unpacked_size, pd, &r.crc32)) {
             status = fail(pd, XX_EXTRACTOR_IO, "Cannot checksum container member");
-            xx_io_close(decoded);
+            member_output_close(&out);
+            if (in_place)
+                xx_io_close(in_place);
             break;
         }
         r.has_crc32 = true;
-        if (xx_io_close(decoded) != 0) {
-            status = fail(pd, XX_EXTRACTOR_IO, "Cannot close decoded member");
-            break;
-        }
+        member_output_close(&out);
+        if (in_place)
+            xx_io_close(in_place);
         name = xx_archive_record_get_original_name(native);
         if (!name) {
             const wchar_t* wide = xx_archive_record_get_original_name_w(native);
@@ -759,7 +994,7 @@ xx_extractor_status xx_extractor_scan_device(
     if (xx_pd_is_stopped(pd))
         return XX_EXTRACTOR_CANCELLED;
     if (!o.max_member_size)
-        o.max_member_size = UINT64_C(256) * 1024 * 1024;
+        o.max_member_size = UINT64_MAX;
     saved = xx_io_tell(device);
     total = xx_io_total_size(device);
     if (saved < 0 || total < 0)
@@ -807,6 +1042,9 @@ xx_extractor_status xx_extractor_extract_device(
     uint64_t crc;
     const reader_desc* rd = NULL;
     xx_io_device* verified = NULL;
+    member_output out;
+    int opened;
+    xx_mem_zero(&out, sizeof(out));
     if (!source || !r || !destination || source == destination || r->offset > INT64_MAX || r->size > INT64_MAX
         || r->unpacked_size > INT64_MAX)
         return fail(pd, XX_EXTRACTOR_INVALID, NULL);
@@ -865,15 +1103,29 @@ xx_extractor_status xx_extractor_extract_device(
             status = fail(pd, XX_EXTRACTOR_INVALID, "Container changed since analysis");
             goto done;
         }
+        /* A ZIP Store member is verified and copied in place, as the
+         * inventory read it, with no temporary space. */
+        if (rd->type.file_type == XX_FILE_TYPE_ZIP && r->has_crc32 && r->unpacked_size == r->size
+            && xx_archive_record_get_meta_u64(n, XX_META_ID_COMPRESSION_METHOD, UINT64_MAX) == 0U) {
+            if (!xx_crc_calculate_device_by_type(source, (int64_t)r->offset, (int64_t)r->size, XX_CRC_TYPE_CRC32, pd, &crc)
+                || (uint32_t)crc != r->crc32)
+                status = fail(pd, XX_EXTRACTOR_INVALID, "Decoded data changed since analysis");
+            else if (!copy_range(source, r->offset, r->size, destination, pd))
+                status = fail(pd, XX_EXTRACTOR_IO, "Cannot write decoded extraction record");
+            goto done;
+        }
     }
-    verified = xx_io_temp_open();
-    if (!verified) {
-        status = fail(pd, XX_EXTRACTOR_NO_MEMORY, NULL);
+    opened = member_output_open(&out, r->unpacked_size);
+    if (opened <= 0) {
+        status = opened < 0 ? fail(pd, XX_EXTRACTOR_NO_MEMORY, NULL)
+                            : fail(pd, XX_EXTRACTOR_IO, "No temporary file or free temporary space for the decoded record");
         goto done;
     }
-    if (!decode_member(f, rd->type.file_type, state, verified, pd) || xx_io_seek64(verified, 0, SEEK_SET) != 0
-        || xx_io_total_size(verified) != (int64_t)r->unpacked_size) {
-        status = fail(pd, XX_EXTRACTOR_INVALID, "Cannot verify decoded extraction record");
+    if (!decode_member(f, rd->type.file_type, state, &out.device, pd) || !(verified = member_output_finish(&out))
+        || out.written != r->unpacked_size) {
+        status = out.write_failed ? fail(pd, XX_EXTRACTOR_IO, "No temporary file or free temporary space for the decoded record")
+            : out.no_memory       ? fail(pd, XX_EXTRACTOR_NO_MEMORY, NULL)
+                                  : fail(pd, XX_EXTRACTOR_INVALID, "Cannot verify decoded extraction record");
         goto done;
     }
     if (r->has_crc32
@@ -885,8 +1137,7 @@ xx_extractor_status xx_extractor_extract_device(
     if (!copy_range(verified, 0, r->unpacked_size, destination, pd))
         status = fail(pd, XX_EXTRACTOR_IO, "Cannot write decoded extraction record");
 done:
-    if (verified && xx_io_close(verified) != 0 && status == XX_EXTRACTOR_OK)
-        status = fail(pd, XX_EXTRACTOR_IO, NULL);
+    member_output_close(&out);
     if (state)
         xx_format_free_archive_records_reading(f, state);
     if (f)

@@ -24,6 +24,7 @@
 #include "xxfclib/algo/reduce/xx_reduce.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/global/xx_global.h"
+#include "../../io/xx_io_buffer.h"
 
 #include <limits.h>
 #include <stdint.h>
@@ -325,9 +326,11 @@ bool xx_reduce_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t 
     }
     xx_mem_zero(ctx, sizeof(*ctx));
     ctx->io_capacity = capacity;
-    ctx->input = (uint8_t *)xx_mem_alloc(capacity);
-    ctx->output = (uint8_t *)xx_mem_alloc(capacity);
+    /* Reads never exceed comp_size, nor output expected_size. */
+    ctx->input = (uint8_t *)xx_mem_alloc(xx_io_buffer_size_for(capacity, (uint64_t)comp_size));
+    ctx->output = (uint8_t *)xx_mem_alloc(xx_io_buffer_size_for(capacity, (uint64_t)expected_size));
     if (!ctx->input || !ctx->output) {
+        xx_io_note_alloc_failure();
         xx_mem_free(ctx->input);
         xx_mem_free(ctx->output);
         xx_mem_free(ctx);

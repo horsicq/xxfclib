@@ -24,6 +24,7 @@
 #include "xx_crc_internal.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/global/xx_global.h"
+#include "../../global/xx_read_buffer_internal.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/data/xx_pd.h"
 #include <string.h>
@@ -349,8 +350,7 @@ uint64_t xx_crc64(xx_crc_type_t type, const void *data, size_t size)
 
 bool xx_crc_calculate_device(xx_io_device *dev, int64_t offset, int64_t size, const xx_crc_model *model, xx_pd_struct *pd, uint64_t *out_crc)
 {
-    size_t capacity = xx_get_file_buffer_size();
-    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
+    size_t capacity = 0;
     if (!dev || !model || !out_crc) {
         return false;
     }
@@ -382,7 +382,7 @@ bool xx_crc_calculate_device(xx_io_device *dev, int64_t offset, int64_t size, co
         return false;
     }
 
-    uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
+    uint8_t *buffer = (uint8_t *)xx_read_buffer_alloc(total_to_read ? (uint64_t)total_to_read : 1U, &capacity);
     if (!buffer) return false;
     int64_t remaining = total_to_read;
     int64_t processed = 0;
@@ -449,8 +449,7 @@ bool xx_crc_verify_device(xx_io_device *dev, int64_t offset, int64_t size, xx_cr
 bool xx_crc_copy_device_verify(xx_io_device *src_dev, int64_t src_offset, int64_t size, xx_io_device *dst_dev, xx_crc_type_t type, uint64_t expected_crc, bool *out_match,
                                xx_pd_struct *pd)
 {
-    size_t capacity = xx_get_file_buffer_size();
-    if (capacity > (SIZE_MAX >> 1)) capacity = SIZE_MAX >> 1;
+    size_t capacity = 0;
     if (out_match) {
         *out_match = false;
     }
@@ -474,7 +473,7 @@ bool xx_crc_copy_device_verify(xx_io_device *src_dev, int64_t src_offset, int64_
         return false;
     }
 
-    uint8_t *buffer = (uint8_t *)xx_mem_alloc(capacity);
+    uint8_t *buffer = (uint8_t *)xx_read_buffer_alloc((uint64_t)size, &capacity);
     if (!buffer) return false;
     int pd_level = -1;
     if (pd) {

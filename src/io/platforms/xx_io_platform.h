@@ -43,6 +43,8 @@ extern "C" {
 void *xx_io_platform_file_open(const char *path, const char *mode);
 void *xx_io_platform_file_open_w(const wchar_t *path, const char *mode);
 void *xx_io_platform_temp_open(void);
+/** Free bytes for the caller on the temporary folder's volume. */
+bool xx_io_platform_temp_free_space(uint64_t *bytes);
 
 /**
  * @brief Read bytes from platform file handle.

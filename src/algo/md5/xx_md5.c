@@ -6,6 +6,7 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "../../global/xx_read_buffer_internal.h"
 
 static void md5_clear(void *data, size_t size)
 {
@@ -176,11 +177,7 @@ bool xx_md5_device(xx_io_device *device, int64_t offset, int64_t size, void *dig
     xx_md5_init(&context);
     if (xx_io_seek64(device, offset, SEEK_SET) != 0) goto finish;
     if (size > 0) {
-        capacity = xx_get_file_buffer_size();
-        if (!capacity) capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
-        if (capacity > (size_t)PTRDIFF_MAX) capacity = (size_t)PTRDIFF_MAX;
-        if ((uint64_t)size < capacity) capacity = (size_t)size;
-        chunk = (uint8_t *)xx_mem_alloc(capacity);
+        chunk = (uint8_t *)xx_read_buffer_alloc((uint64_t)size, &capacity);
         if (!chunk) goto finish;
         while (done < size) {
             size_t request = (uint64_t)(size - done) < capacity ? (size_t)(size - done) : capacity;

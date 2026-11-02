@@ -219,6 +219,13 @@ XXFC_API xx_io_device *xx_io_file_open_w(const wchar_t *path, const char *mode);
 /** Seekable 64-bit temporary stream, removed automatically on close. While a
  * memory-only scope is active it is RAM-backed and never spills to disk. */
 XXFC_API xx_io_device *xx_io_temp_open(void);
+/** Bytes the caller may still write on the volume that holds xx_io_temp_open's
+ * disk files: GetDiskFreeSpaceExW on the temporary folder (quotas included),
+ * or statvfs f_bavail on TMPDIR when it is a writable folder, else /tmp
+ * (quotas not included). False, *bytes unchanged, when it
+ * cannot be read. A memory-only scope's RAM streams are not counted here; see
+ * xx_io_memory_only_available(). */
+XXFC_API bool xx_io_temp_free_space(uint64_t *bytes);
 XXFC_API xx_io_device *io_file_open(const char *path, const char *mode);
 XXFC_API xx_io_device *io_file_open_w(const wchar_t *path, const char *mode);
 

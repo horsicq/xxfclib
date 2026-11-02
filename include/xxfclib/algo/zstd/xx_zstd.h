@@ -77,6 +77,31 @@ XXFC_API bool xx_zstd_pack_source(xx_io_device *source, const char *source_path,
 XXFC_API bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t uncompressed_size,
                                               xx_pd_struct *progress);
 
+/**
+ * The history window limit of xx_zstd_unpack_device_streaming() when 0 is
+ * passed: libzstd's default window limit for streaming decompression
+ * (ZSTD_WINDOWLOG_LIMIT_DEFAULT 27: 128 MiB, plus the byte libzstd allows),
+ * which Detect It Easy's Zstandard decoder keeps.
+ */
+#define XX_ZSTD_STREAM_WINDOW_LIMIT_DEFAULT ((UINT64_C(1) << 27) + 1U)
+
+/**
+ * Decompresses the standard Zstandard frames that fill a device range into
+ * an output device, block by block. Memory holds one frame's history window
+ * (at most window_limit bytes; 0 selects XX_ZSTD_STREAM_WINDOW_LIMIT_DEFAULT)
+ * plus up to 16 MiB of room and about 400 KiB of fixed buffers, whatever the
+ * sizes of the input and the output. A frame whose window exceeds the limit
+ * fails, unless it declares at most 16 KiB of content (libzstd's single-pass
+ * path skips its window limit for those). expected_size is the exact total
+ * output, or UINT64_MAX when unknown. Blocks are written as they decode, so
+ * a failure can leave part of the output written. The source position is
+ * restored. Unlike xx_zstd_unpack_device_to_device(), Block_Maximum_Size
+ * bounds compressed blocks too, and the frame header's Unused_bit is ignored,
+ * as in libzstd.
+ */
+XXFC_API bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination,
+                                              uint64_t expected_size, uint64_t window_limit, xx_pd_struct *progress);
+
 /** Decompresses one standard Zstandard frame into a file. */
 XXFC_API bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset, int64_t compressed_size, const char *destination_path,
                                             uint64_t uncompressed_size, xx_pd_struct *progress);
