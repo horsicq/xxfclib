@@ -205,7 +205,7 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     parsed->headers_size = xx_io_get_u32(format->device, optional_offset + 60, false);
     parsed->subsystem = xx_io_get_u16(format->device, optional_offset + 68, false);
     parsed->dll_characteristics = xx_io_get_u16(format->device, optional_offset + 70, false);
-    if (!parsed->headers_size || parsed->headers_size > (uint64_t)relative_size) goto done;
+    if (!parsed->headers_size) goto done;
     available_directories = (parsed->optional_size - directory_offset) / 8U;
     if (parsed->directory_count > available_directories) parsed->directory_count = available_directories;
     if (parsed->directory_count > 16U) parsed->directory_count = 16U;
@@ -219,7 +219,7 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     parsed->sections = (xx_pe_section *)xx_mem_calloc(parsed->section_count, sizeof(*parsed->sections));
     if (!parsed->sections) goto done;
     image_end = section_offset - format->base_address + (int64_t)parsed->section_count * XX_PE_SECTION_HEADER_SIZE;
-    if (image_end < parsed->headers_size) image_end = parsed->headers_size;
+    if (image_end < parsed->headers_size) image_end = parsed->headers_size < (uint64_t)relative_size ? (int64_t)parsed->headers_size : relative_size;
     for (i = 0U; i < parsed->section_count; ++i) {
         xx_pe_section *section = &parsed->sections[i];
         int64_t entry_offset = section_offset + (int64_t)i * XX_PE_SECTION_HEADER_SIZE;
@@ -292,7 +292,8 @@ static xx_format_type_t xx_pe_classify(const xx_pe_parsed *parsed)
 
 static uint32_t xx_pe_map_alignment(uint32_t value, uint32_t fallback)
 {
-    return value && value <= UINT32_C(0x10000) ? value : fallback;
+    if (!value) return 1U;
+    return value <= UINT32_C(0x10000) ? value : fallback;
 }
 
 static bool xx_pe_align_up(uint64_t value, uint32_t alignment, uint64_t *result)
@@ -329,6 +330,7 @@ bool xx_pe_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_
     int64_t total;
     int64_t binary_size;
     uint32_t section_alignment;
+    uint32_t file_alignment;
     uint64_t module_address;
     uint64_t header_virtual;
     uint64_t header_physical;
@@ -344,6 +346,7 @@ bool xx_pe_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_
     if (total < format->base_address) return false;
     binary_size = total - format->base_address;
     section_alignment = xx_pe_map_alignment(pe->section_alignment, 0x1000U);
+    file_alignment = xx_pe_map_alignment(pe->file_alignment, 0x200U);
     module_address = format->module_address != XX_INVALID_ADDRESS ? format->module_address : pe->image_base;
 
     output->binary_offset = format->base_address;
@@ -401,8 +404,18 @@ bool xx_pe_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_
             relative_offset = section->virtual_address;
             physical_size = virtual_size;
         } else {
-            relative_offset = section->raw_offset;
-            physical_size = section->raw_size;
+            uint64_t raw_offset = section->raw_offset;
+            uint64_t raw_size = section->raw_size;
+            uint64_t alignment_delta;
+            if (raw_offset > (uint64_t)binary_size) raw_offset = 0U;
+            if (raw_size > (uint64_t)binary_size - raw_offset) raw_size = (uint64_t)binary_size - raw_offset;
+            relative_offset = raw_offset - raw_offset % file_alignment;
+            alignment_delta = raw_offset - relative_offset;
+            if (raw_size > UINT64_MAX - alignment_delta) {
+                xx_mem_free(section_indices);
+                return false;
+            }
+            physical_size = raw_size + alignment_delta;
         }
         if (relative_offset > (format->is_mapped ? mapped_extent : (uint64_t)binary_size)) physical_size = 0U;
         else if (physical_size > (format->is_mapped ? mapped_extent : (uint64_t)binary_size) - relative_offset)

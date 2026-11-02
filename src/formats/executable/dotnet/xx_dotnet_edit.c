@@ -317,6 +317,242 @@ bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size,
     *output = data; *output_size = (size_t)total;
     return true;
 }
+
+static uint32_t edit_index(const uint8_t *bytes, unsigned width)
+{
+    return width == 2 ? edit_u16(bytes) : edit_u32(bytes);
+}
+static void edit_index_put(uint8_t *bytes, unsigned width, uint32_t value)
+{
+    if (width == 2) edit_put16(bytes, value); else edit_put32(bytes, value);
+}
+static bool edit_heap_string(const uint8_t *file, size_t size, int64_t heap, int64_t extent,
+    uint32_t index, const uint8_t **bytes, size_t *length)
+{
+    size_t n = 0, units;
+    if (heap < 0 || extent < 1 || !edit_range(size, (uint64_t)heap, (uint64_t)extent) ||
+        index >= (uint64_t)extent || file[heap] != 0) return false;
+    while (n < (size_t)extent - index && file[(size_t)heap + index + n]) ++n;
+    if (n == (size_t)extent - index || n > 0x10000 ||
+        !xx_dotnet_utf8_to_utf16(file + (size_t)heap + index, n, NULL, 0, &units)) return false;
+    *bytes = file + (size_t)heap + index; *length = n;
+    return true;
+}
+static bool edit_inspection(const uint8_t *file, size_t size, xx_dotnet_inspection *view,
+    xx_io_device **device, xx_pd_struct *pd)
+{
+    xx_rt_memset(view, 0, sizeof(*view)); *pd = xx_pd_init();
+    *device = xx_io_mem_open_ro(file, size);
+    return *device && xx_dotnet_inspect_analyze_from_device(view, *device, 0, pd) && view->cli.bValid;
+}
+static bool edit_entry(xx_dotnet_inspection *view, const uint8_t *file, size_t size,
+    uint32_t token)
+{
+    int64_t offset, blob;
+    uint32_t row_size, blob_size;
+    xx_dotnet_method_body body;
+    uint32_t rid = token & 0xffffff;
+    if ((token >> 24) != 6 || !rid || !xx_dotnet_inspect_table_row(view, 6, rid, &offset, &row_size) ||
+        offset < 0 || !edit_range(size, (uint64_t)offset, row_size) || row_size < 12 ||
+        (edit_u16(file + offset + 4) & 7) ||
+        !(edit_u16(file + offset + 6) & 0x10) || (edit_u16(file + offset + 6) & 0x2000) ||
+        !xx_dotnet_inspect_method_body(view, edit_u32(file + offset), &body) || !body.code_size) return false;
+    if (!xx_dotnet_inspect_blob(view, edit_index(file + offset + 8 + view->cli.nStringIndexSize,
+            (unsigned)view->cli.nBlobIndexSize), &blob, &blob_size) || blob < 0 ||
+        !edit_range(size, (uint64_t)blob, blob_size) || (blob_size != 3 && blob_size != 5)) return false;
+    return file[blob] == 0 && (file[blob + 2] == 1 || file[blob + 2] == 8) &&
+        ((blob_size == 3 && file[blob + 1] == 0) ||
+         (blob_size == 5 && file[blob + 1] == 1 && file[blob + 3] == 0x1d && file[blob + 4] == 0x0e));
+}
+/* A promoted netmodule already has the CLR import bootstrap. Both CLR entry
+ * names have equal storage length, so its existing IAT/thunk stays in place. */
+static void edit_promote_import(uint8_t *file, size_t size, const edit_layout *layout)
+{
+    uint32_t dirs = layout->optional + (edit_u16(file + layout->optional) == 0x10b ? 96u : 112u);
+    uint32_t address = edit_u32(file + dirs + 8), count = edit_u32(file + dirs + 12), at;
+    unsigned width = edit_u16(file + layout->optional) == 0x10b ? 4u : 8u;
+    uint32_t i;
+    if (!address || count < 20 || count > 0x10000 || !edit_rva(layout, size, address, count, &at)) return;
+    for (i = 0; i + 20 <= count; i += 20) {
+        uint32_t lookup = edit_u32(file + at + i), name = edit_u32(file + at + i + 12), name_at, j;
+        if (!name) break;
+        if (!lookup) lookup = edit_u32(file + at + i + 16);
+        if (!edit_rva(layout, size, name, 12, &name_at)) continue;
+        { static const char library[] = "mscoree.dll"; unsigned k;
+            for (k = 0; k < sizeof(library); ++k) {
+                unsigned c = file[name_at + k]; if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
+                if (c != (unsigned char)library[k]) break;
+            }
+            if (k != sizeof(library)) continue;
+        }
+        for (j = 0; j < 0x10000; ++j) {
+            uint32_t thunk, item, hint;
+            if ((uint64_t)lookup + (uint64_t)j * width > UINT32_MAX ||
+                !edit_rva(layout, size, lookup + j * width, width, &thunk)) break;
+            item = edit_u32(file + thunk);
+            if (!item) break;
+            if ((width == 4 && (item & 0x80000000)) || (width == 8 && edit_u32(file + thunk + 4))) continue;
+            if (edit_rva(layout, size, item, 14, &hint) && !xx_rt_memcmp(file + hint + 2, "_CorDllMain", 12))
+                xx_rt_memcpy(file + hint + 2, "_CorExeMain", 12);
+        }
+    }
+}
+
+bool xx_dotnet_promote_module(const uint8_t *file, size_t file_size,
+    const uint8_t *donor, size_t donor_size, uint32_t entry_token, size_t max_output,
+    uint8_t **output, size_t *output_size, const char **error)
+{
+    edit_layout layout, donor_layout;
+    xx_dotnet_inspection view, donor_view;
+    xx_io_device *device = NULL, *donor_device = NULL;
+    xx_pd_struct pd, donor_pd;
+    uint8_t *data = NULL, *tables = NULL, *metadata = NULL;
+    const uint8_t *name = NULL, *culture = NULL;
+    size_t name_size = 0, culture_size = 0;
+    uint32_t row_size, strings_size, name_index, culture_index, new_tables_size;
+    int64_t donor_row;
+    int strings = -1, table = -1;
+    unsigned i, string_width, blob_width, assembly_size;
+    uint32_t table_header, count_insert, row_insert, row_at, table_at, counts, valid_lo, valid_hi;
+    uint64_t metadata_size, metadata_file, metadata_rva, virtual_size, raw_size, total, initialized, image_size;
+    const edit_section *last;
+    bool okay = false;
+#define PROMOTE_REQUIRE(test,message) do { if (!(test)) { edit_fail(error,message); goto done; } } while (0)
+    xx_rt_memset(&view, 0, sizeof(view)); xx_rt_memset(&donor_view, 0, sizeof(donor_view));
+    if (output) *output = NULL;
+    if (output_size) *output_size = 0;
+    if (error) *error = NULL;
+    PROMOTE_REQUIRE(output && output_size && max_output && max_output <= XX_DOTNET_EDIT_MAX_IMAGE,
+        "invalid module promotion arguments");
+    PROMOTE_REQUIRE(edit_parse(file, file_size, &layout, error), "unsupported module layout");
+    PROMOTE_REQUIRE(edit_inspection(file, file_size, &view, &device, &pd), "invalid module metadata");
+    PROMOTE_REQUIRE(edit_entry(&view, file, file_size, entry_token), "unsupported managed entry point");
+    PROMOTE_REQUIRE(view.cli.pRows[32] <= 1, "ambiguous assembly identity");
+    if (view.cli.pRows[32] == 1) {
+        PROMOTE_REQUIRE(file_size <= max_output, "assembly exceeds output bound");
+        data = (uint8_t *)xx_mem_calloc(1, file_size);
+        PROMOTE_REQUIRE(data, "cannot allocate assembly copy");
+        xx_rt_memcpy(data, file, file_size); edit_put32(data + layout.cli + 20, entry_token);
+        edit_put16(data + layout.optional - 2, edit_u16(data + layout.optional - 2) & ~0x2000u);
+        edit_promote_import(data, file_size, &layout);
+        edit_put32(data + layout.optional + 64, 0);
+        *output = data; *output_size = file_size; data = NULL; okay = true; goto done;
+    }
+    PROMOTE_REQUIRE(edit_parse(donor, donor_size, &donor_layout, error) &&
+        edit_inspection(donor, donor_size, &donor_view, &donor_device, &donor_pd) &&
+        donor_view.cli.pRows[32] == 1 &&
+        xx_dotnet_inspect_table_row(&donor_view, 32, 1, &donor_row, &row_size) && donor_row >= 0 &&
+        edit_range(donor_size, (uint64_t)donor_row, row_size), "invalid donor assembly");
+    string_width = (unsigned)view.cli.nStringIndexSize; blob_width = (unsigned)view.cli.nBlobIndexSize;
+    { unsigned ds = (unsigned)donor_view.cli.nStringIndexSize, db = (unsigned)donor_view.cli.nBlobIndexSize;
+        uint32_t key_index; int64_t key_at; uint32_t key_size;
+        PROMOTE_REQUIRE(row_size == 16u + db + ds * 2u && !(edit_u32(donor + donor_row + 12) & 1), "signed donor identity is unsupported");
+        key_index = edit_index(donor + donor_row + 16, db);
+        PROMOTE_REQUIRE(xx_dotnet_inspect_blob(&donor_view, key_index, &key_at, &key_size) && !key_size,
+            "nonempty donor public key is unsupported");
+        PROMOTE_REQUIRE(edit_heap_string(donor, donor_size, donor_view.cli.nStringsOffset, donor_view.cli.nStringsSize,
+            edit_index(donor + donor_row + 16 + db, ds), &name, &name_size) && name_size &&
+            edit_heap_string(donor, donor_size, donor_view.cli.nStringsOffset, donor_view.cli.nStringsSize,
+            edit_index(donor + donor_row + 16 + db + ds, ds), &culture, &culture_size), "invalid donor name/culture");
+    }
+    for (i = 0; i < layout.stream_count; ++i) {
+        if (!xx_rt_strcmp(layout.streams[i].name, "#Strings")) strings = (int)i;
+        if (!xx_rt_strcmp(layout.streams[i].name, "#~")) table = (int)i;
+    }
+    PROMOTE_REQUIRE(strings >= 0 && table >= 0 && layout.streams[strings].size &&
+        file[layout.metadata + layout.streams[strings].offset] == 0, "missing string/table stream");
+    name_index = layout.streams[strings].size; culture_index = culture_size ? name_index + (uint32_t)name_size + 1 : 0;
+    PROMOTE_REQUIRE((uint64_t)name_index + name_size + 1 + (culture_size ? culture_size + 1 : 0) <= XX_DOTNET_US_MAX_HEAP,
+        "promoted strings exceed bound");
+    strings_size = name_index + (uint32_t)name_size + 1 + (culture_size ? (uint32_t)culture_size + 1 : 0);
+    PROMOTE_REQUIRE(string_width == 4 || strings_size < 0x10000, "string index width would change");
+    table_at = layout.metadata + layout.streams[table].offset;
+    PROMOTE_REQUIRE(layout.streams[table].size >= 24, "truncated tables header");
+    valid_lo = edit_u32(file + table_at + 8); valid_hi = edit_u32(file + table_at + 12);
+    PROMOTE_REQUIRE(!(valid_hi & 1), "assembly table already present");
+    counts = 0; count_insert = 24; row_insert = 0;
+    for (i = 0; i < 64; ++i) {
+        bool present = i < 32 ? ((valid_lo >> i) & 1) != 0 : ((valid_hi >> (i - 32)) & 1) != 0;
+        if (present) { ++counts; if (i < 32) count_insert += 4; }
+        if (i < 32) row_insert += view.cli.pRows[i] * (uint32_t)view.cli.pElementSize[i];
+    }
+    /* HeapSizes bit 0x40 adds one data DWORD after all row counts. It is
+     * not another row-count slot; preserve it before inserting row data. */
+    table_header = 24 + counts * 4 + ((file[table_at + 6] & 0x40) ? 4u : 0u);
+    row_insert += table_header;
+    assembly_size = 16 + blob_width + string_width * 2;
+    PROMOTE_REQUIRE(table_header <= layout.streams[table].size && row_insert <= layout.streams[table].size &&
+        (uint64_t)layout.streams[table].size + 4 + assembly_size <= XX_DOTNET_US_MAX_HEAP,
+        "invalid assembly table insertion range");
+    new_tables_size = layout.streams[table].size + 4 + assembly_size;
+    tables = (uint8_t *)xx_mem_calloc(1, new_tables_size);
+    PROMOTE_REQUIRE(tables, "cannot allocate promoted tables");
+    xx_rt_memcpy(tables, file + table_at, count_insert);
+    edit_put32(tables + count_insert, 1);
+    xx_rt_memcpy(tables + count_insert + 4, file + table_at + count_insert, row_insert - count_insert);
+    row_at = row_insert + 4;
+    xx_rt_memcpy(tables + row_at, donor + donor_row, 16);
+    edit_index_put(tables + row_at + 16, blob_width, 0);
+    edit_index_put(tables + row_at + 16 + blob_width, string_width, name_index);
+    edit_index_put(tables + row_at + 16 + blob_width + string_width, string_width, culture_index);
+    xx_rt_memcpy(tables + row_at + assembly_size, file + table_at + row_insert, layout.streams[table].size - row_insert);
+    edit_put32(tables + 12, valid_hi | 1); edit_put32(tables + 20, edit_u32(tables + 20) & ~UINT32_C(1));
+    metadata_size = edit_align(layout.header_end, 4);
+    for (i = 0; i < layout.stream_count; ++i)
+        metadata_size = edit_align(metadata_size + (i == (unsigned)table ? new_tables_size : i == (unsigned)strings ? strings_size : layout.streams[i].size), 4);
+    PROMOTE_REQUIRE(metadata_size <= XX_DOTNET_US_MAX_HEAP, "promoted metadata exceeds bound");
+    metadata = (uint8_t *)xx_mem_calloc(1, (size_t)metadata_size);
+    PROMOTE_REQUIRE(metadata, "cannot allocate promoted metadata");
+    xx_rt_memcpy(metadata, file + layout.metadata, layout.header_end);
+    { uint32_t cursor = (uint32_t)edit_align(layout.header_end, 4);
+        for (i = 0; i < layout.stream_count; ++i) {
+            const edit_stream *stream = &layout.streams[i];
+            uint32_t length = i == (unsigned)table ? new_tables_size : i == (unsigned)strings ? strings_size : stream->size;
+            edit_put32(metadata + stream->header - layout.metadata, cursor);
+            edit_put32(metadata + stream->header - layout.metadata + 4, length);
+            if (i == (unsigned)table) xx_rt_memcpy(metadata + cursor, tables, length);
+            else {
+                xx_rt_memcpy(metadata + cursor, file + layout.metadata + stream->offset, stream->size);
+                if (i == (unsigned)strings) {
+                    xx_rt_memcpy(metadata + cursor + name_index, name, name_size + 1);
+                    if (culture_size) xx_rt_memcpy(metadata + cursor + culture_index, culture, culture_size + 1);
+                }
+            }
+            cursor = (uint32_t)edit_align((uint64_t)cursor + length, 4);
+        }
+    }
+    last = &layout.sections[layout.section_count - 1]; metadata_file = edit_align(file_size, 4);
+    metadata_rva = last->va + metadata_file - last->raw; virtual_size = metadata_file - last->raw + metadata_size;
+    if (last->virtual_size > virtual_size) virtual_size = last->virtual_size;
+    raw_size = edit_align(metadata_file - last->raw + metadata_size, layout.file_alignment);
+    total = last->raw + raw_size; image_size = edit_align(last->va + virtual_size, layout.section_alignment);
+    initialized = edit_u32(file + layout.optional + 8) + ((last->flags & 0x40) ? raw_size - last->raw_size : raw_size);
+    PROMOTE_REQUIRE(total <= max_output && metadata_rva + metadata_size <= UINT32_MAX &&
+        (uint64_t)last->va + virtual_size <= UINT32_MAX && image_size <= UINT32_MAX && initialized <= UINT32_MAX,
+        "promoted PE exceeds bound");
+    data = (uint8_t *)xx_mem_calloc(1, (size_t)total);
+    PROMOTE_REQUIRE(data, "cannot allocate promoted PE");
+    xx_rt_memcpy(data, file, file_size); xx_rt_memcpy(data + metadata_file, metadata, (size_t)metadata_size);
+    edit_put32(data + layout.cli + 8, (uint32_t)metadata_rva); edit_put32(data + layout.cli + 12, (uint32_t)metadata_size);
+    edit_put32(data + layout.cli + 20, entry_token);
+    edit_put16(data + layout.optional - 2, edit_u16(data + layout.optional - 2) & ~0x2000u);
+    edit_promote_import(data, (size_t)total, &layout);
+    edit_put32(data + last->header + 8, (uint32_t)virtual_size); edit_put32(data + last->header + 16, (uint32_t)raw_size);
+    edit_put32(data + last->header + 36, (last->flags & UINT32_C(0xfdffffff)) | UINT32_C(0x40000040));
+    edit_put32(data + layout.optional + 8, (uint32_t)initialized); edit_put32(data + layout.optional + 56, (uint32_t)image_size);
+    edit_put32(data + layout.optional + 64, 0);
+    *output = data; *output_size = (size_t)total; data = NULL; okay = true;
+done:
+    if (data) xx_mem_free(data);
+    if (tables) xx_mem_free(tables);
+    if (metadata) xx_mem_free(metadata);
+    xx_dotnet_inspect_free(&view); xx_dotnet_inspect_free(&donor_view);
+    if (device) xx_io_close(device);
+    if (donor_device) xx_io_close(donor_device);
+    return okay;
+#undef PROMOTE_REQUIRE
+}
+
 void xx_dotnet_edit_free(void *buffer)
 {
     xx_mem_free(buffer);

@@ -47,6 +47,17 @@ XXFC_API bool xx_dotnet_us_encode(const uint16_t *units, size_t count,
 XXFC_API bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size,
     const uint8_t *pool, size_t pool_size, size_t max_output,
     uint8_t **output, size_t *output_size, const char **error);
+/* Turn an unsigned IL-only netmodule into an executable assembly using an
+ * unsigned donor's Assembly identity and a validated static managed entry
+ * MethodDef token. Existing-assembly input keeps its identity. Metadata and
+ * heaps are rebuilt in a new owned file; original method/resource bytes stay
+ * unchanged. Heap-index width changes, signed identities and unsupported entry
+ * signatures are rejected. The same editable PE layout bounds as above apply.
+ * A source _CorDllMain import is renamed _CorExeMain when promoting a module.
+ * On failure output/size are cleared. Release output with edit_free(). */
+XXFC_API bool xx_dotnet_promote_module(const uint8_t *file, size_t file_size,
+    const uint8_t *donor, size_t donor_size, uint32_t entry_token, size_t max_output,
+    uint8_t **output, size_t *output_size, const char **error);
 XXFC_API void xx_dotnet_edit_free(void *buffer);
 
 #ifdef __cplusplus

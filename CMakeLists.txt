@@ -1980,6 +1980,7 @@ set(XXFCLIB_SOURCES
     src/formats/executable/dotnet/xx_dotnet_reader.c
     src/formats/executable/dotnet/xx_dotnet_cil.c
     src/formats/executable/dotnet/xx_dotnet_edit.c
+    src/formats/executable/dotnet/xx_dotnet_resource_reader.c
     src/formats/executable/dotnet/xx_dotnet_datastructs.c
     src/formats/executable/dotnet/xx_dotnet_extractor.c
     src/formats/installer/apk/xx_apk_inspect.c
@@ -5496,7 +5497,6 @@ function(xxfclib_configure_target target is_shared)
             )
         elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
             target_sources(${target} PRIVATE
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_windows_x86.asm"
                 "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_windows_x86.asm"
             )
         endif()

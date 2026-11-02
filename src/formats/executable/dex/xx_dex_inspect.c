@@ -75,6 +75,7 @@ char *xx_dex_map_hash_hex(const xx_dex *dex)
 {
     xx_buf_t out;
     xx_buf_init(&out);
+    if (!dex || !dex->analysis || !dex->header.map_off) return xx_buf_detach(&out, NULL);
     xx_buf_appendf(&out, "%08x", (unsigned)xx_dex_get_map_hash(dex));
     return xx_buf_detach(&out, NULL);
 }

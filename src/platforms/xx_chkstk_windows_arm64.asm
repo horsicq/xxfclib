@@ -5,8 +5,9 @@
 ;
 ; __chkstk follows the Windows ARM64 helper ABI: X15 contains the stack
 ; allocation in 16-byte units, X16 and X17 are scratch, and SP is unchanged.
-; The interlocked helpers operate on 32-bit Windows LONG values and preserve
-; the acquire/release ordering of their MSVC intrinsic counterparts.
+; The interlocked helpers operate on 32-bit Windows LONG values and are full
+; barriers like their MSVC intrinsic counterparts: an acquire/release
+; exclusive pair followed by DMB ISH (also on a failed compare).
 
         AREA |.text$mn$00|, CODE, READONLY, ALIGN=2
 
@@ -39,10 +40,12 @@ xx_compare_exchange_retry
         b.ne    xx_compare_exchange_mismatch
         stlxr   w4, w1, [x0]
         cbnz    w4, xx_compare_exchange_retry
+        dmb     ish
         mov     w0, w3
         ret
 xx_compare_exchange_mismatch
         clrex
+        dmb     ish
         mov     w0, w3
         ret
 
@@ -52,6 +55,7 @@ xx_exchange_retry
         ldaxr   w2, [x0]
         stlxr   w3, w1, [x0]
         cbnz    w3, xx_exchange_retry
+        dmb     ish
         mov     w0, w2
         ret
 
@@ -62,6 +66,7 @@ xx_increment_retry
         add     w1, w1, #1
         stlxr   w2, w1, [x0]
         cbnz    w2, xx_increment_retry
+        dmb     ish
         mov     w0, w1
         ret
 
