@@ -28,6 +28,7 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "../io/xx_io_buffer.h"
 #include <limits.h>
 
 static void signature_set_error(DieEngine *pEngine, const char *pText)
@@ -569,6 +570,10 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
     xx_memory_map binaryMap;
     int i = 0;
     int read_failed;
+    int alloc_failed;
+    /* A file-buffer-sized allocation that fails anywhere in this pass costs a
+     * reader bytes it needed: the pass fails rather than detect less. */
+    uintptr_t nAllocFailures = xx_io_alloc_failures();
     int nGlobalInit = -1;
     int nTypeInit = -1;
     int progress;
@@ -585,7 +590,8 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
         !(pEngine->device = pOptions->scan_part == XX_SCAN_PART_ARCHIVE
                                ? xx_io_buffer_open(device, 0, 0, false)
                                : xx_io_buffer_open_auto(device, 0, xx_get_file_memory_limit(), false))) {
-        xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot open DIE signature input");
+        if (xx_io_alloc_failures() != nAllocFailures) xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate DIE signature input buffer");
+        else xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot open DIE signature input");
         cd_free(pEngine);
         return 0;
     }
@@ -822,16 +828,20 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
     xx_zip_destroy(&pEngine->zip);
 
     read_failed = xx_io_buffer_failed(pEngine->device);
+    alloc_failed = xx_io_alloc_failures() != nAllocFailures;
     xx_io_close(pEngine->device);
     cd_free(pEngine);
 
     xx_pd_set_current(pd, progress, (uint64_t)i);
     xx_pd_leave_level(pd, progress);
-    if (read_failed) {
+    if (alloc_failed) {
+        (void)xx_scan_result_add_error(pResult, "Out of memory", pd);
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate DIE signature input buffer");
+    } else if (read_failed) {
         (void)xx_scan_result_add_error(pResult, "File read error", pd);
         xx_pd_set_error(pd, XXFC_ERR_IO, "DIE signature input read failed");
     }
-    return !read_failed && !xx_pd_is_stopped(pd);
+    return !read_failed && !alloc_failed && !xx_pd_is_stopped(pd);
 }
 
 /* Moves every record and error of pFrom into pTo - to the front when bFront
