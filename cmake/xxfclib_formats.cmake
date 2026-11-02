@@ -57,8 +57,8 @@ if(MSVC)
     if(CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(x64|AMD64)$")
         enable_language(ASM_MASM)
         target_sources(xxfclib PRIVATE
-            "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_x64.asm"
-            "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_x64.asm")
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_windows_x64.asm"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_windows_x64.asm")
     endif()
 else()
     target_compile_options(xxfclib PRIVATE -Wall -Wextra -Wpedantic)

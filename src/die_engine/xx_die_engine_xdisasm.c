@@ -48,6 +48,37 @@ static XDisasmResult invalid_byte(unsigned char byte)
     return result;
 }
 
+static int script_decode_flags(cdisasm_mode mode, cdisasm_x86_decode_flags *flags)
+{
+    static const uint32_t reduced_bits[] = {
+        CDISASM_X86_DECODE_BIT_BITMANIP,
+        CDISASM_X86_DECODE_BIT_SMX,
+        CDISASM_X86_DECODE_BIT_SYSTEM,
+        CDISASM_X86_DECODE_BIT_CET,
+        CDISASM_X86_DECODE_BIT_STATE,
+        CDISASM_X86_DECODE_BIT_SECURITY,
+        CDISASM_X86_DECODE_BIT_UNDOCUMENTED,
+        CDISASM_X86_DECODE_BIT_VMX,
+        CDISASM_X86_DECODE_BIT_SVM,
+        CDISASM_X86_DECODE_BIT_BMI1,
+        CDISASM_X86_DECODE_BIT_BMI2,
+        CDISASM_X86_DECODE_BIT_VTX
+    };
+    size_t i;
+
+    if (cdisasm_x86_cpu_decode_flag_mask(CDISASM_CPU_X86, mode, flags) != CDISASM_STATUS_OK) return 0;
+
+    /* Qt DIE links XCapstone's CAPSTONE_X86_REDUCE target. It retains scalar
+     * extensions and privileged/system instructions, but excludes x87 and
+     * vector families. Keep an all-zero mask for base-only cdisasm builds. */
+    if (!cdisasm_decode_flags_test_bit(flags, CDISASM_X86_DECODE_BIT_SYSTEM)) return 1;
+    cdisasm_decode_flags_reset(flags);
+    for (i = 0; i < sizeof(reduced_bits) / sizeof(reduced_bits[0]); ++i) {
+        cdisasm_decode_flags_set_bit(flags, reduced_bits[i]);
+    }
+    return 1;
+}
+
 XDisasmResult xdisasm_at(xx_io_device *file, cd_i64 offset, int bits, cd_u64 address)
 {
     XDisasmResult result = {0};
@@ -72,9 +103,7 @@ XDisasmResult xdisasm_at(xx_io_device *file, cd_i64 offset, int bits, cd_u64 add
     size = (size_t)(file_size - offset > CDISASM_MAX_INSTRUCTION_SIZE ? CDISASM_MAX_INSTRUCTION_SIZE : file_size - offset);
     if (!xx_io_read_at(file, offset, bytes, size)) return result;
 
-    /* The unrestricted x86 profile keeps the DIE script's architecture-wide
-     * decoding. The mode-specific mask also works in a base-only build. */
-    if (cdisasm_x86_cpu_decode_flag_mask(CDISASM_CPU_X86, mode, &flags) != CDISASM_STATUS_OK) return result;
+    if (!script_decode_flags(mode, &flags)) return result;
     decoded_size = cdisasm_x86_decode(CDISASM_CPU_X86, mode, bytes, size, address, &flags, &instruction);
     if (!decoded_size) return invalid_byte(bytes[0]);
 

@@ -149,7 +149,7 @@ endif()
 # explicitly; hosted targets leave the compiler helpers to their runtime.
 if(XXFC_MSVC_ARM64 AND XXFC_STATIC_NO_CRT AND XXFC_HAS_STATIC_TARGET)
     add_library(xxfclib_no_crt_runtime STATIC
-        src/platforms/xx_chkstk_arm64.asm)
+        src/platforms/xx_chkstk_windows_arm64.asm)
     add_library(xxfclib::no_crt_runtime ALIAS xxfclib_no_crt_runtime)
 endif()
 
@@ -5442,7 +5442,7 @@ function(xxfclib_configure_target target is_shared)
                 set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_CHECKS "")
             endif()
 
-            target_sources(${target} PRIVATE src/platforms/xx_chkstk_x64.asm)
+            target_sources(${target} PRIVATE src/platforms/xx_chkstk_windows_x64.asm)
 
             target_link_options(${target} PRIVATE
                 /NODEFAULTLIB
@@ -5477,7 +5477,7 @@ function(xxfclib_configure_target target is_shared)
                 endif()
 
                 if(XXFC_MSVC_X64)
-                    target_sources(${target} PRIVATE src/platforms/xx_chkstk_x64.asm)
+                    target_sources(${target} PRIVATE src/platforms/xx_chkstk_windows_x64.asm)
                     target_link_options(${target} INTERFACE
                         /INCLUDE:__chkstk)
                 endif()
@@ -5491,13 +5491,13 @@ function(xxfclib_configure_target target is_shared)
 
         if(XXFC_MSVC_X64)
             target_sources(${target} PRIVATE
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_x64.asm"
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_x64.asm"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_windows_x64.asm"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_windows_x64.asm"
             )
         elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
             target_sources(${target} PRIVATE
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_x86.asm"
-                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_x86.asm"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_windows_x86.asm"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_windows_x86.asm"
             )
         endif()
     else()
