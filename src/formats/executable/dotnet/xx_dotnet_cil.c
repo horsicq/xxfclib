@@ -1,7 +1,14 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/executable/dotnet/xx_dotnet_cil.h"
-#include "xxfclib/rt/xx_rt.h"
+
+/* Keep the allocation-free decoder usable by Qt and freestanding consumers
+ * without pulling in the memory runtime and its CPU dispatch backends. */
+static void cil_zero(void *buffer, size_t size)
+{
+    volatile uint8_t *bytes = (volatile uint8_t *)buffer;
+    while (size--) *bytes++ = 0;
+}
 
 static uint32_t little32(const uint8_t *p)
 {
@@ -69,7 +76,7 @@ xx_dotnet_cil_status xx_dotnet_cil_decode(const uint8_t *code,
     uint32_t at = offset, op, count = 0;
     bool prefixed;
     int width;
-    if (instruction) xx_rt_memset(instruction, 0, sizeof(*instruction));
+    if (instruction) cil_zero(instruction, sizeof(*instruction));
     if (!instruction || !input_valid(code, length)) return XX_DOTNET_CIL_INVALID_ARGUMENT;
     if (at >= length) return XX_DOTNET_CIL_TRUNCATED;
     op = code[at++];
@@ -143,7 +150,7 @@ xx_dotnet_cil_status xx_dotnet_cil_validate(const uint8_t *code,
     if (map_capacity < length) return XX_DOTNET_CIL_CAPACITY;
     if (length && (!boundary_map || overlaps(code, length, boundary_map)))
         return XX_DOTNET_CIL_INVALID_ARGUMENT;
-    if (length) xx_rt_memset(boundary_map, 0, length);
+    if (length) cil_zero(boundary_map, length);
     while (at < length) {
         status = xx_dotnet_cil_decode(code, length, at, &instruction);
         if (status != XX_DOTNET_CIL_OK) return status;

@@ -97,6 +97,8 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_datastructs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_inspect.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_reader.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_cil.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_simd.h
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_avx2.c
