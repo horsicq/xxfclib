@@ -985,6 +985,11 @@ int js_is_undefined(JSVal value)
     return (value.tag == JT_UNDEF) ? 1 : 0;
 }
 
+int js_is_array(JSVal value)
+{
+    return value.tag == JT_OBJ && value.u.o->cls == JCLASS_ARRAY;
+}
+
 int js_is_callable(JSVal value)
 {
     if (value.tag != JT_OBJ) {

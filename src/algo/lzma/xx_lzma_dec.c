@@ -240,7 +240,10 @@ static bool lzma_dict_flush(lzma_decoder *dec, lzma_out *o)
 lzma_decoder *lzma_dec_create(const lzma_props *props)
 {
     lzma_decoder *dec = (lzma_decoder *)xx_mem_alloc(sizeof(lzma_decoder));
-    if (!dec) return NULL;
+    if (!dec) {
+        xx_io_note_alloc_failure();
+        return NULL;
+    }
     xx_rt_memset(dec, 0, sizeof(*dec));
     dec->props = *props;
 
@@ -254,6 +257,8 @@ lzma_decoder *lzma_dec_create(const lzma_props *props)
     LzmaDec_Construct(&dec->dec);
     SRes res = LzmaDec_Allocate(&dec->dec, raw_props, 5, &g_xx_sz_alloc);
     if (res != SZ_OK) {
+        if (res == SZ_ERROR_MEM) xx_io_note_alloc_failure();
+        LzmaDec_Free(&dec->dec, &g_xx_sz_alloc);
         xx_mem_free(dec);
         return NULL;
     }
@@ -379,12 +384,19 @@ bool xx_lzma2_decompress_stream(lzma_range_dec *rd, uint8_t props2_byte, xx_io_d
     if (out_written) *out_written = 0;
     if (!rd || (!dst_dev && !mem_dst && mem_cap != 0)) return false;
     if (rd->remaining == 0 && rd->ibuf_pos >= rd->ibuf_len) return false;
+    /* A property beyond the decoder's dictionary cap is invalid input, not
+     * an allocation failure. */
+    if (!xx_lzma2_parse_property(props2_byte, NULL)) return false;
 
     CLzma2Dec dec;
     Lzma2Dec_Construct(&dec);
 
     SRes res = Lzma2Dec_Allocate(&dec, props2_byte, &g_xx_sz_alloc);
-    if (res != SZ_OK) return false;
+    if (res != SZ_OK) {
+        if (res == SZ_ERROR_MEM) xx_io_note_alloc_failure();
+        Lzma2Dec_Free(&dec, &g_xx_sz_alloc);
+        return false;
+    }
 
     Lzma2Dec_Init(&dec);
 

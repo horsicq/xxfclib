@@ -18,6 +18,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "../../../io/xx_io_buffer.h"
 
 #include <limits.h>
 #include <stdio.h>
@@ -464,10 +465,17 @@ static bool xx_xz_find_stream_buffered(Abstractformat *self, int64_t stream_star
 
 static bool xx_xz_find_stream(Abstractformat *self, int64_t stream_start, int64_t total_size, xx_xz_candidate *candidate, xx_pd_struct *pd)
 {
-    const size_t buffer_capacity = xx_get_file_buffer_size();
+    /* No larger than the stream it scans: a member of a ZIP (method 95) is
+       read through this, so a large file buffer setting must not decide
+       whether the member is seen at all. */
+    const size_t buffer_capacity =
+        xx_io_buffer_size_for(0U, total_size > stream_start ? (uint64_t)(total_size - stream_start) : 1U);
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
     bool result;
-    if (!buffer) return false;
+    if (!buffer) {
+        xx_io_note_alloc_failure();
+        return false;
+    }
     result = xx_xz_find_stream_buffered(self, stream_start, total_size, candidate, pd, buffer, buffer_capacity);
     xx_mem_free(buffer);
     return result;

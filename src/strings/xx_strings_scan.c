@@ -336,7 +336,8 @@ xx_strings_scan_status xx_strings_scan_device(xx_io_device *device, const xx_str
         }
         total = s.options.length;
     }
-    buffer = xx_rt_malloc(total && total < s.options.chunk_size ? (size_t)total : s.options.chunk_size);
+    /* No larger than the range; one byte for an empty range. */
+    buffer = xx_rt_malloc(total < s.options.chunk_size ? (size_t)(total ? total : 1U) : s.options.chunk_size);
     if (!buffer) {
         s.status = XX_STRINGS_SCAN_NO_MEMORY;
         goto finish;

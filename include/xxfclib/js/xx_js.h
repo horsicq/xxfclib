@@ -141,6 +141,8 @@ XXFC_API void js_release(JSCtx *pCtx, JSVal value);
 
 XXFC_API int js_is_undefined(JSVal value);
 XXFC_API int js_is_callable(JSVal value);
+/* True only for an Array object, without property access or conversion. */
+XXFC_API int js_is_array(JSVal value);
 
 XXFC_API const char *js_str_data(JSVal value);
 XXFC_API size_t js_str_len(JSVal value);

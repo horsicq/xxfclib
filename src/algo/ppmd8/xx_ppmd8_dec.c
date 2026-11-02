@@ -147,7 +147,10 @@ bool ppmd8_sqx_decode(CPpmd8 *p, bool *ready, const uint8_t *src, size_t packed_
     } else {
         /* Never let a damaged ten-bit memory parameter request a GiB. */
         if (params[1] < PPMD8_MIN_ORDER || params[1] > PPMD8_MAX_ORDER || params[2] < 1U || params[2] > 64U) return false;
-        if (!Ppmd8_Alloc(p, params[2] << 20)) return false;
+        if (!Ppmd8_Alloc(p, params[2] << 20)) {
+            xx_io_note_alloc_failure();
+            return false;
+        }
         p->SqxTables = true;
         Ppmd8_Init(p, params[1], 0U);
         *ready = true;
@@ -283,6 +286,7 @@ bool xx_ppmd8_decompress_stream(ppmd8_range_dec *rd, int64_t uncomp_size, int or
     CPpmd8 ppmd;
     Ppmd8_Construct(&ppmd);
     if (!Ppmd8_Alloc(&ppmd, mem_mb << 20)) {
+        xx_io_note_alloc_failure();
         if (pd && pd_level >= 0) xx_pd_leave_level(pd, pd_level);
         return false;
     }

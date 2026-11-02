@@ -796,6 +796,7 @@ bool xx_bzip2_decompress_stream(bz2_bit_reader *br, xx_io_device *dst_dev, uint8
     uint8_t *bwt_bytes = (uint8_t *)xx_mem_alloc((size_t)block_bytes);
     uint32_t *tt = (uint32_t *)xx_mem_alloc((size_t)block_bytes * sizeof(uint32_t));
     if (!bwt_bytes || !tt) {
+        xx_io_note_alloc_failure();
         if (bwt_bytes) xx_mem_free(bwt_bytes);
         if (tt) xx_mem_free(tt);
         if (out.allocated_obuf && out.obuf) xx_mem_free(out.obuf);

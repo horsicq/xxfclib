@@ -26,6 +26,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_ppmd7_internal.h"
+#include "../../io/xx_io_buffer.h"
 #include <string.h>
 
 #define kTopValue (1u << 24)
@@ -244,6 +245,7 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
     CPpmd7 ppmd;
     Ppmd7_Construct(&ppmd);
     if (!Ppmd7_Alloc(&ppmd, mem_size)) {
+        xx_io_note_alloc_failure();
         if (pd && pd_level >= 0) xx_pd_leave_level(pd, pd_level);
         return false;
     }
@@ -255,6 +257,7 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
     uint8_t *staging = io_capacity <= (size_t)-1 / 2U ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
     uint8_t *outbuf;
     if (!staging) {
+        xx_io_note_alloc_failure();
         Ppmd7_Free(&ppmd);
         if (pd && pd_level >= 0) xx_pd_leave_level(pd, pd_level);
         return false;

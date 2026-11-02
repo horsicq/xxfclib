@@ -7,6 +7,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "../../io/xx_io_buffer.h"
 #include <limits.h>
 
 typedef struct lzma2_sink_s {
@@ -104,7 +105,10 @@ static bool lzma2_sink_init(lzma2_sink *sink, xx_io_device *target, uint64_t exp
     if (expected_size < (uint64_t)sink->capacity) sink->capacity = (size_t)expected_size;
     if (sink->delta_distance != 0U && sink->capacity != 0U) {
         sink->transformed = (uint8_t *)xx_mem_alloc(sink->capacity);
-        if (!sink->transformed) return false;
+        if (!sink->transformed) {
+            xx_io_note_alloc_failure();
+            return false;
+        }
     }
     sink->device.write = lzma2_sink_write;
     sink->device.total_size = lzma2_sink_size;

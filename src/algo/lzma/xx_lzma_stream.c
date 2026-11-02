@@ -17,6 +17,7 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "../../io/xx_io_buffer.h"
 
 #define XX_LZMA_DICT_MIN 4096U
 /* Largest dictionary window ever allocated, whatever the header claims. */
@@ -502,11 +503,16 @@ static xx_lzma_stream_result xx_lzma_decode_stream_data(xx_lzma_stream_decoder *
 
 xx_lzma_stream_decoder *xx_lzma_stream_decoder_create(xx_io_device *device, xx_io_device *destination, xx_pd_struct *pd)
 {
-    const size_t io_capacity = xx_get_file_buffer_size();
+    /* The input buffer is no larger than the device it reads. */
+    const int64_t device_size = device ? xx_io_total_size(device) : -1;
+    const size_t io_capacity = device_size >= 0 ? xx_io_buffer_size_for(0U, (uint64_t)device_size) : xx_io_buffer_size_for(0U, UINT64_MAX);
     xx_lzma_stream_decoder *decoder;
     if (io_capacity > (size_t)-1 - sizeof(*decoder)) return NULL;
     decoder = (xx_lzma_stream_decoder *)xx_mem_calloc(1U, sizeof(*decoder) + io_capacity);
-    if (!decoder) return NULL;
+    if (!decoder) {
+        xx_io_note_alloc_failure();
+        return NULL;
+    }
     decoder->in_buffer = (uint8_t *)(decoder + 1);
     decoder->io_capacity = io_capacity;
     decoder->device = device;

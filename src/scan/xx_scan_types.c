@@ -6,6 +6,9 @@
 #include "xxfclib/formats/xx_format.h"
 #include "xxfclib/formats/executable/atarist/xx_atarist.h"
 #include "xxfclib/formats/executable/dos16m/xx_dos16m.h"
+#include "xxfclib/formats/executable/ne/xx_ne.h"
+#include "xxfclib/formats/executable/le/xx_le.h"
+#include "xxfclib/formats/executable/lx/xx_lx.h"
 #include "xxfclib/formats/installer/apk/xx_apk.h"
 #include "xxfclib/formats/installer/ipa/xx_ipa.h"
 #include "xxfclib/formats/executable/jar/xx_jar.h"
@@ -752,10 +755,29 @@ static xx_list_t *xx_scan_detect_type_window(xx_io_device *device, const xx_scan
             xx_dos16m_destroy(&dos16m);
             if (valid) return xx_scan_type_list(XX_FILE_TYPE_DOS16M, pd);
         }
-        if (offset >= 64U && offset <= 1024U * 1024U && (size < 0 || (uint64_t)offset + 2U <= (uint64_t)size) && xx_scan_read_at(device, offset, signature, 2U)) {
-            if (!memcmp(signature, "NE", 2)) return xx_scan_type_list(XX_FILE_TYPE_NE, pd);
-            if (!memcmp(signature, "LE", 2)) return xx_scan_type_list(XX_FILE_TYPE_LE, pd);
-            if (!memcmp(signature, "LX", 2)) return xx_scan_type_list(XX_FILE_TYPE_LX, pd);
+        {
+            xx_ne ne;
+            bool valid;
+            xx_ne_init(&ne, device, 0);
+            valid = xx_ne_check_is_valid(&ne.format, NULL);
+            xx_ne_destroy(&ne);
+            if (valid) return xx_scan_type_list(XX_FILE_TYPE_NE, pd);
+        }
+        {
+            xx_le le;
+            bool valid;
+            xx_le_init(&le, device, 0);
+            valid = xx_le_check_is_valid(&le.format, NULL);
+            xx_le_destroy(&le);
+            if (valid) return xx_scan_type_list(XX_FILE_TYPE_LE, pd);
+        }
+        {
+            xx_lx lx;
+            bool valid;
+            xx_lx_init(&lx, device, 0);
+            valid = xx_lx_check_is_valid(&lx.format, NULL);
+            xx_lx_destroy(&lx);
+            if (valid) return xx_scan_type_list(XX_FILE_TYPE_LX, pd);
         }
         return xx_scan_type_list(XX_FILE_TYPE_MSDOS, pd);
     }
