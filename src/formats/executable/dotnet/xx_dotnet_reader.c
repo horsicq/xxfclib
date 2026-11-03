@@ -129,7 +129,8 @@ static bool reader_token(xx_dotnet_inspection *state, uint32_t token, bool local
         return false;
     return reader_row(state, table, token & 0xffffffU, &offset, &size);
 }
-bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx_dotnet_method_body *body)
+bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva,
+    uint32_t options, xx_dotnet_method_body *body)
 {
     xx_dotnet_method_body value;
     uint8_t header[12];
@@ -139,7 +140,8 @@ bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx
     uint32_t header_size;
     bool more;
     if (body) xx_rt_memset(body, 0, sizeof(*body));
-    if (!reader_begin(state) || !body || !reader_raw_range(state, rva, &start, &available) || !xx_exec_read(state->pe.pInput, start, header, 1)) return false;
+    if ((options & ~XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT) || !reader_begin(state) || !body ||
+        !reader_raw_range(state, rva, &start, &available) || !xx_exec_read(state->pe.pInput, start, header, 1)) return false;
     xx_rt_memset(&value, 0, sizeof(value));
     value.header_offset = start;
     if ((header[0] & 3) == 2) {
@@ -150,7 +152,8 @@ bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx
         more = false;
     } else if ((header[0] & 3) == 3) {
         uint16_t flags;
-        if ((rva & 3) || available < 12 || !xx_exec_read(state->pe.pInput, start, header, 12)) return false;
+        if (((rva & 3) && !(options & XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT)) ||
+            available < 12 || !xx_exec_read(state->pe.pInput, start, header, 12)) return false;
         flags = reader_u16(header);
         if ((flags >> 12) != 3 || (flags & 0x0fe4)) return false;
         header_size = 12;
@@ -169,7 +172,9 @@ bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx
         uint8_t section_header[4];
         uint32_t section_size, clause_size, count, i;
         bool fat;
-        extent = (extent + 3) & ~UINT64_C(3);
+        /* CLR section alignment applies to the loaded address, including when
+         * compatibility admits an unaligned historical fat header. */
+        extent = ((extent + (rva & 3) + 3) & ~UINT64_C(3)) - (rva & 3);
         if (++sections > DOTNET_READER_MAX_SECTIONS || extent > available || available - extent < 4 ||
             !xx_exec_read(state->pe.pInput, start + (int64_t)extent, section_header, 4))
             return false;
@@ -213,6 +218,11 @@ bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx
     value.total_size = (uint32_t)extent;
     *body = value;
     return true;
+}
+
+bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx_dotnet_method_body *body)
+{
+    return xx_dotnet_inspect_method_body_ex(state, rva, 0, body);
 }
 
 #include "xx_dotnet_schema.inc"

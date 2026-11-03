@@ -85,6 +85,14 @@ XXFC_API bool xx_dotnet_inspect_blob(xx_dotnet_inspection *state, uint32_t index
  * structural reader, not a CIL verifier or an exception implementation. */
 XXFC_API bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_t rva, xx_dotnet_method_body *body);
 
+/* Explicit static-analysis compatibility for historical producers whose fat
+ * method header RVA is unaligned. EH sections still align to absolute RVAs;
+ * every existing extent/token/count check remains enabled. The strict API
+ * above is identical to calling _ex with flags=0. */
+#define XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT UINT32_C(1)
+XXFC_API bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva,
+    uint32_t flags, xx_dotnet_method_body *body);
+
 #ifdef __cplusplus
 }
 #endif

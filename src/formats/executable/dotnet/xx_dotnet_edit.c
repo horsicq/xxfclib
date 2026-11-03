@@ -123,6 +123,8 @@ typedef struct edit_layout {
     edit_section sections[96];
     edit_stream streams[5];
     unsigned section_count, stream_count;
+    uint32_t strong_name, strong_name_size, assembly;
+    unsigned blob_width;
     int users;
 } edit_layout;
 
@@ -161,7 +163,242 @@ static bool edit_rva(const edit_layout *layout, size_t file_size, uint32_t rva, 
     return true;
 }
 
-static bool edit_parse(const uint8_t *file, size_t size, edit_layout *layout, const char **error)
+/* Removing a declared signature must not erase a second live use of its bytes.
+ * This deliberately conservative validation is limited to the explicit strip
+ * path; ordinary metadata rewriting still does not decode method bodies. */
+static bool edit_protect(const edit_layout *layout, uint64_t offset, uint64_t size, const char **error)
+{
+    if (size && offset < (uint64_t)layout->strong_name + layout->strong_name_size &&
+        layout->strong_name < offset + size)
+        return edit_fail(error, "strong-name signature overlaps live image data");
+    return true;
+}
+static bool edit_protect_rva(const edit_layout *layout, size_t size, uint32_t rva, uint32_t extent, const char **error)
+{
+    uint32_t offset;
+    if (!extent) return true;
+    if (!rva || !edit_rva(layout, size, rva, extent, &offset))
+        return edit_fail(error, "live image data is not uniquely raw backed");
+    return edit_protect(layout, offset, extent, error);
+}
+static bool edit_protect_string(const uint8_t *file, size_t size, const edit_layout *layout,
+    uint32_t rva, unsigned prefix, uint32_t *work, const char **error)
+{
+    uint32_t offset, i;
+    if (!rva || !edit_rva(layout, size, rva, prefix + 1, &offset))
+        return edit_fail(error, "invalid import string extent");
+    for (i = 0; i < UINT32_C(0x10000); ++i) {
+        if (++*work > UINT32_C(0x100000) || !edit_rva(layout, size, rva, prefix + i + 1, &offset))
+            return edit_fail(error, "unterminated or excessive import strings");
+        if (!file[offset + prefix + i]) return edit_protect(layout, offset, prefix + i + 1, error);
+    }
+    return edit_fail(error, "import string exceeds bound");
+}
+static bool edit_protect_imports(const uint8_t *file, size_t size, const edit_layout *layout,
+    uint32_t rva, uint32_t extent, unsigned width, const char **error)
+{
+    uint32_t offset, at = 0, descriptors = 0, slots = 0, strings = 0;
+    if (!extent) return true;
+    if (!edit_rva(layout, size, rva, extent, &offset)) return edit_fail(error, "invalid import directory extent");
+    while (at <= extent && extent - at >= 20) {
+        const uint8_t *descriptor = file + offset + at;
+        uint32_t lookup, iat, name, index;
+        if (++descriptors > UINT32_C(0x400)) return edit_fail(error, "too many import descriptors");
+        if (!(edit_u32(descriptor) | edit_u32(descriptor + 4) | edit_u32(descriptor + 8) |
+            edit_u32(descriptor + 12) | edit_u32(descriptor + 16))) return true;
+        lookup = edit_u32(descriptor); name = edit_u32(descriptor + 12); iat = edit_u32(descriptor + 16);
+        if (!lookup) lookup = iat;
+        if (!lookup || !iat || !edit_protect_string(file, size, layout, name, 0, &strings, error)) return false;
+        for (index = 0;; ++index) {
+            uint32_t source, destination;
+            uint64_t value, source_rva = (uint64_t)lookup + (uint64_t)index * width;
+            uint64_t destination_rva = (uint64_t)iat + (uint64_t)index * width;
+            if (++slots > UINT32_C(0x10000) || source_rva > UINT32_MAX || destination_rva > UINT32_MAX ||
+                !edit_rva(layout, size, (uint32_t)source_rva, width, &source) ||
+                !edit_rva(layout, size, (uint32_t)destination_rva, width, &destination))
+                return edit_fail(error, "invalid or excessive import thunks");
+            if (!edit_protect(layout, source, width, error) || !edit_protect(layout, destination, width, error)) return false;
+            value = edit_u32(file + source);
+            if (width == 8) value |= (uint64_t)edit_u32(file + source + 4) << 32;
+            if (!value) break;
+            if (value & (width == 8 ? UINT64_C(0x8000000000000000) : UINT64_C(0x80000000))) continue;
+            if (value > UINT32_MAX || !edit_protect_string(file, size, layout, (uint32_t)value, 2, &strings, error)) return false;
+        }
+        at += 20;
+    }
+    return edit_fail(error, "unterminated import descriptors");
+}
+static bool edit_protect_resources(const uint8_t *file, size_t size, const edit_layout *layout,
+    uint32_t root, uint32_t extent, uint32_t relative, uint32_t *stack,
+    unsigned depth, uint32_t *work, const char **error)
+{
+    uint32_t at, count, i;
+    unsigned j;
+    if (depth == 16 || ++*work > UINT32_C(0x10000) || relative > extent || extent - relative < 16)
+        return edit_fail(error, "invalid or excessive PE resource directories");
+    for (j = 0; j < depth; ++j) if (stack[j] == relative) return edit_fail(error, "cyclic PE resource directory");
+    stack[depth] = relative; at = root + relative;
+    count = (uint32_t)edit_u16(file + at + 12) + edit_u16(file + at + 14);
+    if (count > (extent - relative - 16) / 8) return edit_fail(error, "truncated PE resource entries");
+    for (i = 0; i < count; ++i) {
+        uint32_t name = edit_u32(file + at + 16 + i * 8), target = edit_u32(file + at + 20 + i * 8);
+        if (++*work > UINT32_C(0x10000)) return edit_fail(error, "excessive PE resource entries");
+        if (name & UINT32_C(0x80000000)) {
+            uint32_t offset = name & UINT32_C(0x7fffffff);
+            if (offset > extent || extent - offset < 2 || edit_u16(file + root + offset) > (extent - offset - 2) / 2)
+                return edit_fail(error, "invalid PE resource name extent");
+        }
+        if (target & UINT32_C(0x80000000)) {
+            if (!edit_protect_resources(file, size, layout, root, extent, target & UINT32_C(0x7fffffff), stack, depth + 1, work, error)) return false;
+        } else {
+            if (target > extent || extent - target < 16) return edit_fail(error, "invalid PE resource data entry");
+            if (!edit_protect_rva(layout, size, edit_u32(file + root + target), edit_u32(file + root + target + 4), error)) return false;
+        }
+    }
+    return true;
+}
+static bool edit_protect_pe(const uint8_t *file, size_t size, const edit_layout *layout, uint32_t directories, const char **error)
+{
+    uint32_t count = edit_u32(file + directories - 4), i, entry = edit_u32(file + layout->optional + 16);
+    unsigned width = edit_u16(file + layout->optional) == 0x20b ? 8 : 4;
+    if (count > 16 || count > (edit_u16(file + layout->optional - 4) - (directories - layout->optional)) / 8 ||
+        !edit_range(size, directories, (uint64_t)count * 8)) return edit_fail(error, "unsupported PE data directory count");
+    if (entry && !edit_protect_rva(layout, size, entry, 6, error)) return false;
+    for (i = 0; i < count; ++i) {
+        uint32_t rva = edit_u32(file + directories + i * 8), extent = edit_u32(file + directories + i * 8 + 4), offset;
+        if (!rva && !extent) continue;
+        if (i == 0 || i == 3 || i == 4 || i == 7 || i == 8 || i == 9 || i == 10 || i == 11 || i == 13 || i == 15)
+            return edit_fail(error, "unsupported PE runtime directory while stripping strong name");
+        if (!rva || !extent || !edit_rva(layout, size, rva, extent, &offset)) return edit_fail(error, "invalid live PE directory");
+        if (!edit_protect(layout, offset, extent, error)) return false;
+        if (i == 1 && !edit_protect_imports(file, size, layout, rva, extent, width, error)) return false;
+        if (i == 2) {
+            uint32_t stack[16], work = 0;
+            if (!edit_protect_resources(file, size, layout, offset, extent, 0, stack, 0, &work, error)) return false;
+        }
+        if (i == 5) {
+            uint32_t at = 0, work = 0;
+            while (at < extent) {
+                uint32_t page, block, j;
+                if (extent - at < 8) return edit_fail(error, "truncated relocation block");
+                page = edit_u32(file + offset + at); block = edit_u32(file + offset + at + 4);
+                if (block < 8 || (block & 1) || block > extent - at) return edit_fail(error, "invalid relocation block");
+                for (j = 8; j < block; j += 2) {
+                    uint32_t value = edit_u16(file + offset + at + j), kind = value >> 12, field_width;
+                    uint64_t target = (uint64_t)page + (value & 0xfff);
+                    if (++work > UINT32_C(0x100000)) return edit_fail(error, "too many relocation entries while stripping strong name");
+                    if (!kind) continue;
+                    field_width = kind == 1 || kind == 2 ? 2 : kind == 3 ? 4 : kind == 10 ? 8 : 0;
+                    if (!field_width || target > UINT32_MAX || !edit_protect_rva(layout, size, (uint32_t)target, field_width, error))
+                        return edit_fail(error, "unsupported or overlapping relocation target");
+                }
+                at += block;
+            }
+        }
+        if (i == 6) {
+            uint32_t at;
+            if (extent % 28 || extent / 28 > UINT32_C(0x1000)) return edit_fail(error, "invalid debug directory");
+            for (at = 0; at < extent; at += 28) {
+                uint32_t n = edit_u32(file + offset + at + 16), va = edit_u32(file + offset + at + 20), raw = edit_u32(file + offset + at + 24);
+                if (!n) continue;
+                if ((!va && !raw) || (raw && (!edit_range(size, raw, n) || !edit_protect(layout, raw, n, error))) ||
+                    (va && !edit_protect_rva(layout, size, va, n, error))) return edit_fail(error, "invalid or overlapping debug data");
+            }
+        }
+    }
+    return edit_protect_rva(layout, size, edit_u32(file + layout->cli + 24), edit_u32(file + layout->cli + 28), error);
+}
+
+static bool edit_protect_methods(const uint8_t *file, size_t size, const edit_layout *layout,
+    xx_dotnet_inspection *inspection, const char **error)
+{
+    uint32_t i;
+    uint64_t total = 0;
+    if (inspection->cli.pRows[6] > UINT32_C(0x100000)) return edit_fail(error, "too many managed methods");
+    for (i = 1; i <= inspection->cli.pRows[6]; ++i) {
+        int64_t row; uint32_t n, rva; xx_dotnet_method_body body;
+        if (!xx_dotnet_inspect_table_row(inspection, 6, i, &row, &n) || row < 0 || n < 8 || !edit_range(size, (uint64_t)row, n))
+            return edit_fail(error, "invalid managed method row");
+        rva = edit_u32(file + row); if (!rva) continue;
+        if ((edit_u16(file + row + 4) & 7) || (edit_u16(file + row + 6) & 0x2000) ||
+            !xx_dotnet_inspect_method_body_ex(inspection, rva, XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT, &body) ||
+            body.header_offset < 0 || !edit_protect(layout, (uint64_t)body.header_offset, body.total_size, error))
+            return edit_fail(error, "unsupported or overlapping managed method body");
+        total += body.total_size;
+        if (total > XX_DOTNET_EDIT_MAX_IMAGE) return edit_fail(error, "managed method validation exceeds strip work bound");
+    }
+    return true;
+}
+
+static uint32_t edit_index(const uint8_t *bytes, unsigned width);
+static bool edit_protect_fields(const uint8_t *file, size_t size, const edit_layout *layout,
+    xx_dotnet_inspection *inspection, const char **error)
+{
+    uint32_t *classes = NULL, i;
+    uint8_t *seen = NULL;
+    bool valid = false;
+    if (!inspection->cli.pRows[29]) return true;
+    if (inspection->cli.pRows[2] > UINT32_C(0x100000) || inspection->cli.pRows[4] > UINT32_C(0x100000) ||
+        inspection->cli.pRows[15] > UINT32_C(0x100000) || inspection->cli.pRows[29] > UINT32_C(0x100000))
+        return edit_fail(error, "too many initialized field layouts");
+    classes = xx_mem_calloc((size_t)inspection->cli.pRows[2] + 1, sizeof(*classes));
+    seen = xx_mem_calloc((size_t)inspection->cli.pRows[4] + 1, 1);
+    if (!classes || !seen) { edit_fail(error, "cannot allocate initialized field layouts"); goto done; }
+    for (i = 1; i <= inspection->cli.pRows[15]; ++i) {
+        int64_t row; uint32_t n, owner, extent;
+        if (!xx_dotnet_inspect_table_row(inspection, 15, i, &row, &n) || row < 0 ||
+            n < 6U + (unsigned)inspection->cli.pIndexSize[2] || !edit_range(size, (uint64_t)row, n)) goto unsupported;
+        owner = edit_index(file + row + 6, (unsigned)inspection->cli.pIndexSize[2]); extent = edit_u32(file + row + 2);
+        if (!owner || owner > inspection->cli.pRows[2] || classes[owner] || extent > XX_DOTNET_EDIT_MAX_IMAGE) goto unsupported;
+        classes[owner] = extent + 1;
+    }
+    for (i = 1; i <= inspection->cli.pRows[29]; ++i) {
+        int64_t row, blob; uint32_t n, rva, rid, index, blob_size, extent = 0;
+        const uint8_t *signature; unsigned kind;
+        if (!xx_dotnet_inspect_table_row(inspection, 29, i, &row, &n) || row < 0 ||
+            n < 4U + (unsigned)inspection->cli.pIndexSize[4] || !edit_range(size, (uint64_t)row, n)) goto unsupported;
+        rva = edit_u32(file + row); rid = edit_index(file + row + 4, (unsigned)inspection->cli.pIndexSize[4]);
+        if (!rid || rid > inspection->cli.pRows[4] || seen[rid] ||
+            !xx_dotnet_inspect_table_row(inspection, 4, rid, &row, &n) || row < 0 ||
+            n < 2U + (unsigned)inspection->cli.nStringIndexSize + (unsigned)inspection->cli.nBlobIndexSize || !edit_range(size, (uint64_t)row, n) ||
+            (edit_u16(file + row) & 0x110) != 0x110) goto unsupported;
+        seen[rid] = 1;
+        index = edit_index(file + row + 2 + inspection->cli.nStringIndexSize, (unsigned)inspection->cli.nBlobIndexSize);
+        if (!xx_dotnet_inspect_blob(inspection, index, &blob, &blob_size) || blob < 0 || blob_size < 2 ||
+            !edit_range(size, (uint64_t)blob, blob_size)) goto unsupported;
+        signature = file + blob; if (signature[0] != 6) goto unsupported;
+        kind = signature[1];
+        if (kind == 2 || kind == 4 || kind == 5) extent = 1;
+        else if (kind == 3 || kind == 6 || kind == 7) extent = 2;
+        else if (kind == 8 || kind == 9 || kind == 12) extent = 4;
+        else if (kind == 10 || kind == 11 || kind == 13) extent = 8;
+        else if (kind == 24 || kind == 25) extent = edit_u16(file + layout->optional) == 0x20b ? 8 : 4;
+        else if (kind == 0x11) {
+            uint32_t owner, bytes;
+            if (blob_size < 3) goto unsupported;
+            owner = signature[2]; bytes = 1;
+            if (owner >= 0xc0 && owner < 0xe0) {
+                if (blob_size < 6) goto unsupported;
+                owner = (owner & 0x1f) << 24 | (uint32_t)signature[3] << 16 | (uint32_t)signature[4] << 8 | signature[5]; bytes = 4;
+            } else if (owner >= 0x80 && owner < 0xc0) {
+                if (blob_size < 4) goto unsupported;
+                owner = (owner & 0x3f) << 8 | signature[3]; bytes = 2;
+            } else if (owner >= 0xe0) goto unsupported;
+            if (blob_size != bytes + 2 || (owner & 3) || !(owner >>= 2) ||
+                owner > inspection->cli.pRows[2] || !classes[owner]) goto unsupported;
+            extent = classes[owner] - 1;
+        }
+        if (!extent || (kind != 0x11 && blob_size != 2)) goto unsupported;
+        if (!edit_protect_rva(layout, size, rva, extent, error)) goto done;
+    }
+    valid = true; goto done;
+unsupported:
+    edit_fail(error, "unsupported initialized field extent while stripping strong name");
+done:
+    xx_mem_free(classes); xx_mem_free(seen); return valid;
+}
+
+static bool edit_parse_options(const uint8_t *file, size_t size, edit_layout *layout, bool strip_strong_name, const char **error)
 {
     uint32_t nt, optional_size, magic, directories, headers, table, max_raw, max_va;
     uint32_t at, metadata_end, version_end, cli_size, flags;
@@ -204,11 +441,20 @@ static bool edit_parse(const uint8_t *file, size_t size, edit_layout *layout, co
     cli_size = edit_u32(file + directories + 14 * 8 + 4);
     EDIT_REQUIRE(cli_size >= 72 && edit_rva(layout, size, edit_u32(file + directories + 14 * 8), 72, &layout->cli) && edit_u32(file + layout->cli) >= 72, "invalid CLI directory");
     flags = edit_u32(file + layout->cli + 16);
-    EDIT_REQUIRE((flags & 1) && !(flags & UINT32_C(0xfffdfffc)), "expected IL-only managed PE");
-    EDIT_REQUIRE(!edit_u32(file + layout->cli + 32) && !edit_u32(file + layout->cli + 36), "strong-name signed input is unsupported");
+    EDIT_REQUIRE((flags & 1) && !(flags & (UINT32_C(0xfffdfffc) & ~(strip_strong_name ? UINT32_C(8) : UINT32_C(0)))), "expected IL-only managed PE");
+    if (strip_strong_name) {
+        uint32_t signature_rva = edit_u32(file + layout->cli + 32);
+        layout->strong_name_size = edit_u32(file + layout->cli + 36);
+        EDIT_REQUIRE((!signature_rva && !layout->strong_name_size) ||
+            (signature_rva && layout->strong_name_size && edit_rva(layout, size, signature_rva, layout->strong_name_size, &layout->strong_name)), "invalid strong-name signature extent");
+        EDIT_REQUIRE(!layout->strong_name_size || (layout->strong_name >= headers &&
+            ((uint64_t)layout->strong_name + layout->strong_name_size <= layout->cli || layout->strong_name >= layout->cli + 72)), "strong-name signature overlaps headers");
+    } else EDIT_REQUIRE(!edit_u32(file + layout->cli + 32) && !edit_u32(file + layout->cli + 36), "strong-name signed input is unsupported");
     for (i = 40; i < 72; i += 4) EDIT_REQUIRE(!edit_u32(file + layout->cli + i), "native CLR directories are unsupported");
     layout->metadata_size = edit_u32(file + layout->cli + 12);
     EDIT_REQUIRE(layout->metadata_size >= 32 && layout->metadata_size <= XX_DOTNET_US_MAX_HEAP && edit_rva(layout, size, edit_u32(file + layout->cli + 8), layout->metadata_size, &layout->metadata), "invalid CLI metadata extent");
+    EDIT_REQUIRE(!layout->strong_name_size || (layout->strong_name >= layout->metadata + layout->metadata_size ||
+        (uint64_t)layout->strong_name + layout->strong_name_size <= layout->metadata), "strong-name signature overlaps metadata");
     EDIT_REQUIRE(edit_u32(file + layout->metadata) == UINT32_C(0x424a5342), "invalid metadata signature");
     layout->version_size = edit_u32(file + layout->metadata + 12);
     EDIT_REQUIRE(layout->version_size && layout->version_size <= 0x100 && layout->version_size % 4 == 0, "invalid metadata version extent");
@@ -257,16 +503,41 @@ static bool edit_parse(const uint8_t *file, size_t size, edit_layout *layout, co
         xx_rt_memset(&inspection, 0, sizeof(inspection));
         if (!device) return edit_fail(error, "cannot allocate metadata view");
         valid = xx_dotnet_inspect_analyze_from_device(&inspection, device, 0, &pd) && inspection.cli.bValid;
+        if (valid && strip_strong_name && layout->strong_name_size)
+            valid = edit_protect_pe(file, size, layout, directories, error) && edit_protect_methods(file, size, layout, &inspection, error) &&
+                edit_protect_fields(file, size, layout, &inspection, error);
+        if (valid && strip_strong_name) {
+            if (inspection.cli.pRows[32] > 1) valid = false;
+            else if (inspection.cli.pRows[32]) {
+                int64_t assembly; uint32_t row_size;
+                valid = xx_dotnet_inspect_table_row(&inspection, 32, 1, &assembly, &row_size) && assembly >= 0 &&
+                    edit_range(size, (uint64_t)assembly, row_size) && row_size >= 16 + (uint32_t)inspection.cli.nBlobIndexSize &&
+                    (uint64_t)assembly >= layout->metadata && (uint64_t)assembly + row_size <= (uint64_t)layout->metadata + layout->metadata_size;
+                if (valid) { layout->assembly = (uint32_t)assembly; layout->blob_width = (unsigned)inspection.cli.nBlobIndexSize; }
+            }
+        }
         xx_dotnet_inspect_free(&inspection);
         xx_io_close(device);
-        EDIT_REQUIRE(valid, "invalid .NET metadata tables");
+        if (!valid) return error && *error ? false : edit_fail(error, "invalid .NET metadata tables");
     }
     return true;
 #undef EDIT_REQUIRE
 }
 
+static bool edit_parse(const uint8_t *file, size_t size, edit_layout *layout, const char **error)
+{
+    return edit_parse_options(file, size, layout, false, error);
+}
+
 bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size,
     const uint8_t *pool, size_t pool_size, size_t max_output,
+    uint8_t **output, size_t *output_size, const char **error)
+{
+    return xx_dotnet_rebuild_user_strings_ex(file, file_size, pool, pool_size, max_output, 0, output, output_size, error);
+}
+
+bool xx_dotnet_rebuild_user_strings_ex(const uint8_t *file, size_t file_size,
+    const uint8_t *pool, size_t pool_size, size_t max_output, uint32_t flags,
     uint8_t **output, size_t *output_size, const char **error)
 {
     edit_layout layout;
@@ -277,9 +548,9 @@ bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size,
     if (output) *output = NULL;
     if (output_size) *output_size = 0;
     if (error) *error = NULL;
-    if (!output || !output_size || !pool || !pool_size || pool_size > XX_DOTNET_US_MAX_HEAP || pool[0] || !max_output || max_output > XX_DOTNET_EDIT_MAX_IMAGE)
+    if (!output || !output_size || !pool || !pool_size || pool_size > XX_DOTNET_US_MAX_HEAP || pool[0] || !max_output || max_output > XX_DOTNET_EDIT_MAX_IMAGE || (flags & ~XX_DOTNET_EDIT_STRIP_STRONG_NAME))
         return edit_fail(error, "invalid rebuild arguments or user-string pool");
-    if (!edit_parse(file, file_size, &layout, error)) return false;
+    if (!edit_parse_options(file, file_size, &layout, (flags & XX_DOTNET_EDIT_STRIP_STRONG_NAME) != 0, error)) return false;
     last = &layout.sections[layout.section_count - 1]; grow = layout.users < 0 ? 12 : 0;
     us_offset = edit_align((uint64_t)layout.metadata_size + grow, 4);
     metadata_size = us_offset + pool_size; metadata_file = edit_align(file_size, 4);
@@ -309,6 +580,18 @@ bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size,
         edit_put32(data + metadata_file + layout.streams[layout.users].header - layout.metadata + 4, (uint32_t)pool_size);
     }
     xx_rt_memcpy(data + metadata_file + us_offset, pool, pool_size);
+    if (flags & XX_DOTNET_EDIT_STRIP_STRONG_NAME) {
+        edit_put32(data + layout.cli + 16, edit_u32(data + layout.cli + 16) & ~UINT32_C(8));
+        xx_rt_memset(data + layout.cli + 32, 0, 8);
+        if (layout.strong_name_size) xx_rt_memset(data + layout.strong_name, 0, layout.strong_name_size);
+        if (layout.assembly) {
+            uint64_t relocated = metadata_file + layout.assembly - layout.metadata + grow;
+            edit_put32(data + layout.assembly + 12, edit_u32(data + layout.assembly + 12) & ~UINT32_C(1));
+            xx_rt_memset(data + layout.assembly + 16, 0, layout.blob_width);
+            edit_put32(data + relocated + 12, edit_u32(data + relocated + 12) & ~UINT32_C(1));
+            xx_rt_memset(data + relocated + 16, 0, layout.blob_width);
+        }
+    }
     edit_put32(data + layout.cli + 8, (uint32_t)metadata_rva); edit_put32(data + layout.cli + 12, (uint32_t)metadata_size);
     edit_put32(data + last->header + 8, (uint32_t)virtual_size); edit_put32(data + last->header + 16, (uint32_t)raw_size);
     edit_put32(data + last->header + 36, (last->flags & UINT32_C(0xfdffffff)) | UINT32_C(0x40000040));

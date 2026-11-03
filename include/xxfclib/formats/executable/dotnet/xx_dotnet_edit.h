@@ -47,6 +47,21 @@ XXFC_API bool xx_dotnet_us_encode(const uint16_t *units, size_t count,
 XXFC_API bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size,
     const uint8_t *pool, size_t pool_size, size_t max_output,
     uint8_t **output, size_t *output_size, const char **error);
+/* Explicitly remove a strong-name identity when producing edited output.
+ * This changes assembly identity: the signed flag, signature directory/data,
+ * and Assembly PublicKey flag/index are cleared in the owned output. It does
+ * not re-sign, authenticate the input, or remove Authenticode. The default API
+ * above continues to reject signed input. Unknown flags are rejected.
+ * When erasing signature data, this conservative profile validates live method
+ * bodies (including legacy unaligned headers/EH), initialized fields, resources,
+ * imports, debug payloads and relocation targets; overlapping signature claims
+ * are rejected. Unsupported PE runtime directories (including TLS, delay/bound
+ * imports, load configuration and native exception/export tables) are rejected
+ * on that strip path. The ordinary flags=0 path retains its prior scope. */
+#define XX_DOTNET_EDIT_STRIP_STRONG_NAME UINT32_C(1)
+XXFC_API bool xx_dotnet_rebuild_user_strings_ex(const uint8_t *file, size_t file_size,
+    const uint8_t *pool, size_t pool_size, size_t max_output, uint32_t flags,
+    uint8_t **output, size_t *output_size, const char **error);
 /* Turn an unsigned IL-only netmodule into an executable assembly using an
  * unsigned donor's Assembly identity and a validated static managed entry
  * MethodDef token. Existing-assembly input keeps its identity. Metadata and
