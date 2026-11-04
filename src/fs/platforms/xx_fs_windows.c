@@ -38,6 +38,56 @@
 #endif
 #include <windows.h>
 
+/* Win32's wide APIs still enforce MAX_PATH unless an absolute path carries
+ * the extended prefix.  The I/O layer already does this; filesystem
+ * operations must use the same spelling or a long updater stage can be
+ * created by one layer but neither enumerated, renamed nor removed by this
+ * one.  The returned block uses xx_rt_malloc. */
+static void *xx_fs_windows_api_path(const char *path)
+{
+    WCHAR *text;
+    WCHAR *full;
+    WCHAR *result;
+    DWORD needed;
+    DWORD length;
+    size_t skip;
+    size_t prefix;
+    size_t i;
+
+    if (!path) return NULL;
+    text = (WCHAR *)xx_rt_utf8_to_utf16(path);
+    if (!text) return NULL;
+    if (text[0] == L'\\' && text[1] == L'\\' && text[2] == L'?' && text[3] == L'\\') return text;
+    needed = GetFullPathNameW(text, 0, NULL, NULL);
+    if (!needed) {
+        xx_rt_free(text);
+        return NULL;
+    }
+    full = (WCHAR *)xx_rt_malloc(((size_t)needed + 1U) * sizeof(WCHAR));
+    if (!full) {
+        xx_rt_free(text);
+        return NULL;
+    }
+    length = GetFullPathNameW(text, needed + 1U, full, NULL);
+    xx_rt_free(text);
+    if (!length || length > needed) {
+        xx_rt_free(full);
+        return NULL;
+    }
+    skip = full[0] == L'\\' && full[1] == L'\\' ? 2U : 0U;
+    prefix = skip ? 8U : 4U;
+    result = (WCHAR *)xx_rt_malloc((prefix + (size_t)length - skip + 1U) * sizeof(WCHAR));
+    if (result) {
+        static const WCHAR local_prefix[] = L"\\\\?\\";
+        static const WCHAR unc_prefix[] = L"\\\\?\\UNC\\";
+        const WCHAR *head = skip ? unc_prefix : local_prefix;
+        for (i = 0; i < prefix; ++i) result[i] = head[i];
+        for (i = skip; i <= (size_t)length; ++i) result[prefix + i - skip] = full[i];
+    }
+    xx_rt_free(full);
+    return result;
+}
+
 /* *error, when given, receives GetLastError() of a failed lookup, taken
  * before anything else can change it. */
 static DWORD xx_fs_windows_attributes(const char *path, DWORD *error)
@@ -51,7 +101,7 @@ static DWORD xx_fs_windows_attributes(const char *path, DWORD *error)
     if (!path) {
         return INVALID_FILE_ATTRIBUTES;
     }
-    wide = xx_rt_utf8_to_utf16(path);
+    wide = xx_fs_windows_api_path(path);
     if (!wide) {
         return INVALID_FILE_ATTRIBUTES;
     }
@@ -104,7 +154,7 @@ bool xx_fs_platform_enumerate(const char *path, xx_fs_platform_entry_fn callback
     pattern[length] = '*';
     pattern[length + 1U] = '\0';
 
-    wide = xx_rt_utf8_to_utf16(pattern);
+    wide = xx_fs_windows_api_path(pattern);
     xx_rt_free(pattern);
     if (!wide) {
         return false;
@@ -170,7 +220,7 @@ bool xx_fs_platform_remove(const char *path, xx_fs_platform_kind_t kind)
     if (!path) {
         return false;
     }
-    wide = xx_rt_utf8_to_utf16(path);
+    wide = xx_fs_windows_api_path(path);
     if (!wide) {
         return false;
     }
@@ -251,7 +301,7 @@ static HANDLE xx_fs_windows_hold_directory(const char *path)
 {
     BY_HANDLE_FILE_INFORMATION info;
     HANDLE handle;
-    void *wide = xx_rt_utf8_to_utf16(path);
+    void *wide = xx_fs_windows_api_path(path);
 
     if (!wide) {
         return INVALID_HANDLE_VALUE;
@@ -380,7 +430,7 @@ bool xx_fs_platform_make_dir(const char *path)
     if (!path || !path[0]) {
         return false;
     }
-    wide = xx_rt_utf8_to_utf16(path);
+    wide = xx_fs_windows_api_path(path);
     if (!wide) {
         return false;
     }
@@ -398,8 +448,8 @@ bool xx_fs_platform_rename(const char *from, const char *to)
     if (!from || !to) {
         return false;
     }
-    wide_from = xx_rt_utf8_to_utf16(from);
-    wide_to = xx_rt_utf8_to_utf16(to);
+    wide_from = xx_fs_windows_api_path(from);
+    wide_to = xx_fs_windows_api_path(to);
     /* No MOVEFILE_REPLACE_EXISTING and no MOVEFILE_COPY_ALLOWED: an existing
      * destination fails, and a directory never turns into a slow copy. */
     if (wide_from && wide_to) {
