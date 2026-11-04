@@ -41,4 +41,4 @@ from the legacy `*_extractor.c` source discovery rules.
 
 Registry rows and public declarations remain generated from the enum and reader
 mapping. Update that mapping and regenerate when adding a type; do not edit a
-generated binding directly. See [the format layout guide](../../../docs/FORMAT_LAYOUT.md).
+generated binding directly. See [the format layout guide](../../../Private_docs/FORMAT_LAYOUT.md).

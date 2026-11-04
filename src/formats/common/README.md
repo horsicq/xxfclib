@@ -34,5 +34,5 @@ input cursor semantics when changing a helper. Similar-looking functions can
 have different validation contracts and should not be merged without comparing
 their complete behavior.
 
-See [the format layout guide](../../../docs/FORMAT_LAYOUT.md) and
+See [the format layout guide](../../../Private_docs/FORMAT_LAYOUT.md) and
 [ordered detection manifests](../detection/README.md).
