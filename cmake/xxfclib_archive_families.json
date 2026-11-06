@@ -1,0 +1,7343 @@
+{
+ "runtime": [
+  "src/algo/entropy/platforms/xx_entropy_avx2.c",
+  "src/algo/entropy/platforms/xx_entropy_neon.c",
+  "src/algo/entropy/platforms/xx_entropy_sse2.c",
+  "src/algo/entropy/xx_entropy.c",
+  "src/algo/store/xx_store.c",
+  "src/buf/xx_buf.c",
+  "src/codepages/xx_codepage.c",
+  "src/codepages/xx_codepage_ascii.c",
+  "src/codepages/xx_codepage_cp037.c",
+  "src/codepages/xx_codepage_cp1250.c",
+  "src/codepages/xx_codepage_cp1251.c",
+  "src/codepages/xx_codepage_cp1252.c",
+  "src/codepages/xx_codepage_cp1253.c",
+  "src/codepages/xx_codepage_cp1254.c",
+  "src/codepages/xx_codepage_cp1255.c",
+  "src/codepages/xx_codepage_cp1256.c",
+  "src/codepages/xx_codepage_cp1257.c",
+  "src/codepages/xx_codepage_cp1258.c",
+  "src/codepages/xx_codepage_cp437.c",
+  "src/codepages/xx_codepage_cp850.c",
+  "src/codepages/xx_codepage_cp852.c",
+  "src/codepages/xx_codepage_cp855.c",
+  "src/codepages/xx_codepage_cp857.c",
+  "src/codepages/xx_codepage_cp858.c",
+  "src/codepages/xx_codepage_cp860.c",
+  "src/codepages/xx_codepage_cp861.c",
+  "src/codepages/xx_codepage_cp862.c",
+  "src/codepages/xx_codepage_cp863.c",
+  "src/codepages/xx_codepage_cp864.c",
+  "src/codepages/xx_codepage_cp865.c",
+  "src/codepages/xx_codepage_cp866.c",
+  "src/codepages/xx_codepage_cp869.c",
+  "src/codepages/xx_codepage_cp874.c",
+  "src/codepages/xx_codepage_cp932.c",
+  "src/codepages/xx_codepage_cp936.c",
+  "src/codepages/xx_codepage_cp949.c",
+  "src/codepages/xx_codepage_cp950.c",
+  "src/codepages/xx_codepage_dbcs.c",
+  "src/codepages/xx_codepage_hp_roman8.c",
+  "src/codepages/xx_codepage_iso8859_1.c",
+  "src/codepages/xx_codepage_iso8859_10.c",
+  "src/codepages/xx_codepage_iso8859_11.c",
+  "src/codepages/xx_codepage_iso8859_13.c",
+  "src/codepages/xx_codepage_iso8859_14.c",
+  "src/codepages/xx_codepage_iso8859_15.c",
+  "src/codepages/xx_codepage_iso8859_16.c",
+  "src/codepages/xx_codepage_iso8859_2.c",
+  "src/codepages/xx_codepage_iso8859_3.c",
+  "src/codepages/xx_codepage_iso8859_4.c",
+  "src/codepages/xx_codepage_iso8859_5.c",
+  "src/codepages/xx_codepage_iso8859_6.c",
+  "src/codepages/xx_codepage_iso8859_7.c",
+  "src/codepages/xx_codepage_iso8859_8.c",
+  "src/codepages/xx_codepage_iso8859_9.c",
+  "src/codepages/xx_codepage_koi8_r.c",
+  "src/codepages/xx_codepage_koi8_u.c",
+  "src/codepages/xx_codepage_mac_roman.c",
+  "src/codepages/xx_codepage_petscii_lower.c",
+  "src/codepages/xx_codepage_petscii_upper.c",
+  "src/codepages/xx_codepage_riscos.c",
+  "src/codepages/xx_codepage_tis_620.c",
+  "src/codepages/xx_codepage_unicode.c",
+  "src/data/platforms/xx_data_avx2.c",
+  "src/data/platforms/xx_data_neon.c",
+  "src/data/platforms/xx_data_sse2.c",
+  "src/data/xx_data_io.c",
+  "src/data/xx_data_raw.c",
+  "src/data/xx_pd.c",
+  "src/formats/xx_format.c",
+  "src/formats/xx_format_base.c",
+  "src/formats/xx_format_streams.c",
+  "src/formats/xx_memory_map.c",
+  "src/global/platforms/xx_global_cpu.c",
+  "src/global/platforms/xx_global_posix.c",
+  "src/global/platforms/xx_global_windows.c",
+  "src/global/xx_global.c",
+  "src/io/platforms/xx_io_posix.c",
+  "src/io/platforms/xx_io_windows.c",
+  "src/io/xx_io.c",
+  "src/io/xx_io_buffer.c",
+  "src/io/xx_io_file.c",
+  "src/io/xx_io_mem.c",
+  "src/io/xx_io_memory_only.c",
+  "src/io/xx_io_sub.c",
+  "src/json/xx_json.c",
+  "src/list/xx_list.c",
+  "src/memory/platforms/xx_memory_avx2.c",
+  "src/memory/platforms/xx_memory_neon.c",
+  "src/memory/platforms/xx_memory_posix.c",
+  "src/memory/platforms/xx_memory_sse2.c",
+  "src/memory/platforms/xx_memory_windows.c",
+  "src/memory/xx_memory.c",
+  "src/memory/xx_memory_rt.c",
+  "src/rt/platforms/xx_rt_posix.c",
+  "src/rt/platforms/xx_rt_windows.c",
+  "src/rt/xx_rt.c",
+  "src/rt/xx_rt_fp.c",
+  "src/rt/xx_rt_math.c",
+  "src/strings/platforms/xx_string_posix.c",
+  "src/strings/platforms/xx_string_windows.c",
+  "src/strings/xx_string.c",
+  "src/terminal/platforms/xx_terminal_posix.c",
+  "src/terminal/platforms/xx_terminal_windows.c",
+  "src/terminal/xx_terminal.c",
+  "src/terminal/xx_terminal_color.c",
+  "src/var/xx_var.c",
+  "src/xml/xx_xml.c"
+ ],
+ "flag_sources": [
+  "src/formats/archive/bz2/xx_bz2.c",
+  "src/formats/archive/gz/xx_gz.c",
+  "src/formats/archive/xz/xx_xz.c",
+  "src/formats/detection/xx_format_detect_device.c",
+  "src/formats/xx_format_catalog.c",
+  "src/formats/xx_format_detect_fast.c",
+  "src/formats/xx_format_extractor.c",
+  "src/formats/xx_format_fast_detect_rules.c",
+  "src/formats/xx_format_handle_types.c",
+  "src/formats/xx_format_names.c",
+  "src/formats/xx_format_unpack_handles.c"
+ ],
+ "families": {
+  "7zip": {
+   "flag": "7ZIP",
+   "types": [
+    "7ZIP"
+   ],
+   "label": "7ZIP",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "aes",
+    "brotli",
+    "bzip2",
+    "crc",
+    "deflate",
+    "lizard",
+    "lz4",
+    "lz5",
+    "lzma",
+    "ppmd7",
+    "sha",
+    "zstd"
+   ],
+   "formats": [
+    "archive/7zip"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/brotli/xx_brotli.c",
+    "src/algo/brotli/xx_brotli_data.c",
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lizard/xx_lizard.c",
+    "src/algo/lz4/xx_lz4.c",
+    "src/algo/lz5/xx_lz5.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/ppmd7/xx_ppmd7_common.c",
+    "src/algo/ppmd7/xx_ppmd7_dec.c",
+    "src/algo/ppmd7/xx_ppmd7_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/7zip/xx_7zip.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/7zip/xx_7zip_datastructs.c",
+    "src/formats/archive/7zip/xx_7zip_extractor.c",
+    "src/formats/archive/7zip/xx_7zip_stream.c",
+    "src/formats/archive/7zip/xx_7zip_writer.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "ace": {
+   "flag": "ACE",
+   "types": [
+    "ACE"
+   ],
+   "label": "ACE",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/ace"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/ace/xx_ace.c",
+    "src/formats/archive/ace/xx_ace_dec.c",
+    "src/formats/archive/ace/xx_ace_extractor.c"
+   ]
+  },
+  "aiaff": {
+   "flag": "AIAFF",
+   "types": [
+    "AIAFF"
+   ],
+   "label": "AIAFF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/aiaff"
+   ],
+   "sources": [
+    "src/formats/archive/aiaff/xx_aiaff.c",
+    "src/formats/archive/aiaff/xx_aiaff_extractor.c"
+   ]
+  },
+  "ain": {
+   "flag": "AIN",
+   "types": [
+    "AIN"
+   ],
+   "label": "AIN",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ain"
+   ],
+   "formats": [
+    "archive/ain"
+   ],
+   "sources": [
+    "src/algo/ain/xx_ain.c",
+    "src/formats/archive/ain/xx_ain.c",
+    "src/formats/archive/ain/xx_ain_extractor.c"
+   ]
+  },
+  "aldus": {
+   "flag": "ALDUS",
+   "types": [
+    "ALDUS"
+   ],
+   "label": "ALDUS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "aldus",
+    "crc",
+    "dcl"
+   ],
+   "formats": [
+    "archive/aldus"
+   ],
+   "sources": [
+    "src/algo/aldus/xx_aldus_lzsh.c",
+    "src/algo/aldus/xx_aldus_lzw.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/aldus/xx_aldus.c",
+    "src/formats/archive/aldus/xx_aldus_extractor.c"
+   ]
+  },
+  "alz": {
+   "flag": "ALZ",
+   "types": [
+    "ALZ"
+   ],
+   "label": "ALZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/alz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/alz/xx_alz.c",
+    "src/formats/archive/alz/xx_alz_extractor.c"
+   ]
+  },
+  "amigalzx": {
+   "flag": "AMIGALZX",
+   "types": [
+    "AMIGALZX"
+   ],
+   "label": "AMIGALZX",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/amigalzx"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/amigalzx/xx_amigalzx.c",
+    "src/formats/archive/amigalzx/xx_amigalzx_extractor.c"
+   ]
+  },
+  "ampk": {
+   "flag": "AMPK",
+   "types": [
+    "AMPK"
+   ],
+   "label": "AMPK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ampk",
+    "lzh"
+   ],
+   "formats": [
+    "archive/ampk"
+   ],
+   "sources": [
+    "src/algo/ampk/xx_ampk.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/ampk/xx_ampk.c",
+    "src/formats/archive/ampk/xx_ampk_extractor.c"
+   ]
+  },
+  "applesingle": {
+   "flag": "APPLESINGLE",
+   "types": [
+    "APPLESINGLE"
+   ],
+   "label": "AppleSingle",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/applesingle"
+   ],
+   "sources": [
+    "src/formats/archive/applesingle/xx_applesingle.c",
+    "src/formats/archive/applesingle/xx_applesingle_extractor.c"
+   ]
+  },
+  "ar": {
+   "flag": "AR",
+   "types": [
+    "AR"
+   ],
+   "label": "AR",
+   "own_component": true,
+   "sort": true,
+   "codecs": [],
+   "formats": [
+    "archive/ar"
+   ],
+   "sources": [
+    "src/formats/archive/ar/xx_ar.c",
+    "src/formats/archive/ar/xx_ar_datastructs.c",
+    "src/formats/archive/ar/xx_ar_extractor.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "arcfs": {
+   "flag": "ARCFS",
+   "types": [
+    "ARCFS"
+   ],
+   "label": "ARCFS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "arcfs",
+    "crc"
+   ],
+   "formats": [
+    "archive/arcfs"
+   ],
+   "sources": [
+    "src/algo/arcfs/xx_arcfs_lzw.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/arcfs/xx_arcfs.c",
+    "src/formats/archive/arcfs/xx_arcfs_extractor.c"
+   ]
+  },
+  "arj": {
+   "flag": "ARJ",
+   "types": [
+    "ARJ"
+   ],
+   "label": "ARJ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "arj",
+    "crc"
+   ],
+   "formats": [
+    "archive/arj"
+   ],
+   "sources": [
+    "src/algo/arj/xx_arj_dec.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/arj/xx_arj.c",
+    "src/formats/archive/arj/xx_arj_extractor.c"
+   ]
+  },
+  "arq": {
+   "flag": "ARQ",
+   "types": [
+    "ARQ"
+   ],
+   "label": "ARQ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/arq"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/arq/xx_arq.c",
+    "src/formats/archive/arq/xx_arq_extractor.c"
+   ]
+  },
+  "artipack": {
+   "flag": "ARTIPACK",
+   "types": [
+    "ARTIPACK"
+   ],
+   "label": "ARTIPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/artipack"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/artipack/xx_artipack.c",
+    "src/formats/archive/artipack/xx_artipack_extractor.c"
+   ]
+  },
+  "arx": {
+   "flag": "ARX",
+   "types": [
+    "ARX"
+   ],
+   "label": "ARX",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/arx"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/arx/xx_arx.c",
+    "src/formats/archive/arx/xx_arx_extractor.c"
+   ]
+  },
+  "asar": {
+   "flag": "ASAR",
+   "types": [
+    "ASAR"
+   ],
+   "label": "ASAR",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/asar"
+   ],
+   "sources": [
+    "src/formats/archive/asar/xx_asar.c",
+    "src/formats/archive/asar/xx_asar_extractor.c"
+   ]
+  },
+  "ascend": {
+   "flag": "ASCEND",
+   "types": [
+    "ASCEND"
+   ],
+   "label": "ASCEND",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/ascend"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/ascend/xx_ascend.c",
+    "src/formats/archive/ascend/xx_ascend_extractor.c"
+   ]
+  },
+  "ascendbackup": {
+   "flag": "ASCENDBACKUP",
+   "types": [
+    "ASCENDBACKUP"
+   ],
+   "label": "ASCENDBACKUP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/ascendbackup"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/ascendbackup/xx_ascendbackup.c",
+    "src/formats/archive/ascendbackup/xx_ascendbackup_extractor.c"
+   ]
+  },
+  "ash0": {
+   "flag": "ASH0",
+   "types": [
+    "ASH0"
+   ],
+   "label": "ASH0",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ash0"
+   ],
+   "formats": [
+    "archive/ash0"
+   ],
+   "sources": [
+    "src/algo/ash0/xx_ash0.c",
+    "src/formats/archive/ash0/xx_ash0.c",
+    "src/formats/archive/ash0/xx_ash0_extractor.c"
+   ]
+  },
+  "bagf": {
+   "flag": "BAGF",
+   "types": [
+    "BAGF"
+   ],
+   "label": "BAGF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/bagf"
+   ],
+   "sources": [
+    "src/formats/archive/bagf/xx_bagf.c",
+    "src/formats/archive/bagf/xx_bagf_extractor.c"
+   ]
+  },
+  "bcm": {
+   "flag": "BCM",
+   "types": [
+    "BCM"
+   ],
+   "label": "BCM",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/bcm"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/bcm/xx_bcm.c",
+    "src/formats/archive/bcm/xx_bcm_extractor.c"
+   ]
+  },
+  "bigaf": {
+   "flag": "BIGAF",
+   "types": [
+    "BIGAF"
+   ],
+   "label": "BIGAF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/bigaf"
+   ],
+   "sources": [
+    "src/formats/archive/bigaf/xx_bigaf.c",
+    "src/formats/archive/bigaf/xx_bigaf_extractor.c"
+   ]
+  },
+  "binaryii": {
+   "flag": "BINARYII",
+   "types": [
+    "BINARYII"
+   ],
+   "label": "BinaryII",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/binaryii"
+   ],
+   "sources": [
+    "src/formats/archive/binaryii/xx_binaryii.c",
+    "src/formats/archive/binaryii/xx_binaryii_extractor.c"
+   ]
+  },
+  "binhex": {
+   "flag": "BINHEX",
+   "types": [
+    "BINHEX"
+   ],
+   "label": "BinHex",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/binhex"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/binhex/xx_binhex.c",
+    "src/formats/archive/binhex/xx_binhex_extractor.c"
+   ]
+  },
+  "boo": {
+   "flag": "BOO",
+   "types": [
+    "BOO"
+   ],
+   "label": "BOO",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/boo"
+   ],
+   "sources": [
+    "src/formats/archive/boo/xx_boo.c",
+    "src/formats/archive/boo/xx_boo_extractor.c"
+   ]
+  },
+  "borlandpack": {
+   "flag": "BORLANDPACK",
+   "types": [
+    "BORLANDPACK"
+   ],
+   "label": "BORLANDPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "compress"
+   ],
+   "formats": [
+    "archive/borlandpack"
+   ],
+   "sources": [
+    "src/algo/compress/xx_compress.c",
+    "src/formats/archive/borlandpack/xx_borlandpack.c",
+    "src/formats/archive/borlandpack/xx_borlandpack_extractor.c"
+   ]
+  },
+  "brotli": {
+   "flag": "BROTLI",
+   "types": [
+    "BROTLI"
+   ],
+   "label": "BROTLI",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "brotli"
+   ],
+   "formats": [
+    "archive/brotli"
+   ],
+   "sources": [
+    "src/algo/brotli/xx_brotli.c",
+    "src/algo/brotli/xx_brotli_data.c",
+    "src/formats/archive/brotli/xx_brotli.c",
+    "src/formats/archive/brotli/xx_brotli_extractor.c"
+   ]
+  },
+  "bsn": {
+   "flag": "BSN",
+   "types": [
+    "BSN"
+   ],
+   "label": "BSN",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/bsn"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/bsn/xx_bsn.c",
+    "src/formats/archive/bsn/xx_bsn_codec.c",
+    "src/formats/archive/bsn/xx_bsn_extractor.c"
+   ]
+  },
+  "btoa": {
+   "flag": "BTOA",
+   "types": [
+    "BTOA"
+   ],
+   "label": "btoa / Ascii85",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/btoa"
+   ],
+   "sources": [
+    "src/formats/archive/btoa/xx_btoa.c",
+    "src/formats/archive/btoa/xx_btoa_extractor.c"
+   ]
+  },
+  "bvrp": {
+   "flag": "BVRP",
+   "types": [
+    "BVRP"
+   ],
+   "label": "BVRP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/bvrp"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/bvrp/xx_bvrp.c",
+    "src/formats/archive/bvrp/xx_bvrp_extractor.c"
+   ]
+  },
+  "bwcf": {
+   "flag": "BWCF",
+   "types": [
+    "BWCF"
+   ],
+   "label": "BWCF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzhuf"
+   ],
+   "formats": [
+    "archive/bwcf"
+   ],
+   "sources": [
+    "src/algo/lzhuf/xx_lzhuf.c",
+    "src/formats/archive/bwcf/xx_bwcf.c",
+    "src/formats/archive/bwcf/xx_bwcf_extractor.c"
+   ]
+  },
+  "bwf": {
+   "flag": "BWF",
+   "types": [
+    "BWF"
+   ],
+   "label": "BWF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/bwf"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/bwf/xx_bwf.c",
+    "src/formats/archive/bwf/xx_bwf_extractor.c"
+   ]
+  },
+  "bz2": {
+   "flag": "BZ2",
+   "types": [
+    "BZ2"
+   ],
+   "label": "BZ2",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/bz2",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/bz2/xx_bz2.c",
+    "src/formats/archive/bz2/xx_bz2_datastructs.c",
+    "src/formats/archive/bz2/xx_bz2_extractor.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "c64wraptor": {
+   "flag": "C64WRAPTOR",
+   "types": [
+    "C64WRAPTOR"
+   ],
+   "label": "C64WRAPTOR",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "c64wraptor"
+   ],
+   "formats": [
+    "archive/c64wraptor"
+   ],
+   "sources": [
+    "src/algo/c64wraptor/xx_c64wraptor.c",
+    "src/formats/archive/c64wraptor/xx_c64wraptor.c",
+    "src/formats/archive/c64wraptor/xx_c64wraptor_extractor.c"
+   ]
+  },
+  "cab": {
+   "flag": "CAB",
+   "types": [
+    "CAB"
+   ],
+   "label": "CAB",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate",
+    "lzx",
+    "quantum"
+   ],
+   "formats": [
+    "archive/cab"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzx/xx_lzx.c",
+    "src/algo/quantum/xx_quantum.c",
+    "src/formats/archive/cab/xx_cab.c",
+    "src/formats/archive/cab/xx_cab_extractor.c"
+   ]
+  },
+  "cazip": {
+   "flag": "CAZIP",
+   "types": [
+    "CAZIP"
+   ],
+   "label": "CAZIP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "compress",
+    "crc",
+    "dcl"
+   ],
+   "formats": [
+    "archive/cazip"
+   ],
+   "sources": [
+    "src/algo/compress/xx_compress.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/cazip/xx_cazip.c",
+    "src/formats/archive/cazip/xx_cazip_extractor.c"
+   ]
+  },
+  "cfl": {
+   "flag": "CFL",
+   "types": [
+    "CFL"
+   ],
+   "label": "CFL",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate",
+    "lzo"
+   ],
+   "formats": [
+    "archive/cfl"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/algo/lzo/xx_lzo.c",
+    "src/formats/archive/cfl/xx_cfl.c",
+    "src/formats/archive/cfl/xx_cfl_extractor.c"
+   ]
+  },
+  "chieflz": {
+   "flag": "CHIEFLZ",
+   "types": [
+    "CHIEFLZ"
+   ],
+   "label": "CHIEFLZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "chieflz"
+   ],
+   "formats": [
+    "archive/chieflz"
+   ],
+   "sources": [
+    "src/algo/chieflz/xx_chieflz.c",
+    "src/formats/archive/chieflz/xx_chieflz.c",
+    "src/formats/archive/chieflz/xx_chieflz_extractor.c"
+   ]
+  },
+  "chieflzmulti": {
+   "flag": "CHIEFLZMULTI",
+   "types": [
+    "CHIEFLZMULTI"
+   ],
+   "label": "CHIEFLZMULTI",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "chieflz"
+   ],
+   "formats": [
+    "archive/chieflzmulti"
+   ],
+   "sources": [
+    "src/algo/chieflz/xx_chieflz.c",
+    "src/formats/archive/chieflzmulti/xx_chieflzmulti.c",
+    "src/formats/archive/chieflzmulti/xx_chieflzmulti_extractor.c"
+   ]
+  },
+  "claylz": {
+   "flag": "CLAYLZ",
+   "types": [
+    "CLAYLZ"
+   ],
+   "label": "CLAYLZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "claylz"
+   ],
+   "formats": [
+    "archive/claylz"
+   ],
+   "sources": [
+    "src/algo/claylz/xx_claylz.c",
+    "src/formats/archive/claylz/xx_claylz.c",
+    "src/formats/archive/claylz/xx_claylz_extractor.c"
+   ]
+  },
+  "cmp": {
+   "flag": "CMP",
+   "types": [
+    "CMP"
+   ],
+   "label": "CMP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "cmp",
+    "dcl"
+   ],
+   "formats": [
+    "archive/cmp"
+   ],
+   "sources": [
+    "src/algo/cmp/xx_cmp.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/cmp/xx_cmp.c",
+    "src/formats/archive/cmp/xx_cmp_extractor.c"
+   ]
+  },
+  "compactpro": {
+   "flag": "COMPACTPRO",
+   "types": [
+    "COMPACTPRO"
+   ],
+   "label": "COMPACTPRO",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "compactpro",
+    "crc"
+   ],
+   "formats": [
+    "archive/compactpro"
+   ],
+   "sources": [
+    "src/algo/compactpro/xx_compactpro.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/compactpro/xx_compactpro.c",
+    "src/formats/archive/compactpro/xx_compactpro_extractor.c"
+   ]
+  },
+  "compaqlzh": {
+   "flag": "COMPAQLZH",
+   "types": [
+    "COMPAQLZH"
+   ],
+   "label": "CompaqLZH",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/compaqlzh"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/compaqlzh/xx_compaqlzh.c",
+    "src/formats/archive/compaqlzh/xx_compaqlzh_extractor.c"
+   ]
+  },
+  "cpio": {
+   "flag": "CPIO",
+   "types": [
+    "CPIO"
+   ],
+   "label": "CPIO",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/cpio",
+    "archive/gz",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/cpio/xx_cpio.c",
+    "src/formats/archive/cpio/xx_cpio_extractor.c",
+    "src/formats/archive/gz/xx_gz.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_writer.c"
+   ]
+  },
+  "cpx": {
+   "flag": "CPX",
+   "types": [
+    "CPX"
+   ],
+   "label": "CPX",
+   "own_component": false,
+   "sort": true,
+   "codecs": [],
+   "formats": [
+    "archive/cpx"
+   ],
+   "sources": [
+    "src/formats/archive/cpx/xx_cpx.c",
+    "src/formats/archive/cpx/xx_cpx_extractor.c",
+    "src/formats/archive/cpx/xx_cpx_reader_adapters.c"
+   ]
+  },
+  "cru": {
+   "flag": "CRU",
+   "types": [
+    "CRU"
+   ],
+   "label": "CRU",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/cru"
+   ],
+   "sources": [
+    "src/formats/archive/cru/xx_cru.c",
+    "src/formats/archive/cru/xx_cru_extractor.c"
+   ]
+  },
+  "dclft": {
+   "flag": "DCLFT",
+   "types": [
+    "DCLFT"
+   ],
+   "label": "DCLStream",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/dclft"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/dclft/xx_dclft.c",
+    "src/formats/archive/dclft/xx_dclft_extractor.c"
+   ]
+  },
+  "dclraw": {
+   "flag": "DCLRAW",
+   "types": [
+    "DCLRAW"
+   ],
+   "label": "DCLMultiStream",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/dclraw"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/dclraw/xx_dclraw.c",
+    "src/formats/archive/dclraw/xx_dclraw_extractor.c"
+   ]
+  },
+  "dfc": {
+   "flag": "DFC",
+   "types": [
+    "DFC"
+   ],
+   "label": "DFC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "dcl"
+   ],
+   "formats": [
+    "archive/dfc"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/dfc/xx_dfc.c",
+    "src/formats/archive/dfc/xx_dfc_extractor.c"
+   ]
+  },
+  "diskdoubler": {
+   "flag": "DISKDOUBLER",
+   "types": [
+    "DISKDOUBLER"
+   ],
+   "label": "DISKDOUBLER",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "compactpro",
+    "crc",
+    "diskdoubler"
+   ],
+   "formats": [
+    "archive/diskdoubler"
+   ],
+   "sources": [
+    "src/algo/compactpro/xx_compactpro.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/diskdoubler/xx_diskdoubler.c",
+    "src/formats/archive/diskdoubler/xx_diskdoubler.c",
+    "src/formats/archive/diskdoubler/xx_diskdoubler_extractor.c"
+   ]
+  },
+  "dmapacked": {
+   "flag": "DMA_PACKED",
+   "types": [
+    "DMA_PACKED"
+   ],
+   "label": "DMA PACKED",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/dmapacked"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/dmapacked/xx_dmapacked.c",
+    "src/formats/archive/dmapacked/xx_dmapacked_extractor.c"
+   ]
+  },
+  "dn": {
+   "flag": "DN",
+   "types": [
+    "DN"
+   ],
+   "label": "DN",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/dn"
+   ],
+   "sources": [
+    "src/formats/archive/dn/xx_dn.c",
+    "src/formats/archive/dn/xx_dn_extractor.c"
+   ]
+  },
+  "dpk": {
+   "flag": "DPK",
+   "types": [
+    "DPK"
+   ],
+   "label": "DPK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/dpk"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/dpk/xx_dpk.c",
+    "src/formats/archive/dpk/xx_dpk_extractor.c"
+   ]
+  },
+  "dtpacked": {
+   "flag": "DTPACKED",
+   "types": [
+    "DTPACKED"
+   ],
+   "label": "DTPACKED",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/dtpacked"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/dtpacked/xx_dtpacked.c",
+    "src/formats/archive/dtpacked/xx_dtpacked_extractor.c"
+   ]
+  },
+  "ealib": {
+   "flag": "EALIB",
+   "types": [
+    "EALIB"
+   ],
+   "label": "EALIB",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl",
+    "ea"
+   ],
+   "formats": [
+    "archive/ealib"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/algo/ea/xx_ea.c",
+    "src/formats/archive/ealib/xx_ealib.c",
+    "src/formats/archive/ealib/xx_ealib_extractor.c"
+   ]
+  },
+  "ecmpacked": {
+   "flag": "ECMPACKED",
+   "types": [
+    "ECMPACKED"
+   ],
+   "label": "ECMPACKED",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ampk"
+   ],
+   "formats": [
+    "archive/ecmpacked"
+   ],
+   "sources": [
+    "src/algo/ampk/xx_ampk.c",
+    "src/formats/archive/ecmpacked/xx_ecmpacked.c",
+    "src/formats/archive/ecmpacked/xx_ecmpacked_extractor.c"
+   ]
+  },
+  "edc": {
+   "flag": "EDC",
+   "types": [
+    "EDC"
+   ],
+   "label": "EDC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "netwarepack"
+   ],
+   "formats": [
+    "archive/edc"
+   ],
+   "sources": [
+    "src/algo/netwarepack/xx_netwarepack.c",
+    "src/formats/archive/edc/xx_edc.c",
+    "src/formats/archive/edc/xx_edc_extractor.c"
+   ]
+  },
+  "edilzss": {
+   "flag": "EDILZSS",
+   "types": [
+    "EDILZSS"
+   ],
+   "label": "EDILZSS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/edilzss"
+   ],
+   "sources": [
+    "src/formats/archive/edilzss/xx_edilzss.c",
+    "src/formats/archive/edilzss/xx_edilzss_extractor.c"
+   ]
+  },
+  "egg": {
+   "flag": "EGG",
+   "types": [
+    "EGG"
+   ],
+   "label": "egg",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/egg"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/egg/xx_egg.c",
+    "src/formats/archive/egg/xx_egg_extractor.c"
+   ]
+  },
+  "esp_archive": {
+   "flag": "ESP_ARCHIVE",
+   "types": [
+    "ESP_ARCHIVE"
+   ],
+   "label": "esp archive",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ain"
+   ],
+   "formats": [
+    "archive/esp_archive"
+   ],
+   "sources": [
+    "src/algo/ain/xx_ain.c",
+    "src/formats/archive/esp_archive/xx_esp_archive.c",
+    "src/formats/archive/esp_archive/xx_esp_archive_extractor.c"
+   ]
+  },
+  "fastlz_sixpack": {
+   "flag": "FASTLZ_SIXPACK",
+   "types": [
+    "FASTLZ_SIXPACK"
+   ],
+   "label": "fastlz sixpack",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32"
+   ],
+   "formats": [
+    "archive/fastlz_sixpack"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/formats/archive/fastlz_sixpack/xx_fastlz_sixpack.c",
+    "src/formats/archive/fastlz_sixpack/xx_fastlz_sixpack_extractor.c"
+   ]
+  },
+  "finear": {
+   "flag": "FINEAR",
+   "types": [
+    "FINEAR"
+   ],
+   "label": "FinEAR",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/finear"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/finear/xx_finear.c",
+    "src/formats/archive/finear/xx_finear_extractor.c"
+   ]
+  },
+  "fiz": {
+   "flag": "FIZ",
+   "types": [
+    "FIZ"
+   ],
+   "label": "FIZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/fiz"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/fiz/xx_fiz.c",
+    "src/formats/archive/fiz/xx_fiz_extractor.c"
+   ]
+  },
+  "fls": {
+   "flag": "FLS",
+   "types": [
+    "FLS"
+   ],
+   "label": "FLS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "flslz"
+   ],
+   "formats": [
+    "archive/fls"
+   ],
+   "sources": [
+    "src/algo/flslz/xx_flslz.c",
+    "src/formats/archive/fls/xx_fls.c",
+    "src/formats/archive/fls/xx_fls_extractor.c"
+   ]
+  },
+  "fmc1": {
+   "flag": "FMC1",
+   "types": [
+    "FMC1"
+   ],
+   "label": "FMC1",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ampk"
+   ],
+   "formats": [
+    "archive/fmc1"
+   ],
+   "sources": [
+    "src/algo/ampk/xx_ampk.c",
+    "src/formats/archive/fmc1/xx_fmc1.c",
+    "src/formats/archive/fmc1/xx_fmc1_extractor.c"
+   ]
+  },
+  "freearc": {
+   "flag": "FREEARC",
+   "types": [
+    "FREEARC"
+   ],
+   "label": "FREEARC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "aes",
+    "crc",
+    "lz4",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/dgca",
+    "archive/freearc"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lz4/xx_lz4.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/dgca/xx_dgca_cipher.c",
+    "src/formats/archive/freearc/xx_freearc.c",
+    "src/formats/archive/freearc/xx_freearc_extractor.c"
+   ]
+  },
+  "ftcomp": {
+   "flag": "FTCOMP",
+   "types": [
+    "FTCOMP"
+   ],
+   "label": "FTCOMP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ftcomp"
+   ],
+   "formats": [
+    "archive/ftcomp"
+   ],
+   "sources": [
+    "src/algo/ftcomp/xx_ftcomp_entropy33.c",
+    "src/formats/archive/ftcomp/xx_ftcomp.c",
+    "src/formats/archive/ftcomp/xx_ftcomp_extractor.c"
+   ]
+  },
+  "gamos": {
+   "flag": "GAMOS",
+   "types": [
+    "GAMOS"
+   ],
+   "label": "GAMOS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "gamos"
+   ],
+   "formats": [
+    "archive/gamos"
+   ],
+   "sources": [
+    "src/algo/gamos/xx_gamos.c",
+    "src/formats/archive/gamos/xx_gamos.c",
+    "src/formats/archive/gamos/xx_gamos_extractor.c"
+   ]
+  },
+  "gashuff": {
+   "flag": "GAS_HUFF",
+   "types": [
+    "GAS_HUFF"
+   ],
+   "label": "GAS HUFF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "gashuff"
+   ],
+   "formats": [
+    "archive/gashuff"
+   ],
+   "sources": [
+    "src/algo/gashuff/xx_gashuff.c",
+    "src/formats/archive/gashuff/xx_gashuff.c",
+    "src/formats/archive/gashuff/xx_gashuff_extractor.c"
+   ]
+  },
+  "gemdos_lha": {
+   "flag": "GEMDOS_LHA",
+   "types": [
+    "GEMDOS_LHA"
+   ],
+   "label": "gemdos lha",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "aes",
+    "aes_winzip",
+    "bzip2",
+    "cmpsc",
+    "crc",
+    "dcl",
+    "deflate",
+    "implode",
+    "lzh",
+    "lzma",
+    "md5",
+    "packmp3",
+    "ppmd8",
+    "reduce",
+    "sha",
+    "shrink",
+    "wavpack",
+    "winzipjpeg",
+    "zipcrypto",
+    "zstd"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/gemdos_lha",
+    "archive/lha",
+    "archive/sfx_zipcentral",
+    "archive/xz",
+    "archive/zip",
+    "executable/pe"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/aes_winzip/xx_aes_winzip.c",
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/cmpsc/xx_cmpsc.c",
+    "src/algo/cmpsc/xx_cmpsc_enc.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/implode/xx_implode.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/md5/xx_md5.c",
+    "src/algo/packmp3/xx_packmp3.c",
+    "src/algo/ppmd8/xx_ppmd8.c",
+    "src/algo/ppmd8/xx_ppmd8_common.c",
+    "src/algo/ppmd8/xx_ppmd8_dec.c",
+    "src/algo/ppmd8/xx_ppmd8_enc.c",
+    "src/algo/reduce/xx_reduce.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/algo/shrink/xx_shrink.c",
+    "src/algo/wavpack/xx_wavpack.c",
+    "src/algo/wavpack/xx_wavpack_dec.c",
+    "src/algo/winzipjpeg/xx_winzipjpeg.c",
+    "src/algo/zipcrypto/xx_zipcrypto.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/gemdos_lha/xx_gemdos_lha.c",
+    "src/formats/archive/gemdos_lha/xx_gemdos_lha_extractor.c",
+    "src/formats/archive/lha/xx_lha.c",
+    "src/formats/archive/sfx_zipcentral/xx_sfx_zipcentral.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/archive/zip/xx_zip.c",
+    "src/formats/archive/zip/xx_zip_inspect.c",
+    "src/formats/archive/zip/xx_zip_legacy_encoder.c",
+    "src/formats/executable/pe/xx_pe.c",
+    "src/formats/executable/pe/xx_pe_stream_common.c"
+   ]
+  },
+  "genius": {
+   "flag": "GENIUS",
+   "types": [
+    "GENIUS"
+   ],
+   "label": "GENIUS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "dcl",
+    "genius"
+   ],
+   "formats": [
+    "archive/genius"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/algo/genius/xx_genius.c",
+    "src/formats/archive/genius/xx_genius.c",
+    "src/formats/archive/genius/xx_genius_extractor.c"
+   ]
+  },
+  "glu": {
+   "flag": "GLU",
+   "types": [
+    "GLU"
+   ],
+   "label": "GLU",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzw15v"
+   ],
+   "formats": [
+    "archive/glu"
+   ],
+   "sources": [
+    "src/algo/lzw15v/xx_lzw15v.c",
+    "src/formats/archive/glu/xx_glu.c",
+    "src/formats/archive/glu/xx_glu_extractor.c"
+   ]
+  },
+  "gpfpack": {
+   "flag": "GPFPACK",
+   "types": [
+    "GPFPACK"
+   ],
+   "label": "GPFPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/gpfpack"
+   ],
+   "sources": [
+    "src/formats/archive/gpfpack/xx_gpfpack.c",
+    "src/formats/archive/gpfpack/xx_gpfpack_extractor.c"
+   ]
+  },
+  "gz": {
+   "flag": "GZ",
+   "types": [
+    "GZ"
+   ],
+   "label": "GZ",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/gz",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/gz/xx_gz.c",
+    "src/formats/archive/gz/xx_gz_datastructs.c",
+    "src/formats/archive/gz/xx_gz_extractor.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "ha": {
+   "flag": "HA",
+   "types": [
+    "HA"
+   ],
+   "label": "HA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "ha"
+   ],
+   "formats": [
+    "archive/ha"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/ha/xx_ha.c",
+    "src/formats/archive/ha/xx_ha.c",
+    "src/formats/archive/ha/xx_ha_extractor.c"
+   ]
+  },
+  "hap": {
+   "flag": "HAP",
+   "types": [
+    "HAP"
+   ],
+   "label": "HAP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "hap"
+   ],
+   "formats": [
+    "archive/hap"
+   ],
+   "sources": [
+    "src/algo/hap/xx_hap.c",
+    "src/formats/archive/hap/xx_hap.c",
+    "src/formats/archive/hap/xx_hap_extractor.c"
+   ]
+  },
+  "hlb": {
+   "flag": "HLB",
+   "types": [
+    "HLB"
+   ],
+   "label": "HLB",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/hlb"
+   ],
+   "sources": [
+    "src/formats/archive/hlb/xx_hlb.c",
+    "src/formats/archive/hlb/xx_hlb_extractor.c"
+   ]
+  },
+  "huf": {
+   "flag": "HUF",
+   "types": [
+    "HUF"
+   ],
+   "label": "HUF",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "huf"
+   ],
+   "formats": [
+    "archive/huf"
+   ],
+   "sources": [
+    "src/algo/huf/xx_huf.c",
+    "src/formats/archive/huf/xx_huf.c",
+    "src/formats/archive/huf/xx_huf_extractor.c"
+   ]
+  },
+  "hzl": {
+   "flag": "HZL",
+   "types": [
+    "HZL"
+   ],
+   "label": "HZL",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "hzl"
+   ],
+   "formats": [
+    "archive/hzl"
+   ],
+   "sources": [
+    "src/algo/hzl/xx_hzl.c",
+    "src/formats/archive/hzl/xx_hzl.c",
+    "src/formats/archive/hzl/xx_hzl_extractor.c"
+   ]
+  },
+  "ibmpack": {
+   "flag": "IBMPACK",
+   "types": [
+    "IBMPACK"
+   ],
+   "label": "IBMPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/ibmpack"
+   ],
+   "sources": [
+    "src/formats/archive/ibmpack/xx_ibmpack.c",
+    "src/formats/archive/ibmpack/xx_ibmpack_extractor.c"
+   ]
+  },
+  "ibmspack": {
+   "flag": "IBMSPACK",
+   "types": [
+    "IBMSPACK"
+   ],
+   "label": "IBMSPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "flslz"
+   ],
+   "formats": [
+    "archive/ibmspack"
+   ],
+   "sources": [
+    "src/algo/flslz/xx_flslz.c",
+    "src/formats/archive/ibmspack/xx_ibmspack.c",
+    "src/formats/archive/ibmspack/xx_ibmspack_extractor.c"
+   ]
+  },
+  "ibmzpak": {
+   "flag": "IBMZPAK",
+   "types": [
+    "IBMZPAK"
+   ],
+   "label": "IBMZPAK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/ibmzpak"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/ibmzpak/xx_ibmzpak.c",
+    "src/formats/archive/ibmzpak/xx_ibmzpak_extractor.c"
+   ]
+  },
+  "igf1": {
+   "flag": "IGF1",
+   "types": [
+    "IGF1"
+   ],
+   "label": "IGF1",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/igf1"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/igf1/xx_igf1.c",
+    "src/formats/archive/igf1/xx_igf1_extractor.c"
+   ]
+  },
+  "imp": {
+   "flag": "IMP",
+   "types": [
+    "IMP"
+   ],
+   "label": "IMP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "imp"
+   ],
+   "formats": [
+    "archive/imp"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/imp/xx_imp.c",
+    "src/formats/archive/imp/xx_imp.c",
+    "src/formats/archive/imp/xx_imp_extractor.c"
+   ]
+  },
+  "insa": {
+   "flag": "INSA",
+   "types": [
+    "INSA"
+   ],
+   "label": "INSA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/insa"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/insa/xx_insa.c",
+    "src/formats/archive/insa/xx_insa_extractor.c"
+   ]
+  },
+  "inteduft": {
+   "flag": "INTEDUFT",
+   "types": [
+    "INTEDUFT"
+   ],
+   "label": "INTEDUFT",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/inteduft"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/inteduft/xx_inteduft.c",
+    "src/formats/archive/inteduft/xx_inteduft_extractor.c"
+   ]
+  },
+  "ixa": {
+   "flag": "IXA",
+   "types": [
+    "IXA"
+   ],
+   "label": "IXA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/ixa"
+   ],
+   "sources": [
+    "src/formats/archive/ixa/xx_ixa.c",
+    "src/formats/archive/ixa/xx_ixa_extractor.c"
+   ]
+  },
+  "jam": {
+   "flag": "JAM",
+   "types": [
+    "JAM"
+   ],
+   "label": "JAM",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/jam"
+   ],
+   "sources": [
+    "src/formats/archive/jam/xx_jam.c",
+    "src/formats/archive/jam/xx_jam_extractor.c"
+   ]
+  },
+  "jbf": {
+   "flag": "JBF",
+   "types": [
+    "JBF"
+   ],
+   "label": "JBF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "hzl"
+   ],
+   "formats": [
+    "archive/jbf"
+   ],
+   "sources": [
+    "src/algo/hzl/xx_hzl.c",
+    "src/formats/archive/jbf/xx_jbf.c",
+    "src/formats/archive/jbf/xx_jbf_extractor.c"
+   ]
+  },
+  "jetbbs": {
+   "flag": "JETBBS",
+   "types": [
+    "JETBBS"
+   ],
+   "label": "JETBBS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/jetbbs"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/jetbbs/xx_jetbbs.c",
+    "src/formats/archive/jetbbs/xx_jetbbs_extractor.c"
+   ]
+  },
+  "jgpak": {
+   "flag": "JGPAK",
+   "types": [
+    "JGPAK"
+   ],
+   "label": "JGPAK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/jgpak"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/jgpak/xx_jgpak.c",
+    "src/formats/archive/jgpak/xx_jgpak_extractor.c"
+   ]
+  },
+  "jm93": {
+   "flag": "JM93",
+   "types": [
+    "JM93"
+   ],
+   "label": "JM93",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/jm93"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/jm93/xx_jm93.c",
+    "src/formats/archive/jm93/xx_jm93_extractor.c"
+   ]
+  },
+  "ka": {
+   "flag": "KA",
+   "types": [
+    "KA"
+   ],
+   "label": "KA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/ka"
+   ],
+   "sources": [
+    "src/formats/archive/ka/xx_ka.c",
+    "src/formats/archive/ka/xx_ka_extractor.c"
+   ]
+  },
+  "kboom": {
+   "flag": "KBOOM",
+   "types": [
+    "KBOOM"
+   ],
+   "label": "KBOOM",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzwvariants"
+   ],
+   "formats": [
+    "archive/kboom"
+   ],
+   "sources": [
+    "src/algo/lzwvariants/xx_lzwvariants.c",
+    "src/formats/archive/kboom/xx_kboom.c",
+    "src/formats/archive/kboom/xx_kboom_extractor.c"
+   ]
+  },
+  "kolibrikpack": {
+   "flag": "KOLIBRIKPACK",
+   "types": [
+    "KOLIBRIKPACK"
+   ],
+   "label": "KOLIBRIKPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "kolibrikpack"
+   ],
+   "formats": [
+    "archive/kolibrikpack"
+   ],
+   "sources": [
+    "src/algo/kolibrikpack/xx_kolibrikpack.c",
+    "src/formats/archive/kolibrikpack/xx_kolibrikpack.c",
+    "src/formats/archive/kolibrikpack/xx_kolibrikpack_extractor.c"
+   ]
+  },
+  "kpck": {
+   "flag": "KPCK",
+   "types": [
+    "KPCK"
+   ],
+   "label": "KPCK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "kolibrikpack"
+   ],
+   "formats": [
+    "archive/kpck"
+   ],
+   "sources": [
+    "src/algo/kolibrikpack/xx_kolibrikpack.c",
+    "src/formats/archive/kpck/xx_kpck.c",
+    "src/formats/archive/kpck/xx_kpck_extractor.c"
+   ]
+  },
+  "kwaj": {
+   "flag": "KWAJ",
+   "types": [
+    "KWAJ"
+   ],
+   "label": "Microsoft KWAJ stream",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/kwaj"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/kwaj/xx_kwaj.c",
+    "src/formats/archive/kwaj/xx_kwaj_extractor.c"
+   ]
+  },
+  "lbr": {
+   "flag": "LBR",
+   "types": [
+    "LBR"
+   ],
+   "label": "CP/M LU LBR library",
+   "own_component": false,
+   "sort": true,
+   "codecs": [],
+   "formats": [
+    "archive/lbr"
+   ],
+   "sources": [
+    "src/formats/archive/lbr/xx_lbr.c",
+    "src/formats/archive/lbr/xx_lbr_extractor.c"
+   ]
+  },
+  "lha": {
+   "flag": "LHA",
+   "types": [
+    "LHA"
+   ],
+   "label": "LHA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/lha"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/lha/xx_lha.c",
+    "src/formats/archive/lha/xx_lha_extractor.c"
+   ]
+  },
+  "lif": {
+   "flag": "LIF",
+   "types": [
+    "LIF"
+   ],
+   "label": "LIF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh",
+    "zoo"
+   ],
+   "formats": [
+    "archive/lif"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh5.c",
+    "src/algo/zoo/xx_zoo.c",
+    "src/formats/archive/lif/xx_lif.c",
+    "src/formats/archive/lif/xx_lif_extractor.c"
+   ]
+  },
+  "lim": {
+   "flag": "LIM",
+   "types": [
+    "LIM"
+   ],
+   "label": "LIM",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lim"
+   ],
+   "formats": [
+    "archive/lim"
+   ],
+   "sources": [
+    "src/algo/lim/xx_lim.c",
+    "src/formats/archive/lim/xx_lim.c",
+    "src/formats/archive/lim/xx_lim_extractor.c"
+   ]
+  },
+  "lingvoarc": {
+   "flag": "LINGVOARC",
+   "types": [
+    "LINGVOARC"
+   ],
+   "label": "LingvoArc",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/lingvoarc"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/lingvoarc/xx_lingvoarc.c",
+    "src/formats/archive/lingvoarc/xx_lingvoarc_extractor.c",
+    "src/fs/platforms/xx_fs_posix.c"
+   ]
+  },
+  "lizard": {
+   "flag": "LIZARD",
+   "types": [
+    "LIZARD"
+   ],
+   "label": "LIZARD",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lizard"
+   ],
+   "formats": [
+    "archive/lizard"
+   ],
+   "sources": [
+    "src/algo/lizard/xx_lizard.c",
+    "src/formats/archive/lizard/xx_lizard.c",
+    "src/formats/archive/lizard/xx_lizard_extractor.c"
+   ]
+  },
+  "logitechcompress": {
+   "flag": "LOGITECH_COMPRESS",
+   "types": [
+    "LOGITECH_COMPRESS"
+   ],
+   "label": "LOGITECH COMPRESS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/logitechcompress"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/logitechcompress/xx_logitechcompress.c",
+    "src/formats/archive/logitechcompress/xx_logitechcompress_extractor.c"
+   ]
+  },
+  "lpaq8": {
+   "flag": "LPAQ8",
+   "types": [
+    "LPAQ8"
+   ],
+   "label": "LPAQ8",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/lpaq8"
+   ],
+   "sources": [
+    "src/formats/archive/lpaq8/xx_lpaq8.c",
+    "src/formats/archive/lpaq8/xx_lpaq8_extractor.c"
+   ]
+  },
+  "lspack10": {
+   "flag": "LSPACK10",
+   "types": [
+    "LSPACK10"
+   ],
+   "label": "LSPack10",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/lspack10"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/lspack10/xx_lspack10.c",
+    "src/formats/archive/lspack10/xx_lspack10_extractor.c"
+   ]
+  },
+  "lz4": {
+   "flag": "LZ4",
+   "types": [
+    "LZ4"
+   ],
+   "label": "LZ4",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "lz4"
+   ],
+   "formats": [
+    "archive/lz4"
+   ],
+   "sources": [
+    "src/algo/lz4/xx_lz4.c",
+    "src/formats/archive/lz4/xx_lz4.c",
+    "src/formats/archive/lz4/xx_lz4_extractor.c"
+   ]
+  },
+  "lz4demo": {
+   "flag": "LZ4DEMO",
+   "types": [
+    "LZ4DEMO"
+   ],
+   "label": "LZ4Demo",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lz4"
+   ],
+   "formats": [
+    "archive/lz4demo"
+   ],
+   "sources": [
+    "src/algo/lz4/xx_lz4.c",
+    "src/formats/archive/lz4demo/xx_lz4demo.c",
+    "src/formats/archive/lz4demo/xx_lz4demo_extractor.c"
+   ]
+  },
+  "lz5": {
+   "flag": "LZ5",
+   "types": [
+    "LZ5"
+   ],
+   "label": "LZ5",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lz5"
+   ],
+   "formats": [
+    "archive/lz5"
+   ],
+   "sources": [
+    "src/algo/lz5/xx_lz5.c",
+    "src/formats/archive/lz5/xx_lz5.c",
+    "src/formats/archive/lz5/xx_lz5_extractor.c"
+   ]
+  },
+  "lzdiet": {
+   "flag": "LZDIET",
+   "types": [
+    "LZDIET"
+   ],
+   "label": "LZDIET",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzdiet"
+   ],
+   "formats": [
+    "archive/lzdiet"
+   ],
+   "sources": [
+    "src/algo/lzdiet/xx_lzdiet.c",
+    "src/formats/archive/lzdiet/xx_lzdiet.c",
+    "src/formats/archive/lzdiet/xx_lzdiet_extractor.c"
+   ]
+  },
+  "lzf_stream": {
+   "flag": "LZF_STREAM",
+   "types": [
+    "LZF_STREAM"
+   ],
+   "label": "lzf stream",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/lzf_stream"
+   ],
+   "sources": [
+    "src/formats/archive/lzf_stream/xx_lzf_stream.c",
+    "src/formats/archive/lzf_stream/xx_lzf_stream_extractor.c"
+   ]
+  },
+  "lzfsestream": {
+   "flag": "LZFSE",
+   "types": [
+    "LZFSE"
+   ],
+   "label": "LZFSE / LZVN stream",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzfse"
+   ],
+   "formats": [
+    "archive/lzfsestream"
+   ],
+   "sources": [
+    "src/algo/lzfse/xx_lzfse.c",
+    "src/formats/archive/lzfsestream/xx_lzfsestream.c",
+    "src/formats/archive/lzfsestream/xx_lzfsestream_extractor.c"
+   ]
+  },
+  "lzhcxp": {
+   "flag": "LZHCXP",
+   "types": [
+    "LZHCXP"
+   ],
+   "label": "LZHCXP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzhuf"
+   ],
+   "formats": [
+    "archive/lzhcxp"
+   ],
+   "sources": [
+    "src/algo/lzhuf/xx_lzhuf.c",
+    "src/formats/archive/lzhcxp/xx_lzhcxp.c",
+    "src/formats/archive/lzhcxp/xx_lzhcxp_extractor.c"
+   ]
+  },
+  "lzip": {
+   "flag": "LZIP",
+   "types": [
+    "LZIP"
+   ],
+   "label": "LZIP",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzip",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/lzip"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzip/xx_lzip.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/lzip/xx_lzip.c",
+    "src/formats/archive/lzip/xx_lzip_extractor.c"
+   ]
+  },
+  "lzk00": {
+   "flag": "LZK00",
+   "types": [
+    "LZK00"
+   ],
+   "label": "LZK00",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/lzk00"
+   ],
+   "sources": [
+    "src/formats/archive/lzk00/xx_lzk00.c",
+    "src/formats/archive/lzk00/xx_lzk00_extractor.c"
+   ]
+  },
+  "lzma": {
+   "flag": "LZMA",
+   "types": [
+    "LZMA"
+   ],
+   "label": "LZMA",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/lzma"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/lzma/xx_lzma.c",
+    "src/formats/archive/lzma/xx_lzma_extractor.c",
+    "src/formats/archive/lzma/xx_lzma_writer.c"
+   ]
+  },
+  "lzop": {
+   "flag": "LZOP",
+   "types": [
+    "LZOP"
+   ],
+   "label": "LZOP",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzo",
+    "lzop"
+   ],
+   "formats": [
+    "archive/lzop"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzo/xx_lzo.c",
+    "src/algo/lzop/xx_lzop.c",
+    "src/formats/archive/lzop/xx_lzop.c",
+    "src/formats/archive/lzop/xx_lzop_extractor.c"
+   ]
+  },
+  "lzpis2": {
+   "flag": "LZPIS2",
+   "types": [
+    "LZPIS2"
+   ],
+   "label": "LZPIS2",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzpis2"
+   ],
+   "formats": [
+    "archive/lzpis2"
+   ],
+   "sources": [
+    "src/algo/lzpis2/xx_lzpis2.c",
+    "src/formats/archive/lzpis2/xx_lzpis2.c",
+    "src/formats/archive/lzpis2/xx_lzpis2_extractor.c"
+   ]
+  },
+  "lzv1": {
+   "flag": "LZV1",
+   "types": [
+    "LZV1"
+   ],
+   "label": "LZV1",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzv1"
+   ],
+   "formats": [
+    "archive/lzv1"
+   ],
+   "sources": [
+    "src/algo/lzv1/xx_lzv1.c",
+    "src/formats/archive/lzv1/xx_lzv1.c",
+    "src/formats/archive/lzv1/xx_lzv1_extractor.c"
+   ]
+  },
+  "lzw15v": {
+   "flag": "RAW_LZW15V",
+   "types": [
+    "RAW_LZW15V"
+   ],
+   "label": "RAW_LZW15V",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzw15v"
+   ],
+   "formats": [
+    "archive/lzw15v"
+   ],
+   "sources": [
+    "src/algo/lzw15v/xx_lzw15v.c",
+    "src/formats/archive/lzw15v/xx_lzw15v.c",
+    "src/formats/archive/lzw15v/xx_lzw15v_extractor.c"
+   ]
+  },
+  "lzwd": {
+   "flag": "LZWD",
+   "types": [
+    "LZWD"
+   ],
+   "label": "LZWD",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzwvariants"
+   ],
+   "formats": [
+    "archive/lzwd"
+   ],
+   "sources": [
+    "src/algo/lzwvariants/xx_lzwvariants.c",
+    "src/formats/archive/lzwd/xx_lzwd.c",
+    "src/formats/archive/lzwd/xx_lzwd_extractor.c"
+   ]
+  },
+  "macbinary": {
+   "flag": "MACBINARY",
+   "types": [
+    "MACBINARY"
+   ],
+   "label": "MacBinary",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/macbinary"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/macbinary/xx_macbinary.c",
+    "src/formats/archive/macbinary/xx_macbinary_extractor.c"
+   ]
+  },
+  "marc": {
+   "flag": "MARC",
+   "types": [
+    "MARC"
+   ],
+   "label": "MARC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/marc"
+   ],
+   "sources": [
+    "src/formats/archive/marc/xx_marc.c",
+    "src/formats/archive/marc/xx_marc_extractor.c"
+   ]
+  },
+  "mcc": {
+   "flag": "MCC",
+   "types": [
+    "MCC"
+   ],
+   "label": "MCC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/mcc"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/mcc/xx_mcc.c",
+    "src/formats/archive/mcc/xx_mcc_extractor.c"
+   ]
+  },
+  "mdcd": {
+   "flag": "MDCD",
+   "types": [
+    "MDCD"
+   ],
+   "label": "MDCD",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh",
+    "zoo"
+   ],
+   "formats": [
+    "archive/mdcd"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/algo/zoo/xx_zoo.c",
+    "src/formats/archive/mdcd/xx_mdcd.c",
+    "src/formats/archive/mdcd/xx_mdcd_extractor.c"
+   ]
+  },
+  "mi10": {
+   "flag": "MI10",
+   "types": [
+    "MI10"
+   ],
+   "label": "MI10",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "mi10"
+   ],
+   "formats": [
+    "archive/mi10"
+   ],
+   "sources": [
+    "src/algo/mi10/xx_mi10.c",
+    "src/formats/archive/mi10/xx_mi10.c",
+    "src/formats/archive/mi10/xx_mi10_extractor.c"
+   ]
+  },
+  "microfox_put": {
+   "flag": "MICROFOX_PUT",
+   "types": [
+    "MICROFOX_PUT"
+   ],
+   "label": "MicroFox PUT",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/microfox_put"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/microfox_put/xx_microfox_put.c",
+    "src/formats/archive/microfox_put/xx_microfox_put_extractor.c"
+   ]
+  },
+  "miz": {
+   "flag": "MIZ",
+   "types": [
+    "MIZ"
+   ],
+   "label": "MIZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/miz"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/miz/xx_miz.c",
+    "src/formats/archive/miz/xx_miz_extractor.c"
+   ]
+  },
+  "mrnz": {
+   "flag": "MRNZ",
+   "types": [
+    "MRNZ"
+   ],
+   "label": "MRNZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/mrnz"
+   ],
+   "sources": [
+    "src/formats/archive/mrnz/xx_mrnz.c",
+    "src/formats/archive/mrnz/xx_mrnz_extractor.c"
+   ]
+  },
+  "ms_dos_backup": {
+   "flag": "MS_DOS_BACKUP",
+   "types": [
+    "MS_DOS_BACKUP"
+   ],
+   "label": "MS-DOS BACKUP (v2.0-3.2)",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/ms_dos_backup"
+   ],
+   "sources": [
+    "src/formats/archive/ms_dos_backup/xx_ms_dos_backup.c",
+    "src/formats/archive/ms_dos_backup/xx_ms_dos_backup_extractor.c"
+   ]
+  },
+  "mscompress": {
+   "flag": "MS_COMPRESS",
+   "types": [
+    "MS_COMPRESS"
+   ],
+   "label": "MS COMPRESS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "mscompress"
+   ],
+   "formats": [
+    "archive/mscompress"
+   ],
+   "sources": [
+    "src/algo/mscompress/xx_mscompress.c",
+    "src/formats/archive/mscompress/xx_mscompress.c",
+    "src/formats/archive/mscompress/xx_mscompress_extractor.c"
+   ]
+  },
+  "netwarepacked": {
+   "flag": "NETWAREPACKED",
+   "types": [
+    "NETWAREPACKED"
+   ],
+   "label": "NETWAREPACKED",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "netwarepack"
+   ],
+   "formats": [
+    "archive/netwarepacked"
+   ],
+   "sources": [
+    "src/algo/netwarepack/xx_netwarepack.c",
+    "src/formats/archive/netwarepacked/xx_netwarepacked.c",
+    "src/formats/archive/netwarepacked/xx_netwarepacked_extractor.c"
+   ]
+  },
+  "nix_nar": {
+   "flag": "NIX_NAR",
+   "types": [
+    "NIX_NAR"
+   ],
+   "label": "nix nar",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/nix_nar"
+   ],
+   "sources": [
+    "src/formats/archive/nix_nar/xx_nix_nar.c",
+    "src/formats/archive/nix_nar/xx_nix_nar_extractor.c"
+   ]
+  },
+  "npack": {
+   "flag": "NPACK",
+   "types": [
+    "NPACK"
+   ],
+   "label": "NPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "npack"
+   ],
+   "formats": [
+    "archive/npack"
+   ],
+   "sources": [
+    "src/algo/npack/xx_npack.c",
+    "src/formats/archive/npack/xx_npack.c",
+    "src/formats/archive/npack/xx_npack_extractor.c"
+   ]
+  },
+  "nufx": {
+   "flag": "NUFX",
+   "types": [
+    "NUFX"
+   ],
+   "label": "nufx",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/nufx"
+   ],
+   "sources": [
+    "src/formats/archive/nufx/xx_nufx.c",
+    "src/formats/archive/nufx/xx_nufx_extractor.c"
+   ]
+  },
+  "oraclesqueeze": {
+   "flag": "ORACLE_SQUEEZE",
+   "types": [
+    "ORACLE_SQUEEZE"
+   ],
+   "label": "ORACLE SQUEEZE",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "oraclesqueeze"
+   ],
+   "formats": [
+    "archive/oraclesqueeze"
+   ],
+   "sources": [
+    "src/algo/oraclesqueeze/xx_oraclesqueeze.c",
+    "src/formats/archive/oraclesqueeze/xx_oraclesqueeze.c",
+    "src/formats/archive/oraclesqueeze/xx_oraclesqueeze_extractor.c"
+   ]
+  },
+  "packit": {
+   "flag": "PACKIT",
+   "types": [
+    "PACKIT"
+   ],
+   "label": "PACKIT",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/packit"
+   ],
+   "sources": [
+    "src/formats/archive/packit/xx_packit.c",
+    "src/formats/archive/packit/xx_packit_extractor.c"
+   ]
+  },
+  "packit_mac": {
+   "flag": "PACKIT_MAC",
+   "types": [
+    "PACKIT_MAC"
+   ],
+   "label": "Macintosh PackIt",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/packit_mac"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/packit_mac/xx_packit_mac.c",
+    "src/formats/archive/packit_mac/xx_packit_mac_extractor.c"
+   ]
+  },
+  "pakleo": {
+   "flag": "PAKLEO",
+   "types": [
+    "PAKLEO"
+   ],
+   "label": "PAKLEO",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "pakleo"
+   ],
+   "formats": [
+    "archive/pakleo"
+   ],
+   "sources": [
+    "src/algo/pakleo/xx_pakleo.c",
+    "src/formats/archive/pakleo/xx_pakleo.c",
+    "src/formats/archive/pakleo/xx_pakleo_extractor.c"
+   ]
+  },
+  "panorama": {
+   "flag": "PANORAMA",
+   "types": [
+    "PANORAMA"
+   ],
+   "label": "PANORAMA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "panorama"
+   ],
+   "formats": [
+    "archive/panorama"
+   ],
+   "sources": [
+    "src/algo/panorama/xx_panorama.c",
+    "src/formats/archive/panorama/xx_panorama.c",
+    "src/formats/archive/panorama/xx_panorama_extractor.c"
+   ]
+  },
+  "pax": {
+   "flag": "PAX",
+   "types": [
+    "PAX"
+   ],
+   "label": "PAX",
+   "own_component": false,
+   "sort": true,
+   "codecs": [],
+   "formats": [
+    "archive/pax"
+   ],
+   "sources": [
+    "src/formats/archive/pax/xx_pax.c",
+    "src/formats/archive/pax/xx_pax_extractor.c"
+   ]
+  },
+  "pcommos2": {
+   "flag": "PCOMMOS2",
+   "types": [
+    "PCOMMOS2"
+   ],
+   "label": "PCOMMOS2",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "pcommos2"
+   ],
+   "formats": [
+    "archive/pcommos2"
+   ],
+   "sources": [
+    "src/algo/pcommos2/xx_pcommos2.c",
+    "src/formats/archive/pcommos2/xx_pcommos2.c",
+    "src/formats/archive/pcommos2/xx_pcommos2_extractor.c"
+   ]
+  },
+  "pcsecure": {
+   "flag": "PCSECURE",
+   "types": [
+    "PCSECURE"
+   ],
+   "label": "PCSECURE",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "pcsecure"
+   ],
+   "formats": [
+    "archive/pcsecure"
+   ],
+   "sources": [
+    "src/algo/pcsecure/xx_pcsecure.c",
+    "src/formats/archive/pcsecure/xx_pcsecure.c",
+    "src/formats/archive/pcsecure/xx_pcsecure_extractor.c"
+   ]
+  },
+  "pdp11ar": {
+   "flag": "PDP11AR",
+   "types": [
+    "PDP11AR"
+   ],
+   "label": "PDP11AR",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/pdp11ar"
+   ],
+   "sources": [
+    "src/formats/archive/pdp11ar/xx_pdp11ar.c",
+    "src/formats/archive/pdp11ar/xx_pdp11ar_extractor.c"
+   ]
+  },
+  "pea": {
+   "flag": "PEA",
+   "types": [
+    "PEA"
+   ],
+   "label": "PEA",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/pea"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/pea/xx_pea.c",
+    "src/formats/archive/pea/xx_pea_extractor.c"
+   ]
+  },
+  "phar": {
+   "flag": "PHAR",
+   "types": [
+    "PHAR"
+   ],
+   "label": "Phar",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/phar"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/phar/xx_phar.c",
+    "src/formats/archive/phar/xx_phar_extractor.c"
+   ]
+  },
+  "pma": {
+   "flag": "PMA",
+   "types": [
+    "PMA"
+   ],
+   "label": "PMA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/pma"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/pma/xx_pma.c",
+    "src/formats/archive/pma/xx_pma_extractor.c"
+   ]
+  },
+  "pmarc_sfx": {
+   "flag": "PMARC_SFX",
+   "types": [
+    "PMARC_SFX"
+   ],
+   "label": "pmarc sfx",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/pmarc_sfx"
+   ],
+   "sources": [
+    "src/formats/archive/pmarc_sfx/xx_pmarc_sfx.c",
+    "src/formats/archive/pmarc_sfx/xx_pmarc_sfx_extractor.c"
+   ]
+  },
+  "povlablzh": {
+   "flag": "POVLABLZH",
+   "types": [
+    "POVLABLZH"
+   ],
+   "label": "POVLABLZH",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/povlablzh"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/povlablzh/xx_povlablzh.c",
+    "src/formats/archive/povlablzh/xx_povlablzh_extractor.c"
+   ]
+  },
+  "powerarc": {
+   "flag": "POWERARC",
+   "types": [
+    "POWERARC"
+   ],
+   "label": "POWERARC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "bzip2",
+    "crc"
+   ],
+   "formats": [
+    "archive/powerarc"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/powerarc/xx_powerarc.c",
+    "src/formats/archive/powerarc/xx_powerarc_extractor.c"
+   ]
+  },
+  "powerboardbbs": {
+   "flag": "POWERBOARDBBS",
+   "types": [
+    "POWERBOARDBBS"
+   ],
+   "label": "POWERBOARDBBS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/powerboardbbs"
+   ],
+   "sources": [
+    "src/formats/archive/powerboardbbs/xx_powerboardbbs.c",
+    "src/formats/archive/powerboardbbs/xx_powerboardbbs_extractor.c"
+   ]
+  },
+  "pp20": {
+   "flag": "PP20",
+   "types": [
+    "PP20"
+   ],
+   "label": "PP20",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/pp20"
+   ],
+   "sources": [
+    "src/formats/archive/pp20/xx_pp20.c",
+    "src/formats/archive/pp20/xx_pp20_extractor.c"
+   ]
+  },
+  "psdc": {
+   "flag": "PSDC",
+   "types": [
+    "PSDC"
+   ],
+   "label": "PSDC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/psdc"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/psdc/xx_psdc.c",
+    "src/formats/archive/psdc/xx_psdc_extractor.c"
+   ]
+  },
+  "psn": {
+   "flag": "PSN",
+   "types": [
+    "PSN"
+   ],
+   "label": "PSNCompress",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/psn"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/psn/xx_psn.c",
+    "src/formats/archive/psn/xx_psn_extractor.c"
+   ]
+  },
+  "qda": {
+   "flag": "QDA",
+   "types": [
+    "QDA"
+   ],
+   "label": "QDA",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "qda"
+   ],
+   "formats": [
+    "archive/qda"
+   ],
+   "sources": [
+    "src/algo/qda/xx_qda.c",
+    "src/formats/archive/qda/xx_qda.c",
+    "src/formats/archive/qda/xx_qda_extractor.c"
+   ]
+  },
+  "quantum": {
+   "flag": "QUANTUM",
+   "types": [
+    "QUANTUM"
+   ],
+   "label": "Quantum archive",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "quantum"
+   ],
+   "formats": [
+    "archive/quantum"
+   ],
+   "sources": [
+    "src/algo/quantum/xx_quantum.c",
+    "src/formats/archive/quantum/xx_quantum.c",
+    "src/formats/archive/quantum/xx_quantum_extractor.c"
+   ]
+  },
+  "rar": {
+   "flag": "RAR",
+   "types": [
+    "RAR"
+   ],
+   "label": "RAR",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "aes",
+    "blake2",
+    "crc",
+    "ppmd7",
+    "rar",
+    "sha"
+   ],
+   "formats": [
+    "archive/rar",
+    "executable/pe"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/blake2/xx_blake2.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/ppmd7/xx_ppmd7_common.c",
+    "src/algo/rar/xx_rarx.c",
+    "src/algo/rar/xx_rarx15.c",
+    "src/algo/rar/xx_rarx20.c",
+    "src/algo/rar/xx_rarx29.c",
+    "src/algo/rar/xx_rarx50.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/rar/xx_rar.c",
+    "src/formats/archive/rar/xx_rar_datastructs.c",
+    "src/formats/archive/rar/xx_rar_extractor.c",
+    "src/formats/executable/pe/xx_pe.c",
+    "src/formats/executable/pe/xx_pe_stream_common.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "raw_deflate_compressed_data": {
+   "flag": "RAW_DEFLATE_COMPRESSED_DATA",
+   "types": [
+    "RAW_DEFLATE_COMPRESSED_DATA"
+   ],
+   "label": "Raw Deflate",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/raw_deflate_compressed_data"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/raw_deflate_compressed_data/xx_raw_deflate_compressed_data.c",
+    "src/formats/archive/raw_deflate_compressed_data/xx_raw_deflate_compressed_data_extractor.c"
+   ]
+  },
+  "rawstac": {
+   "flag": "RAWSTAC",
+   "types": [
+    "RAWSTAC"
+   ],
+   "label": "RawStac",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/rawstac"
+   ],
+   "sources": [
+    "src/formats/archive/rawstac/xx_rawstac.c",
+    "src/formats/archive/rawstac/xx_rawstac_extractor.c"
+   ]
+  },
+  "riversoft": {
+   "flag": "RIVERSOFT",
+   "types": [
+    "RIVERSOFT"
+   ],
+   "label": "RIVERSOFT",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/riversoft"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/riversoft/xx_riversoft.c",
+    "src/formats/archive/riversoft/xx_riversoft_extractor.c"
+   ]
+  },
+  "rnc": {
+   "flag": "RNC",
+   "types": [
+    "RNC"
+   ],
+   "label": "RNC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/rnc"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/rnc/xx_rnc.c",
+    "src/formats/archive/rnc/xx_rnc_extractor.c"
+   ]
+  },
+  "rnca": {
+   "flag": "RNCA",
+   "types": [
+    "RNCA"
+   ],
+   "label": "RNCA",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/rnc",
+    "archive/rnca"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/rnc/xx_rnc.c",
+    "src/formats/archive/rnca/xx_rnca.c",
+    "src/formats/archive/rnca/xx_rnca_extractor.c"
+   ]
+  },
+  "rsvk": {
+   "flag": "RSVK",
+   "types": [
+    "RSVK"
+   ],
+   "label": "RSVK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "rsvk"
+   ],
+   "formats": [
+    "archive/rsvk"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/rsvk/xx_rsvk.c",
+    "src/formats/archive/rsvk/xx_rsvk.c",
+    "src/formats/archive/rsvk/xx_rsvk_extractor.c"
+   ]
+  },
+  "saf": {
+   "flag": "SAF",
+   "types": [
+    "SAF"
+   ],
+   "label": "SAF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "saf"
+   ],
+   "formats": [
+    "archive/saf"
+   ],
+   "sources": [
+    "src/algo/saf/xx_saf.c",
+    "src/formats/archive/saf/xx_saf.c",
+    "src/formats/archive/saf/xx_saf_extractor.c"
+   ]
+  },
+  "sco": {
+   "flag": "SCO",
+   "types": [
+    "SCO"
+   ],
+   "label": "SCO",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sco"
+   ],
+   "sources": [
+    "src/formats/archive/sco/xx_sco.c",
+    "src/formats/archive/sco/xx_sco_extractor.c"
+   ]
+  },
+  "seaarc": {
+   "flag": "SEAARC",
+   "types": [
+    "SEAARC"
+   ],
+   "label": "SEAARC",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/seaarc"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/seaarc/xx_seaarc.c",
+    "src/formats/archive/seaarc/xx_seaarc_extractor.c"
+   ]
+  },
+  "sfx_7zip": {
+   "flag": "SFX_7ZIP",
+   "types": [
+    "SFX_7ZIP"
+   ],
+   "label": "sfx 7zip",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "aes",
+    "brotli",
+    "bzip2",
+    "crc",
+    "deflate",
+    "lizard",
+    "lz4",
+    "lz5",
+    "lzma",
+    "ppmd7",
+    "sha",
+    "zstd"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/sfx_7zip"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/brotli/xx_brotli.c",
+    "src/algo/brotli/xx_brotli_data.c",
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lizard/xx_lizard.c",
+    "src/algo/lz4/xx_lz4.c",
+    "src/algo/lz5/xx_lz5.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/ppmd7/xx_ppmd7_common.c",
+    "src/algo/ppmd7/xx_ppmd7_dec.c",
+    "src/algo/ppmd7/xx_ppmd7_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/7zip/xx_7zip.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/7zip/xx_7zip_stream.c",
+    "src/formats/archive/7zip/xx_7zip_writer.c",
+    "src/formats/archive/sfx_7zip/xx_sfx_7zip.c",
+    "src/formats/archive/sfx_7zip/xx_sfx_7zip_extractor.c"
+   ]
+  },
+  "sfx_ace": {
+   "flag": "SFX_ACE",
+   "types": [
+    "SFX_ACE"
+   ],
+   "label": "sfx ace",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/ace",
+    "archive/sfx_ace"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/ace/xx_ace.c",
+    "src/formats/archive/ace/xx_ace_dec.c",
+    "src/formats/archive/sfx_ace/xx_sfx_ace.c",
+    "src/formats/archive/sfx_ace/xx_sfx_ace_extractor.c"
+   ]
+  },
+  "sfx_ain": {
+   "flag": "SFX_AIN",
+   "types": [
+    "SFX_AIN"
+   ],
+   "label": "sfx ain",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ain"
+   ],
+   "formats": [
+    "archive/sfx_ain"
+   ],
+   "sources": [
+    "src/algo/ain/xx_ain.c",
+    "src/formats/archive/sfx_ain/xx_sfx_ain.c",
+    "src/formats/archive/sfx_ain/xx_sfx_ain_extractor.c"
+   ]
+  },
+  "sfx_alz": {
+   "flag": "SFX_ALZ",
+   "types": [
+    "SFX_ALZ"
+   ],
+   "label": "sfx alz",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_alz"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_alz/xx_sfx_alz.c",
+    "src/formats/archive/sfx_alz/xx_sfx_alz_extractor.c"
+   ]
+  },
+  "sfx_arc": {
+   "flag": "SFX_ARC",
+   "types": [
+    "SFX_ARC"
+   ],
+   "label": "sfx arc",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/seaarc",
+    "archive/sfx_arc"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/seaarc/xx_seaarc.c",
+    "src/formats/archive/sfx_arc/xx_sfx_arc.c",
+    "src/formats/archive/sfx_arc/xx_sfx_arc_extractor.c"
+   ]
+  },
+  "sfx_arcv2": {
+   "flag": "SFX_ARCV2",
+   "types": [
+    "SFX_ARCV2"
+   ],
+   "label": "sfx arcv2",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/sfx_arcv2"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/sfx_arcv2/xx_sfx_arcv2.c",
+    "src/formats/archive/sfx_arcv2/xx_sfx_arcv2_extractor.c"
+   ]
+  },
+  "sfx_ardi_diskette_image": {
+   "flag": "SFX_ARDI_DISKETTE_IMAGE",
+   "types": [
+    "SFX_ARDI_DISKETTE_IMAGE"
+   ],
+   "label": "ARDI diskette image",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/sfx_ardi_diskette_image"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/sfx_ardi_diskette_image/xx_sfx_ardi_diskette_image.c",
+    "src/formats/archive/sfx_ardi_diskette_image/xx_sfx_ardi_diskette_image_extractor.c"
+   ]
+  },
+  "sfx_arj": {
+   "flag": "SFX_ARJ",
+   "types": [
+    "SFX_ARJ"
+   ],
+   "label": "sfx arj",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "arj",
+    "crc"
+   ],
+   "formats": [
+    "archive/arj",
+    "archive/sfx_arj"
+   ],
+   "sources": [
+    "src/algo/arj/xx_arj_dec.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/arj/xx_arj.c",
+    "src/formats/archive/sfx_arj/xx_sfx_arj.c",
+    "src/formats/archive/sfx_arj/xx_sfx_arj_extractor.c"
+   ]
+  },
+  "sfx_arq": {
+   "flag": "SFX_ARQ",
+   "types": [
+    "SFX_ARQ"
+   ],
+   "label": "sfx arq",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/arq",
+    "archive/sfx_arq"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/arq/xx_arq.c",
+    "src/formats/archive/sfx_arq/xx_sfx_arq.c",
+    "src/formats/archive/sfx_arq/xx_sfx_arq_extractor.c"
+   ]
+  },
+  "sfx_bsn": {
+   "flag": "SFX_BSN",
+   "types": [
+    "SFX_BSN"
+   ],
+   "label": "sfx bsn",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/bsn",
+    "archive/sfx_bsn"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/bsn/xx_bsn.c",
+    "src/formats/archive/bsn/xx_bsn_codec.c",
+    "src/formats/archive/sfx_bsn/xx_sfx_bsn.c",
+    "src/formats/archive/sfx_bsn/xx_sfx_bsn_extractor.c"
+   ]
+  },
+  "sfx_bzip2": {
+   "flag": "SFX_BZIP2",
+   "types": [
+    "SFX_BZIP2"
+   ],
+   "label": "sfx bzip2",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "bzip2",
+    "crc"
+   ],
+   "formats": [
+    "archive/sfx_bzip2"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/sfx_bzip2/xx_sfx_bzip2.c",
+    "src/formats/archive/sfx_bzip2/xx_sfx_bzip2_extractor.c"
+   ]
+  },
+  "sfx_cab": {
+   "flag": "SFX_CAB",
+   "types": [
+    "SFX_CAB"
+   ],
+   "label": "sfx cab",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate",
+    "lzx",
+    "quantum"
+   ],
+   "formats": [
+    "archive/cab",
+    "archive/sfx_cab"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzx/xx_lzx.c",
+    "src/algo/quantum/xx_quantum.c",
+    "src/formats/archive/cab/xx_cab.c",
+    "src/formats/archive/sfx_cab/xx_sfx_cab.c",
+    "src/formats/archive/sfx_cab/xx_sfx_cab_extractor.c"
+   ]
+  },
+  "sfx_cazip": {
+   "flag": "SFX_CAZIP",
+   "types": [
+    "SFX_CAZIP"
+   ],
+   "label": "sfx cazip",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "dcl"
+   ],
+   "formats": [
+    "archive/sfx_cazip"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/sfx_cazip/xx_sfx_cazip.c",
+    "src/formats/archive/sfx_cazip/xx_sfx_cazip_extractor.c"
+   ]
+  },
+  "sfx_chz": {
+   "flag": "SFX_CHZ",
+   "types": [
+    "SFX_CHZ"
+   ],
+   "label": "sfx chz",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "charc"
+   ],
+   "formats": [
+    "archive/chz",
+    "archive/sfx_chz"
+   ],
+   "sources": [
+    "src/algo/charc/xx_charc.c",
+    "src/formats/archive/chz/xx_chz.c",
+    "src/formats/archive/sfx_chz/xx_sfx_chz.c",
+    "src/formats/archive/sfx_chz/xx_sfx_chz_extractor.c"
+   ]
+  },
+  "sfx_diskexpress": {
+   "flag": "SFX_DISKEXPRESS",
+   "types": [
+    "SFX_DISKEXPRESS"
+   ],
+   "label": "sfx diskexpress",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/sfx_diskexpress",
+    "filesystem/diskexpress"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/sfx_diskexpress/xx_sfx_diskexpress.c",
+    "src/formats/archive/sfx_diskexpress/xx_sfx_diskexpress_extractor.c",
+    "src/formats/filesystem/diskexpress/xx_diskexpress.c"
+   ]
+  },
+  "sfx_gxl": {
+   "flag": "SFX_GXL",
+   "types": [
+    "SFX_GXL"
+   ],
+   "label": "sfx gxl",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_gxl",
+    "image/gxl"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_gxl/xx_sfx_gxl.c",
+    "src/formats/archive/sfx_gxl/xx_sfx_gxl_extractor.c",
+    "src/formats/image/gxl/xx_gxl.c"
+   ]
+  },
+  "sfx_gzip": {
+   "flag": "SFX_GZIP",
+   "types": [
+    "SFX_GZIP"
+   ],
+   "label": "sfx gzip",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/sfx_gzip"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/sfx_gzip/xx_sfx_gzip.c",
+    "src/formats/archive/sfx_gzip/xx_sfx_gzip_extractor.c"
+   ]
+  },
+  "sfx_ha": {
+   "flag": "SFX_HA",
+   "types": [
+    "SFX_HA"
+   ],
+   "label": "sfx ha",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_ha"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_ha/xx_sfx_ha.c",
+    "src/formats/archive/sfx_ha/xx_sfx_ha_extractor.c"
+   ]
+  },
+  "sfx_hap": {
+   "flag": "SFX_HAP",
+   "types": [
+    "SFX_HAP"
+   ],
+   "label": "sfx hap",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/sfx_hap"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/sfx_hap/xx_sfx_hap.c",
+    "src/formats/archive/sfx_hap/xx_sfx_hap_extractor.c"
+   ]
+  },
+  "sfx_imp": {
+   "flag": "SFX_IMP",
+   "types": [
+    "SFX_IMP"
+   ],
+   "label": "sfx imp",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "imp"
+   ],
+   "formats": [
+    "archive/imp",
+    "archive/sfx_imp"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/imp/xx_imp.c",
+    "src/formats/archive/imp/xx_imp.c",
+    "src/formats/archive/sfx_imp/xx_sfx_imp.c",
+    "src/formats/archive/sfx_imp/xx_sfx_imp_extractor.c"
+   ]
+  },
+  "sfx_kwaj": {
+   "flag": "SFX_KWAJ",
+   "types": [
+    "SFX_KWAJ"
+   ],
+   "label": "sfx kwaj",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/kwaj",
+    "archive/sfx_kwaj"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/kwaj/xx_kwaj.c",
+    "src/formats/archive/sfx_kwaj/xx_sfx_kwaj.c",
+    "src/formats/archive/sfx_kwaj/xx_sfx_kwaj_extractor.c"
+   ]
+  },
+  "sfx_lha": {
+   "flag": "SFX_LHA",
+   "types": [
+    "SFX_LHA"
+   ],
+   "label": "sfx lha",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/lha",
+    "archive/sfx_lha",
+    "executable/ne",
+    "executable/pe"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/lha/xx_lha.c",
+    "src/formats/archive/sfx_lha/xx_sfx_lha.c",
+    "src/formats/archive/sfx_lha/xx_sfx_lha_extractor.c",
+    "src/formats/executable/ne/xx_ne.c",
+    "src/formats/executable/pe/xx_pe.c",
+    "src/formats/executable/pe/xx_pe_stream_common.c"
+   ]
+  },
+  "sfx_lzx": {
+   "flag": "SFX_LZX",
+   "types": [
+    "SFX_LZX"
+   ],
+   "label": "sfx lzx",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/sfx_lzx"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/sfx_lzx/xx_sfx_lzx.c",
+    "src/formats/archive/sfx_lzx/xx_sfx_lzx_extractor.c"
+   ]
+  },
+  "sfx_nss": {
+   "flag": "SFX_NSS",
+   "types": [
+    "SFX_NSS"
+   ],
+   "label": "SFX NSS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "md5"
+   ],
+   "formats": [
+    "archive/sfx_nss"
+   ],
+   "sources": [
+    "src/algo/md5/xx_md5.c",
+    "src/formats/archive/sfx_nss/xx_sfx_nss.c",
+    "src/formats/archive/sfx_nss/xx_sfx_nss_extractor.c"
+   ]
+  },
+  "sfx_rsfx": {
+   "flag": "SFX_RSFX",
+   "types": [
+    "SFX_RSFX"
+   ],
+   "label": "SFX RSFX",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "aes",
+    "blake2",
+    "crc",
+    "ppmd7",
+    "rar",
+    "sha"
+   ],
+   "formats": [
+    "archive/rar",
+    "archive/sfx_rsfx",
+    "executable/pe"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/blake2/xx_blake2.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/ppmd7/xx_ppmd7_common.c",
+    "src/algo/rar/xx_rarx.c",
+    "src/algo/rar/xx_rarx15.c",
+    "src/algo/rar/xx_rarx20.c",
+    "src/algo/rar/xx_rarx29.c",
+    "src/algo/rar/xx_rarx50.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/rar/xx_rar.c",
+    "src/formats/archive/sfx_rsfx/xx_sfx_rsfx.c",
+    "src/formats/archive/sfx_rsfx/xx_sfx_rsfx_extractor.c",
+    "src/formats/executable/pe/xx_pe.c",
+    "src/formats/executable/pe/xx_pe_stream_common.c"
+   ]
+  },
+  "sfx_rta": {
+   "flag": "SFX_RTA",
+   "types": [
+    "SFX_RTA"
+   ],
+   "label": "sfx rta",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "rtpatch"
+   ],
+   "formats": [
+    "archive/sfx_rta",
+    "installer/rta"
+   ],
+   "sources": [
+    "src/algo/rtpatch/xx_rtpatch.c",
+    "src/formats/archive/sfx_rta/xx_sfx_rta.c",
+    "src/formats/archive/sfx_rta/xx_sfx_rta_extractor.c",
+    "src/formats/installer/rta/xx_rta.c"
+   ]
+  },
+  "sfx_spis": {
+   "flag": "SFX_SPIS",
+   "types": [
+    "SFX_SPIS"
+   ],
+   "label": "sfx spis",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/sfx_spis",
+    "archive/spis"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/sfx_spis/xx_sfx_spis.c",
+    "src/formats/archive/sfx_spis/xx_sfx_spis_extractor.c",
+    "src/formats/archive/spis/xx_spis.c"
+   ]
+  },
+  "sfx_sqx": {
+   "flag": "SFX_SQX",
+   "types": [
+    "SFX_SQX"
+   ],
+   "label": "sfx sqx",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_sqx"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_sqx/xx_sfx_sqx.c",
+    "src/formats/archive/sfx_sqx/xx_sfx_sqx_extractor.c"
+   ]
+  },
+  "sfx_sqz": {
+   "flag": "SFX_SQZ",
+   "types": [
+    "SFX_SQZ"
+   ],
+   "label": "sfx sqz",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "sqz"
+   ],
+   "formats": [
+    "archive/sfx_sqz",
+    "archive/sqz"
+   ],
+   "sources": [
+    "src/algo/sqz/xx_sqz.c",
+    "src/formats/archive/sfx_sqz/xx_sfx_sqz.c",
+    "src/formats/archive/sfx_sqz/xx_sfx_sqz_extractor.c",
+    "src/formats/archive/sqz/xx_sqz.c"
+   ]
+  },
+  "sfx_starkit": {
+   "flag": "SFX_STARKIT",
+   "types": [
+    "SFX_STARKIT"
+   ],
+   "label": "sfx starkit",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/sfx_starkit",
+    "executable/starkit"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/sfx_starkit/xx_sfx_starkit.c",
+    "src/formats/archive/sfx_starkit/xx_sfx_starkit_extractor.c",
+    "src/formats/executable/starkit/xx_starkit.c"
+   ]
+  },
+  "sfx_swag": {
+   "flag": "SFX_SWAG",
+   "types": [
+    "SFX_SWAG"
+   ],
+   "label": "sfx swag",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/sfx_swag",
+    "archive/swag"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/sfx_swag/xx_sfx_swag.c",
+    "src/formats/archive/sfx_swag/xx_sfx_swag_extractor.c",
+    "src/formats/archive/swag/xx_swag.c"
+   ]
+  },
+  "sfx_szdd": {
+   "flag": "SFX_SZDD",
+   "types": [
+    "SFX_SZDD"
+   ],
+   "label": "sfx szdd",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_szdd"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_szdd/xx_sfx_szdd.c",
+    "src/formats/archive/sfx_szdd/xx_sfx_szdd_extractor.c"
+   ]
+  },
+  "sfx_tar": {
+   "flag": "SFX_TAR",
+   "types": [
+    "SFX_TAR"
+   ],
+   "label": "sfx tar",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_tar"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_tar/xx_sfx_tar.c",
+    "src/formats/archive/sfx_tar/xx_sfx_tar_extractor.c"
+   ]
+  },
+  "sfx_tgcf": {
+   "flag": "SFX_TGCF",
+   "types": [
+    "SFX_TGCF"
+   ],
+   "label": "sfx tgcf",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/sfx_tgcf",
+    "archive/tgcf"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/sfx_tgcf/xx_sfx_tgcf.c",
+    "src/formats/archive/sfx_tgcf/xx_sfx_tgcf_extractor.c",
+    "src/formats/archive/tgcf/xx_tgcf.c"
+   ]
+  },
+  "sfx_vms_dcx": {
+   "flag": "SFX_VMS_DCX",
+   "types": [
+    "SFX_VMS_DCX"
+   ],
+   "label": "SFX VMS DCX",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_vms_dcx"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_vms_dcx/xx_sfx_vms_dcx.c",
+    "src/formats/archive/sfx_vms_dcx/xx_sfx_vms_dcx_extractor.c"
+   ]
+  },
+  "sfx_zipcentral": {
+   "flag": "SFX_ZIPCENTRAL",
+   "types": [
+    "SFX_ZIPCENTRAL"
+   ],
+   "label": "sfx zipcentral",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "aes",
+    "aes_winzip",
+    "bzip2",
+    "cmpsc",
+    "crc",
+    "dcl",
+    "deflate",
+    "implode",
+    "lzma",
+    "md5",
+    "packmp3",
+    "ppmd8",
+    "reduce",
+    "sha",
+    "shrink",
+    "wavpack",
+    "winzipjpeg",
+    "zipcrypto",
+    "zstd"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/sfx_zipcentral",
+    "archive/xz",
+    "archive/zip",
+    "executable/pe"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/aes_winzip/xx_aes_winzip.c",
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/cmpsc/xx_cmpsc.c",
+    "src/algo/cmpsc/xx_cmpsc_enc.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/implode/xx_implode.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/md5/xx_md5.c",
+    "src/algo/packmp3/xx_packmp3.c",
+    "src/algo/ppmd8/xx_ppmd8.c",
+    "src/algo/ppmd8/xx_ppmd8_common.c",
+    "src/algo/ppmd8/xx_ppmd8_dec.c",
+    "src/algo/ppmd8/xx_ppmd8_enc.c",
+    "src/algo/reduce/xx_reduce.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/algo/shrink/xx_shrink.c",
+    "src/algo/wavpack/xx_wavpack.c",
+    "src/algo/wavpack/xx_wavpack_dec.c",
+    "src/algo/winzipjpeg/xx_winzipjpeg.c",
+    "src/algo/zipcrypto/xx_zipcrypto.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/sfx_zipcentral/xx_sfx_zipcentral.c",
+    "src/formats/archive/sfx_zipcentral/xx_sfx_zipcentral_extractor.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/archive/zip/xx_zip.c",
+    "src/formats/archive/zip/xx_zip_inspect.c",
+    "src/formats/archive/zip/xx_zip_legacy_encoder.c",
+    "src/formats/executable/pe/xx_pe.c",
+    "src/formats/executable/pe/xx_pe_stream_common.c"
+   ]
+  },
+  "sfx_zoo": {
+   "flag": "SFX_ZOO",
+   "types": [
+    "SFX_ZOO"
+   ],
+   "label": "sfx zoo",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sfx_zoo"
+   ],
+   "sources": [
+    "src/formats/archive/sfx_zoo/xx_sfx_zoo.c",
+    "src/formats/archive/sfx_zoo/xx_sfx_zoo_extractor.c"
+   ]
+  },
+  "shar": {
+   "flag": "SHAR",
+   "types": [
+    "SHAR"
+   ],
+   "label": "SHAR",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "compress"
+   ],
+   "formats": [
+    "archive/shar"
+   ],
+   "sources": [
+    "src/algo/compress/xx_compress.c",
+    "src/formats/archive/shar/xx_shar.c",
+    "src/formats/archive/shar/xx_shar_extractor.c"
+   ]
+  },
+  "sls": {
+   "flag": "SLS",
+   "types": [
+    "SLS"
+   ],
+   "label": "SLS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "sls"
+   ],
+   "formats": [
+    "archive/sls"
+   ],
+   "sources": [
+    "src/algo/sls/xx_sls.c",
+    "src/formats/archive/sls/xx_sls.c",
+    "src/formats/archive/sls/xx_sls_extractor.c"
+   ]
+  },
+  "snappy_framed": {
+   "flag": "SNAPPY_FRAMED",
+   "types": [
+    "SNAPPY_FRAMED"
+   ],
+   "label": "snappy framed",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/snappy_framed"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/snappy_framed/xx_snappy_framed.c",
+    "src/formats/archive/snappy_framed/xx_snappy_framed_extractor.c"
+   ]
+  },
+  "softronics": {
+   "flag": "SOFTRONICS",
+   "types": [
+    "SOFTRONICS"
+   ],
+   "label": "SOFTRONICS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "softronics"
+   ],
+   "formats": [
+    "archive/softronics"
+   ],
+   "sources": [
+    "src/algo/softronics/xx_softronics.c",
+    "src/formats/archive/softronics/xx_softronics.c",
+    "src/formats/archive/softronics/xx_softronics_extractor.c"
+   ]
+  },
+  "spis": {
+   "flag": "SPIS",
+   "types": [
+    "SPIS"
+   ],
+   "label": "SPIS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh"
+   ],
+   "formats": [
+    "archive/spis"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh.c",
+    "src/algo/lzh/xx_lzh5.c",
+    "src/formats/archive/spis/xx_spis.c",
+    "src/formats/archive/spis/xx_spis_extractor.c"
+   ]
+  },
+  "spk": {
+   "flag": "SPK",
+   "types": [
+    "SPK"
+   ],
+   "label": "SPK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "arcfs"
+   ],
+   "formats": [
+    "archive/spk"
+   ],
+   "sources": [
+    "src/algo/arcfs/xx_arcfs_lzw.c",
+    "src/formats/archive/spk/xx_spk.c",
+    "src/formats/archive/spk/xx_spk_extractor.c"
+   ]
+  },
+  "sq": {
+   "flag": "SQ",
+   "types": [
+    "SQ"
+   ],
+   "label": "SQ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/sq"
+   ],
+   "sources": [
+    "src/formats/archive/sq/xx_sq.c",
+    "src/formats/archive/sq/xx_sq_extractor.c"
+   ]
+  },
+  "squeeze1": {
+   "flag": "SQUEEZE1",
+   "types": [
+    "SQUEEZE1"
+   ],
+   "label": "Squeeze1",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/squeeze1"
+   ],
+   "sources": [
+    "src/formats/archive/squeeze1/xx_squeeze1.c",
+    "src/formats/archive/squeeze1/xx_squeeze1_extractor.c"
+   ]
+  },
+  "squeeze2": {
+   "flag": "SQUEEZE2",
+   "types": [
+    "SQUEEZE2"
+   ],
+   "label": "Squeeze2",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/squeeze2"
+   ],
+   "sources": [
+    "src/formats/archive/squeeze2/xx_squeeze2.c",
+    "src/formats/archive/squeeze2/xx_squeeze2_extractor.c"
+   ]
+  },
+  "sqx": {
+   "flag": "SQX",
+   "types": [
+    "SQX"
+   ],
+   "label": "SQX",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ppmd8",
+    "sqx"
+   ],
+   "formats": [
+    "archive/sqx"
+   ],
+   "sources": [
+    "src/algo/ppmd8/xx_ppmd8_common.c",
+    "src/algo/ppmd8/xx_ppmd8_dec.c",
+    "src/algo/sqx/xx_sqx.c",
+    "src/formats/archive/sqx/xx_sqx.c",
+    "src/formats/archive/sqx/xx_sqx_extractor.c"
+   ]
+  },
+  "sqz": {
+   "flag": "SQZ",
+   "types": [
+    "SQZ"
+   ],
+   "label": "SQZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "sqz"
+   ],
+   "formats": [
+    "archive/sqz"
+   ],
+   "sources": [
+    "src/algo/sqz/xx_sqz.c",
+    "src/formats/archive/sqz/xx_sqz.c",
+    "src/formats/archive/sqz/xx_sqz_extractor.c"
+   ]
+  },
+  "ssm": {
+   "flag": "SSM",
+   "types": [
+    "SSM"
+   ],
+   "label": "SSM",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/ssm"
+   ],
+   "sources": [
+    "src/formats/archive/ssm/xx_ssm.c",
+    "src/formats/archive/ssm/xx_ssm_extractor.c"
+   ]
+  },
+  "stac": {
+   "flag": "STAC",
+   "types": [
+    "STAC"
+   ],
+   "label": "Stac",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/stac"
+   ],
+   "sources": [
+    "src/formats/archive/stac/xx_stac.c",
+    "src/formats/archive/stac/xx_stac_extractor.c"
+   ]
+  },
+  "stuffit": {
+   "flag": "STUFFIT",
+   "types": [
+    "STUFFIT"
+   ],
+   "label": "StuffIt",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/stuffit"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/stuffit/xx_stuffit.c",
+    "src/formats/archive/stuffit/xx_stuffit_extractor.c"
+   ]
+  },
+  "stuffit5": {
+   "flag": "STUFFIT5",
+   "types": [
+    "STUFFIT5"
+   ],
+   "label": "StuffIt 5 archive",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc"
+   ],
+   "formats": [
+    "archive/stuffit5",
+    "executable/pe"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/formats/archive/stuffit5/xx_stuffit5.c",
+    "src/formats/archive/stuffit5/xx_stuffit5_extractor.c",
+    "src/formats/executable/pe/xx_pe.c"
+   ]
+  },
+  "stuffit_split_file": {
+   "flag": "STUFFIT_SPLIT_FILE",
+   "types": [
+    "STUFFIT_SPLIT_FILE"
+   ],
+   "label": "StuffIt split file",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/stuffit_split_file"
+   ],
+   "sources": [
+    "src/formats/archive/stuffit_split_file/xx_stuffit_split_file.c",
+    "src/formats/archive/stuffit_split_file/xx_stuffit_split_file_extractor.c"
+   ]
+  },
+  "swag": {
+   "flag": "SWAG",
+   "types": [
+    "SWAG"
+   ],
+   "label": "SWAG",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "lzh"
+   ],
+   "formats": [
+    "archive/swag"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzh/xx_lzh.c",
+    "src/formats/archive/swag/xx_swag.c",
+    "src/formats/archive/swag/xx_swag_extractor.c"
+   ]
+  },
+  "swagpacket": {
+   "flag": "SWAGPACKET",
+   "types": [
+    "SWAGPACKET"
+   ],
+   "label": "SWAGPACKET",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/swagpacket"
+   ],
+   "sources": [
+    "src/formats/archive/swagpacket/xx_swagpacket.c",
+    "src/formats/archive/swagpacket/xx_swagpacket_extractor.c"
+   ]
+  },
+  "tar": {
+   "flag": "TAR",
+   "types": [
+    "TAR"
+   ],
+   "label": "TAR",
+   "own_component": true,
+   "sort": true,
+   "codecs": [],
+   "formats": [
+    "archive/tar"
+   ],
+   "sources": [
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar/xx_tar_datastructs.c",
+    "src/formats/archive/tar/xx_tar_extractor.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "tar_bz2": {
+   "flag": "TAR_BZ2",
+   "types": [
+    "TAR_BZ2"
+   ],
+   "label": "TAR.BZ2",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/bz2",
+    "archive/tar",
+    "archive/tar_bz2",
+    "archive/tar_common",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/bz2/xx_bz2.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar/xx_tar_datastructs.c",
+    "src/formats/archive/tar_bz2/xx_tar_bz2.c",
+    "src/formats/archive/tar_bz2/xx_tar_bz2_datastructs.c",
+    "src/formats/archive/tar_bz2/xx_tar_bz2_extractor.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "tar_compress": {
+   "flag": "TAR_COMPRESS",
+   "types": [
+    "TAR_COMPRESS"
+   ],
+   "label": "TAR.Z",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "compress"
+   ],
+   "formats": [
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_compress"
+   ],
+   "sources": [
+    "src/algo/compress/xx_compress.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_compress/xx_tar_compress.c",
+    "src/formats/archive/tar_compress/xx_tar_compress_extractor.c"
+   ]
+  },
+  "tar_gz": {
+   "flag": "TAR_GZ",
+   "types": [
+    "TAR_GZ"
+   ],
+   "label": "TAR.GZ",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/gz",
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_gz",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/gz/xx_gz.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar/xx_tar_datastructs.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
+    "src/formats/archive/tar_gz/xx_tar_gz.c",
+    "src/formats/archive/tar_gz/xx_tar_gz_datastructs.c",
+    "src/formats/archive/tar_gz/xx_tar_gz_extractor.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "tar_lz4": {
+   "flag": "TAR_LZ4",
+   "types": [
+    "TAR_LZ4"
+   ],
+   "label": "TAR.LZ4",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "lz4"
+   ],
+   "formats": [
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_lz4"
+   ],
+   "sources": [
+    "src/algo/lz4/xx_lz4.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar/xx_tar_datastructs.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
+    "src/formats/archive/tar_lz4/xx_tar_lz4.c",
+    "src/formats/archive/tar_lz4/xx_tar_lz4_datastructs.c",
+    "src/formats/archive/tar_lz4/xx_tar_lz4_extractor.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "tar_lzip": {
+   "flag": "TAR_LZIP",
+   "types": [
+    "TAR_LZIP"
+   ],
+   "label": "TAR.LZ",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "lzip",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_lzip"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzip/xx_lzip.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_lzip/xx_tar_lzip.c",
+    "src/formats/archive/tar_lzip/xx_tar_lzip_extractor.c"
+   ]
+  },
+  "tar_lzma": {
+   "flag": "TAR_LZMA",
+   "types": [
+    "TAR_LZMA"
+   ],
+   "label": "TAR.LZMA",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "lzma",
+    "lzma_alone",
+    "sha"
+   ],
+   "formats": [
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_lzma"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma_alone/xx_lzma_alone.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_lzma/xx_tar_lzma.c",
+    "src/formats/archive/tar_lzma/xx_tar_lzma_extractor.c"
+   ]
+  },
+  "tar_lzop": {
+   "flag": "TAR_LZOP",
+   "types": [
+    "TAR_LZOP"
+   ],
+   "label": "TAR.LZO",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "lzo",
+    "lzop"
+   ],
+   "formats": [
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_lzop"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/lzo/xx_lzo.c",
+    "src/algo/lzop/xx_lzop.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_lzop/xx_tar_lzop.c",
+    "src/formats/archive/tar_lzop/xx_tar_lzop_extractor.c"
+   ]
+  },
+  "tar_nextstep": {
+   "flag": "TAR_NEXTSTEP",
+   "types": [
+    "TAR_NEXTSTEP"
+   ],
+   "label": "TAR NEXTSTEP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/tar_nextstep"
+   ],
+   "sources": [
+    "src/formats/archive/tar_nextstep/xx_tar_nextstep.c",
+    "src/formats/archive/tar_nextstep/xx_tar_nextstep_extractor.c"
+   ]
+  },
+  "tar_xz": {
+   "flag": "TAR_XZ",
+   "types": [
+    "TAR_XZ"
+   ],
+   "label": "TAR.XZ",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_xz",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar/xx_tar_datastructs.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
+    "src/formats/archive/tar_xz/xx_tar_xz.c",
+    "src/formats/archive/tar_xz/xx_tar_xz_datastructs.c",
+    "src/formats/archive/tar_xz/xx_tar_xz_extractor.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "tar_zstd": {
+   "flag": "TAR_ZSTD",
+   "types": [
+    "TAR_ZSTD"
+   ],
+   "label": "TAR.ZST",
+   "own_component": true,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "zstd"
+   ],
+   "formats": [
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tar_zstd"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar/xx_tar_datastructs.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
+    "src/formats/archive/tar_zstd/xx_tar_zstd.c",
+    "src/formats/archive/tar_zstd/xx_tar_zstd_datastructs.c",
+    "src/formats/archive/tar_zstd/xx_tar_zstd_extractor.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "tarx1": {
+   "flag": "TARX1",
+   "types": [
+    "TARX1"
+   ],
+   "label": "TARX1",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "crc",
+    "tarx"
+   ],
+   "formats": [
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tarx1"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/tarx/xx_tarx.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tarx1/xx_tarx1.c",
+    "src/formats/archive/tarx1/xx_tarx1_extractor.c"
+   ]
+  },
+  "tarx2": {
+   "flag": "TARX2",
+   "types": [
+    "TARX2"
+   ],
+   "label": "TARX2",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha",
+    "tarx"
+   ],
+   "formats": [
+    "archive/gz",
+    "archive/tar",
+    "archive/tar_common",
+    "archive/tarx2",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/algo/tarx/xx_tarx2.c",
+    "src/formats/archive/gz/xx_gz.c",
+    "src/formats/archive/tar/xx_tar.c",
+    "src/formats/archive/tar_common/xx_tar_common.c",
+    "src/formats/archive/tarx2/xx_tarx2.c",
+    "src/formats/archive/tarx2/xx_tarx2_extractor.c",
+    "src/formats/archive/xz/xx_xz_writer.c"
+   ]
+  },
+  "terse": {
+   "flag": "TERSE",
+   "types": [
+    "TERSE"
+   ],
+   "label": "TERSE",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "terse"
+   ],
+   "formats": [
+    "archive/terse"
+   ],
+   "sources": [
+    "src/algo/terse/xx_terse.c",
+    "src/formats/archive/terse/xx_terse.c",
+    "src/formats/archive/terse/xx_terse_extractor.c"
+   ]
+  },
+  "tgcf": {
+   "flag": "TGCF",
+   "types": [
+    "TGCF"
+   ],
+   "label": "TGCF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/tgcf"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/tgcf/xx_tgcf.c",
+    "src/formats/archive/tgcf/xx_tgcf_extractor.c"
+   ]
+  },
+  "ti99arc": {
+   "flag": "TI99ARC",
+   "types": [
+    "TI99ARC"
+   ],
+   "label": "TI99ARC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "sclsectors",
+    "ti99arc"
+   ],
+   "formats": [
+    "archive/ti99arc"
+   ],
+   "sources": [
+    "src/algo/sclsectors/xx_sclsectors.c",
+    "src/algo/ti99arc/xx_ti99arc.c",
+    "src/formats/archive/ti99arc/xx_ti99arc.c",
+    "src/formats/archive/ti99arc/xx_ti99arc_extractor.c"
+   ]
+  },
+  "tpwm": {
+   "flag": "TPWM",
+   "types": [
+    "TPWM"
+   ],
+   "label": "TPWM",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/tpwm"
+   ],
+   "sources": [
+    "src/formats/archive/tpwm/xx_tpwm.c",
+    "src/formats/archive/tpwm/xx_tpwm_extractor.c"
+   ]
+  },
+  "trc": {
+   "flag": "TRC",
+   "types": [
+    "TRC"
+   ],
+   "label": "TRC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/trc"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/trc/xx_trc.c",
+    "src/formats/archive/trc/xx_trc_extractor.c"
+   ]
+  },
+  "trcpak": {
+   "flag": "TRCPAK",
+   "types": [
+    "TRCPAK"
+   ],
+   "label": "TRCPAK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/trcpak"
+   ],
+   "sources": [
+    "src/formats/archive/trcpak/xx_trcpak.c",
+    "src/formats/archive/trcpak/xx_trcpak_extractor.c"
+   ]
+  },
+  "tws": {
+   "flag": "TWS",
+   "types": [
+    "TWS"
+   ],
+   "label": "TWS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/tws"
+   ],
+   "sources": [
+    "src/formats/archive/tws/xx_tws.c",
+    "src/formats/archive/tws/xx_tws_extractor.c"
+   ]
+  },
+  "uharc": {
+   "flag": "UHARC",
+   "types": [
+    "UHARC"
+   ],
+   "label": "UHARC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/uharc"
+   ],
+   "sources": [
+    "src/formats/archive/uharc/xx_uharc.c",
+    "src/formats/archive/uharc/xx_uharc_extractor.c"
+   ]
+  },
+  "ulead": {
+   "flag": "ULEAD",
+   "types": [
+    "ULEAD"
+   ],
+   "label": "ULEAD",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "ulead"
+   ],
+   "formats": [
+    "archive/ulead"
+   ],
+   "sources": [
+    "src/algo/ulead/xx_ulead.c",
+    "src/formats/archive/ulead/xx_ulead.c",
+    "src/formats/archive/ulead/xx_ulead_extractor.c"
+   ]
+  },
+  "unixcompact": {
+   "flag": "UNIX_COMPACT",
+   "types": [
+    "UNIX_COMPACT"
+   ],
+   "label": "UnixCompact",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/unixcompact"
+   ],
+   "sources": [
+    "src/formats/archive/unixcompact/xx_unixcompact.c",
+    "src/formats/archive/unixcompact/xx_unixcompact_extractor.c"
+   ]
+  },
+  "unixcompress": {
+   "flag": "UNIX_COMPRESS",
+   "types": [
+    "UNIX_COMPRESS"
+   ],
+   "label": "UNIX COMPRESS",
+   "own_component": true,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/unixcompress"
+   ],
+   "sources": [
+    "src/formats/archive/unixcompress/xx_unixcompress.c",
+    "src/formats/archive/unixcompress/xx_unixcompress_extractor.c"
+   ]
+  },
+  "unixpack": {
+   "flag": "UNIX_PACK",
+   "types": [
+    "UNIX_PACK"
+   ],
+   "label": "UNIX PACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "unixpack"
+   ],
+   "formats": [
+    "archive/unixpack"
+   ],
+   "sources": [
+    "src/algo/unixpack/xx_unixpack.c",
+    "src/formats/archive/unixpack/xx_unixpack.c",
+    "src/formats/archive/unixpack/xx_unixpack_extractor.c"
+   ]
+  },
+  "uue": {
+   "flag": "UUE",
+   "types": [
+    "UUE"
+   ],
+   "label": "uue",
+   "own_component": true,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/uue"
+   ],
+   "sources": [
+    "src/formats/archive/uue/xx_uue.c",
+    "src/formats/archive/uue/xx_uue_extractor.c"
+   ]
+  },
+  "vmarc": {
+   "flag": "VMARC",
+   "types": [
+    "VMARC"
+   ],
+   "label": "VMARC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "vmarc"
+   ],
+   "formats": [
+    "archive/vmarc"
+   ],
+   "sources": [
+    "src/algo/vmarc/xx_vmarc.c",
+    "src/formats/archive/vmarc/xx_vmarc.c",
+    "src/formats/archive/vmarc/xx_vmarc_extractor.c"
+   ]
+  },
+  "vmssaveset": {
+   "flag": "VMSSAVESET",
+   "types": [
+    "VMSSAVESET"
+   ],
+   "label": "VMSSaveset",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/vmssaveset"
+   ],
+   "sources": [
+    "src/formats/archive/vmssaveset/xx_vmssaveset.c",
+    "src/formats/archive/vmssaveset/xx_vmssaveset_extractor.c"
+   ]
+  },
+  "warc": {
+   "flag": "WARC",
+   "types": [
+    "WARC"
+   ],
+   "label": "WARC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/warc"
+   ],
+   "sources": [
+    "src/formats/archive/warc/xx_warc.c",
+    "src/formats/archive/warc/xx_warc_extractor.c"
+   ]
+  },
+  "wiilz77": {
+   "flag": "WII_LZ77",
+   "types": [
+    "WII_LZ77"
+   ],
+   "label": "WII LZ77",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "wiilz77"
+   ],
+   "formats": [
+    "archive/wiilz77"
+   ],
+   "sources": [
+    "src/algo/wiilz77/xx_wiilz77.c",
+    "src/formats/archive/wiilz77/xx_wiilz77.c",
+    "src/formats/archive/wiilz77/xx_wiilz77_extractor.c"
+   ]
+  },
+  "wim": {
+   "flag": "WIM",
+   "types": [
+    "WIM"
+   ],
+   "label": "WIM",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "sha"
+   ],
+   "formats": [
+    "archive/wim"
+   ],
+   "sources": [
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/wim/xx_wim.c",
+    "src/formats/archive/wim/xx_wim_codec.c",
+    "src/formats/archive/wim/xx_wim_extractor.c"
+   ]
+  },
+  "winlink": {
+   "flag": "WINLINK",
+   "types": [
+    "WINLINK"
+   ],
+   "label": "WinLink",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/winlink"
+   ],
+   "sources": [
+    "src/formats/archive/winlink/xx_winlink.c",
+    "src/formats/archive/winlink/xx_winlink_extractor.c"
+   ]
+  },
+  "wintersoft": {
+   "flag": "WINTERSOFT",
+   "types": [
+    "WINTERSOFT"
+   ],
+   "label": "WINTERSOFT",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzw15v",
+    "wintersoft"
+   ],
+   "formats": [
+    "archive/wintersoft"
+   ],
+   "sources": [
+    "src/algo/lzw15v/xx_lzw15v.c",
+    "src/algo/wintersoft/xx_wintersoft.c",
+    "src/formats/archive/wintersoft/xx_wintersoft.c",
+    "src/formats/archive/wintersoft/xx_wintersoft_extractor.c"
+   ]
+  },
+  "wrzl": {
+   "flag": "WRZL",
+   "types": [
+    "WRZL"
+   ],
+   "label": "WRZL",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/wrzl"
+   ],
+   "sources": [
+    "src/formats/archive/wrzl/xx_wrzl.c",
+    "src/formats/archive/wrzl/xx_wrzl_extractor.c"
+   ]
+  },
+  "xar": {
+   "flag": "XAR",
+   "types": [
+    "XAR"
+   ],
+   "label": "XAR",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "adler32",
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "lzma_alone",
+    "sha"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/xar",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/lzma_alone/xx_lzma_alone.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/xar/xx_xar.c",
+    "src/formats/archive/xar/xx_xar_extractor.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_writer.c"
+   ]
+  },
+  "xeditpack": {
+   "flag": "XEDITPACK",
+   "types": [
+    "XEDITPACK"
+   ],
+   "label": "XEDITPACK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "xeditpack"
+   ],
+   "formats": [
+    "archive/xeditpack"
+   ],
+   "sources": [
+    "src/algo/xeditpack/xx_xeditpack.c",
+    "src/formats/archive/xeditpack/xx_xeditpack.c",
+    "src/formats/archive/xeditpack/xx_xeditpack_extractor.c"
+   ]
+  },
+  "xlas": {
+   "flag": "XLAS",
+   "types": [
+    "XLAS"
+   ],
+   "label": "XLAS",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/xlas"
+   ],
+   "sources": [
+    "src/formats/archive/xlas/xx_xlas.c",
+    "src/formats/archive/xlas/xx_xlas_extractor.c"
+   ]
+  },
+  "xorarchive": {
+   "flag": "XORARCHIVE",
+   "types": [
+    "XORARCHIVE"
+   ],
+   "label": "XORArchive",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "aes",
+    "aes_winzip",
+    "arj",
+    "bzip2",
+    "cmpsc",
+    "crc",
+    "dcl",
+    "deflate",
+    "implode",
+    "lzma",
+    "packmp3",
+    "ppmd8",
+    "reduce",
+    "sha",
+    "shrink",
+    "wavpack",
+    "winzipjpeg",
+    "zipcrypto",
+    "zstd"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/arj",
+    "archive/xorarchive",
+    "archive/xz",
+    "archive/zip"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/aes_winzip/xx_aes_winzip.c",
+    "src/algo/arj/xx_arj_dec.c",
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/cmpsc/xx_cmpsc.c",
+    "src/algo/cmpsc/xx_cmpsc_enc.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/implode/xx_implode.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/packmp3/xx_packmp3.c",
+    "src/algo/ppmd8/xx_ppmd8.c",
+    "src/algo/ppmd8/xx_ppmd8_common.c",
+    "src/algo/ppmd8/xx_ppmd8_dec.c",
+    "src/algo/ppmd8/xx_ppmd8_enc.c",
+    "src/algo/reduce/xx_reduce.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/algo/shrink/xx_shrink.c",
+    "src/algo/wavpack/xx_wavpack.c",
+    "src/algo/wavpack/xx_wavpack_dec.c",
+    "src/algo/winzipjpeg/xx_winzipjpeg.c",
+    "src/algo/zipcrypto/xx_zipcrypto.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/arj/xx_arj.c",
+    "src/formats/archive/xorarchive/xx_xorarchive.c",
+    "src/formats/archive/xorarchive/xx_xorarchive_extractor.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/archive/zip/xx_zip.c",
+    "src/formats/archive/zip/xx_zip_inspect.c",
+    "src/formats/archive/zip/xx_zip_legacy_encoder.c"
+   ]
+  },
+  "xpak": {
+   "flag": "XPAK",
+   "types": [
+    "XPAK"
+   ],
+   "label": "XPAK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/xpak"
+   ],
+   "sources": [
+    "src/formats/archive/xpak/xx_xpak.c",
+    "src/formats/archive/xpak/xx_xpak_extractor.c"
+   ]
+  },
+  "xz": {
+   "flag": "XZ",
+   "types": [
+    "XZ"
+   ],
+   "label": "XZ",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "bzip2",
+    "crc",
+    "deflate",
+    "lzma",
+    "sha"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/xz"
+   ],
+   "sources": [
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_datastructs.c",
+    "src/formats/archive/xz/xx_xz_extractor.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "zap": {
+   "flag": "ZAP",
+   "types": [
+    "ZAP"
+   ],
+   "label": "ZAP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/zap"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/zap/xx_zap.c",
+    "src/formats/archive/zap/xx_zap_extractor.c"
+   ]
+  },
+  "zcmp": {
+   "flag": "ZCMP",
+   "types": [
+    "ZCMP"
+   ],
+   "label": "ZCMP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "deflate",
+    "zcmp"
+   ],
+   "formats": [
+    "archive/zcmp"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/zcmp/xx_zcmp.c",
+    "src/formats/archive/zcmp/xx_zcmp.c",
+    "src/formats/archive/zcmp/xx_zcmp_extractor.c"
+   ]
+  },
+  "zfsf": {
+   "flag": "ZFSF",
+   "types": [
+    "ZFSF"
+   ],
+   "label": "ZFSF",
+   "own_component": false,
+   "sort": false,
+   "codecs": [],
+   "formats": [
+    "archive/zfsf"
+   ],
+   "sources": [
+    "src/formats/archive/zfsf/xx_zfsf.c",
+    "src/formats/archive/zfsf/xx_zfsf_extractor.c"
+   ]
+  },
+  "zie": {
+   "flag": "ZIE",
+   "types": [
+    "ZIE"
+   ],
+   "label": "ZIE",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "zie"
+   ],
+   "formats": [
+    "archive/zie"
+   ],
+   "sources": [
+    "src/algo/zie/xx_zie.c",
+    "src/formats/archive/zie/xx_zie.c",
+    "src/formats/archive/zie/xx_zie_extractor.c"
+   ]
+  },
+  "zip": {
+   "flag": "ZIP",
+   "types": [
+    "ZIP",
+    "ZIP64"
+   ],
+   "label": "ZIP",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "aes",
+    "aes_winzip",
+    "bzip2",
+    "cmpsc",
+    "crc",
+    "dcl",
+    "deflate",
+    "implode",
+    "lzma",
+    "packmp3",
+    "ppmd8",
+    "reduce",
+    "sha",
+    "shrink",
+    "wavpack",
+    "winzipjpeg",
+    "zipcrypto",
+    "zstd"
+   ],
+   "formats": [
+    "archive/7zip",
+    "archive/xz",
+    "archive/zip"
+   ],
+   "sources": [
+    "src/algo/aes/platforms/xx_aes_arm_crypto.c",
+    "src/algo/aes/xx_aes.c",
+    "src/algo/aes_winzip/xx_aes_winzip.c",
+    "src/algo/bzip2/xx_bzip2.c",
+    "src/algo/bzip2/xx_bzip2_bwt.c",
+    "src/algo/bzip2/xx_bzip2_dec.c",
+    "src/algo/bzip2/xx_bzip2_enc.c",
+    "src/algo/bzip2/xx_bzip2_huffman.c",
+    "src/algo/bzip2/xx_bzip2_mtf.c",
+    "src/algo/cmpsc/xx_cmpsc.c",
+    "src/algo/cmpsc/xx_cmpsc_enc.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/dcl/xx_dcl.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/implode/xx_implode.c",
+    "src/algo/lzma/platforms/xx_lzma_avx2.c",
+    "src/algo/lzma/platforms/xx_lzma_neon.c",
+    "src/algo/lzma/platforms/xx_lzma_sse2.c",
+    "src/algo/lzma/xx_lzma.c",
+    "src/algo/lzma/xx_lzma2_filters.c",
+    "src/algo/lzma/xx_lzma_dec.c",
+    "src/algo/lzma/xx_lzma_enc.c",
+    "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/packmp3/xx_packmp3.c",
+    "src/algo/ppmd8/xx_ppmd8.c",
+    "src/algo/ppmd8/xx_ppmd8_common.c",
+    "src/algo/ppmd8/xx_ppmd8_dec.c",
+    "src/algo/ppmd8/xx_ppmd8_enc.c",
+    "src/algo/reduce/xx_reduce.c",
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/algo/shrink/xx_shrink.c",
+    "src/algo/wavpack/xx_wavpack.c",
+    "src/algo/wavpack/xx_wavpack_dec.c",
+    "src/algo/winzipjpeg/xx_winzipjpeg.c",
+    "src/algo/zipcrypto/xx_zipcrypto.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/7zip/xx_7zip_branch.c",
+    "src/formats/archive/xz/xx_xz.c",
+    "src/formats/archive/xz/xx_xz_writer.c",
+    "src/formats/archive/zip/xx_zip.c",
+    "src/formats/archive/zip/xx_zip_datastructs.c",
+    "src/formats/archive/zip/xx_zip_extractor.c",
+    "src/formats/archive/zip/xx_zip_inspect.c",
+    "src/formats/archive/zip/xx_zip_legacy_encoder.c",
+    "src/formats/xx_stream_datastructs.c"
+   ]
+  },
+  "zlib": {
+   "flag": "ZLIB",
+   "types": [
+    "ZLIB"
+   ],
+   "label": "ZLIB",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/zlib"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/formats/archive/zlib/xx_zlib.c",
+    "src/formats/archive/zlib/xx_zlib_extractor.c"
+   ]
+  },
+  "zlwb": {
+   "flag": "ZLWB",
+   "types": [
+    "ZLWB"
+   ],
+   "label": "ZLWB",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/zlwb"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/zlwb/xx_zlwb.c",
+    "src/formats/archive/zlwb/xx_zlwb_extractor.c"
+   ]
+  },
+  "zoo": {
+   "flag": "ZOO",
+   "types": [
+    "ZOO"
+   ],
+   "label": "ZOO",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzh",
+    "zoo"
+   ],
+   "formats": [
+    "archive/zoo"
+   ],
+   "sources": [
+    "src/algo/lzh/xx_lzh5.c",
+    "src/algo/zoo/xx_zoo.c",
+    "src/formats/archive/zoo/xx_zoo.c",
+    "src/formats/archive/zoo/xx_zoo_extractor.c"
+   ]
+  },
+  "zpak": {
+   "flag": "ZPAK",
+   "types": [
+    "ZPAK"
+   ],
+   "label": "ZPAK",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl",
+    "softronics"
+   ],
+   "formats": [
+    "archive/zpak"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/algo/softronics/xx_softronics.c",
+    "src/formats/archive/zpak/xx_zpak.c",
+    "src/formats/archive/zpak/xx_zpak_extractor.c"
+   ]
+  },
+  "zpaq": {
+   "flag": "ZPAQ",
+   "types": [
+    "ZPAQ"
+   ],
+   "label": "ZPAQ",
+   "own_component": false,
+   "sort": true,
+   "codecs": [
+    "sha"
+   ],
+   "formats": [
+    "archive/zpaq"
+   ],
+   "sources": [
+    "src/algo/sha/platforms/xx_sha_arm_crypto.c",
+    "src/algo/sha/platforms/xx_sha_neon.c",
+    "src/algo/sha/xx_sha.c",
+    "src/algo/sha/xx_sha_simd.c",
+    "src/formats/archive/zpaq/xx_zpaq.c",
+    "src/formats/archive/zpaq/xx_zpaq_extractor.c"
+   ]
+  },
+  "zstd": {
+   "flag": "ZSTD",
+   "types": [
+    "ZSTD"
+   ],
+   "label": "ZSTD",
+   "own_component": true,
+   "sort": false,
+   "codecs": [
+    "crc",
+    "zstd"
+   ],
+   "formats": [
+    "archive/zstd"
+   ],
+   "sources": [
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/zstd/xx_zstd.c",
+    "src/algo/zstd/xx_zstd_dec.c",
+    "src/formats/archive/zstd/xx_zstd.c",
+    "src/formats/archive/zstd/xx_zstd_extractor.c"
+   ]
+  },
+  "ztc": {
+   "flag": "ZTC",
+   "types": [
+    "ZTC"
+   ],
+   "label": "ZTC",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "lzhuf"
+   ],
+   "formats": [
+    "archive/ztc"
+   ],
+   "sources": [
+    "src/algo/lzhuf/xx_lzhuf.c",
+    "src/formats/archive/ztc/xx_ztc.c",
+    "src/formats/archive/ztc/xx_ztc_extractor.c"
+   ]
+  },
+  "zxzip": {
+   "flag": "ZXZIP",
+   "types": [
+    "ZXZIP"
+   ],
+   "label": "ZXZIP",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "zxzip"
+   ],
+   "formats": [
+    "archive/zxzip"
+   ],
+   "sources": [
+    "src/algo/zxzip/xx_zxzip.c",
+    "src/formats/archive/zxzip/xx_zxzip.c",
+    "src/formats/archive/zxzip/xx_zxzip_extractor.c"
+   ]
+  },
+  "zz": {
+   "flag": "ZZ",
+   "types": [
+    "ZZ"
+   ],
+   "label": "ZZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/zz"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/zz/xx_zz.c",
+    "src/formats/archive/zz/xx_zz_extractor.c"
+   ]
+  },
+  "zzz": {
+   "flag": "ZZZ",
+   "types": [
+    "ZZZ"
+   ],
+   "label": "ZZZ",
+   "own_component": false,
+   "sort": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/zzz"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/zzz/xx_zzz.c",
+    "src/formats/archive/zzz/xx_zzz_extractor.c"
+   ]
+  }
+ }
+}

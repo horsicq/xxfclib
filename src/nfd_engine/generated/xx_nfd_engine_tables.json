@@ -1,0 +1,238 @@
+{
+  "content_sha256": "30603cd45cbe59bfb715aca24dce18f557ca632f09a60b604a9ea139320104d1",
+  "generator_version": "1",
+  "manifest_sha256": "ca30dfd9c6760d4c746f154d7ecef6bc98348e9e612e5d41565c64bed51e516f",
+  "provenance_inputs": [
+    {
+      "line_count": 17286,
+      "path": "import_hashes.txt",
+      "reason": "No SpecAbstract runtime source references import_hashes.txt; live PE arrays are canonical.",
+      "sha256": "631ba12d62bdc48b23492a076506128ed32d127979504e646aaf8b7a4a8a6731",
+      "used_by_live_table": false
+    }
+  ],
+  "row_count": 1745,
+  "rows_by_kind": {
+    "const": 309,
+    "msrich": 270,
+    "resource": 13,
+    "signature": 749,
+    "string": 389,
+    "vintage": 15
+  },
+  "schema_version": 1,
+  "source_revision": "sha256:5aedb0b9280feaa89a6e24468b8fc1bb510cef030d0f719b0bdca3131661ebb0",
+  "table_count": 35,
+  "tables": [
+    {
+      "family": "apk",
+      "kind": "string",
+      "name": "g_APK_file_records",
+      "row_count": 124
+    },
+    {
+      "family": "apk",
+      "kind": "string",
+      "name": "g_APK_fileExp_records",
+      "row_count": 1
+    },
+    {
+      "family": "binary",
+      "kind": "signature",
+      "name": "g_binary_records",
+      "row_count": 55
+    },
+    {
+      "family": "binary",
+      "kind": "signature",
+      "name": "g_debugdata_records",
+      "row_count": 1
+    },
+    {
+      "family": "binary",
+      "kind": "signature",
+      "name": "g_archive_records",
+      "row_count": 23
+    },
+    {
+      "family": "binary",
+      "kind": "signature",
+      "name": "g_PE_overlay_records",
+      "row_count": 58
+    },
+    {
+      "family": "com",
+      "kind": "signature",
+      "name": "g_COM_records",
+      "row_count": 74
+    },
+    {
+      "family": "com",
+      "kind": "signature",
+      "name": "g_COM_Exp_records",
+      "row_count": 24
+    },
+    {
+      "family": "dex",
+      "kind": "string",
+      "name": "g_DEX_string_records",
+      "row_count": 14
+    },
+    {
+      "family": "dex",
+      "kind": "string",
+      "name": "g_DEX_type_records",
+      "row_count": 15
+    },
+    {
+      "family": "dotnet",
+      "kind": "string",
+      "name": "_DOTNET_dot_ansistrings_records",
+      "row_count": 33
+    },
+    {
+      "family": "dotnet",
+      "kind": "string",
+      "name": "_DOTNET_dot_unicodestrings_records",
+      "row_count": 1
+    },
+    {
+      "family": "elf",
+      "kind": "signature",
+      "name": "g_ELF_entrypoint_records",
+      "row_count": 1
+    },
+    {
+      "family": "msdos",
+      "kind": "signature",
+      "name": "g_MSDOS_linker_header_records",
+      "row_count": 7
+    },
+    {
+      "family": "msdos",
+      "kind": "signature",
+      "name": "g_MSDOS_header_records",
+      "row_count": 24
+    },
+    {
+      "family": "msdos",
+      "kind": "signature",
+      "name": "g_MSDOS_entrypoint_records",
+      "row_count": 111
+    },
+    {
+      "family": "msdos",
+      "kind": "signature",
+      "name": "g_MSDOS_entrypointExp_records",
+      "row_count": 14
+    },
+    {
+      "family": "msdos",
+      "kind": "msrich",
+      "name": "g_MS_rich_records",
+      "row_count": 270
+    },
+    {
+      "family": "msdos",
+      "kind": "vintage",
+      "name": "g_MSDOS_vintage_string_records",
+      "row_count": 15
+    },
+    {
+      "family": "ne",
+      "kind": "signature",
+      "name": "g_NE_entrypoint_records",
+      "row_count": 5
+    },
+    {
+      "family": "pe",
+      "kind": "signature",
+      "name": "_PE_header_records",
+      "row_count": 52
+    },
+    {
+      "family": "pe",
+      "kind": "signature",
+      "name": "_PE_entrypoint_records",
+      "row_count": 235
+    },
+    {
+      "family": "pe",
+      "kind": "signature",
+      "name": "_PE_entrypointExp_records",
+      "row_count": 44
+    },
+    {
+      "family": "pe",
+      "kind": "const",
+      "name": "_PE_importhash_records",
+      "row_count": 206
+    },
+    {
+      "family": "pe",
+      "kind": "const",
+      "name": "_PE_importhash_records_armadillo",
+      "row_count": 60
+    },
+    {
+      "family": "pe",
+      "kind": "const",
+      "name": "_PE_importpositionhash_records",
+      "row_count": 43
+    },
+    {
+      "family": "pe",
+      "kind": "resource",
+      "name": "_PE_resources_records",
+      "row_count": 13
+    },
+    {
+      "family": "pe",
+      "kind": "string",
+      "name": "_PE_exportExp_records",
+      "row_count": 1
+    },
+    {
+      "family": "pe",
+      "kind": "string",
+      "name": "_PE_sectionNames_records",
+      "row_count": 159
+    },
+    {
+      "family": "pe",
+      "kind": "string",
+      "name": "_PE_dot_ansistrings_records",
+      "row_count": 33
+    },
+    {
+      "family": "pe",
+      "kind": "string",
+      "name": "_PE_dot_unicodestrings_records",
+      "row_count": 1
+    },
+    {
+      "family": "pe",
+      "kind": "signature",
+      "name": "_PE_codesection_records",
+      "row_count": 1
+    },
+    {
+      "family": "pe",
+      "kind": "signature",
+      "name": "_PE_entrypointsection_records",
+      "row_count": 1
+    },
+    {
+      "family": "pe",
+      "kind": "signature",
+      "name": "_PE_dot_codesection_records",
+      "row_count": 19
+    },
+    {
+      "family": "text",
+      "kind": "string",
+      "name": "g_TEXT_Exp_records",
+      "row_count": 7
+    }
+  ]
+}

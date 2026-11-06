@@ -1,0 +1,8 @@
+option(XXFC_BUILD_DSL1_TESTS "Build bounded Img3 DSL1 reader regressions" OFF)
+if(XXFC_BUILD_DSL1_TESTS AND NOT TARGET test_dsl1)
+    enable_testing()
+    add_executable(test_dsl1 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dsl1.c")
+    target_link_libraries(test_dsl1 PRIVATE xxfclib::xxfclib)
+    target_compile_definitions(test_dsl1 PRIVATE XXFC_DSL1_FACTORY_TESTS=1)
+    add_test(NAME xxfc_dsl1 COMMAND test_dsl1 "${CMAKE_CURRENT_BINARY_DIR}/dsl1-output")
+endif()

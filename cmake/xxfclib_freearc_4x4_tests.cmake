@@ -1,0 +1,7 @@
+option(XXFC_BUILD_FREEARC_4X4_TESTS "Build bounded native FreeArc 4x4/LZ4 regressions" OFF)
+if(XXFC_BUILD_FREEARC_4X4_TESTS AND NOT TARGET test_freearc_4x4_native)
+    enable_testing()
+    add_executable(test_freearc_4x4_native "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_freearc_4x4_native.c")
+    target_link_libraries(test_freearc_4x4_native PRIVATE xxfclib::xxfclib)
+    add_test(NAME xxfc_freearc_4x4_native COMMAND test_freearc_4x4_native)
+endif()

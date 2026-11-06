@@ -1,0 +1,8 @@
+option(XXFC_BUILD_DWC_TESTS "Build bounded STORE-only DWC regressions" OFF)
+if(XXFC_BUILD_DWC_TESTS AND NOT TARGET test_dwc)
+    enable_testing()
+    add_executable(test_dwc "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dwc.c")
+    target_link_libraries(test_dwc PRIVATE xxfclib::xxfclib)
+    target_compile_definitions(test_dwc PRIVATE XXFC_DWC_FACTORY_TESTS=1)
+    add_test(NAME xxfc_dwc COMMAND test_dwc "${CMAKE_CURRENT_BINARY_DIR}/dwc-output")
+endif()

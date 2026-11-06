@@ -1,0 +1,62 @@
+# AR readers plus shared runtime; no compression codecs or other containers.
+include_guard(GLOBAL)
+if(TARGET xxfclib::ar)
+    return()
+endif()
+include("${CMAKE_CURRENT_LIST_DIR}/xxfclib_zip.cmake")
+get_filename_component(_xxfc_ar_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+get_target_property(_base_sources xxfclib_zip SOURCES)
+set(_ar_sources)
+foreach(_source IN LISTS _base_sources)
+    if(_source MATCHES "/src/formats/archive/")
+        continue()
+    endif()
+    if(_source MATCHES "/src/algo/" AND NOT _source MATCHES "/src/algo/(store|entropy)/")
+        continue()
+    endif()
+    list(APPEND _ar_sources "${_source}")
+endforeach()
+list(APPEND _ar_sources
+    "${_xxfc_ar_root}/src/formats/archive/ar/xx_ar.c"
+    "${_xxfc_ar_root}/src/formats/archive/ar/xx_ar_extractor.c"
+    "${_xxfc_ar_root}/src/sort/xx_sort.c"
+    "${_xxfc_ar_root}/src/sort/platforms/xx_sort_avx2.c"
+    "${_xxfc_ar_root}/src/sort/platforms/xx_sort_neon.c"
+    "${_xxfc_ar_root}/src/sort/platforms/xx_sort_sse2.c")
+if(WIN32)
+    list(APPEND _ar_sources "${_xxfc_ar_root}/src/sort/platforms/xx_sort_windows.c")
+else()
+    list(APPEND _ar_sources "${_xxfc_ar_root}/src/sort/platforms/xx_sort_posix.c")
+endif()
+add_library(xxfclib_ar STATIC EXCLUDE_FROM_ALL ${_ar_sources})
+add_library(xxfclib::ar ALIAS xxfclib_ar)
+foreach(_property INCLUDE_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES COMPILE_OPTIONS INTERFACE_LINK_OPTIONS)
+    get_target_property(_value xxfclib_zip "${_property}")
+    if(_value)
+        set_property(TARGET xxfclib_ar PROPERTY "${_property}" "${_value}")
+    endif()
+endforeach()
+get_target_property(_definitions xxfclib_zip INTERFACE_COMPILE_DEFINITIONS)
+list(FILTER _definitions EXCLUDE REGEX "^XFU_SUPPORT_FORMAT_")
+target_compile_definitions(xxfclib_ar PUBLIC ${_definitions} XFU_SUPPORT_FORMAT_AR=1
+    PRIVATE XXFC_NO_EXTERNAL_HELPERS=1)
+get_target_property(_libraries xxfclib_zip LINK_LIBRARIES)
+target_link_libraries(xxfclib_ar PUBLIC ${_libraries})
+target_compile_features(xxfclib_ar PUBLIC c_std_11)
+set_target_properties(xxfclib_ar PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED YES
+    C_EXTENSIONS OFF POSITION_INDEPENDENT_CODE ON)
+if(MSVC)
+    target_compile_definitions(xxfclib_ar PRIVATE _CRT_SECURE_NO_WARNINGS)
+    if(CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(X86|x86|x64|AMD64)$")
+        set_property(SOURCE "${_xxfc_ar_root}/src/sort/platforms/xx_sort_avx2.c"
+            APPEND PROPERTY COMPILE_OPTIONS /arch:AVX2)
+    endif()
+elseif(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    xxfclib_target_isa_options(x86 _sort_isa -mavx2)
+    set_property(SOURCE "${_xxfc_ar_root}/src/sort/platforms/xx_sort_avx2.c"
+        APPEND PROPERTY COMPILE_OPTIONS ${_sort_isa})
+endif()
+unset(_xxfc_ar_root)
+unset(_base_sources)
+unset(_ar_sources)
+unset(_source)
