@@ -9,14 +9,42 @@
 #endif
 
 #include "native_writer_backend.h"
+/* Restricted builds link native_extra_formats.c for ar (the AR component)
+ * and for ISO 9660 (a family build that sets XFU_NATIVE_EXTRA_WRITERS). */
+#if !XFU_FORMAT_SUPPORT_FULL && (XFU_FORMAT_SUPPORT_AR_ONLY || defined(XFU_NATIVE_EXTRA_WRITERS))
+#define NATIVE_EXTRA_WRITERS 1
+#else
+#define NATIVE_EXTRA_WRITERS 0
+#endif
+/* The LZMA-Alone filter is the LZMA format's writer. */
+#if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_TAR_FILTERS || defined(XFU_SUPPORT_FORMAT_LZMA)
+#define NATIVE_LZMA_FILTER 1
+#else
+#define NATIVE_LZMA_FILTER 0
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || NATIVE_EXTRA_WRITERS
 #include "native_extra_formats.h"
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_EXTRA_FILTERS
 #include "native_filter_formats.h"
+#endif
+#if NATIVE_LZMA_FILTER
+#include <xxfclib/formats/archive/lzma/xx_lzma.h>
+#endif
+#ifdef XFU_SUPPORT_FORMAT_TAR
 #include "native_tar_writer.h"
+#endif
+
 #include "xxfc_readers.h"
 
-#include <xxfclib/algo/bzip2/xx_bzip2.h>
+#ifdef XFU_SUPPORT_FORMAT_ZSTD
 #include <xxfclib/algo/zstd/xx_zstd.h>
+#endif
+#if XFU_FORMAT_SUPPORT_FULL
+#include <xxfclib/algo/bzip2/xx_bzip2.h>
 #include <xxfclib/formats/archive/lzma/xx_lzma.h>
+#endif
+
 #include <xxfclib/formats/archive/zip/xx_zip.h>
 #include <xxfclib/formats/xx_format.h>
 #include <xxfclib/io/xx_io.h>
@@ -332,24 +360,59 @@ void xfu_native_warn_time(const xfu_request *request, const char *path, const ch
 static native_format native_parse_format(const char *name)
 {
     if (!name) return NATIVE_UNSUPPORTED;
+#if NATIVE_EXTRA_WRITERS
+    if (xfu_native_extra_can_create(name)) return NATIVE_EXTRA;
+#endif
+#if !XFU_FORMAT_SUPPORT_FULL
+#if XFU_FORMAT_SUPPORT_RAW_STREAMS
+    if (!strcmp(name, "raw")) return NATIVE_RAW;
+#endif
+#ifdef XFU_SUPPORT_FORMAT_TAR
+    if (xfu_native_tar_can_create(name)) return NATIVE_TAR_VARIANT;
+#endif
+#ifdef XFU_SUPPORT_FORMAT_CPIO
+    if (!strcmp(name, "cpio") || !strcmp(name, "cpio_newc") || !strcmp(name, "newc")) return NATIVE_CPIO;
+#endif
+#ifdef XFU_SUPPORT_FORMAT_7ZIP
+    if (!strcmp(name, "7zip") || !strcmp(name, "7z")) return NATIVE_7ZIP;
+#endif
+#endif
+#if XFU_FORMAT_SUPPORT_FULL
     if (!strcmp(name, "raw")) return NATIVE_RAW;
     if (xfu_native_tar_can_create(name)) return NATIVE_TAR_VARIANT;
     if (!strcmp(name, "cpio_newc") || !strcmp(name, "newc")) return NATIVE_CPIO;
+#endif
+#ifdef XFU_SUPPORT_FORMAT_ZIP
     if (!strcmp(name, "zip")) return NATIVE_ZIP;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL
     if (!strcmp(name, "7zip") || !strcmp(name, "7z")) return NATIVE_7ZIP;
     if (xfu_native_extra_can_create(name)) return NATIVE_EXTRA;
+#endif
     return NATIVE_UNSUPPORTED;
 }
 
 static native_filter native_parse_filter(const char *name)
 {
     if (!name || !strcmp(name, "none")) return FILTER_NONE;
+#ifdef XFU_SUPPORT_FORMAT_GZ
     if (!strcmp(name, "gzip")) return FILTER_GZIP;
+#endif
+#ifdef XFU_SUPPORT_FORMAT_BZ2
     if (!strcmp(name, "bzip2")) return FILTER_BZIP2;
+#endif
+#ifdef XFU_SUPPORT_FORMAT_XZ
     if (!strcmp(name, "xz")) return FILTER_XZ;
+#endif
+#ifdef XFU_SUPPORT_FORMAT_ZSTD
     if (!strcmp(name, "zstd")) return FILTER_ZSTD;
+#endif
+#if NATIVE_LZMA_FILTER
     if (!strcmp(name, "lzma")) return FILTER_LZMA;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_EXTRA_FILTERS
     if (xfu_native_filter_can_encode(name)) return FILTER_EXTRA;
+#endif
     return FILTER_UNSUPPORTED;
 }
 
@@ -2695,6 +2758,7 @@ done:
     return success;
 }
 
+#if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_COMMON_WRITERS
 static bool native_raw_input(const xfu_request *request, const xfu_native_member *item,
                              xx_io_device *output, xx_pd_struct *pd)
 {
@@ -2714,7 +2778,7 @@ static bool native_raw_input(const xfu_request *request, const xfu_native_member
 
 static bool native_stream_filter(const xfu_request *request, native_filter filter,
                                  xx_io_device *input, xx_io_device *output,
-                                 xx_pd_struct *pd)
+                                 const char *name, xx_pd_struct *pd)
 {
     xxfc_release_fn release = NULL;
     Abstractformat *format;
@@ -2728,7 +2792,7 @@ static bool native_stream_filter(const xfu_request *request, native_filter filte
     state = xx_format_create_archive_records_writing(format, NULL, pd);
     if (!state) { release(format); return false; }
     xx_archive_record_init(&record);
-    success = xx_archive_record_set_original_name(&record, "payload") &&
+    success = (!name || xx_archive_record_set_original_name(&record, name)) &&
         (!request->compression_level_set ||
          xx_archive_record_set_meta_i64(&record, XX_META_ID_COMPRESSION_LEVEL,
                                         request->compression_level)) &&
@@ -2740,6 +2804,7 @@ static bool native_stream_filter(const xfu_request *request, native_filter filte
     return success;
 }
 
+#if NATIVE_LZMA_FILTER
 static bool native_lzma_filter(const xfu_request *request, xx_io_device *input,
                                xx_io_device *output, int64_t size, xx_pd_struct *pd)
 {
@@ -2748,32 +2813,74 @@ static bool native_lzma_filter(const xfu_request *request, xx_io_device *input,
         xx_lzma_pack_to_device(input, 0, size, output, level, pd);
 }
 
+#endif
+#endif
+
+/* The name a one-file stream carries (gzip's FNAME): a raw stream's input
+ * file, without its folders. A filtered archive's stream stays unnamed. */
+static const char *native_stream_name(native_format format, const xfu_native_member *members,
+                                      size_t count)
+{
+    const char *name, *at;
+    if (format != NATIVE_RAW || count != 1U || !members || !members[0].name) return NULL;
+    name = members[0].name;
+    for (at = name; *at; ++at)
+        if (native_separator(*at)) name = at + 1;
+    return *name ? name : NULL;
+}
+
 static bool native_apply_filter(const xfu_request *request, native_filter filter,
-                                const char *filter_name,
+                                const char *filter_name, const char *stream_name,
                                 xx_io_device *input, xx_io_device *output,
                                 xx_pd_struct *pd)
 {
+#if !XFU_FORMAT_SUPPORT_FULL && !XFU_FORMAT_SUPPORT_COMMON_WRITERS
+    (void)filter_name;
+    (void)stream_name;
+    if (filter != FILTER_NONE || xx_io_seek64(input, 0, SEEK_SET) != 0) return false;
+    return native_copy(request, pd, input, output);
+#else
     int64_t size = xx_io_total_size(input);
     int level = request->compression_level_set ? request->compression_level : 3;
+    (void)level;
+    (void)filter_name;
+    (void)stream_name;
     if (size < 0 || xx_io_seek64(input, 0, SEEK_SET) != 0) return false;
     switch (filter) {
         case FILTER_NONE: return native_copy(request, pd, input, output);
         case FILTER_GZIP: case FILTER_BZIP2: case FILTER_XZ:
-            return native_stream_filter(request, filter, input, output, pd);
+            return native_stream_filter(request, filter, input, output, stream_name, pd);
+#ifdef XFU_SUPPORT_FORMAT_ZSTD
         case FILTER_ZSTD: return xx_zstd_pack_device(input, 0, size, output, level, pd);
+#endif
+#if NATIVE_LZMA_FILTER
         case FILTER_LZMA: return native_lzma_filter(request, input, output, size, pd);
-        case FILTER_EXTRA: return xfu_native_filter_encode(request, filter_name,
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_EXTRA_FILTERS
+        case FILTER_EXTRA: return xfu_native_filter_encode(request, filter_name, stream_name,
                                                            input, output, pd);
+#endif
         default: return false;
     }
+#endif
 }
 
 /* Formats with a member for a folder. ar, shar and WARC records hold file
  * data only, and a raw stream holds one file's bytes. */
 static bool native_stores_folders(native_format format, const char *format_name)
 {
+#if !XFU_FORMAT_SUPPORT_FULL
+#if NATIVE_EXTRA_WRITERS
+    if (format == NATIVE_EXTRA) return xfu_native_extra_stores_folders(format_name);
+#else
+    (void)format_name;
+#endif
+    return format == NATIVE_ZIP || format == NATIVE_7ZIP ||
+           format == NATIVE_CPIO || format == NATIVE_TAR_VARIANT;
+#else
     if (format == NATIVE_RAW) return false;
     return format != NATIVE_EXTRA || xfu_native_extra_stores_folders(format_name);
+#endif
 }
 
 /* ZIP and 7-Zip store names as UTF-8 and UTF-16; XAR's XML table, WARC's
@@ -2781,8 +2888,17 @@ static bool native_stores_folders(native_format format, const char *format_name)
  * TAR, CPIO, ar and ISO 9660 store the bytes; a raw stream stores no name. */
 static bool native_needs_utf8(native_format format, const char *format_name)
 {
+#if !XFU_FORMAT_SUPPORT_FULL
+#if NATIVE_EXTRA_WRITERS
+    if (format == NATIVE_EXTRA) return xfu_native_extra_needs_utf8(format_name);
+#else
+    (void)format_name;
+#endif
+    return format == NATIVE_ZIP || format == NATIVE_7ZIP || format == NATIVE_TAR_VARIANT;
+#else
     return format == NATIVE_ZIP || format == NATIVE_7ZIP ||
         (format == NATIVE_EXTRA && xfu_native_extra_needs_utf8(format_name));
+#endif
 }
 
 /* The writers' view of the collected members (borrowing their strings). */
@@ -2907,12 +3023,20 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
         goto done;
     }
     archive = native_checked_open(&container, temporary, pd, true);
+#if XFU_FORMAT_SUPPORT_FULL || NATIVE_EXTRA_WRITERS
+    if (format == NATIVE_EXTRA)
+        success = xfu_native_extra_write(&expanded, format_name, members, archive, pd);
+    else
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_COMMON_WRITERS
     if (format == NATIVE_RAW) success = native_raw_input(&expanded, members, archive, pd);
+#ifdef XFU_SUPPORT_FORMAT_TAR
     else if (format == NATIVE_TAR_VARIANT)
         success = xfu_native_tar_write(&expanded, format_name, members, archive, pd);
-    else if (format == NATIVE_EXTRA)
-        success = xfu_native_extra_write(&expanded, format_name, members, archive, pd);
-    else success = native_pack_records(&expanded, format, format_name, list.items, members,
+#endif
+    else
+#endif
+    success = native_pack_records(&expanded, format, format_name, list.items, members,
                                        archive, method, request->compression_method &&
                                        !(filter != FILTER_NONE &&
                                          !strcmp(request->compression_method, filter_name)), pd);
@@ -2925,7 +3049,8 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
         goto done;
     }
     if (native_cancelled(request, pd)) { result = 1; goto done; }
-    success = native_apply_filter(request, filter, filter_name, archive,
+    success = native_apply_filter(request, filter, filter_name,
+                                  native_stream_name(format, members, list.count), archive,
                                   &output.checked.device, pd);
     if (!success || container.failed || output.checked.failed || native_cancelled(request, pd)) {
         result = 1;
@@ -3012,6 +3137,20 @@ done:
 char *xfu_native_capabilities_text(void)
 {
     static const struct { const char *name; bool read; } formats[] = {
+#if XFU_FORMAT_SUPPORT_TAR_FILTERS
+        {"tar", true}, {"pax", true}, {"pax_restricted", true},
+        {"gnutar", true}, {"ustar", true}, {"v7tar", true},
+        {"tar_solaris", true},
+#elif XFU_FORMAT_SUPPORT_AR_ONLY
+        {"ar", true}, {"ar_bsd", true}, {"ar_svr4", true}, {"ar_gnu", true},
+#elif !XFU_FORMAT_SUPPORT_FULL
+#define XX_SUPPORTED_FORMAT(type, name, label) {#name, true},
+#include "xxfclib/formats/xx_format_support_rows.inc"
+#undef XX_SUPPORTED_FORMAT
+#if XFU_FORMAT_SUPPORT_RAW_STREAMS
+        {"raw", false},
+#endif
+#else
         {"tar", true}, {"pax", true}, {"pax_restricted", true},
         {"gnutar", true}, {"ustar", true}, {"v7tar", true},
         {"tar_solaris", true}, {"cpio", true}, {"cpio_newc", true},
@@ -3024,13 +3163,51 @@ char *xfu_native_capabilities_text(void)
         {"zip", true}, {"7zip", true}, {"warc", true}, {"xar", true},
         {"raw", true}, {"cab", true}, {"lha", true}, {"rar", true},
         {"rar5", true}, {"rpm", true}, {"empty", true}
+#endif
     };
     static const struct { const char *name; bool read; } filters[] = {
+#if !XFU_FORMAT_SUPPORT_FULL
+        {"none", true},
+#ifdef XFU_SUPPORT_FORMAT_GZ
+        {"gzip", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_BZ2
+        {"bzip2", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_XZ
+        {"xz", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_ZSTD
+        {"zstd", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_UNIX_COMPRESS
+        {"compress", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZMA
+        {"lzma", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZIP
+        {"lzip", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZ4
+        {"lz4", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZOP
+        {"lzop", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_UUE
+        {"uuencode", true},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_BASE64
+        {"b64encode", true},
+#endif
+#else
         {"none", true}, {"gzip", true}, {"bzip2", true},
         {"compress", true}, {"lzma", true}, {"xz", true},
         {"lzip", true}, {"lz4", true}, {"lzop", true},
         {"zstd", true}, {"uuencode", true}, {"b64encode", true},
         {"rpm", true}, {"lrzip", false}, {"grzip", false}
+#endif
     };
     size_t i, used = 0U;
     size_t capacity = 8192U;
@@ -3041,6 +3218,7 @@ char *xfu_native_capabilities_text(void)
     if (amount < 0 || (size_t)amount >= capacity) { free(text); return NULL; }
     used = (size_t)amount;
     for (i = 0; i < sizeof(formats) / sizeof(formats[0]); ++i) {
+        if (i && !strcmp(formats[i].name, formats[i - 1U].name)) continue;
         amount = snprintf(text + used, capacity - used,
                           "format %s read=%s create=%s\n", formats[i].name,
                           formats[i].read ? "yes" : "no",

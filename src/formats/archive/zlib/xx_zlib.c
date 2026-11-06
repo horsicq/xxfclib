@@ -6,6 +6,7 @@
 #include "xxfclib/formats/archive/zlib/xx_zlib.h"
 
 #include "xxfclib/algo/deflate/xx_deflate.h"
+#include "xxfclib/algo/adler32/xx_adler32.h"
 #include "xxfclib/algo/store/xx_store.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
@@ -64,18 +65,9 @@ static bool xx_zlib_header_is_valid(const uint8_t *input, size_t input_size)
     return (input[0] & UINT8_C(0x0f)) == UINT8_C(8) && (input[0] >> 4U) <= 7U && (header % 31U) == 0U && (input[1] & UINT8_C(0x20)) == 0U;
 }
 
-static uint32_t xx_zlib_adler32(const uint8_t *data, size_t size)
+static inline uint32_t xx_zlib_adler32(const uint8_t *data, size_t size)
 {
-    uint32_t a = 1U;
-    uint32_t b = 0U;
-    size_t index;
-    for (index = 0U; index < size; ++index) {
-        a += data[index];
-        if (a >= XX_ZLIB_ADLER_MOD) a -= XX_ZLIB_ADLER_MOD;
-        b += a;
-        if (b >= XX_ZLIB_ADLER_MOD) b -= XX_ZLIB_ADLER_MOD;
-    }
-    return (b << 16U) | a;
+    return xx_adler32(data, size);
 }
 
 static bool xx_zlib_buffer_reserve(xx_zlib_buffer *buffer, size_t additional)
@@ -107,15 +99,14 @@ static bool xx_zlib_buffer_reserve(xx_zlib_buffer *buffer, size_t additional)
 static ssize_t xx_zlib_buffer_write(xx_io_device *device, const void *data, size_t size)
 {
     xx_zlib_buffer *buffer = device ? (xx_zlib_buffer *)device->priv : NULL;
-    size_t index;
     if (!buffer || (!data && size != 0U) || !xx_zlib_buffer_reserve(buffer, size)) {
         if (buffer) buffer->failed = true;
         return -1;
     }
-    for (index = 0U; index < size; ++index) {
-        buffer->data[buffer->size + index] = ((const uint8_t *)data)[index];
+    if (size != 0U) {
+        xx_mem_copy(buffer->data + buffer->size, data, size);
+        buffer->size += size;
     }
-    buffer->size += size;
     return (ssize_t)size;
 }
 
@@ -139,10 +130,53 @@ static bool xx_zlib_decode_stream(Abstractformat *self, xx_io_device *destinatio
         return false;
     }
     input_size = total_size - self->base_address;
-    input = (uint8_t *)xx_mem_alloc((size_t)input_size);
-    if (!input || !xx_zlib_read_exact_at(self->device, self->base_address, input, (size_t)input_size) || !xx_zlib_header_is_valid(input, (size_t)input_size)) {
-        goto cleanup;
+
+    /* If stream size was already determined, only read that exact extent */
+    if (self->format_size > 0 && self->format_size <= input_size) {
+        input_size = self->format_size;
+        input = (uint8_t *)xx_mem_alloc((size_t)input_size);
+        if (!input || !xx_zlib_read_exact_at(self->device, self->base_address, input, (size_t)input_size) || !xx_zlib_header_is_valid(input, (size_t)input_size)) {
+            goto cleanup;
+        }
+    } else {
+        /* Probe initial chunk up to 256KB if source file is large */
+        size_t probe_limit = (size_t)input_size;
+        if (probe_limit > 262144U) {
+            probe_limit = 262144U;
+            input = (uint8_t *)xx_mem_alloc(probe_limit);
+            if (input && xx_zlib_read_exact_at(self->device, self->base_address, input, probe_limit) && xx_zlib_header_is_valid(input, probe_limit)) {
+                sink.write = xx_zlib_buffer_write;
+                sink.priv = &output;
+                if (xx_deflate_unpack_memory_to_device_ex(input + 2U, probe_limit - 2U, &sink, &raw_size, false, pd) &&
+                    !output.failed && raw_size <= probe_limit - 6U) {
+                    trailer_offset = 2U + raw_size;
+                    expected_adler = xx_data_get_u32(input + trailer_offset, 4, 0, true);
+                    if (xx_adler32(output.data, output.size) == expected_adler &&
+                        (!destination || xx_zlib_write_all(destination, output.data, output.size, pd))) {
+                        *uncompressed_size = (uint64_t)output.size;
+                        *stream_size = (int64_t)(trailer_offset + 4U);
+                        *adler32 = expected_adler;
+                        result = true;
+                        goto cleanup;
+                    }
+                }
+                xx_mem_free(output.data);
+                output.data = NULL;
+                output.size = 0U;
+                output.capacity = 0U;
+                output.failed = false;
+            }
+            xx_mem_free(input);
+            input = NULL;
+        }
+        if (!input) {
+            input = (uint8_t *)xx_mem_alloc((size_t)input_size);
+            if (!input || !xx_zlib_read_exact_at(self->device, self->base_address, input, (size_t)input_size) || !xx_zlib_header_is_valid(input, (size_t)input_size)) {
+                goto cleanup;
+            }
+        }
     }
+
     sink.write = xx_zlib_buffer_write;
     sink.priv = &output;
     if (!xx_deflate_unpack_memory_to_device_ex(input + 2U, (size_t)input_size - 2U, &sink, &raw_size, false, pd) || output.failed || raw_size > (size_t)input_size - 6U ||
@@ -152,7 +186,7 @@ static bool xx_zlib_decode_stream(Abstractformat *self, xx_io_device *destinatio
     trailer_offset = 2U + raw_size;
     if (trailer_offset > (size_t)input_size - 4U) goto cleanup;
     expected_adler = xx_data_get_u32(input + trailer_offset, 4, 0, true);
-    if (xx_zlib_adler32(output.data, output.size) != expected_adler || (destination && !xx_zlib_write_all(destination, output.data, output.size, pd))) {
+    if (xx_adler32(output.data, output.size) != expected_adler || (destination && !xx_zlib_write_all(destination, output.data, output.size, pd))) {
         goto cleanup;
     }
     *uncompressed_size = (uint64_t)output.size;

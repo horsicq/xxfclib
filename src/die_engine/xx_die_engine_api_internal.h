@@ -353,11 +353,54 @@ void die_engine_api_fix_offset_size(DieEngine *pEngine, cd_i64 *pnOffset, cd_i64
 #define legacy_overlay_offset die_engine_api_legacy_overlay_offset
 #define fix_offset_size die_engine_api_fix_offset_size
 
-/* Sub-dispatchers */
+/* Per-class registration tables */
+void die_engine_api_register_entries(JSCtx *pCtx, JSVal object, const ApiEntry *pEntries);
+void die_engine_api_register_amiga(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_apk(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_archive(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_atarist(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_binary(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_cfbf(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_com(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_dex(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_dos16m(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_dos4g(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_dotnet(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_elf(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_image(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_ipa(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_iso9660(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_jar(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_javaclass(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_jpeg(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_le(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_lx(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_mach(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_machofat(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_msdos(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_ne(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_npm(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_pdf(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_pe(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_png(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_pyc(JSCtx *pCtx, JSVal object);
+void die_engine_api_register_zip(JSCtx *pCtx, JSVal object);
+
+/* Class dispatchers with implemented class-specific methods */
 bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
-bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
 bool die_engine_api_dispatch_msdos(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
-bool die_engine_api_dispatch_elf_macho(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
-bool die_engine_api_dispatch_formats(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_dotnet(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_elf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_mach(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_jpeg(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_apk(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_pdf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_dex(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_iso9660(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_archive(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_jar(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_npm(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
+bool die_engine_api_dispatch_pyc(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult);
 
 #endif /* XX_DIE_ENGINE_API_INTERNAL_H */

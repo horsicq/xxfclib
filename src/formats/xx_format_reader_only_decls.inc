@@ -845,3 +845,7 @@ XXFC_API Abstractextractor *xx_djcomp_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_djcomp_get_abstract_detector(void);
 XXFC_API Abstractextractor *xx_dpc_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_dpc_get_abstract_detector(void);
+XXFC_API Abstractextractor *xx_dsl1_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_dsl1_get_abstract_detector(void);
+XXFC_API Abstractextractor *xx_dwc_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_dwc_get_abstract_detector(void);

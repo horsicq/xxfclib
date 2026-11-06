@@ -4,173 +4,188 @@
 
 #include "xx_die_engine_engine.h"
 #include "xxfclib/rt/xx_rt.h"
-#include <limits.h>
 
-static xx_scan_result *die_scan_device(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
+static bool die_engine_create(xx_scan_engine *engine, const void *config, xx_pd_struct *pd)
+{
+    (void)config;
+    (void)pd;
+    if (!engine) return false;
+    engine->context = NULL;
+    return true;
+}
+
+static void die_engine_destroy(xx_scan_engine *engine)
+{
+    if (engine) engine->context = NULL;
+}
+
+static bool die_engine_load_database(xx_scan_engine *engine, const void *database, xx_pd_struct *pd)
+{
+    if (!engine || !database) {
+        xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing DIE engine or database");
+        return false;
+    }
+    engine->context = (void *)database;
+    return true;
+}
+
+static bool die_engine_supports_type(const xx_scan_engine *engine, xx_file_type_t type)
+{
+    (void)engine;
+    return type != XX_FILE_TYPE_UNKNOWN && die_engine_xft_from_native(type) != XFT_UNKNOWN;
+}
+
+static xx_scan_result *die_engine_scan_region(xx_scan_engine *engine, const xx_scan_region *region,
+                                              const xx_scan_options *options, xx_pd_struct *pd)
 {
     xx_scan_options local;
-    xx_io_device *view;
     xx_scan_result *result;
     XFileType type;
-    int64_t total;
-    int64_t size;
-    int i;
     bool success;
-    if (!engine || !engine->priv || !device) {
+    if (!engine || !engine->context || !region || !region->device) {
         xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing DIE engine, database or input");
         return NULL;
     }
     if (xx_pd_is_stopped(pd)) return NULL;
     if (options) local = *options;
     else xx_scan_options_init(&local);
-    if (local.recursive_scan || local.first_wrapper_only) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Unsupported DIE scan mode");
+    if (local.recursive_scan || local.first_wrapper_only || local.all_types_scan ||
+        local.overlay_scan || local.resources_scan || local.archives_scan) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "DIE region received traversal options");
         return NULL;
     }
-    if (local.all_types_scan || local.overlay_scan || local.resources_scan || local.archives_scan) return xx_scan_device(engine, device, &local, pd);
-    type = die_engine_xft_from_native(local.file_type);
-    if (local.file_type != XX_FILE_TYPE_UNKNOWN && type == XFT_UNKNOWN) {
+    type = die_engine_xft_from_native(region->file_type);
+    if (type == XFT_UNKNOWN) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Unsupported DIE file type");
         return NULL;
     }
-    total = xx_io_total_size(device);
-    if (local.offset < 0 || local.size < -1 || (local.size >= 0 && local.offset > INT64_MAX - local.size)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid DIE scan range");
-        return NULL;
-    }
-    if (total < 0) {
-        xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot determine DIE input size");
-        return NULL;
-    }
-    size = local.size < 0 ? total - local.offset : local.size;
-    if (local.offset > total || size > total - local.offset) {
-        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "DIE scan range exceeds input");
-        return NULL;
-    }
-    view = xx_io_sub_open_ro(device, local.offset, size);
-    if (!view) {
-        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create DIE scan input view");
-        return NULL;
-    }
+    local.offset = 0;
+    local.size = region->size;
+    local.file_type = region->file_type;
+    local.scan_id = region->scan_id;
+    local.parent_id = region->parent_id;
+    local.scan_part = region->part;
     result = (xx_scan_result *)xx_rt_calloc(1, sizeof(*result));
     if (!result) {
-        xx_io_close(view);
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate DIE scan result");
         return NULL;
     }
-    success = die_engine_scan_pass_device(view, (DBase *)engine->priv, &local, type, result, pd) != 0;
-    xx_io_close(view);
+    success = die_engine_scan_pass_device(region->device, (DBase *)engine->context, &local, type, result, pd) != 0;
     if (!success || xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
         if (!xx_pd_is_stopped(pd) && (!pd || !pd->last_error)) xx_pd_set_error(pd, XXFC_ERR_IO, "DIE signature scan failed");
         xx_scan_free_result(engine, result);
         return NULL;
     }
-    for (i = 0; i < result->nCount; ++i) {
-        xx_scan_record *record = &result->pRecords[i];
-        if (record->offset < 0 || record->offset > INT64_MAX - local.offset) {
-            xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "DIE record range overflows");
-            xx_scan_free_result(engine, result);
-            return NULL;
-        }
-        record->offset += local.offset;
-    }
+    result->engine_id = XX_SCAN_ENGINE_DIE;
+    for (int i = 0; i < result->nCount; ++i) result->pRecords[i].engine_id = XX_SCAN_ENGINE_DIE;
     return result;
 }
 
-#define DIE_SCAN_CALLBACK(name, native_type) \
-    static xx_scan_result *die_scan_##name(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd) \
-    { \
-        xx_scan_options local; \
-        if (options) local = *options; else xx_scan_options_init(&local); \
-        local.file_type = native_type; \
-        return die_scan_device(engine, device, &local, pd); \
+static bool die_engine_catalog_add(xx_scan_catalog *catalog, const char *text, xx_pd_struct *pd)
+{
+    char **items;
+    char *copy;
+    size_t length;
+    if (!catalog || !text || catalog->count == SIZE_MAX / sizeof(*items)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid DIE catalog entry");
+        return false;
     }
-
-DIE_SCAN_CALLBACK(binary, XX_FILE_TYPE_BINARY)
-DIE_SCAN_CALLBACK(msdos, XX_FILE_TYPE_MSDOS)
-DIE_SCAN_CALLBACK(machofat, XX_FILE_TYPE_MACHOFAT)
-DIE_SCAN_CALLBACK(java_class, XX_FILE_TYPE_JAVA_CLASS)
-DIE_SCAN_CALLBACK(zip, XX_FILE_TYPE_ZIP)
-DIE_SCAN_CALLBACK(jar, XX_FILE_TYPE_JAR)
-DIE_SCAN_CALLBACK(npm, XX_FILE_TYPE_NPM)
-DIE_SCAN_CALLBACK(ipa, XX_FILE_TYPE_IPA)
-DIE_SCAN_CALLBACK(iso9660, XX_FILE_TYPE_ISO9660)
-DIE_SCAN_CALLBACK(apk, XX_FILE_TYPE_APK)
-DIE_SCAN_CALLBACK(amigahunk, XX_FILE_TYPE_AMIGAHUNK)
-DIE_SCAN_CALLBACK(atarist, XX_FILE_TYPE_ATARIST)
-DIE_SCAN_CALLBACK(cfbf, XX_FILE_TYPE_CFBF)
-DIE_SCAN_CALLBACK(com, XX_FILE_TYPE_COM)
-DIE_SCAN_CALLBACK(dex, XX_FILE_TYPE_DEX)
-DIE_SCAN_CALLBACK(dos16m, XX_FILE_TYPE_DOS16M)
-DIE_SCAN_CALLBACK(dos4g, XX_FILE_TYPE_DOS4G)
-DIE_SCAN_CALLBACK(jpeg, XX_FILE_TYPE_JPEG)
-DIE_SCAN_CALLBACK(png, XX_FILE_TYPE_PNG)
-DIE_SCAN_CALLBACK(pdf, XX_FILE_TYPE_PDF)
-DIE_SCAN_CALLBACK(ne, XX_FILE_TYPE_NE)
-DIE_SCAN_CALLBACK(le, XX_FILE_TYPE_LE)
-DIE_SCAN_CALLBACK(lx, XX_FILE_TYPE_LX)
-DIE_SCAN_CALLBACK(rar, XX_FILE_TYPE_RAR)
-
-#undef DIE_SCAN_CALLBACK
-
-#define DIE_SCAN_WIDTH_CALLBACK(name, broad, narrow, wide, extra) \
-    static xx_scan_result *die_scan_##name(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd) \
-    { \
-        xx_scan_options local; \
-        if (options) local = *options; else xx_scan_options_init(&local); \
-        if (local.file_type != narrow && local.file_type != wide && local.file_type != extra) local.file_type = broad; \
-        return die_scan_device(engine, device, &local, pd); \
+    length = xx_rt_strlen(text);
+    copy = (char *)xx_rt_malloc(length + 1);
+    if (!copy) {
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate DIE catalog entry");
+        return false;
     }
+    xx_rt_memcpy(copy, text, length + 1);
+    items = (char **)xx_rt_realloc(catalog->items, (catalog->count + 1) * sizeof(*items));
+    if (!items) {
+        xx_rt_free(copy);
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate DIE catalog");
+        return false;
+    }
+    catalog->items = items;
+    catalog->items[catalog->count++] = copy;
+    return true;
+}
 
-DIE_SCAN_WIDTH_CALLBACK(pe, XX_FILE_TYPE_PE, XX_FILE_TYPE_PE32, XX_FILE_TYPE_PE64, XX_FILE_TYPE_DOTNET)
-DIE_SCAN_WIDTH_CALLBACK(elf, XX_FILE_TYPE_ELF, XX_FILE_TYPE_ELF32, XX_FILE_TYPE_ELF64, XX_FILE_TYPE_ELF)
-DIE_SCAN_WIDTH_CALLBACK(macho, XX_FILE_TYPE_MACHO, XX_FILE_TYPE_MACHO32, XX_FILE_TYPE_MACHO64, XX_FILE_TYPE_MACHO)
+static bool die_engine_list_signatures(const xx_scan_engine *engine, xx_scan_catalog *catalog, xx_pd_struct *pd)
+{
+    const DBase *database;
+    int i;
+    if (!engine || !engine->context || !catalog) {
+        xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing DIE signature catalog argument");
+        return false;
+    }
+    xx_scan_catalog_free(catalog);
+    database = (const DBase *)engine->context;
+    for (i = 0; i < database->nCount; ++i) {
+        if (!die_engine_catalog_add(catalog, database->pRecords[i].pName ? database->pRecords[i].pName : "", pd)) {
+            xx_scan_catalog_free(catalog);
+            return false;
+        }
+    }
+    return true;
+}
 
-#undef DIE_SCAN_WIDTH_CALLBACK
+static bool die_engine_list_tags(const xx_scan_engine *engine, xx_scan_catalog *catalog, xx_pd_struct *pd)
+{
+    char *tags;
+    char *current;
+    if (!engine || !engine->context || !catalog) {
+        xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing DIE tag catalog argument");
+        return false;
+    }
+    xx_scan_catalog_free(catalog);
+    tags = db_get_used_tags((const DBase *)engine->context);
+    if (!tags) {
+        xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate DIE tag catalog");
+        return false;
+    }
+    current = tags;
+    while (*current) {
+        char *end = current;
+        char saved;
+        while (*end && *end != ';') ++end;
+        saved = *end;
+        *end = 0;
+        if (!die_engine_catalog_add(catalog, current, pd)) {
+            xx_rt_free(tags);
+            xx_scan_catalog_free(catalog);
+            return false;
+        }
+        if (!saved) break;
+        current = end + 1;
+    }
+    xx_rt_free(tags);
+    return true;
+}
+
+static const xx_scan_engine_ops die_ops = {
+    XX_SCAN_ENGINE_ABI_VERSION,
+    sizeof(xx_scan_engine_ops),
+    XX_SCAN_ENGINE_DIE,
+    "die",
+    "Detect It Easy (DiE)",
+    XX_SCAN_CAP_EXTERNAL_DATABASE_REQUIRED | XX_SCAN_CAP_TAGS | XX_SCAN_CAP_DEEP |
+        XX_SCAN_CAP_AGGRESSIVE | XX_SCAN_CAP_VERBOSE | XX_SCAN_CAP_TYPE_QUERY |
+        XX_SCAN_CAP_THREAD_SAFE | XX_SCAN_CAP_REENTRANT,
+    die_engine_create,
+    die_engine_destroy,
+    die_engine_load_database,
+    die_engine_supports_type,
+    die_engine_scan_region,
+    die_engine_list_signatures,
+    die_engine_list_tags
+};
+
+const xx_scan_engine_ops *die_engine_get_ops(void)
+{
+    return &die_ops;
+}
 
 bool die_engine_init(xx_scan_engine *engine, DBase *database)
 {
-    if (!engine) return false;
-    xx_rt_memset(engine, 0, sizeof(*engine));
-    if (!database) return false;
-    engine->priv = database;
-    engine->name = "Detect It Easy";
-    engine->scan_device = die_scan_device;
-    engine->get_record_count = xx_scan_get_record_count;
-    engine->get_record = xx_scan_get_record;
-    engine->free_result = xx_scan_free_result;
-    engine->cleanup = xx_scan_engine_cleanup;
-    engine->get_file_types = xx_scan_get_file_types;
-    engine->get_overlay = xx_scan_get_overlay;
-    engine->append_result = xx_scan_append_result;
-    engine->scan_binary = die_scan_binary;
-    engine->scan_msdos = die_scan_msdos;
-    engine->scan_pe = die_scan_pe;
-    engine->scan_elf = die_scan_elf;
-    engine->scan_macho = die_scan_macho;
-    engine->scan_machofat = die_scan_machofat;
-    engine->scan_java_class = die_scan_java_class;
-    engine->scan_zip = die_scan_zip;
-    engine->scan_jar = die_scan_jar;
-    engine->scan_npm = die_scan_npm;
-    engine->scan_ipa = die_scan_ipa;
-    engine->scan_iso9660 = die_scan_iso9660;
-    engine->scan_apk = die_scan_apk;
-    engine->scan_amigahunk = die_scan_amigahunk;
-    engine->scan_atarist = die_scan_atarist;
-    engine->scan_cfbf = die_scan_cfbf;
-    engine->scan_com = die_scan_com;
-    engine->scan_dex = die_scan_dex;
-    engine->scan_dos16m = die_scan_dos16m;
-    engine->scan_dos4g = die_scan_dos4g;
-    engine->scan_jpeg = die_scan_jpeg;
-    engine->scan_png = die_scan_png;
-    engine->scan_pdf = die_scan_pdf;
-    engine->scan_ne = die_scan_ne;
-    engine->scan_le = die_scan_le;
-    engine->scan_lx = die_scan_lx;
-    engine->scan_rar = die_scan_rar;
-    return true;
+    return xx_scan_engine_init(engine, &die_ops, NULL, database, NULL);
 }
 
 xx_file_type_t die_engine_native_from_xft(XFileType type)
@@ -221,7 +236,6 @@ XFileType die_engine_xft_from_native(xx_file_type_t type)
 {
     switch (type) {
         case XX_FILE_TYPE_BINARY:
-        /* DIE has no dedicated signature directories for these containers. */
         case XX_FILE_TYPE_LHA:
         case XX_FILE_TYPE_GZ:
         case XX_FILE_TYPE_BZ2: return XFT_BINARY;

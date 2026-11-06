@@ -429,7 +429,28 @@ void xx_format_search_free(xx_format_search_state *state)
 /* ------------------------------------------------------------------------ */
 /* One extractor per format, and the file types each answers to. Generated. */
 
+#if !XFU_FORMAT_SUPPORT_FULL
+#define XX_SUPPORTED_FORMAT(type, name, label) \
+    extern xx_format_extractor xx_##name##_extractor; \
+    extern Abstractextractor *xx_##name##_get_abstract_extractor(void); \
+    extern Abstractdetector *xx_##name##_get_abstract_detector(void);
+#include "xxfclib/formats/xx_format_support_rows.inc"
+#undef XX_SUPPORTED_FORMAT
+static const struct {
+    xx_file_type_t type;
+    xx_format_extractor *extractor;
+    Abstractextractor *(*get)(void);
+    Abstractdetector *(*get_detector)(void);
+} g_xx_format_extractors[] = {
+#define XX_SUPPORTED_FORMAT(type, name, label) \
+    {XX_FILE_TYPE_##type, &xx_##name##_extractor, \
+     xx_##name##_get_abstract_extractor, xx_##name##_get_abstract_detector},
+#include "xxfclib/formats/xx_format_support_rows.inc"
+#undef XX_SUPPORTED_FORMAT
+};
+#else
 #include "xx_format_extractor_list.inc"
+#endif
 
 xx_format_extractor *xx_format_extractor_get(xx_file_type_t type)
 {
@@ -455,6 +476,7 @@ xx_format_extractor *xx_format_extractor_at(size_t index, xx_file_type_t *type)
 /* Every registered legacy extractor has one abstract extractor and detector.
  * Use the legacy pointer as the key: entries such as PE32/PE64 and ZIP/ZIP64
  * that share one search implementation also share their abstract adapters. */
+#if XFU_FORMAT_SUPPORT_FULL
 #include "xx_format_abstract_extractor_list.inc"
 #include "xx_format_reader_only_decls.inc"
 #include "xxfclib/formats/document/zxml/xx_zxml.h"
@@ -532,6 +554,16 @@ Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type)
     return NULL;
 }
 
+#else
+Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type)
+{
+    size_t i;
+    for (i = 0; i < xx_format_extractor_count(); ++i)
+        if (g_xx_format_extractors[i].type == type) return g_xx_format_extractors[i].get();
+    return NULL;
+}
+#endif
+
 Abstractformat *xx_format_create_reader(xx_file_type_t type, xx_io_device *dev, int64_t base_address)
 {
     Abstractextractor *extractor = xx_abstract_extractor_get(type);
@@ -574,6 +606,7 @@ void xx_format_free_reader(Abstractformat *format)
     if (owned) xx_io_close(owned);
 }
 
+#if XFU_FORMAT_SUPPORT_FULL
 static bool xx_abstract_reader_only_visible(size_t index)
 {
     /* CRX replaces the old adapter at its existing catalog position. */
@@ -643,3 +676,33 @@ Abstractdetector *xx_abstract_detector_at(size_t index, xx_file_type_t *type)
     }
     return NULL;
 }
+
+#else
+size_t xx_abstract_extractor_count(void)
+{
+    return xx_format_extractor_count();
+}
+
+Abstractextractor *xx_abstract_extractor_at(size_t index, xx_file_type_t *type)
+{
+    return xx_format_extractor_at(index, type) ? g_xx_format_extractors[index].get() : NULL;
+}
+
+Abstractdetector *xx_abstract_detector_get(xx_file_type_t type)
+{
+    size_t i;
+    for (i = 0; i < xx_format_extractor_count(); ++i)
+        if (g_xx_format_extractors[i].type == type) return g_xx_format_extractors[i].get_detector();
+    return NULL;
+}
+
+size_t xx_abstract_detector_count(void)
+{
+    return xx_format_extractor_count();
+}
+
+Abstractdetector *xx_abstract_detector_at(size_t index, xx_file_type_t *type)
+{
+    return xx_format_extractor_at(index, type) ? g_xx_format_extractors[index].get_detector() : NULL;
+}
+#endif

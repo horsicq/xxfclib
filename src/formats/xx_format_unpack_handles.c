@@ -19,7 +19,13 @@ typedef struct xx_unpack_handle_row {
 
 static const xx_unpack_handle_row handle_rows[] = {
 #define XX_UNPACK_HANDLE(name, value, type, carrier) {XX_HANDLE_TYPE_##name, XX_FILE_TYPE_##type, carrier},
+#if !XFU_FORMAT_SUPPORT_FULL
+#define XX_SUPPORTED_FORMAT(type, name, label) {XX_HANDLE_TYPE_##type, XX_FILE_TYPE_##type, 0},
+#include "xxfclib/formats/xx_format_support_rows.inc"
+#undef XX_SUPPORTED_FORMAT
+#else
 #include "xxfclib/formats/xx_format_unpack_handle_rows.inc"
+#endif
 #undef XX_UNPACK_HANDLE
 };
 
@@ -38,7 +44,9 @@ xx_handle_type_t xx_format_handle_type_from_file_type(xx_file_type_t type)
     bool supported;
     size_t i;
     if (xx_format_handle_is_inspection_only(type)) return XX_HANDLE_TYPE_UNKNOWN;
+#if XFU_FORMAT_SUPPORT_FULL
     if (type == XX_FILE_TYPE_NUMBERED_SPLIT) return XX_HANDLE_TYPE_NUMBERED_SPLIT;
+#endif
     empty = xx_io_mem_open_ro(&dummy, 0U);
     if (!empty) return XX_HANDLE_TYPE_UNKNOWN;
     format = xx_format_create_reader(type, empty, 0);
@@ -130,7 +138,9 @@ static bool xx_handle_probe_format(Abstractformat *format, xx_file_type_t type, 
     /* The native UPX reader can use a configured official backend. Never
      * ask that backend to probe unrelated input: first authenticate the
      * bounded carrier/UPX pack-header marker (including COM/SYS loaders). */
+#if XFU_FORMAT_SUPPORT_FULL
     if (type == XX_FILE_TYPE_UPX && (!format || !xx_upx_has_marker_device(format->device, NULL))) return true;
+#endif
     if (xx_handle_can_unpack(format) && xx_format_is_valid(format, NULL)) {
         bool parsed = (type == XX_FILE_TYPE_WISE_INSTALLATION_SYSTEM) ? true : xx_format_handle_base_info(format, NULL);
         /* A CRC-authenticated 7z encoded-header grammar can identify AES
@@ -184,8 +194,11 @@ static bool xx_handle_extension_matches(const char *path, const char *extensions
 static int xx_handle_signature(xx_file_type_t type, xx_io_device *dev)
 {
     Abstractextractor *extractor = xx_abstract_extractor_get(type);
-    uint8_t magic[4];
     if (!extractor) return 0;
+#if !XFU_FORMAT_SUPPORT_FULL
+    return extractor->signature ? extractor->signature(dev, 0, false) : -1;
+#else
+    uint8_t magic[4];
     if (type == XX_FILE_TYPE_IBMPACK) {
         /* A signature is only a scheduling hint. Native chain validation
          * still precedes publication of this handle, including for .001. */
@@ -280,6 +293,7 @@ static int xx_handle_signature(xx_file_type_t type, xx_io_device *dev)
     if (type == XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX && xx_io_read_at(dev, 0, magic, sizeof(magic)) &&
         magic[0] == 'E' && magic[1] == 'V' && magic[2] == 'B' && !magic[3]) return 1;
     return extractor->signature ? extractor->signature(dev, 0, false) : xx_format_fast_detect_rules(&type, 1U, dev, 0, false);
+#endif
 }
 
 /* Less nested views precede their compound forms, independently of catalog
@@ -359,9 +373,12 @@ xx_list_t *xx_format_get_unpack_handle_types_device(xx_io_device *dev, bool deep
         /* Numbered raw volumes use the unpacker's multi-file backend, rather
          * than a single native format factory. A nonempty opened .001 file
          * is sufficient for its extension-based interpretation. */
+#if XFU_FORMAT_SUPPORT_FULL
         if (hint == XX_FILE_TYPE_NUMBERED_SPLIT && xx_io_total_size(dev) > 0) {
             if (!xx_handle_append(types, XX_HANDLE_TYPE_NUMBERED_SPLIT)) goto failed;
-        } else if (hint != XX_FILE_TYPE_UNKNOWN && !xx_handle_probe(dev, hint, types)) goto failed;
+        } else
+#endif
+        if (hint != XX_FILE_TYPE_UNKNOWN && !xx_handle_probe(dev, hint, types)) goto failed;
         /* The canonical hint map deliberately omits ambiguous extensions.
          * Try every compiled reader declaring that suffix and keep every
          * validated interpretation, including compound suffixes. */
@@ -410,7 +427,9 @@ xx_list_t *xx_format_get_supported_unpack_handle_types(void)
     if (!types) return NULL;
     empty = xx_io_mem_open_ro(&dummy, 0U);
     if (!empty) { xx_list_destroy(types); return NULL; }
+#if XFU_FORMAT_SUPPORT_FULL
     if (!xx_handle_append(types, XX_HANDLE_TYPE_NUMBERED_SPLIT)) goto failed;
+#endif
     for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i) {
         const xx_unpack_handle_row *row = &handle_rows[i];
         Abstractformat *format;

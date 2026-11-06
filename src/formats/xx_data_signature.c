@@ -36,11 +36,14 @@
 #include "xxfclib/buf/xx_buf.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
+#include "xxfclib/global/xx_global.h"
 #include "../data/platforms/xx_data_platform.h"
 
 #if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
 #define SIG_ANY_SSE2 1
+#define SIG_ANY_AVX2 1
 #include <emmintrin.h>
+#include <immintrin.h>
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
@@ -1350,6 +1353,58 @@ static bool sig_any_candidate(SigAny *any, const uint8_t *window, size_t size, i
     return false;
 }
 
+#if defined(SIG_ANY_AVX2)
+#if (defined(__GNUC__) || defined(__clang__))
+__attribute__((target("avx2")))
+#endif
+static bool sig_any_window_avx2(SigAny *any, const uint8_t *window, size_t size, int64_t base)
+{
+    __m256i values[256];
+    size_t position = 0, i;
+    for (i = 0; i < any->value_count; ++i) values[i] = _mm256_set1_epi8((char)any->values[i]);
+    while (size - position >= 32) {
+        __m256i bytes = _mm256_loadu_si256((const __m256i *)(const void *)(window + position));
+        __m256i matches = _mm256_cmpeq_epi8(bytes, values[0]);
+        uint32_t bits;
+        for (i = 1; i < any->value_count; ++i) matches = _mm256_or_si256(matches, _mm256_cmpeq_epi8(bytes, values[i]));
+        bits = (uint32_t)_mm256_movemask_epi8(matches);
+        while (bits) {
+            unsigned long bit;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit, bits);
+#else
+            bit = (unsigned long)__builtin_ctz(bits);
+#endif
+            if (sig_any_candidate(any, window, size, base, position + (size_t)bit)) return true;
+            bits &= bits - 1U;
+        }
+        position += 32;
+    }
+    while (size - position >= 16) {
+        __m128i bytes = _mm_loadu_si128((const __m128i *)(const void *)(window + position));
+        __m128i matches = _mm_cmpeq_epi8(bytes, _mm256_castsi256_si128(values[0]));
+        unsigned bits;
+        for (i = 1; i < any->value_count; ++i) matches = _mm_or_si128(matches, _mm_cmpeq_epi8(bytes, _mm256_castsi256_si128(values[i])));
+        bits = (unsigned)_mm_movemask_epi8(matches);
+        while (bits) {
+            unsigned long bit;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit, bits);
+#else
+            bit = (unsigned long)__builtin_ctz(bits);
+#endif
+            if (sig_any_candidate(any, window, size, base, position + (size_t)bit)) return true;
+            bits &= bits - 1U;
+        }
+        position += 16;
+    }
+    for (; position < size; ++position) {
+        if (any->buckets[window[position]] != SIZE_MAX && sig_any_candidate(any, window, size, base, position)) return true;
+    }
+    return false;
+}
+#endif
+
 #if defined(SIG_ANY_SSE2)
 #if (defined(__GNUC__) || defined(__clang__)) && defined(__i386__) && !defined(__SSE2__)
 __attribute__((target("sse2")))
@@ -1413,9 +1468,14 @@ static bool sig_any_window_neon(SigAny *any, const uint8_t *window, size_t size,
 }
 #endif
 
-static bool sig_any_window(SigAny *any, const uint8_t *window, size_t size, int64_t base, bool use_sse2, bool use_neon)
+static bool sig_any_window(SigAny *any, const uint8_t *window, size_t size, int64_t base, bool use_avx2, bool use_sse2, bool use_neon)
 {
     size_t position;
+#if defined(SIG_ANY_AVX2)
+    if (use_avx2) return sig_any_window_avx2(any, window, size, base);
+#else
+    (void)use_avx2;
+#endif
 #if defined(SIG_ANY_SSE2)
     if (use_sse2) return sig_any_window_sse2(any, window, size, base);
 #else
@@ -1440,7 +1500,7 @@ static bool sig_input_find_any(SigInput *input, int64_t offset, int64_t length, 
     int64_t first = INT64_MAX, last = -1;
     uint8_t *scratch = NULL;
     bool result = false, fallback_all = true;
-    bool use_sse2 = false, use_neon = false;
+    bool use_avx2 = false, use_sse2 = false, use_neon = false;
     if (sig_input_stopped(input) || !signatures || !count || (!input->bytes && !input->device) || input->size > INT64_MAX || offset < 0 ||
         (uint64_t)offset >= input->size) return false;
     if (length < 0 || length > (int64_t)input->size - offset) length = (int64_t)input->size - offset;
@@ -1491,10 +1551,13 @@ static bool sig_input_find_any(SigInput *input, int64_t offset, int64_t length, 
     }
     if (sig_input_stopped(input)) goto done;
     if (fast_count < 2) goto fallback;
+#if defined(SIG_ANY_AVX2)
+    use_avx2 = any.value_count <= 16 && xx_is_avx2_enabled();
+#endif
 #if defined(SIG_ANY_SSE2)
     /* Many distinct bytes make the scalar bucket lookup cheaper than a
      * vector comparison for every filter value. */
-    use_sse2 = any.value_count <= 16 && xx_is_sse2_enabled();
+    use_sse2 = !use_avx2 && any.value_count <= 16 && xx_is_sse2_enabled();
 #endif
 #if defined(SIG_ANY_NEON)
     use_neon = any.value_count <= 16U && xx_is_neon_enabled();
@@ -1514,7 +1577,7 @@ static bool sig_input_find_any(SigInput *input, int64_t offset, int64_t length, 
         /* A separate bounded window cannot be invalidated when candidate
          * verification performs a FIND_BYTES record using find_buffer. */
         if (!input->bytes && !sig_input_read(input, first, scratch, size)) break;
-        if (sig_any_window(&any, window, size, first, use_sse2, use_neon)) {
+        if (sig_any_window(&any, window, size, first, use_avx2, use_sse2, use_neon)) {
             result = true;
             goto done;
         }

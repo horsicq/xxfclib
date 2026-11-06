@@ -9,6 +9,7 @@
 #include "metadata.h"
 #include "native_reader_backend.h"
 #include "native_writer_backend.h"
+#if XFU_FORMAT_SUPPORT_FULL
 #include "peazip_backend.h"
 #include "pea_backend.h"
 #include "freearc_backend.h"
@@ -16,10 +17,17 @@
 #include "split_backend.h"
 #include "sfx_backend.h"
 #include "upx_backend.h"
+#endif
+
 #include "xxfc_readers.h"
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB)
 #include "../formats/xx_archive_output_name.h"
+#endif
+#if XFU_FORMAT_SUPPORT_FULL
 #include "xxfclib/formats/installer/rtpatch_setup_data/xx_rtpatch_setup_data.h"
 #include "../formats/executable/resourcefork/xx_resourcefork_output_name.h"
+
+#endif
 
 #include <errno.h>
 #include <stdarg.h>
@@ -30,13 +38,22 @@
 #include <wchar.h>
 #include <xxfclib/io/xx_io.h>
 #include <xxfclib/strings/xx_string.h>
+#if XFU_FORMAT_SUPPORT_FULL
 #include <xxfclib/formats/executable/upx_engine/xx_upx_engine.h>
 #include <xxfclib/formats/executable/molebox/xx_molebox.h>
 #include <xxfclib/formats/archive/cpio/xx_cpio.h>
 #include <xxfclib/formats/archive/tar/xx_tar.h>
+#endif
+
 #include <xxfclib/formats/archive/zip/xx_zip.h>
+#if defined(XFU_SUPPORT_FORMAT_TAR) && !XFU_FORMAT_SUPPORT_FULL
+#include <xxfclib/formats/archive/tar/xx_tar.h>
+#endif
+#if XFU_FORMAT_SUPPORT_FULL
 #include <xxfclib/formats/archive/xorarchive/xx_xorarchive.h>
 #include <xxfclib/formats/installer/lifkd/xx_lifkd.h>
+
+#endif
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -317,6 +334,7 @@ static bool test_observe(const xx_pd_struct *pd, void *user) {
  * validates it, then the one that decodes it) starts its bytes again: after
  * the first pass that showed some, the level says which pass it is, so that
  * the figure starting again within one job says why (stream_label). */
+#if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_TAR_FILTERS
 static void stream_attach(test_monitor *monitor, xx_io_device *device) {
     int64_t size;
     int i;
@@ -339,6 +357,8 @@ static void stream_attach(test_monitor *monitor, xx_io_device *device) {
 }
 
 /* Before the device is closed or its members are counted instead. */
+#endif
+
 static void stream_detach(test_monitor *monitor) {
     if (!monitor || !monitor->stream) return;
     if (monitor->stream_shown) ++monitor->stream_passes;
@@ -422,6 +442,14 @@ static bool safe_extract_name(const char *name) {
  * This is deliberately a small allowlist: a ZIP with a rooted path, a drive
  * escape or traversal still has exactly the strict policy above. */
 static char *mapped_extract_name(xx_file_type_t type, const char *name, size_t ordinal) {
+#if !XFU_FORMAT_SUPPORT_FULL
+    (void)type; (void)ordinal;
+#ifdef XFU_SUPPORT_FORMAT_CAB
+    if (type == XX_FILE_TYPE_CAB)
+        return xx_archive_output_name(name, 0, XX_ARCHIVE_NAME_ROOTED);
+#endif
+    return xx_str_dup(name);
+#else
     switch (type) {
     case XX_FILE_TYPE_RESOURCEFORK:
         return rsrc_output_name(name, ordinal);
@@ -455,14 +483,18 @@ static char *mapped_extract_name(xx_file_type_t type, const char *name, size_t o
     default:
         return xx_str_dup(name);
     }
+#endif
 }
 
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB)
 static bool mapped_name_can_suffix(xx_file_type_t type) {
     return type == XX_FILE_TYPE_CAB || type == XX_FILE_TYPE_SFX_CAB ||
         type == XX_FILE_TYPE_CLAYLZ || type == XX_FILE_TYPE_LHA || type == XX_FILE_TYPE_SFX_LHA || type == XX_FILE_TYPE_IS3 ||
         type == XX_FILE_TYPE_NOTETAB || type == XX_FILE_TYPE_AMIGALZX ||
         type == XX_FILE_TYPE_SFX_LZX || type == XX_FILE_TYPE_SHAR || type == XX_FILE_TYPE_BEOSPKG || type == XX_FILE_TYPE_IBMPACK || type == XX_FILE_TYPE_QUANTUM;
 }
+
+#endif
 
 /* Enough of what is at a path to tell that nothing replaced or changed it. */
 typedef struct path_stamp {
@@ -532,7 +564,9 @@ static bool splits_backslash(xx_file_type_t type) {
 #endif
 }
 
+#if XFU_FORMAT_SUPPORT_FULL || defined(_WIN32)
 static bool same_file(const char *left, const char *right);
+#endif
 
 /* Whether what is at destination (not what a link there names) is the file
  * of the archive being read: a member there would replace it. */
@@ -588,9 +622,11 @@ static void member_metadata(const xx_archive_record *record, xfu_entry *entry,
  * (the format is the xx_zip), so resolve them before the fields are shown.
  * The reader's enum identity decides the cast, as in xxfc_is_incomplete. */
 static void resolve_zip_record(const xxfc_opened *opened, const xx_archive_record *record) {
+#ifdef XFU_SUPPORT_FORMAT_ZIP
     xx_file_type_t type;
     if (!opened->format || !record || record->data_offset >= 0) return;
     type = opened->format->file_type != XX_FILE_TYPE_UNKNOWN ? opened->format->file_type : opened->type;
+#if XFU_FORMAT_SUPPORT_FULL
     if (type == XX_FILE_TYPE_XORARCHIVE) {
         if (((const xx_xorarchive *)opened->format)->family != XX_XORARCHIVE_FAMILY_ZIP) return;
     } else if (type != XX_FILE_TYPE_ZIP && type != XX_FILE_TYPE_ZIP64 && type != XX_FILE_TYPE_JAR &&
@@ -598,7 +634,13 @@ static void resolve_zip_record(const xxfc_opened *opened, const xx_archive_recor
                type != XX_FILE_TYPE_ZIP_PSC && type != XX_FILE_TYPE_CRX) {
         return;
     }
+#else
+    if (type != XX_FILE_TYPE_ZIP && type != XX_FILE_TYPE_ZIP64) return;
+#endif
     (void)xx_zip_resolve_record_data_offset((xx_zip *)opened->format, (xx_archive_record *)record);
+#else
+    (void)opened; (void)record;
+#endif
 }
 
 static bool is_compressed_tar_type(xx_file_type_t type) {
@@ -616,6 +658,7 @@ static bool is_compressed_tar_type(xx_file_type_t type) {
 
 /* Readers that decode one compressed stream from the start of the file: how
  * far they have read is how far they are. */
+#if XFU_FORMAT_SUPPORT_FULL
 static bool is_stream_type(xx_file_type_t type) {
     switch (type) {
     case XX_FILE_TYPE_GZ: case XX_FILE_TYPE_BZ2: case XX_FILE_TYPE_XZ:
@@ -711,6 +754,8 @@ static char *layer_name(const char *name, xx_file_type_t filter) {
  * control character, a ".." component or, on Windows, ':'. They make an
  * absolute name ("/x", and on Windows "C:\x") relative first, so its leading
  * separators and drive are no reason: such a member fails for its data. */
+#endif
+
 static bool name_refused_in_test(xx_file_type_t type, const char *name) {
     if (type != XX_FILE_TYPE_TAR && type != XX_FILE_TYPE_CPIO && !is_compressed_tar_type(type))
         return false;
@@ -800,6 +845,7 @@ static const char *failure_reason(const xfu_request *request, xx_file_type_t typ
 
 /* The type a damaged compressed stream of type is named as: the compressed
  * TAR that hint's extension says it holds (a cut .tar.xz), or type. */
+#if XFU_FORMAT_SUPPORT_FULL
 static xx_file_type_t damaged_name(xx_file_type_t type, const char *hint) {
     if (!is_compressed_tar_type(type)) {
         xx_file_type_t extension = xx_format_get_file_type_extension(hint);
@@ -820,6 +866,8 @@ static void damaged_stream(const xfu_request *request, xx_file_type_t type,
 }
 
 /* Binary, or a recognised format without members: not an archive. */
+#endif
+
 static void not_archive(const xfu_request *request, xx_file_type_t type) {
     if (request->callbacks.not_archive)
         request->callbacks.not_archive(request->callbacks.user, type);
@@ -942,6 +990,7 @@ static void report_types(const xfu_request *request, const outer_layers *outer,
 
 /* outer plus one more layer read as type: its chain up to and including
  * stop (the outer compressed stream), or all of it. */
+#if XFU_FORMAT_SUPPORT_FULL
 static void layers_add(outer_layers *result, const outer_layers *outer,
                        xx_file_type_t type, xx_file_type_t stop) {
     xx_file_type_t chain[XX_FILE_TYPE_CHAIN_MAX];
@@ -1271,38 +1320,52 @@ static bool numbered_rnc(const char *path, xx_io_device *borrowed,
     return valid;
 }
 
+#endif
+
 static int walk_device(const xfu_request *request, const char *unpack_to,
                        xx_pd_struct *pd, xx_io_device *preopened,
                        unsigned nested_depth, const outer_layers *outer,
                        test_monitor *stream) {
+#if XFU_FORMAT_SUPPORT_FULL
     xfu_request resolved_request;
     const char *resolved_reader = NULL;
     bool raw_reader = false;
+#endif
     const char *archive_path = request->archive_path;
     /* Extension hints for what this layer holds: the archive's own name, or
      * the name the outer layers give it. */
+#if XFU_FORMAT_SUPPORT_FULL
     const char *hint = outer && outer->name ? outer->name : archive_path;
+#endif
     xx_io_device *device;
     xxfc_opened opened = {0};
     xx_archive_record_state *state;
     xx_list_t options;
     uint64_t total = 0, failed = 0, known_total = 0, interrupted = 0;
     uint64_t visited = 0;
+#if XFU_FORMAT_SUPPORT_FULL
     int64_t freearc_sfx_base;
+#endif
     size_t selected_cursor = 0;
     int status = 0;
-    xx_file_type_t types[XX_FILE_TYPE_CHAIN_MAX], detected, selected, extension_hint;
+    xx_file_type_t types[XX_FILE_TYPE_CHAIN_MAX], selected;
+    size_t type_count;
+#if XFU_FORMAT_SUPPORT_FULL
+    xx_file_type_t detected, extension_hint;
     xx_file_type_t compound_hint = XX_FILE_TYPE_UNKNOWN;
-    size_t type_count, type_index;
+    size_t type_index;
     bool type_matches = false;
+#endif
     bool extension_opened = false;
     bool engine_attempted = false;
     bool reported_encryption = false, reported_password_failure = false;
     bool testing = request->command == XFU_COMMAND_TEST;
     bool reached_end = false;
+#if XFU_FORMAT_SUPPORT_FULL
     bool cpio_cp437 = false;
     bool cpio_pwb = false;
     bool layer_pick = false;
+#endif
     /* The layer inside was too large to open (layer_too_large): what is
      * read is not all of the archive. */
     bool partial = false;
@@ -1311,6 +1374,7 @@ static int walk_device(const xfu_request *request, const char *unpack_to,
     bool unverified_note = false, unverified = false;
     test_monitor monitor = {0};
 
+#if XFU_FORMAT_SUPPORT_FULL
     if (request->reader_name && !strncmp(request->reader_name, "native", 6)) {
         if (!xfu_native_reader_resolve(request->reader_name,
                                        &resolved_reader, &raw_reader)) {
@@ -1792,7 +1856,111 @@ layers:
         return 2;
     }
 reader_opened:
+#else
+    (void)nested_depth;
+    xfu_request selected_request = *request;
+    if (selected_request.reader_name) {
+        if (!strcmp(selected_request.reader_name, "native")) selected_request.reader_name = NULL;
+        else if (!strncmp(selected_request.reader_name, "native:", 7))
+            selected_request.reader_name += 7;
+    }
+    request = &selected_request;
+    if (request->archive_options && request->archive_options[0]) {
+        emit(request, true, "unsupported read option: %s", request->archive_options);
+        if (preopened) xx_io_close(preopened);
+        return 2;
+    }
+    device = preopened ? preopened : xx_io_file_open(archive_path, "rb");
+    if (!device) { emit(request, true, "cannot open %s", archive_path); return 2; }
+#if XFU_FORMAT_SUPPORT_TAR_FILTERS
+    if (cancelled(request, pd) || nested_depth > 8U) {
+        bool stopped = cancelled(request, pd);
+        emit(request, true, stopped ? "operation cancelled" : "too many nested TAR filters");
+        xx_io_close(device);
+        return stopped ? 1 : 2;
+    }
+    if (!request->reader_name &&
+        (request->file_type == XX_FILE_TYPE_UNKNOWN || request->file_type == XX_FILE_TYPE_TAR)) {
+        xx_io_device *decoded = NULL;
+        char *decoded_name = NULL;
+        xx_file_type_t envelope_type = XX_FILE_TYPE_BASE64;
+        xfu_native_envelope_status envelope;
+        stream_attach(stream, device);
+        envelope = xfu_native_base64_open_device(device, pd, &decoded, &decoded_name);
+        if (envelope == XFU_NATIVE_ENVELOPE_NOT_FOUND) {
+            envelope_type = XX_FILE_TYPE_UUE;
+            envelope = xfu_native_uue_open_device(device, pd, &decoded, &decoded_name);
+        }
+        stream_detach(stream);
+        if (envelope != XFU_NATIVE_ENVELOPE_NOT_FOUND) {
+            int result;
+            xx_io_close(device);
+            if (envelope == XFU_NATIVE_ENVELOPE_ARCHIVE) {
+                outer_layers next;
+                xx_file_type_t chain[XX_FILE_TYPE_CHAIN_MAX];
+                size_t count = xx_format_get_file_type_chain(envelope_type, chain, XX_FILE_TYPE_CHAIN_MAX);
+                layers_append(&next, outer, chain, count);
+                next.name = decoded_name;
+                result = walk_device(request, unpack_to, pd, decoded, nested_depth + 1U, &next, stream);
+            } else {
+                if (decoded) xx_io_close(decoded);
+                emit(request, true, "encoded TAR could not be decoded or does not contain a TAR archive");
+                result = cancelled(request, pd) ? 1 : 2;
+            }
+            free(decoded_name);
+            return result;
+        }
+    }
+#endif
+    selected = request->file_type != XX_FILE_TYPE_UNKNOWN ? request->file_type :
+               xx_format_get_file_type_device(device);
+#ifdef XFU_SUPPORT_FORMAT_TAR
+    if (request->file_type == XX_FILE_TYPE_UNKNOWN && !request->reader_name) {
+        xx_file_type_t hint_type = xx_format_get_file_type_extension(archive_path);
+        /* A broken compressed TAR must not silently become an unrelated raw
+         * stream merely because its final checksum/inner header is damaged. */
+        if (is_compressed_tar_type(hint_type)) selected = hint_type;
+    }
+    if (selected == XX_FILE_TYPE_TAR) {
+        xx_file_type_t detected_type = xx_format_get_file_type_device(device);
+        if (is_compressed_tar_type(detected_type)) selected = detected_type;
+#if XFU_FORMAT_SUPPORT_TAR_FILTERS
+        else if (detected_type == XX_FILE_TYPE_LZ4 && !request->reader_name) {
+            xx_io_device *inner = NULL;
+            xfu_native_inner_status decoded;
+            stream_attach(stream, device);
+            decoded = xfu_native_open_inner_device(device, detected_type, pd, &inner);
+            stream_detach(stream);
+            xx_io_close(device);
+            if (decoded == XFU_NATIVE_INNER_ARCHIVE) {
+                outer_layers next;
+                xx_file_type_t chain[XX_FILE_TYPE_CHAIN_MAX];
+                size_t count = xx_format_get_file_type_chain(detected_type, chain, XX_FILE_TYPE_CHAIN_MAX);
+                layers_append(&next, outer, chain, count);
+                next.name = "";
+                return walk_device(request, unpack_to, pd, inner, nested_depth + 1U, &next, stream);
+            }
+            emit(request, true, "LZ4 stream could not be decoded as TAR");
+            return cancelled(request, pd) ? 1 : 2;
+        }
+#endif
+    }
+#endif
+    if (!handle_matches_device(device, request->handle_type) ||
+        !(request->reader_name ? xxfc_open_named(&opened, device, 0, request->reader_name) :
+                                xxfc_open_type(&opened, device, 0, selected))) {
+        emit(request, true, "%s: unavailable reader, invalid archive or unpack handle selection", archive_path);
+        xx_io_close(device);
+        return 2;
+    }
+    selected = opened.type;
+    type_count = xx_format_get_file_type_chain(selected, types, XX_FILE_TYPE_CHAIN_MAX);
+    report_types(request, outer, types, type_count, selected, device);
+    engine_attempted = true; /* There are no foreign-format fallbacks in this component. */
+reader_opened:
+#endif
     xxfc_attach_source_files(&opened, archive_path);
+#if XFU_FORMAT_SUPPORT_FULL
     if (cpio_cp437 || cpio_pwb) {
         if (!opened.reader_name || strcmp(opened.reader_name, "cpio") ||
             !xx_cpio_set_read_options((xx_cpio *)opened.format,
@@ -1804,6 +1972,8 @@ reader_opened:
         }
         extension_opened = false;
     }
+#endif
+
     if (request->password) {
         if (!xx_format_set_password(opened.format, request->password)) {
             emit(request, true, "cannot set archive password");
@@ -1815,8 +1985,10 @@ reader_opened:
         extension_opened = false;
     }
     if (!extension_opened && !xx_format_is_valid(opened.format, pd)) {
+#if XFU_FORMAT_SUPPORT_FULL
         uint64_t limit = 0;
         uint32_t ratio = 0;
+#endif
         bool encrypted_format = opened.format && opened.format->is_crypted;
         if (!engine_attempted && !request->reader_name &&
             request->file_type == XX_FILE_TYPE_UNKNOWN &&
@@ -1833,6 +2005,7 @@ reader_opened:
                 ? "%s: archive is encrypted; the password may be incorrect or the encrypted data may be damaged"
                 : "%s: archive is encrypted; a password is needed", archive_path);
         }
+#if XFU_FORMAT_SUPPORT_FULL
         /* A compressed TAR is decoded once, in RAM and beyond a threshold in
          * a temporary file, which Test (memory only) cannot write. */
         else if (xx_tar_compressed_too_large(opened.format, &limit))
@@ -1851,6 +2024,8 @@ reader_opened:
         /* A compressed TAR reader checks its stream and the TAR in it: a
          * damaged stream fails here, too. */
         else if (is_compressed_tar_type(opened.type)) damaged_stream(request, opened.type, hint);
+#endif
+
         else emit(request, true, "%s: %s header does not hold up", archive_path,
                   opened.reader_name);
         status = xx_pd_is_stopped(pd) ? 1 : 2;
@@ -2031,7 +2206,9 @@ reader_opened:
     if (xxfc_is_incomplete(&opened)) {
         /* Test and Extract read the members before the cut of a compressed
          * TAR whether or not a check covers them, as GNU tar does. */
+#ifdef XFU_SUPPORT_FORMAT_TAR
         unverified_note = (testing || unpack_to) && xx_tar_compressed_unverified(opened.format);
+#endif
         if (!unverified_note)
             emit(request, true, "%s: incomplete archive; showing recovered members", archive_path);
         status = 1;
@@ -2141,6 +2318,7 @@ reader_opened:
                     itself = other && is_archive_file(other, request->archive_path);
                     free(other);
                 }
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB)
                 /* A name collision may give the reader a stable record
                  * suffix. Protect that possible destination as well. */
                 if (!itself && output_name && mapped_name_can_suffix(opened.type)) {
@@ -2152,6 +2330,8 @@ reader_opened:
                     }
                     xx_str_free(suffixed);
                 }
+#endif
+
                 if (itself) success = false;
                 xx_io_extract_clear();
             }
@@ -2169,6 +2349,7 @@ reader_opened:
                                    &before, xx_io_memory_only_refusals() != refusals, &password_failure);
             if (password_failure)
                 encryption_blocked(request, &reported_encryption, &reported_password_failure, entry.name);
+#ifdef XFU_SUPPORT_FORMAT_TAR
             if (success && unverified_note && xx_tar_compressed_last_unverified(opened.format))
                 unverified = true;
             /* In a cut compressed TAR, the member the cut runs through, or a
@@ -2178,6 +2359,8 @@ reader_opened:
             if (!success && !cut && !unsafe && !itself && xx_tar_compressed_last_cut(opened.format) &&
                 (!entry.failure || !strcmp(entry.failure, "already exists; not replaced")))
                 entry.failure = "cut";
+#endif
+
             free(destination);
             xx_str_free(output_name);
             if (cut) {
@@ -2280,6 +2463,7 @@ static int walk(const xfu_request *request, const char *unpack_to,
     return result;
 }
 
+#if XFU_FORMAT_SUPPORT_FULL
 static bool ends_with(const char *text, const char *suffix) {
     size_t n = strlen(text), m = strlen(suffix), i;
     if (m > n) return false;
@@ -2292,6 +2476,9 @@ static bool ends_with(const char *text, const char *suffix) {
     return true;
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL
 static const char *writer_kind(const char *path) {
     static const struct { const char *suffix; const char *kind; } table[] = {
         { ".tar.gz", "tar.gz" }, { ".tgz", "tar.gz" },
@@ -2373,6 +2560,9 @@ static void compatibility_writer(const char *path, const char **format,
     free(base);
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL || defined(_WIN32)
 static bool same_file(const char *left, const char *right) {
 #ifdef _WIN32
     wchar_t *a = xx_str_utf8_to_unicode(left);
@@ -2416,9 +2606,12 @@ static bool same_file(const char *left, const char *right) {
 #endif
 }
 
+#endif
+
 /* The suffix-selected xxfclib writer, filling the stage with the members
  * xfu_native_create_with walked: relative subdirectories are kept, and an
  * absolute or parent-relative input keeps only its last component. */
+#if XFU_FORMAT_SUPPORT_FULL
 typedef struct add_writer {
     const char *kind;
     const xx_list_s *options;
@@ -2530,6 +2723,9 @@ done:
     return success;
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL
 static int add(const xfu_request *given, xx_pd_struct *pd) {
     /* An empty password (-p) protects nothing: an archive is written without
      * one, whatever its format. */
@@ -2726,6 +2922,51 @@ static int add(const xfu_request *given, xx_pd_struct *pd) {
         return xfu_native_create_with(request, kind, flags, add_members, &writer, pd);
     }
 }
+
+#else
+/* Reuse the native writer's traversal and atomic publication, constrained
+ * to the compiled families. Full-engine helpers are not linked here. */
+static int add(const xfu_request *given, xx_pd_struct *pd) {
+    xfu_request request = *given;
+    const char *format = request.archive_format;
+    const char *filter = request.archive_filter;
+    const char *path = request.archive_path;
+    size_t length = strlen(path);
+    static const struct { const char *suffix, *format, *filter; } outputs[] = {
+        {".tar.gz", "tar", "gzip"}, {".tgz", "tar", "gzip"},
+        {".tar.bz2", "tar", "bzip2"}, {".tar.xz", "tar", "xz"},
+        {".tbz2", "tar", "bzip2"}, {".tbz", "tar", "bzip2"},
+        {".txz", "tar", "xz"}, {".tar.lzma", "tar", "lzma"},
+        {".tar.lz", "tar", "lzip"}, {".tlz", "tar", "lzip"},
+        {".tar.lz4", "tar", "lz4"}, {".tar.lzo", "tar", "lzop"},
+        {".tar.Z", "tar", "compress"}, {".taz", "tar", "compress"},
+        {".tzst", "tar", "zstd"}, {".tar.zstd", "tar", "zstd"},
+        {".tar.zst", "tar", "zstd"}, {".tar", "tar", "none"},
+        {".zip", "zip", "none"}, {".7z", "7zip", "none"},
+        {".cpio", "cpio", "none"}, {".gz", "raw", "gzip"},
+        {".bz2", "raw", "bzip2"}, {".xz", "raw", "xz"},
+        {".zst", "raw", "zstd"}
+    };
+    size_t i;
+    for (i = 0; i < sizeof(outputs) / sizeof(outputs[0]); ++i) {
+        size_t n = strlen(outputs[i].suffix);
+        if (length >= n && !strcmp(path + length - n, outputs[i].suffix)) {
+            if (!format) format = outputs[i].format;
+            if (!filter) filter = outputs[i].filter;
+            break;
+        }
+    }
+    if (!format) format = "zip";
+    if (!filter) filter = "none";
+    if (request.volume_size || !xfu_native_can_create_format(format) ||
+        !xfu_native_can_create_filter(filter)) {
+        emit(&request, true, "output format/filter is unavailable in this format profile");
+        return 2;
+    }
+    if (request.password && !request.password[0]) request.password = NULL;
+    return xfu_native_create(&request, format, filter, pd);
+}
+#endif
 
 static int walk_observed(const xfu_request *request, const char *unpack_to,
                          xx_pd_struct *pd) {

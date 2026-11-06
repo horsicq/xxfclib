@@ -19,6 +19,39 @@
  * SOFTWARE.
  */
 
+#include "xxfclib/formats/xx_format_support.h"
+#if !XFU_FORMAT_SUPPORT_FULL
+#include "xxfclib/formats/archive/zip/xx_zip.h"
+
+/* Probe only registered readers. A focused profile must not call the global
+ * detector catalog (or select a codec-only dependency as an archive). */
+xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
+{
+    xx_file_type_t type = XX_FILE_TYPE_BINARY;
+    xx_list_t *supported;
+    size_t i;
+    int64_t saved;
+    if (!dev || (saved = xx_io_tell(dev)) < 0) return XX_FILE_TYPE_UNKNOWN;
+    supported = xx_format_get_supported_file_types();
+    if (!supported) return XX_FILE_TYPE_UNKNOWN;
+    for (i = 0; i < xx_list_count(supported); ++i) {
+        xx_file_type_t candidate = *(const xx_file_type_t *)xx_list_at(supported, i);
+        Abstractformat *format = xx_format_create_reader(candidate, dev, 0);
+        if (format && xx_format_is_valid(format, NULL)) {
+            /* Preserve ZIP64 refinement and authenticated encrypted headers. */
+            bool parsed = xx_format_handle_base_info(format, NULL);
+            if ((parsed && format->is_archive) || format->is_crypted)
+                type = format->file_type == XX_FILE_TYPE_UNKNOWN ? candidate : format->file_type;
+        }
+        xx_format_free_reader(format);
+        if (xx_io_seek64(dev, saved, SEEK_SET)) { type = XX_FILE_TYPE_UNKNOWN; break; }
+        if (type != XX_FILE_TYPE_BINARY) break;
+    }
+    xx_list_destroy(supported);
+    if (xx_io_seek64(dev, saved, SEEK_SET)) return XX_FILE_TYPE_UNKNOWN;
+    return type;
+}
+#else
 #include "xxfclib/formats/archive/pe_rawfile/xx_pe_rawfile.h"
 #include "xxfclib/formats/archive/pklite/xx_pklite.h"
 #include "xxfclib/rt/xx_rt.h"
@@ -7422,3 +7455,5 @@ XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_file_type_device(xx_io_device *d
     return xx_format_get_unpacked_file_type_device(dev);
 }
 #endif
+
+#endif /* restricted format profile */

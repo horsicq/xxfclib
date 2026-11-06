@@ -19,7 +19,7 @@ set(_xxfc_xfu_include_dir "${_xxfc_xfu_source_dir}/include")
 set(_xxfc_xfu_registry_dir "${_xxfc_xfu_source_dir}")
 
 option(XFILEUNPACKER_BUILD_FREEARC_SFX
-    "Embed the source-built Windows XFU FreeArc SFX stub" ON)
+    "Embed the source-built Windows XFU FreeArc SFX stub" OFF)
 
 if(NOT WIN32 OR NOT XFILEUNPACKER_BUILD_FREEARC_SFX)
     add_library(xxfclib_xfu_freearc_sfx_stub INTERFACE)

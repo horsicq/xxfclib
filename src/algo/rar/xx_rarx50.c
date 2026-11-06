@@ -36,7 +36,11 @@
 #include <string.h>
 #include "xxfclib/data/xx_data.h"
 
-#if defined(__SSE2__) || defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
+#if defined(__SSE2__) || defined(_M_X64) || defined(_M_IX86) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
 #include <emmintrin.h>
 #define XX_RARX50_USE_SSE2 1
 #endif
@@ -244,12 +248,21 @@ static xx_rarx_status_t xx_rarx50_build_huffman(xx_rarx50_huffman *table, const 
         for (k = 0; k < cnt; ++k) {
             uint32_t sym_code = first + (uint32_t)k;
             uint16_t sym = table->symbols[fidx + k];
-            uint16_t entry = (uint16_t)((sym << 4) | length);
+            uint16_t cur_entry = (uint16_t)((sym << 4) | length);
             uint32_t base_pattern = sym_code << shift;
-            uint32_t p;
+            uint32_t p = 0;
 
-            for (p = 0; p < step; ++p) {
-                table->fast_table[base_pattern + p] = entry;
+            if (step >= 4) {
+                uint32_t cur2 = ((uint32_t)cur_entry << 16) | cur_entry;
+                uint64_t cur4 = ((uint64_t)cur2 << 32) | cur2;
+                while (p + 4 <= step) {
+                    xx_mem_store64(&table->fast_table[base_pattern + p], cur4);
+                    p += 4;
+                }
+            }
+            while (p < step) {
+                table->fast_table[base_pattern + p] = cur_entry;
+                p++;
             }
         }
     }
@@ -806,18 +819,33 @@ static xx_rarx_status_t xx_rarx50_filter_delta(uint8_t *data, size_t size, unsig
     if (!data || channels == 0 || channels > 32u) {
         return XX_RARX_STATUS_CORRUPT;
     }
-    decoded = (uint8_t *)xx_mem_alloc(size != 0 ? size : 1u);
+    if (size == 0) return XX_RARX_STATUS_OK;
+
+    if (channels == 1u) {
+        uint8_t previous = 0;
+        size_t position;
+        for (position = 0; position < size; ++position) {
+            if ((position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
+                return XX_RARX_STATUS_CANCELLED;
+            }
+            previous = (uint8_t)(previous - data[position]);
+            data[position] = previous;
+        }
+        return XX_RARX_STATUS_OK;
+    }
+
+    decoded = (uint8_t *)xx_mem_alloc(size);
     if (!decoded) return XX_RARX_STATUS_NO_MEMORY;
     for (channel = 0; channel < channels; ++channel) {
         uint8_t previous = 0;
         size_t position;
         for (position = channel; position < size; position += channels) {
             if ((source_position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
-                xx_rarx_clear_free(decoded, size != 0 ? size : 1u);
+                xx_rarx_clear_free(decoded, size);
                 return XX_RARX_STATUS_CANCELLED;
             }
             if (source_position >= size) {
-                xx_rarx_clear_free(decoded, size != 0 ? size : 1u);
+                xx_rarx_clear_free(decoded, size);
                 return XX_RARX_STATUS_CORRUPT;
             }
             previous = (uint8_t)(previous - data[source_position++]);
@@ -825,17 +853,60 @@ static xx_rarx_status_t xx_rarx50_filter_delta(uint8_t *data, size_t size, unsig
         }
     }
     if (source_position != size) {
-        xx_rarx_clear_free(decoded, size != 0 ? size : 1u);
+        xx_rarx_clear_free(decoded, size);
         return XX_RARX_STATUS_CORRUPT;
     }
     xx_mem_copy(data, decoded, size);
-    xx_rarx_clear_free(decoded, size != 0 ? size : 1u);
+    xx_rarx_clear_free(decoded, size);
     return XX_RARX_STATUS_OK;
 }
 
 static xx_rarx_status_t xx_rarx50_filter_x86(uint8_t *data, size_t size, uint32_t file_offset, bool include_e9, xx_pd_struct *progress)
 {
     size_t position = 0;
+
+#if defined(XX_RARX50_USE_SSE2)
+    const __m128i v_e8 = _mm_set1_epi8((char)-24); /* 0xe8 */
+    const __m128i v_e9 = _mm_set1_epi8((char)-23); /* 0xe9 */
+
+    while (position + 16u + 4u <= size) {
+        if ((position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
+            return XX_RARX_STATUS_CANCELLED;
+        }
+        __m128i chunk = _mm_loadu_si128((const __m128i *)(const void *)(data + position));
+        __m128i cmp = _mm_cmpeq_epi8(chunk, v_e8);
+        if (include_e9) {
+            cmp = _mm_or_si128(cmp, _mm_cmpeq_epi8(chunk, v_e9));
+        }
+        int mask = _mm_movemask_epi8(cmp);
+        if (mask == 0) {
+            position += 16u;
+            continue;
+        }
+        unsigned long bit_idx;
+#if defined(_MSC_VER)
+        _BitScanForward(&bit_idx, (unsigned long)mask);
+#elif defined(__GNUC__) || defined(__clang__)
+        bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask);
+#else
+        for (bit_idx = 0; bit_idx < 16; ++bit_idx) {
+            if (mask & (1 << bit_idx)) break;
+        }
+#endif
+        position += bit_idx;
+        size_t address_position = position + 1u;
+        uint32_t offset = (file_offset + (uint32_t)address_position) & (XX_RARX50_X86_FILE_SIZE - 1u);
+        uint32_t address = xx_mem_load32(data + address_position);
+        if (address < XX_RARX50_X86_FILE_SIZE) {
+            address -= offset;
+            xx_mem_store32(data + address_position, address);
+        } else if (address > UINT32_MAX - offset) {
+            address += XX_RARX50_X86_FILE_SIZE;
+            xx_mem_store32(data + address_position, address);
+        }
+        position += 5u;
+    }
+#endif
 
     while (position + 4u < size) {
         uint8_t opcode;
@@ -864,8 +935,36 @@ static xx_rarx_status_t xx_rarx50_filter_x86(uint8_t *data, size_t size, uint32_
 
 static xx_rarx_status_t xx_rarx50_filter_arm(uint8_t *data, size_t size, uint32_t file_offset, xx_pd_struct *progress)
 {
-    size_t position;
-    for (position = 0; position + 3u < size; position += 4u) {
+    size_t position = 0;
+
+#if defined(XX_RARX50_USE_SSE2)
+    const __m128i v_eb = _mm_set1_epi8((char)0xeb);
+    while (position + 16u <= size) {
+        if ((position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {
+            return XX_RARX_STATUS_CANCELLED;
+        }
+        __m128i chunk = _mm_loadu_si128((const __m128i *)(const void *)(data + position));
+        __m128i cmp = _mm_cmpeq_epi8(chunk, v_eb);
+        int mask = _mm_movemask_epi8(cmp) & 0x8888;
+        if (mask == 0) {
+            position += 16u;
+            continue;
+        }
+        for (size_t step = 0; step < 16u; step += 4u) {
+            if (data[position + step + 3u] == 0xebu) {
+                uint32_t offset = (file_offset + (uint32_t)(position + step)) >> 2;
+                uint32_t value = (uint32_t)data[position + step] | ((uint32_t)data[position + step + 1u] << 8) | ((uint32_t)data[position + step + 2u] << 16);
+                value = (value - offset) & 0x00ffffffu;
+                data[position + step] = (uint8_t)value;
+                data[position + step + 1u] = (uint8_t)(value >> 8);
+                data[position + step + 2u] = (uint8_t)(value >> 16);
+            }
+        }
+        position += 16u;
+    }
+#endif
+
+    for (; position + 3u < size; position += 4u) {
         uint32_t value;
         uint32_t offset;
         if ((position & XX_RARX50_POLL_MASK) == 0 && xx_rarx50_cancelled(progress)) {

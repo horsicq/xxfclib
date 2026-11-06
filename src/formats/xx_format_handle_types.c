@@ -14,7 +14,13 @@ typedef struct xx_unpack_handle_identity {
 
 static const xx_unpack_handle_identity identities[] = {
 #define XX_UNPACK_HANDLE(name, value, type, carrier) {XX_HANDLE_TYPE_##name, XX_FILE_TYPE_##type, carrier, #name},
+#if !XFU_FORMAT_SUPPORT_FULL
+#define XX_SUPPORTED_FORMAT(type, name, label) {XX_HANDLE_TYPE_##type, XX_FILE_TYPE_##type, 0, #type},
+#include "xxfclib/formats/xx_format_support_rows.inc"
+#undef XX_SUPPORTED_FORMAT
+#else
 #include "xxfclib/formats/xx_format_unpack_handle_rows.inc"
+#endif
 #undef XX_UNPACK_HANDLE
 };
 

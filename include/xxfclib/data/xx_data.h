@@ -37,6 +37,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 #include <wchar.h>
 
 #ifdef __cplusplus
@@ -46,6 +48,190 @@ extern "C" {
 /* Endianness boolean constants */
 #define XX_LITTLE_ENDIAN false
 #define XX_BIG_ENDIAN true
+
+/* ========================================================================= */
+/* --- 0. Fast Unaligned Direct Memory Pointer Accessors                 --- */
+/* ========================================================================= */
+
+static inline uint16_t xx_data_get_le16(const void *p)
+{
+#if defined(_M_IX86) || defined(_M_X64) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    uint16_t v;
+    memcpy(&v, p, sizeof(v));
+    return v;
+#else
+    const uint8_t *b = (const uint8_t *)p;
+    return (uint16_t)b[0] | ((uint16_t)b[1] << 8);
+#endif
+}
+
+static inline void xx_data_set_le16(void *p, uint16_t v)
+{
+#if defined(_M_IX86) || defined(_M_X64) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    memcpy(p, &v, sizeof(v));
+#else
+    uint8_t *b = (uint8_t *)p;
+    b[0] = (uint8_t)v;
+    b[1] = (uint8_t)(v >> 8);
+#endif
+}
+
+static inline uint16_t xx_data_get_be16(const void *p)
+{
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    uint16_t v;
+    memcpy(&v, p, sizeof(v));
+    return _byteswap_ushort(v);
+#elif defined(__GNUC__) || defined(__clang__)
+    uint16_t v;
+    memcpy(&v, p, sizeof(v));
+    return __builtin_bswap16(v);
+#else
+    const uint8_t *b = (const uint8_t *)p;
+    return ((uint16_t)b[0] << 8) | (uint16_t)b[1];
+#endif
+}
+
+static inline void xx_data_set_be16(void *p, uint16_t v)
+{
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    uint16_t swapped = _byteswap_ushort(v);
+    memcpy(p, &swapped, sizeof(swapped));
+#elif defined(__GNUC__) || defined(__clang__)
+    uint16_t swapped = __builtin_bswap16(v);
+    memcpy(p, &swapped, sizeof(swapped));
+#else
+    uint8_t *b = (uint8_t *)p;
+    b[0] = (uint8_t)(v >> 8);
+    b[1] = (uint8_t)v;
+#endif
+}
+
+static inline uint32_t xx_data_get_le32(const void *p)
+{
+#if defined(_M_IX86) || defined(_M_X64) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    uint32_t v;
+    memcpy(&v, p, sizeof(v));
+    return v;
+#else
+    const uint8_t *b = (const uint8_t *)p;
+    return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+#endif
+}
+
+static inline void xx_data_set_le32(void *p, uint32_t v)
+{
+#if defined(_M_IX86) || defined(_M_X64) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    memcpy(p, &v, sizeof(v));
+#else
+    uint8_t *b = (uint8_t *)p;
+    b[0] = (uint8_t)v;
+    b[1] = (uint8_t)(v >> 8);
+    b[2] = (uint8_t)(v >> 16);
+    b[3] = (uint8_t)(v >> 24);
+#endif
+}
+
+static inline uint32_t xx_data_get_be32(const void *p)
+{
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    uint32_t v;
+    memcpy(&v, p, sizeof(v));
+    return _byteswap_ulong(v);
+#elif defined(__GNUC__) || defined(__clang__)
+    uint32_t v;
+    memcpy(&v, p, sizeof(v));
+    return __builtin_bswap32(v);
+#else
+    const uint8_t *b = (const uint8_t *)p;
+    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
+#endif
+}
+
+static inline void xx_data_set_be32(void *p, uint32_t v)
+{
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    uint32_t swapped = _byteswap_ulong(v);
+    memcpy(p, &swapped, sizeof(swapped));
+#elif defined(__GNUC__) || defined(__clang__)
+    uint32_t swapped = __builtin_bswap32(v);
+    memcpy(p, &swapped, sizeof(swapped));
+#else
+    uint8_t *b = (uint8_t *)p;
+    b[0] = (uint8_t)(v >> 24);
+    b[1] = (uint8_t)(v >> 16);
+    b[2] = (uint8_t)(v >> 8);
+    b[3] = (uint8_t)v;
+#endif
+}
+
+static inline uint64_t xx_data_get_le64(const void *p)
+{
+#if defined(_M_IX86) || defined(_M_X64) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    uint64_t v;
+    memcpy(&v, p, sizeof(v));
+    return v;
+#else
+    const uint8_t *b = (const uint8_t *)p;
+    return (uint64_t)b[0] | ((uint64_t)b[1] << 8) | ((uint64_t)b[2] << 16) | ((uint64_t)b[3] << 24) |
+           ((uint64_t)b[4] << 32) | ((uint64_t)b[5] << 40) | ((uint64_t)b[6] << 48) | ((uint64_t)b[7] << 56);
+#endif
+}
+
+static inline void xx_data_set_le64(void *p, uint64_t v)
+{
+#if defined(_M_IX86) || defined(_M_X64) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    memcpy(p, &v, sizeof(v));
+#else
+    uint8_t *b = (uint8_t *)p;
+    b[0] = (uint8_t)v;
+    b[1] = (uint8_t)(v >> 8);
+    b[2] = (uint8_t)(v >> 16);
+    b[3] = (uint8_t)(v >> 24);
+    b[4] = (uint8_t)(v >> 32);
+    b[5] = (uint8_t)(v >> 40);
+    b[6] = (uint8_t)(v >> 48);
+    b[7] = (uint8_t)(v >> 56);
+#endif
+}
+
+static inline uint64_t xx_data_get_be64(const void *p)
+{
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    uint64_t v;
+    memcpy(&v, p, sizeof(v));
+    return _byteswap_uint64(v);
+#elif defined(__GNUC__) || defined(__clang__)
+    uint64_t v;
+    memcpy(&v, p, sizeof(v));
+    return __builtin_bswap64(v);
+#else
+    const uint8_t *b = (const uint8_t *)p;
+    return ((uint64_t)b[0] << 56) | ((uint64_t)b[1] << 48) | ((uint64_t)b[2] << 40) | ((uint64_t)b[3] << 32) |
+           ((uint64_t)b[4] << 24) | ((uint64_t)b[5] << 16) | ((uint64_t)b[6] << 8) | (uint64_t)b[7];
+#endif
+}
+
+static inline void xx_data_set_be64(void *p, uint64_t v)
+{
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    uint64_t swapped = _byteswap_uint64(v);
+    memcpy(p, &swapped, sizeof(swapped));
+#elif defined(__GNUC__) || defined(__clang__)
+    uint64_t swapped = __builtin_bswap64(v);
+    memcpy(p, &swapped, sizeof(swapped));
+#else
+    uint8_t *b = (uint8_t *)p;
+    b[0] = (uint8_t)(v >> 56);
+    b[1] = (uint8_t)(v >> 48);
+    b[2] = (uint8_t)(v >> 40);
+    b[3] = (uint8_t)(v >> 32);
+    b[4] = (uint8_t)(v >> 24);
+    b[5] = (uint8_t)(v >> 16);
+    b[6] = (uint8_t)(v >> 8);
+    b[7] = (uint8_t)v;
+#endif
+}
 
 /* ========================================================================= */
 /* --- 1. Raw Memory Buffer Operations                                   --- */

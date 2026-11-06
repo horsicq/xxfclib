@@ -39,6 +39,15 @@ static XX_DEFLATE_INLINE size_t xx_deflate_match_words(const uint8_t *a, const u
             unsigned long bit;
             _BitScanForward64(&bit, difference);
             return at + bit / 8U;
+#elif defined(_MSC_VER) && defined(_M_IX86)
+            unsigned long bit;
+            if ((uint32_t)difference) {
+                _BitScanForward(&bit, (uint32_t)difference);
+                return at + bit / 8U;
+            } else {
+                _BitScanForward(&bit, (uint32_t)(difference >> 32));
+                return at + 4U + bit / 8U;
+            }
 #elif defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__ && (defined(__GNUC__) || defined(__clang__))
             return at + (unsigned)__builtin_ctzll(difference) / 8U;
 #else

@@ -144,14 +144,14 @@ static bool xx_bz2_decode_streams(Abstractformat *self, xx_io_device *destinatio
         }
         bz2_br_init(&reader, self->device, NULL, 0U, available);
         result = xx_bzip2_decompress_stream(&reader, &sink, NULL, 0U, NULL, pd);
-        if (!result || reader.error || counter.overflow || reader.remaining < 0 || reader.ibuf_pos > reader.ibuf_len || reader.n_bits < 0 || reader.n_bits > 7) {
+        if (!result || reader.error || counter.overflow || reader.remaining < 0 || reader.ibuf_pos > reader.ibuf_len || reader.n_bits < 0) {
             /* The input ended inside the stream: a cut file. */
             if (ran_out && !result && reader.eof && !counter.failed && !counter.overflow && !(pd && xx_pd_is_stopped(pd))) *ran_out = true;
             bz2_br_free(&reader);
             return false;
         }
         loaded = available - reader.remaining;
-        unread = (int64_t)(reader.ibuf_len - reader.ibuf_pos);
+        unread = (int64_t)(reader.ibuf_len - reader.ibuf_pos) + (int64_t)(reader.n_bits / 8);
         if (loaded < unread) {
             bz2_br_free(&reader);
             return false;
@@ -161,9 +161,10 @@ static bool xx_bz2_decode_streams(Abstractformat *self, xx_io_device *destinatio
             bz2_br_free(&reader);
             return false;
         }
-        if (reader.n_bits != 0) {
-            uint64_t padding_mask = (UINT64_C(1) << reader.n_bits) - UINT64_C(1);
-            if ((reader.bits & padding_mask) != 0U) {
+        int pad = reader.n_bits % 8;
+        if (pad != 0) {
+            uint32_t pad_bits = (uint32_t)((reader.bits >> (reader.n_bits - pad)) & ((1u << pad) - 1u));
+            if (pad_bits != 0U) {
                 bz2_br_free(&reader);
                 return false;
             }

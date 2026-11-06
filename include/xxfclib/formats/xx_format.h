@@ -28,6 +28,8 @@
 #ifndef XX_FORMAT_H
 #define XX_FORMAT_H
 
+#include "xxfclib/formats/xx_format_support.h"
+
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/formats/xx_memory_map.h"
 #include "xxfclib/formats/xx_format_streams.h"

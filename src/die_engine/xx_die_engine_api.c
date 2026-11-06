@@ -318,24 +318,62 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
     if (id >= A_getSize && id <= A_getListOfCompressionMethods) {
         if (die_engine_api_dispatch_binary(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (die_engine_api_dispatch_msdos(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (die_engine_api_dispatch_iso9660(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (die_engine_api_dispatch_archive(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (die_engine_api_dispatch_jar(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (die_engine_api_dispatch_npm(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (die_engine_api_dispatch_pyc(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
     } else if (id >= A_isRichSignaturePresent && id <= A_isDosStubPresent) {
         if (die_engine_api_dispatch_msdos(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
     } else if (id >= A_getNumberOfSections && id <= A_getDebugDataSize) {
+        if (die_engine_api_dispatch_dotnet(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (pEngine->bHasElf && die_engine_api_dispatch_elf(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+        if (pEngine->bHasMach && die_engine_api_dispatch_mach(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
         if (die_engine_api_dispatch_pe(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
-    } else if (id >= A_getComment && id <= A_getMapItemsHash) {
-        if (die_engine_api_dispatch_formats(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
-    } else if (id >= A_isStringInTablePresent && id <= A_getLibraryCurrentVersion) {
-        if (die_engine_api_dispatch_elf_macho(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    } else if (id >= A_getComment && id <= A_getExifCameraName) {
+        if (die_engine_api_dispatch_jpeg(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    } else if (id >= A_getAndroidManifestRecord && id <= A_getAndroidManifest) {
+        if (die_engine_api_dispatch_apk(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    } else if (id >= A_getHeaderCommentAsHex && id <= A_getPermissions) {
+        if (die_engine_api_dispatch_pdf(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    } else if (id >= A_isDexStringPresent && id <= A_getMapItemsHash) {
+        if (die_engine_api_dispatch_dex(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    } else if (id >= A_isStringInTablePresent && id <= A_isNotePresent) {
+        if (die_engine_api_dispatch_elf(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    } else if (id == A_getLibraryCurrentVersion) {
+        if (die_engine_api_dispatch_mach(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
     }
 
     if (die_engine_api_dispatch_binary(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
-    if (die_engine_api_dispatch_pe(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
     if (die_engine_api_dispatch_msdos(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
-    if (die_engine_api_dispatch_formats(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
-    if (die_engine_api_dispatch_elf_macho(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_dotnet(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (pEngine->bHasElf && die_engine_api_dispatch_elf(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (pEngine->bHasMach && die_engine_api_dispatch_mach(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_pe(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_jpeg(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_apk(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_pdf(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_dex(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_iso9660(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_archive(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_jar(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_npm(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
+    if (die_engine_api_dispatch_pyc(pEngine, pCtx, id, nArgc, pArgv, &result)) return result;
 
     return js_undefined();
 }
+
+
+void die_engine_api_register_entries(JSCtx *pCtx, JSVal object, const ApiEntry *pEntries)
+{
+    int i = 0;
+
+    for (i = 0; pEntries[i].pName; i++) {
+        js_def_method(pCtx, object, pEntries[i].pName, api_dispatch, pEntries[i].nArgc, (void *)(size_t)pEntries[i].id);
+    }
+}
+
 
 /* ------------------------------------------------------- global helpers  */
 
@@ -465,7 +503,7 @@ static JSVal fn_remove_result(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArg
             cd_free((void *)pRecord->info);
             cd_free((void *)pRecord->format_id);
             cd_free((void *)pRecord->archive_member);
-            cd_free((void *)pRecord->signature);
+            cd_free((void *)pRecord->source_ref);
             x_memmove(pEngine->pResult->pRecords + i, pEngine->pResult->pRecords + i + 1, (size_t)(pEngine->pResult->nCount - i - 1) * sizeof(xx_scan_record));
             pEngine->pResult->nCount--;
             break;
@@ -638,7 +676,7 @@ static void engine_add_result(DieEngine *pEngine, const char *pType, const char 
     pRecord->version = cd_strdup(pVersion);
     pRecord->info = cd_strdup(pInfo);
     pRecord->format_id = pFormatId ? cd_strdup(pFormatId) : NULL;
-    pRecord->signature = pEngine->pCurrentScriptPath ? cd_strdup(pEngine->pCurrentScriptPath) : NULL;
+    pRecord->source_ref = pEngine->pCurrentScriptPath ? cd_strdup(pEngine->pCurrentScriptPath) : NULL;
     pRecord->priority = xx_scan_type_to_prio(pType);
     pRecord->is_heuristic = ((x_strlen(pType) > 1) && (pType[0] == '~')) ? 1 : 0;
     pRecord->is_aggressive_heuristic = ((x_strlen(pType) > 1) && (pType[0] == '!')) ? 1 : 0;
@@ -646,323 +684,43 @@ static void engine_add_result(DieEngine *pEngine, const char *pType, const char 
 
 /* ------------------------------------------------------------- install  */
 
-static const ApiEntry g_apiTable[] = {{"getSize", A_getSize, 0},
-                                      {"Sz", A_getSize, 0},
-                                      {"compare", A_compare, 2},
-                                      {"c", A_compare, 2},
-                                      {"compareEP", A_compareEP, 2},
-                                      {"compareOverlay", A_compareOverlay, 2},
-                                      {"readByte", A_readByte, 1},
-                                      {"readSByte", A_readSByte, 1},
-                                      {"readWord", A_readWord, 1},
-                                      {"readSWord", A_readSWord, 1},
-                                      {"readDword", A_readDword, 1},
-                                      {"readSDword", A_readSDword, 1},
-                                      {"readQword", A_readQword, 1},
-                                      {"readSQword", A_readSQword, 1},
-                                      {"getString", A_getString, 2},
-                                      {"isJavaScriptMinified", A_isJavaScriptMinified, 0},
-                                      {"findSignature", A_findSignature, 3},
-                                      {"fSig", A_findSignature, 3},
-                                      {"findString", A_findString, 3},
-                                      {"fStr", A_findString, 3},
-                                      {"findByte", A_findByte, 3},
-                                      {"findWord", A_findWord, 3},
-                                      {"findDword", A_findDword, 3},
-                                      {"getEntryPointOffset", A_getEntryPointOffset, 0},
-                                      {"getOverlayOffset", A_getOverlayOffset, 0},
-                                      {"getOverlaySize", A_getOverlaySize, 0},
-                                      {"getAddressOfEntryPoint", A_getAddressOfEntryPoint, 0},
-                                      {"isOverlayPresent", A_isOverlayPresent, 0},
-                                      {"isSignaturePresent", A_isSignaturePresent, 3},
-                                      {"swapBytes", A_swapBytes, 1},
-                                      {"RVAToOffset", A_RVAToOffset, 1},
-                                      {"VAToOffset", A_VAToOffset, 1},
-                                      {"OffsetToVA", A_OffsetToVA, 1},
-                                      {"OffsetToRVA", A_OffsetToRVA, 1},
-                                      {"getFileDirectory", A_getFileDirectory, 0},
-                                      {"getFileBaseName", A_getFileBaseName, 0},
-                                      {"getFileCompleteSuffix", A_getFileCompleteSuffix, 0},
-                                      {"getFileSuffix", A_getFileSuffix, 0},
-                                      {"getSignature", A_getSignature, 2},
-                                      {"calculateEntropy", A_calculateEntropy, 2},
-                                      {"isZeroFilled", A_isZeroFilled, 2},
-                                      {"scanBufferForEncryptedPe", A_scanBufferForEncryptedPe, 2},
-                                      {"validateAmd64Unwind", A_validateAmd64Unwind, 2},
-                                      {"validateGuardCfFunctionTable", A_validateGuardCfFunctionTable, 3},
-                                      {"calculateMD5", A_calculateMD5, 2},
-                                      {"calculateCRC32", A_calculateCRC32, 2},
-                                      {"crc16", A_crc16, 3},
-                                      {"crc32", A_crc32, 3},
-                                      {"adler32", A_adler32, 2},
-                                      {"isSignatureInSectionPresent", A_isSignatureInSectionPresent, 2},
-                                      {"isAnySignatureInSectionPresent", A_isAnySignatureInSectionPresent, 2},
-                                      {"getImageBase", A_getImageBase, 0},
-                                      {"upperCase", A_upperCase, 1},
-                                      {"lowerCase", A_lowerCase, 1},
-                                      {"isPlainText", A_isPlainText, 0},
-                                      {"isUTF8Text", A_isUTF8Text, 0},
-                                      {"isUnicodeText", A_isUnicodeText, 0},
-                                      {"isText", A_isText, 0},
-                                      {"getHeaderString", A_getHeaderString, 0},
-                                      {"getDisasmLength", A_getDisasmLength, 1},
-                                      {"getDisasmString", A_getDisasmString, 1},
-                                      {"getDisasmNextAddress", A_getDisasmNextAddress, 1},
-                                      {"is16", A_is16, 0},
-                                      {"is32", A_is32, 0},
-                                      {"is64", A_is64, 0},
-                                      {"isDeepScan", A_isDeepScan, 0},
-                                      {"isHeuristicScan", A_isHeuristicScan, 0},
-                                      {"isFirstWrapperScan", A_isFirstWrapperScan, 0},
-                                      {"isAggressiveScan", A_isAggressiveScan, 0},
-                                      {"isRecursiveScan", A_isRecursiveScan, 0},
-                                      {"isOverlayScan", A_isOverlayScan, 0},
-                                      {"isVerbose", A_isVerbose, 0},
-                                      {"isProfiling", A_isProfiling, 0},
-                                      {"getScanID", A_getScanID, 0},
-                                      {"getStartOffset", A_getStartOffset, 0},
-                                      {"read_uint8", A_read_uint8, 1},
-                                      {"U8", A_read_uint8, 1},
-                                      {"read_int8", A_read_int8, 1},
-                                      {"I8", A_read_int8, 1},
-                                      {"read_uint16", A_read_uint16, 2},
-                                      {"U16", A_read_uint16, 2},
-                                      {"read_int16", A_read_int16, 2},
-                                      {"I16", A_read_int16, 2},
-                                      {"read_uint24", A_read_uint24, 2},
-                                      {"U24", A_read_uint24, 2},
-                                      {"read_int24", A_read_int24, 2},
-                                      {"I24", A_read_int24, 2},
-                                      {"read_uint32", A_read_uint32, 2},
-                                      {"U32", A_read_uint32, 2},
-                                      {"read_int32", A_read_int32, 2},
-                                      {"I32", A_read_int32, 2},
-                                      {"read_uint64", A_read_uint64, 2},
-                                      {"U64", A_read_uint64, 2},
-                                      {"read_int64", A_read_int64, 2},
-                                      {"I64", A_read_int64, 2},
-                                      {"read_float", A_read_float, 2},
-                                      {"read_float32", A_read_float, 2},
-                                      {"F32", A_read_float, 2},
-                                      {"read_double", A_read_double, 2},
-                                      {"read_float64", A_read_double, 2},
-                                      {"F64", A_read_double, 2},
-                                      {"read_float16", A_read_float16, 2},
-                                      {"F16", A_read_float16, 2},
-                                      {"read_UUID", A_read_UUID, 2},
-                                      {"read_ucsdString", A_read_ucsdString, 1},
-                                      {"UCSD", A_read_ucsdString, 1},
-                                      {"read_ansiString", A_read_ansiString, 2},
-                                      {"SA", A_read_ansiString, 2},
-                                      {"read_unicodeString", A_read_unicodeString, 2},
-                                      {"SU16", A_read_unicodeString, 2},
-                                      {"read_utf8String", A_read_utf8String, 2},
-                                      {"SU8", A_read_utf8String, 2},
-                                      {"read_codePageString", A_read_codePageString, 3},
-                                      {"SC", A_read_codePageString, 3},
-                                      {"bytesCountToString", A_bytesCountToString, 1},
-                                      {"find_ansiString", A_find_ansiString, 3},
-                                      {"find_unicodeString", A_find_unicodeString, 3},
-                                      {"find_utf8String", A_find_utf8String, 3},
-                                      {"getOperationSystemName", A_getOperationSystemName, 0},
-                                      {"getOperationSystemVersion", A_getOperationSystemVersion, 0},
-                                      {"getOperationSystemOptions", A_getOperationSystemOptions, 0},
-                                      {"getFileFormatName", A_getFileFormatName, 0},
-                                      {"getFileFormatVersion", A_getFileFormatVersion, 0},
-                                      {"getFileFormatOptions", A_getFileFormatOptions, 0},
-                                      {"isSigned", A_isSigned, 0},
-                                      {"cleanString", A_cleanString, 1},
-                                      {"readBytes", A_readBytes, 3},
-                                      {"BA", A_readBytes, 3},
-                                      {"isOverlay", A_isOverlay, 0},
-                                      {"isResource", A_isResource, 0},
-                                      {"isDebugData", A_isDebugData, 0},
-                                      {"isFilePart", A_isFilePart, 0},
-                                      {"isReleaseBuild", A_isReleaseBuild, 0},
-                                      {"isDebugBuild", A_isDebugBuild, 0},
-                                      {"isChecksumCorrect", A_isChecksumCorrect, 0},
-                                      {"isEntryPointCorrect", A_isEntryPointCorrect, 0},
-                                      {"isSectionAlignmentCorrect", A_isSectionAlignmentCorrect, 0},
-                                      {"isFileAlignmentCorrect", A_isFileAlignmentCorrect, 0},
-                                      {"isHeaderCorrect", A_isHeaderCorrect, 0},
-                                      {"isRelocsTableCorrect", A_isRelocsTableCorrect, 0},
-                                      {"isImportTableCorrect", A_isImportTableCorrect, 0},
-                                      {"isExportTableCorrect", A_isExportTableCorrect, 0},
-                                      {"isResourcesTableCorrect", A_isResourcesTableCorrect, 0},
-                                      {"isSectionsTableCorrect", A_isSectionsTableCorrect, 0},
-                                      {"getFormatMessages", A_getFormatMessages, 0},
-                                      {"getListOfCompressionMethods", A_getListOfCompressionMethods, 0},
-                                      {"startTiming", A_startTiming, 0},
-                                      {"endTiming", A_endTiming, 2},
-                                      {"detectZLIB", A_detectZLIB, 2},
-                                      {"detectGZIP", A_detectGZIP, 2},
-                                      {"detectZIP", A_detectZIP, 2},
 
-                                      {"isRichSignaturePresent", A_isRichSignaturePresent, 0},
-                                      {"getNumberOfRichIDs", A_getNumberOfRichIDs, 0},
-                                      {"isRichVersionPresent", A_isRichVersionPresent, 1},
-                                      {"getRichVersion", A_getRichVersion, 1},
-                                      {"getRichID", A_getRichID, 1},
-                                      {"getRichCount", A_getRichCount, 1},
-                                      {"getDosStubOffset", A_getDosStubOffset, 0},
-                                      {"getDosStubSize", A_getDosStubSize, 0},
-                                      {"isDosStubPresent", A_isDosStubPresent, 0},
-
-                                      {"getNumberOfSections", A_getNumberOfSections, 0},
-                                      {"getSectionName", A_getSectionName, 1},
-                                      {"getSectionVirtualSize", A_getSectionVirtualSize, 1},
-                                      {"getSectionVirtualAddress", A_getSectionVirtualAddress, 1},
-                                      {"getSectionFileSize", A_getSectionFileSize, 1},
-                                      {"getSectionFileOffset", A_getSectionFileOffset, 1},
-                                      {"getSectionCharacteristics", A_getSectionCharacteristics, 1},
-                                      {"getNumberOfResources", A_getNumberOfResources, 0},
-                                      {"isSectionNamePresent", A_isSectionNamePresent, 1},
-                                      {"isNET", A_isNET, 0},
-                                      {"isNet", A_isNET, 0},
-                                      {"isPE32", A_isPE32, 0},
-                                      {"isPEPlus", A_isPEPlus, 0},
-                                      {"isNE", A_isNE, 0},
-                                      {"isLE", A_isLE, 0},
-                                      {"isLX", A_isLX, 0},
-                                      {"getApplicationIdentifier", A_getApplicationIdentifier, 0},
-                                      {"getDataPreparerIdentifier", A_getDataPreparerIdentifier, 0},
-                                      {"getGeneralOptions", A_getGeneralOptions, 0},
-                                      {"getResourceIdByNumber", A_getResourceIdByNumber, 1},
-                                      {"getResourceNameByNumber", A_getResourceNameByNumber, 1},
-                                      {"getResourceOffsetByNumber", A_getResourceOffsetByNumber, 1},
-                                      {"getResourceSizeByNumber", A_getResourceSizeByNumber, 1},
-                                      {"getResourceTypeByNumber", A_getResourceTypeByNumber, 1},
-                                      {"isNETStringPresent", A_isNetObjectPresent, 1},
-                                      {"isNetObjectPresent", A_isNetObjectPresent, 1},
-                                      {"isNetStringPresent", A_isNetObjectPresent, 1},
-                                      {"isNETUnicodeStringPresent", A_isNetUStringPresent, 1},
-                                      {"isNetUStringPresent", A_isNetUStringPresent, 1},
-                                      {"isNetUnicodeStringPresent", A_isNetUStringPresent, 1},
-                                      {"isNetGlobalCctorPresent", A_isNetGlobalCctorPresent, 0},
-                                      {"isNetTypePresent", A_isNetTypePresent, 2},
-                                      {"isNetMethodPresent", A_isNetMethodPresent, 3},
-                                      {"getNumberOfNetMethods", A_getNumberOfNetMethods, 0},
-                                      {"getNetMethodInfo", A_getNetMethodInfo, 1},
-                                      {"getNetUserString", A_getNetUserString, 1},
-                                      {"isNetMethodCalledBy", A_isNetMethodCalledBy, 2},
-                                      {"isNetFieldPresent", A_isNetFieldPresent, 3},
-                                      {"findSignatureInBlob_NET", A_findSignatureInBlob_NET, 1},
-                                      {"isSignatureInBlobPresent_NET", A_isSignatureInBlobPresent_NET, 1},
-                                      {"getNetModuleName", A_getNetModuleName, 0},
-                                      {"getNetAssemblyName", A_getNetAssemblyName, 0},
-                                      {"getNetVersion", A_getNETVersion, 0},
-                                      {"getNumberOfImports", A_getNumberOfImports, 0},
-                                      {"getImportLibraryName", A_getImportLibraryName, 1},
-                                      {"isLibraryPresent", A_isLibraryPresent, 2},
-                                      {"isLibraryFunctionPresent", A_isLibraryFunctionPresent, 2},
-                                      {"isFunctionPresent", A_isFunctionPresent, 1},
-                                      {"getImportFunctionName", A_getImportFunctionName, 2},
-                                      {"getImportSection", A_getImportSection, 0},
-                                      {"getExportSection", A_getExportSection, 0},
-                                      {"getResourceSection", A_getResourceSection, 0},
-                                      {"getEntryPointSection", A_getEntryPointSection, 0},
-                                      {"getRelocsSection", A_getRelocsSection, 0},
-                                      {"getTLSSection", A_getTLSSection, 0},
-                                      {"getMajorLinkerVersion", A_getMajorLinkerVersion, 0},
-                                      {"getMinorLinkerVersion", A_getMinorLinkerVersion, 0},
-                                      {"getManifest", A_getManifest, 0},
-                                      {"getVersionStringInfo", A_getVersionStringInfo, 1},
-                                      {"getNumberOfImportThunks", A_getNumberOfImportThunks, 1},
-                                      {"getResourceNameOffset", A_getResourceNameOffset, 1},
-                                      {"isResourceNamePresent", A_isResourceNamePresent, 1},
-                                      {"isResourceGroupNamePresent", A_isResourceGroupNamePresent, 1},
-                                      {"isResourceGroupIdPresent", A_isResourceGroupIdPresent, 1},
-                                      {"getCompilerVersion", A_getCompilerVersion, 0},
-                                      {"isConsole", A_isConsole, 0},
-                                      {"isSignedFile", A_isSignedFile, 0},
-                                      {"getSectionNameCollision", A_getSectionNameCollision, 2},
-                                      {"getSectionNumber", A_getSectionNumber, 1},
-                                      {"isDll", A_isDll, 0},
-                                      {"isDriver", A_isDriver, 0},
-                                      {"getNETVersion", A_getNETVersion, 0},
-                                      {"compareEP_NET", A_compareEP_NET, 2},
-                                      {"getSizeOfCode", A_getSizeOfCode, 0},
-                                      {"getSizeOfUninitializedData", A_getSizeOfUninitializedData, 0},
-                                      {"getPEFileVersion", A_getPEFileVersion, 1},
-                                      {"getFileVersion", A_getFileVersion, 0},
-                                      {"getFileVersionMS", A_getFileVersionMS, 0},
-                                      {"calculateSizeOfHeaders", A_calculateSizeOfHeaders, 0},
-                                      {"isExportFunctionPresent", A_isExportFunctionPresent, 1},
-                                      {"getNumberOfExportFunctions", A_getNumberOfExportFunctions, 0},
-                                      {"getNumberOfExports", A_getNumberOfExportFunctions, 0},
-                                      {"getExportFunctionName", A_getExportFunctionName, 1},
-                                      {"getExportNameByNumber", A_getExportFunctionName, 1},
-                                      {"getNextNamedExportFunctionIndex", A_getNextNamedExportFunctionIndex, 1},
-                                      {"isExportPresent", A_isExportPresent, 0},
-                                      {"isTLSPresent", A_isTLSPresent, 0},
-                                      {"isImportPresent", A_isImportPresent, 0},
-                                      {"isResourcesPresent", A_isResourcesPresent, 0},
-                                      {"getImportHash32", A_getImportHash32, 0},
-                                      {"getImportHash64", A_getImportHash64, 0},
-                                      {"isImportPositionHashPresent", A_isImportPositionHashPresent, 2},
-                                      {"getImageFileHeader", A_getImageFileHeader, 1},
-                                      {"getImageOptionalHeader", A_getImageOptionalHeader, 1},
-                                      {"getNumberOfDebugDataRecords", A_getNumberOfDebugDataRecords, 0},
-                                      {"getDebugDataType", A_getDebugDataType, 1},
-                                      {"getDebugDataOffset", A_getDebugDataOffset, 1},
-                                      {"getDebugDataSize", A_getDebugDataSize, 1},
-
-                                      {"getComment", A_getComment, 0},
-                                      {"getDqtMD5", A_getDqtMD5, 0},
-                                      {"isChunkPresent", A_isChunkPresent, 1},
-                                      {"isExifPresent", A_isExifPresent, 0},
-                                      {"getExifCameraName", A_getExifCameraName, 0},
-
-                                      {"getAndroidManifestRecord", A_getAndroidManifestRecord, 1},
-                                      {"getAndroidManifest", A_getAndroidManifest, 0},
-                                      {"isArchiveRecordPresent", A_isArchiveRecordPresent, 1},
-                                      {"isArchiveRecordPresentExp", A_isArchiveRecordPresentExp, 1},
-                                      {"getManifestRecord", A_getManifestRecord, 1},
-                                      {"getPackageJsonRecord", A_getPackageJsonRecord, 1},
-                                      {"isConstPresent", A_isConstPresent, 1},
-
-                                      {"getHeaderCommentAsHex", A_getHeaderCommentAsHex, 0},
-                                      {"getStringValuesByKey", A_getStringValuesByKey, 1},
-                                      {"getValuesByKey", A_getValuesByKey, 1},
-                                      {"isValuesHexByKey", A_isValuesHexByKey, 1},
-                                      {"isEncrypted", A_isEncrypted, 0},
-                                      {"getEncryption", A_getEncryption, 0},
-                                      {"getPermissions", A_getPermissions, 0},
-
-                                      {"isDexStringPresent", A_isDexStringPresent, 1},
-                                      {"isDexItemStringPresent", A_isDexItemStringPresent, 1},
-                                      {"getMapItemsHash", A_getMapItemsHash, 0},
-
-                                      {"isStringInTablePresent", A_isStringInTablePresent, 2},
-                                      {"getNumberOfPrograms", A_getNumberOfPrograms, 0},
-                                      {"getProgramFileOffset", A_getProgramFileOffset, 1},
-                                      {"getProgramFileSize", A_getProgramFileSize, 1},
-                                      {"getElfHeader_type", A_getElfHeader_type, 0},
-                                      {"getElfHeader_machine", A_getElfHeader_machine, 0},
-                                      {"getElfHeader_entry", A_getElfHeader_entry, 0},
-                                      {"getElfHeader_phoff", A_getElfHeader_phoff, 0},
-                                      {"getElfHeader_shoff", A_getElfHeader_shoff, 0},
-                                      {"getElfHeader_phnum", A_getElfHeader_phnum, 0},
-                                      {"getElfHeader_shnum", A_getElfHeader_shnum, 0},
-                                      {"getElfHeader_shentsize", A_getElfHeader_shentsize, 0},
-                                      {"getElfHeader_phentsize", A_getElfHeader_phentsize, 0},
-                                      {"getElfHeader_shstrndx", A_getElfHeader_shstrndx, 0},
-                                      {"getRunPath", A_getRunPath, 0},
-                                      {"isNotePresent", A_isNotePresent, 1},
-                                      {"getLibraryCurrentVersion", A_getLibraryCurrentVersion, 1},
-
-                                      {NULL, A_NONE, 0}};
 
 void die_engine_install_api(DieEngine *pEngine)
 {
     JSCtx *pCtx = pEngine->pJs;
     JSVal object = js_new_object(pCtx);
     JSVal global = js_global(pCtx);
-    int i = 0;
-
-    for (i = 0; g_apiTable[i].pName; i++) {
-        js_def_method(pCtx, object, g_apiTable[i].pName, api_dispatch, g_apiTable[i].nArgc, (void *)(size_t)g_apiTable[i].id);
-    }
+    die_engine_api_register_amiga(pCtx, object);
+    die_engine_api_register_apk(pCtx, object);
+    die_engine_api_register_archive(pCtx, object);
+    die_engine_api_register_atarist(pCtx, object);
+    die_engine_api_register_binary(pCtx, object);
+    die_engine_api_register_cfbf(pCtx, object);
+    die_engine_api_register_com(pCtx, object);
+    die_engine_api_register_dex(pCtx, object);
+    die_engine_api_register_dos16m(pCtx, object);
+    die_engine_api_register_dos4g(pCtx, object);
+    die_engine_api_register_dotnet(pCtx, object);
+    die_engine_api_register_elf(pCtx, object);
+    die_engine_api_register_image(pCtx, object);
+    die_engine_api_register_ipa(pCtx, object);
+    die_engine_api_register_iso9660(pCtx, object);
+    die_engine_api_register_jar(pCtx, object);
+    die_engine_api_register_javaclass(pCtx, object);
+    die_engine_api_register_jpeg(pCtx, object);
+    die_engine_api_register_le(pCtx, object);
+    die_engine_api_register_lx(pCtx, object);
+    die_engine_api_register_mach(pCtx, object);
+    die_engine_api_register_machofat(pCtx, object);
+    die_engine_api_register_msdos(pCtx, object);
+    die_engine_api_register_ne(pCtx, object);
+    die_engine_api_register_npm(pCtx, object);
+    die_engine_api_register_pdf(pCtx, object);
+    die_engine_api_register_pe(pCtx, object);
+    die_engine_api_register_png(pCtx, object);
+    die_engine_api_register_pyc(pCtx, object);
+    die_engine_api_register_zip(pCtx, object);
 
     /* The scripts address the format object by several names: always
      * `Binary`, plus the name of the detected format so that the per-format

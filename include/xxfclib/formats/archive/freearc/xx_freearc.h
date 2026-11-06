@@ -21,10 +21,19 @@ extern "C" {
  * extracted when their solid block's method chain consists only of the
  * methods this reader decodes: storing, lzma, rep, exe, delta, AES-256/CTR
  * (using the password set with xx_format_set_password), and bounded
- * FreeArc lzp. The lzp stage accepts original b/l/h/d/s and compression-
+ * FreeArc lzp and the sequential 4x4:lz4 wrapper. REP h/a parameters are
+ * encoder-only; its decoder window comes from the stream. The 4x4 profile
+ * requires version 0, nested LZ4 version 1, whole records and exact block
+ * output, retaining the historical first-buffer ceiling and chain limits.
+ * The lzp stage accepts original b/l/h/d/s and compression-
  * threshold options with a 256 MiB block cap, at most 20 hash bits and a
  * 64-million-entry total hash-table initialization work budget per chain.
- * Blocks using any other FreeArc method (tor, ppmd, grzip, dict,
+ * The bounded Tornado profile decodes stream coder 3 with minimum match 2,
+ * no table transforms, at most 8 MiB input/output/window and 64 Mi work
+ * units. Logical bits require a real EOF in the final occupied byte;
+ * reserved symbols and uninitialized history are refused. TOR b/h/c
+ * method options are encoder settings; the stream header is authoritative.
+ * Blocks using any other FreeArc method (ppmd, grzip, dict,
  * ...) are listed but their members cannot be unpacked. Encrypted directory
  * and footer blocks require a correct password before listing is possible.
  */

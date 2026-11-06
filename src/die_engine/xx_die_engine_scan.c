@@ -685,7 +685,8 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
     xx_data_sig_context_from_memory_map_ex(&pEngine->sigContext, pEngine->pMap,
                                          pEngine->pMap->file_type == XX_FILE_TYPE_NE ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH, true);
 
-    pResult->fileType = pEngine->fileType;
+    pResult->file_type = die_engine_native_from_xft(pEngine->fileType);
+    pResult->compatibility_file_type = (uint32_t)pEngine->fileType;
 
     pEngine->pJs = js_new();
     js_set_program_cache(pEngine->pJs, (JSProgramCache *)pDb->pJsProgramCache);
@@ -1051,7 +1052,8 @@ static int scan_engine_run(xx_io_device *device, DBase *pDb, xx_scan_options *pO
         nResult = scan_run_pass(device, XFT_COM, bIsCliAssembly, pDb, pOptions, pResult, !bIsBinary, pd, debug);
 
         result_merge(pResult, &binResult, 1);
-        pResult->fileType = XFT_COM;
+        pResult->file_type = XX_FILE_TYPE_COM;
+        pResult->compatibility_file_type = (uint32_t)XFT_COM;
     } else if ((fileType == XFT_BINARY) && (device_size <= XX_SCAN_COM_MAX_SIZE)) {
         /* XScanEngine::scanProcess's last arm - everything no format claimed
          * - offers the file to the COM scripts before the binary ones, which

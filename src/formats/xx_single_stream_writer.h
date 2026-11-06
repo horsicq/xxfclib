@@ -9,6 +9,7 @@
 #include "xxfclib/algo/bzip2/xx_bzip2.h"
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/formats/archive/xz/xx_xz.h"
+#include "xxfclib/formats/xx_format_support.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
@@ -162,13 +163,26 @@ static int64_t ss_output_size(xx_io_device *device)
 {
     return (int64_t)((ss_output *)device->priv)->size;
 }
-static bool ss_gzip(ss_source *source, ss_output *output, int level, xx_pd_struct *pd)
+/* Each including format selects its own codec; a restricted build compiles
+ * only the branches of its XFU_SUPPORT_FORMAT_* flags. */
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_GZ)
+static bool ss_gzip(ss_source *source, ss_output *output, const char *name, int level, xx_pd_struct *pd)
 {
     uint8_t header[10] = {0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 0, 255};
     uint8_t trailer[8];
+    size_t name_length;
+    /* FNAME: a named member's base name, as gzip(1) records it. */
+    if (name) {
+        const char *at;
+        for (at = name; *at; ++at)
+            if (*at == '/' || *at == '\\') name = at + 1;
+    }
+    name_length = name ? xx_rt_strlen(name) : 0U;
     if (level == 9) header[8] = 2;
     else if (level == 1) header[8] = 4;
+    if (name_length) header[3] = 0x08;
     if (xx_io_write(&output->device, header, sizeof(header)) != sizeof(header)) return false;
+    if (name_length && (size_t)xx_io_write(&output->device, name, name_length + 1U) != name_length + 1U) return false;
     if (source->size == 0) {
         /* The codec's zero-length API emits no bytes. RFC1951 still requires
          * a final block: fixed Huffman BFINAL=1/BTYPE=1 followed by EOB256. */
@@ -179,6 +193,7 @@ static bool ss_gzip(ss_source *source, ss_output *output, int level, xx_pd_struc
     xx_data_set_u32(trailer + 4, 4, 0, (uint32_t)source->size, false);
     return xx_io_write(&output->device, trailer, sizeof(trailer)) == sizeof(trailer);
 }
+#endif
 static xx_archive_write_state *ss_create(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
 {
     xx_archive_write_state *state;
@@ -275,9 +290,18 @@ static bool ss_pack(Abstractformat *self, xx_archive_write_state *state, const x
     self->is_valid = false;
     self->base_info_handled = false;
     self->format_size = -1;
-    if (self->file_type == XX_FILE_TYPE_GZ) result = ss_gzip(&checked, &output, level, pd);
-    else if (self->file_type == XX_FILE_TYPE_BZ2) result = xx_bzip2_pack_device(&checked.device, 0, size, &output.device, level, pd);
-    else result = xx_xz_pack_to_device(&checked.device, 0, size, &output.device, level, pd);
+    switch (self->file_type) {
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_GZ)
+        case XX_FILE_TYPE_GZ: result = ss_gzip(&checked, &output, name, level, pd); break;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_BZ2)
+        case XX_FILE_TYPE_BZ2: result = xx_bzip2_pack_device(&checked.device, 0, size, &output.device, level, pd); break;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_XZ)
+        case XX_FILE_TYPE_XZ: result = xx_xz_pack_to_device(&checked.device, 0, size, &output.device, level, pd); break;
+#endif
+        default: result = false; break;
+    }
     if (xx_io_seek64(source, saved, SEEK_SET) != 0) result = false;
     if (!result || output.failed || checked.position != size || xx_pd_is_stopped(pd)) goto invalid;
     writer->written = true;

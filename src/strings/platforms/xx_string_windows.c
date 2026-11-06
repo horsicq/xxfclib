@@ -177,6 +177,7 @@ size_t xx_rt_strlen(const char *pString)
  * plain unsigned byte order on every platform.                              */
 int xx_rt_strcmp(const char *pLeft, const char *pRight)
 {
+    if (pLeft == pRight) return 0;
     const unsigned char *pA = (const unsigned char *)pLeft;
     const unsigned char *pB = (const unsigned char *)pRight;
 

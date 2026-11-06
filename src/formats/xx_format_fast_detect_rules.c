@@ -3,6 +3,96 @@
 #include "xx_format_fast_detect_rules.h"
 #include <stdint.h>
 
+#if !XFU_FORMAT_SUPPORT_FULL
+#include "xxfclib/formats/xx_format_extractor.h"
+/* Compression prefixes are scheduling hints only; the selected native
+ * compound reader still verifies its stream and the TAR inside it. */
+static int restricted_stream_signature(xx_file_type_t type, xx_io_device *device, int64_t base)
+{
+    static const struct { xx_file_type_t type; uint8_t bytes[9]; size_t length; } rules[] = {
+        {XX_FILE_TYPE_GZ, {0x1f, 0x8b, 8}, 3},
+        {XX_FILE_TYPE_BZ2, {'B', 'Z', 'h'}, 3},
+        {XX_FILE_TYPE_XZ, {0xfd, '7', 'z', 'X', 'Z', 0}, 6},
+        {XX_FILE_TYPE_LZIP, {'L', 'Z', 'I', 'P'}, 4},
+        {XX_FILE_TYPE_LZOP, {0x89, 'L', 'Z', 'O', 0, 13, 10, 26, 10}, 9},
+        {XX_FILE_TYPE_UNIX_COMPRESS, {0x1f, 0x9d}, 2},
+        {XX_FILE_TYPE_LZ4, {4, 0x22, 0x4d, 0x18}, 4},
+        {XX_FILE_TYPE_LZ4, {2, 0x21, 0x4c, 0x18}, 4},
+        {XX_FILE_TYPE_ZSTD, {0x28, 0xb5, 0x2f, 0xfd}, 4}
+    };
+    uint8_t header[9];
+    size_t i, j;
+    bool declared = false;
+    switch (type) {
+        case XX_FILE_TYPE_TAR_GZ: type = XX_FILE_TYPE_GZ; break;
+        case XX_FILE_TYPE_TAR_BZ2: type = XX_FILE_TYPE_BZ2; break;
+        case XX_FILE_TYPE_TAR_XZ: type = XX_FILE_TYPE_XZ; break;
+        case XX_FILE_TYPE_TAR_LZIP: type = XX_FILE_TYPE_LZIP; break;
+        case XX_FILE_TYPE_TAR_LZOP: type = XX_FILE_TYPE_LZOP; break;
+        case XX_FILE_TYPE_TAR_LZ4: type = XX_FILE_TYPE_LZ4; break;
+        case XX_FILE_TYPE_TAR_ZSTD: type = XX_FILE_TYPE_ZSTD; break;
+        case XX_FILE_TYPE_TAR_COMPRESS: type = XX_FILE_TYPE_UNIX_COMPRESS; break;
+        default: break;
+    }
+    for (i = 0; i < sizeof(rules) / sizeof(rules[0]); ++i) {
+        if (rules[i].type != type) continue;
+        declared = true;
+        if (!xx_io_read_at(device, base, header, rules[i].length)) continue;
+        for (j = 0; j < rules[i].length && header[j] == rules[i].bytes[j]; ++j) {}
+        if (j == rules[i].length) return 1;
+    }
+    return declared ? 0 : -1;
+}
+/* Keep the ZIP profile's prefix rules identical to xx_zip_fast_detect.json,
+ * without retaining the signature catalog for unrelated formats. */
+int xx_format_fast_detect_rules(const xx_file_type_t *types, size_t type_count, xx_io_device *device, int64_t base_address, bool is_mapped)
+{
+    uint8_t header[4];
+    size_t i;
+    int64_t saved;
+    bool zip = false, unknown = false;
+    int result = 0;
+    (void)is_mapped;
+    if (!types || !type_count || !device || base_address < 0) return 0;
+    saved = xx_io_tell(device);
+    if (saved < 0) return 0;
+    for (i = 0; i < type_count; ++i) {
+#ifdef XFU_SUPPORT_FORMAT_ZIP
+        if (types[i] == XX_FILE_TYPE_ZIP) zip = true;
+        else
+#endif
+        if (xx_format_extractor_get(types[i])) {
+            int signature = restricted_stream_signature(types[i], device, base_address);
+            if (signature == 1) { result = 1; goto done; }
+            if (signature < 0) unknown = true;
+        }
+    }
+    if (!zip) goto done;
+    if (xx_io_read_at(device, base_address, header, sizeof(header)) && header[0] == 'P' && header[1] == 'K') {
+        if ((header[2] == 0x30 && header[3] == 0x30) || (header[2] == 7 && header[3] == 8)) {
+            if (base_address > INT64_MAX - 4 || !xx_io_read_at(device, base_address + 4, header, sizeof(header))) goto done;
+        }
+        if (header[0] == 'P' && header[1] == 'K' &&
+            ((header[2] == 3 && header[3] == 4) || (header[2] == 5 && header[3] == 6) || (header[2] == 6 && header[3] == 6))) result = 1;
+    }
+done:
+    if (xx_io_seek64(device, saved, SEEK_SET)) return 0;
+    return result ? result : unknown ? -1 : 0;
+}
+
+size_t xx_format_fast_signature_types(xx_io_device *dev, int64_t base_address, xx_file_type_t *types, size_t capacity)
+{
+#ifdef XFU_SUPPORT_FORMAT_ZIP
+    const xx_file_type_t type = XX_FILE_TYPE_ZIP;
+    if (!types || !capacity || xx_format_fast_detect_rules(&type, 1U, dev, base_address, false) != 1) return 0;
+    types[0] = type;
+    return 1;
+#else
+    (void)dev; (void)base_address; (void)types; (void)capacity;
+    return 0;
+#endif
+}
+#else
 enum fast_origin {
     FAST_BASE,
     FAST_END,
@@ -300,3 +390,5 @@ size_t xx_format_fast_signature_types(xx_io_device *dev, int64_t base_address, x
     }
     return count;
 }
+
+#endif /* restricted format profile */

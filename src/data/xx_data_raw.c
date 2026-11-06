@@ -69,10 +69,7 @@ uint16_t xx_data_get_u16(const void *data, size_t data_size, size_t offset, bool
         return 0;
     }
     const uint8_t *b = (const uint8_t *)data + offset;
-    if (big_endian) {
-        return (uint16_t)(((uint16_t)b[0] << 8) | (uint16_t)b[1]);
-    }
-    return (uint16_t)((uint16_t)b[0] | ((uint16_t)b[1] << 8));
+    return big_endian ? xx_data_get_be16(b) : xx_data_get_le16(b);
 }
 
 int16_t xx_data_get_i16(const void *data, size_t data_size, size_t offset, bool big_endian)
@@ -107,10 +104,7 @@ uint32_t xx_data_get_u32(const void *data, size_t data_size, size_t offset, bool
         return 0;
     }
     const uint8_t *b = (const uint8_t *)data + offset;
-    if (big_endian) {
-        return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
-    }
-    return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+    return big_endian ? xx_data_get_be32(b) : xx_data_get_le32(b);
 }
 
 int32_t xx_data_get_i32(const void *data, size_t data_size, size_t offset, bool big_endian)
@@ -124,12 +118,7 @@ uint64_t xx_data_get_u64(const void *data, size_t data_size, size_t offset, bool
         return 0;
     }
     const uint8_t *b = (const uint8_t *)data + offset;
-    if (big_endian) {
-        return ((uint64_t)b[0] << 56) | ((uint64_t)b[1] << 48) | ((uint64_t)b[2] << 40) | ((uint64_t)b[3] << 32) | ((uint64_t)b[4] << 24) | ((uint64_t)b[5] << 16) |
-               ((uint64_t)b[6] << 8) | (uint64_t)b[7];
-    }
-    return (uint64_t)b[0] | ((uint64_t)b[1] << 8) | ((uint64_t)b[2] << 16) | ((uint64_t)b[3] << 24) | ((uint64_t)b[4] << 32) | ((uint64_t)b[5] << 40) |
-           ((uint64_t)b[6] << 48) | ((uint64_t)b[7] << 56);
+    return big_endian ? xx_data_get_be64(b) : xx_data_get_le64(b);
 }
 
 int64_t xx_data_get_i64(const void *data, size_t data_size, size_t offset, bool big_endian)
@@ -270,11 +259,9 @@ bool xx_data_set_u16(void *data, size_t data_size, size_t offset, uint16_t val, 
     }
     uint8_t *b = (uint8_t *)data + offset;
     if (big_endian) {
-        b[0] = (uint8_t)((val >> 8) & 0xFF);
-        b[1] = (uint8_t)(val & 0xFF);
+        xx_data_set_be16(b, val);
     } else {
-        b[0] = (uint8_t)(val & 0xFF);
-        b[1] = (uint8_t)((val >> 8) & 0xFF);
+        xx_data_set_le16(b, val);
     }
     return true;
 }
@@ -314,15 +301,9 @@ bool xx_data_set_u32(void *data, size_t data_size, size_t offset, uint32_t val, 
     }
     uint8_t *b = (uint8_t *)data + offset;
     if (big_endian) {
-        b[0] = (uint8_t)((val >> 24) & 0xFF);
-        b[1] = (uint8_t)((val >> 16) & 0xFF);
-        b[2] = (uint8_t)((val >> 8) & 0xFF);
-        b[3] = (uint8_t)(val & 0xFF);
+        xx_data_set_be32(b, val);
     } else {
-        b[0] = (uint8_t)(val & 0xFF);
-        b[1] = (uint8_t)((val >> 8) & 0xFF);
-        b[2] = (uint8_t)((val >> 16) & 0xFF);
-        b[3] = (uint8_t)((val >> 24) & 0xFF);
+        xx_data_set_le32(b, val);
     }
     return true;
 }
@@ -339,23 +320,9 @@ bool xx_data_set_u64(void *data, size_t data_size, size_t offset, uint64_t val, 
     }
     uint8_t *b = (uint8_t *)data + offset;
     if (big_endian) {
-        b[0] = (uint8_t)((val >> 56) & 0xFF);
-        b[1] = (uint8_t)((val >> 48) & 0xFF);
-        b[2] = (uint8_t)((val >> 40) & 0xFF);
-        b[3] = (uint8_t)((val >> 32) & 0xFF);
-        b[4] = (uint8_t)((val >> 24) & 0xFF);
-        b[5] = (uint8_t)((val >> 16) & 0xFF);
-        b[6] = (uint8_t)((val >> 8) & 0xFF);
-        b[7] = (uint8_t)(val & 0xFF);
+        xx_data_set_be64(b, val);
     } else {
-        b[0] = (uint8_t)(val & 0xFF);
-        b[1] = (uint8_t)((val >> 8) & 0xFF);
-        b[2] = (uint8_t)((val >> 16) & 0xFF);
-        b[3] = (uint8_t)((val >> 24) & 0xFF);
-        b[4] = (uint8_t)((val >> 32) & 0xFF);
-        b[5] = (uint8_t)((val >> 40) & 0xFF);
-        b[6] = (uint8_t)((val >> 48) & 0xFF);
-        b[7] = (uint8_t)((val >> 56) & 0xFF);
+        xx_data_set_le64(b, val);
     }
     return true;
 }

@@ -6,6 +6,7 @@
 #include "xxfclib/die_engine/die_engine.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_die_engine_engine.h"
+#include <limits.h>
 
 static void die_engine_legacy_error(xx_scan_result *result, const char *message)
 {
@@ -25,6 +26,52 @@ static void die_engine_legacy_error(xx_scan_result *result, const char *message)
     errors[0] = text;
     result->ppErrors = errors;
     result->nErrorCount = 1;
+}
+
+/* The deprecated entry points retain their historical automatic Binary/COM
+ * pass policy. This scans one bounded input only; child traversal remains in
+ * src/scan and uses the versioned typed-region op. */
+static xx_scan_result *die_engine_legacy_region(xx_scan_engine *engine, xx_io_device *device,
+                                                const xx_scan_options *options, xx_pd_struct *pd)
+{
+    xx_io_device *view;
+    xx_scan_result *result;
+    XFileType type;
+    int64_t total = xx_io_total_size(device);
+    int64_t size;
+    int i;
+    if (options->first_wrapper_only) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "DIE does not support first-wrapper-only scans");
+        return NULL;
+    }
+    if (total < 0 || options->offset < 0 || options->size < -1 ||
+        (options->size >= 0 && options->offset > INT64_MAX - options->size)) return NULL;
+    size = options->size < 0 ? total - options->offset : options->size;
+    if (options->offset > total || size < 0 || size > total - options->offset) return NULL;
+    view = xx_io_sub_open_ro(device, options->offset, size);
+    if (!view) return NULL;
+    result = (xx_scan_result *)xx_rt_calloc(1, sizeof(*result));
+    if (!result) {
+        xx_io_close(view);
+        return NULL;
+    }
+    type = die_engine_xft_from_native(options->file_type);
+    if (!die_engine_scan_pass_device(view, (DBase *)engine->context, (xx_scan_options *)options, type, result, pd)) {
+        xx_io_close(view);
+        xx_scan_free_result(engine, result);
+        return NULL;
+    }
+    xx_io_close(view);
+    for (i = 0; i < result->nCount; ++i) {
+        if (result->pRecords[i].offset < 0 || result->pRecords[i].offset > INT64_MAX - options->offset) {
+            xx_scan_free_result(engine, result);
+            return NULL;
+        }
+        result->pRecords[i].offset += options->offset;
+        result->pRecords[i].engine_id = XX_SCAN_ENGINE_DIE;
+    }
+    result->engine_id = XX_SCAN_ENGINE_DIE;
+    return result;
 }
 
 /* progress, when not NULL, is the caller's: it receives the engine's levels
@@ -47,14 +94,12 @@ static int die_engine_legacy_scan(xx_io_device *device, DBase *database, const x
     if (local.all_types_scan || local.overlay_scan || local.resources_scan || local.archives_scan) {
         owned = xx_scan_device(&engine, device, &local, pd);
     } else {
-        /* Preserve the historical automatic Binary/COM fallback passes.
-         * Common xx_scan_* calls use the dedicated resolved-type callbacks. */
-        owned = engine.scan_device(&engine, device, &local, pd);
+        owned = die_engine_legacy_region(&engine, device, &local, pd);
     }
     if (owned) {
         *result = *owned;
         xx_rt_memset(owned, 0, sizeof(*owned));
-        engine.free_result(&engine, owned);
+        xx_scan_free_result(&engine, owned);
     } else {
         die_engine_legacy_error(result, pd->error_string);
     }

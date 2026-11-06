@@ -14,28 +14,68 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${XXFC_CODEPAGE_SOURCES}
     # Engine
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_amiga.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_apk.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_archive.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_atarist.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_binary.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_elf_macho.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_formats.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_cfbf.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_com.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_dex.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_dos16m.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_dos4g.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_dotnet.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_elf.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_image.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_ipa.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_iso9660.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_jar.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_javaclass.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_jpeg.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_le.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_lx.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_mach.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_machofat.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_msdos.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_ne.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_npm.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_pdf.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_pe.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_png.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_pyc.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_api_zip.c
     ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex_die.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_compat.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_db.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_db_lookup.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_engine.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_legacy.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_scan.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_types.c
     ${CMAKE_CURRENT_LIST_DIR}/src/die_engine/xx_die_engine_xdisasm.c
-    # Shared scan models and signature database/result handling.
+    # Shared engine-neutral scan models, traversal and result handling.
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_db.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_options.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_engine.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_overlay.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_resources.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_archives.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_archive_probe.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_result.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_result_format.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_color.c
     ${CMAKE_CURRENT_LIST_DIR}/src/sort/xx_sort_scan.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_pe.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_msdos.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_ne_le_lx.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_elf.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_mach.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_archive.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_pdf.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_dex_java_pyc.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_image.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_types_amiga_atarist_iso.c
     ${CMAKE_CURRENT_LIST_DIR}/src/sig/xx_sig.c
 
     # Script interpreter

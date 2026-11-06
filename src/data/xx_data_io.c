@@ -845,7 +845,7 @@ static int64_t xx_io_find_bytes_capped(xx_io_device *dev, int64_t start_offset, 
     int64_t consumed = 0, found = -1;
     int level;
 
-    if (!dev || !needle || !pattern_size || pattern_size > (size_t)INT64_MAX || xx_pd_is_stopped(pd)) return -1;
+    if (!dev || !needle || !pattern_size || (uint64_t)pattern_size > (uint64_t)INT64_MAX || xx_pd_is_stopped(pd)) return -1;
     if (max_search_len > 0 && (!limit || (uint64_t)max_search_len < limit)) limit = (uint64_t)max_search_len;
     if (start_offset < 0) start_offset = 0;
     if (xx_io_seek64(dev, start_offset, SEEK_SET) != 0) return -1;

@@ -83,6 +83,7 @@ option(XXFC_BUILD_SAMPLES "Build xxfclib sample programs" OFF)
 option(XXFC_STATIC_NO_CRT "Build the static archive so it can be linked with /NODEFAULTLIB (MSVC x64 or ARM64)" OFF)
 option(XXFC_SHARED_NO_CRT "Build the MSVC x64 shared library without the C runtime" ON)
 option(XXFC_BUILD_DIE_ENGINE "Also build die_engine, a static library holding only the DIE signature engine" ON)
+option(XXFC_BUILD_NFD_ENGINE "Also build nfd_engine, the built-in Nauz File Detector engine" ON)
 option(XXFC_DIE_ENGINE_TAR_ONLY_WRITING "Keep only TAR archive creation in the focused DIE engine" OFF)
 
 set(XXFC_MSVC_X64 FALSE)
@@ -106,7 +107,7 @@ endif()
 # cdisasm is one static target shared by every xxfclib consumer. Compile it
 # freestanding only when at least one target that consumes it is CRT-free.
 set(XXFC_HAS_STATIC_TARGET FALSE)
-if(NOT BUILD_SHARED_LIBS OR XXFC_BUILD_BOTH OR XXFC_BUILD_DIE_ENGINE)
+if(NOT BUILD_SHARED_LIBS OR XXFC_BUILD_BOTH OR XXFC_BUILD_DIE_ENGINE OR XXFC_BUILD_NFD_ENGINE)
     set(XXFC_HAS_STATIC_TARGET TRUE)
 endif()
 
@@ -346,6 +347,8 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/data/xx_pd.h
     include/xxfclib/io/xx_io.h
     include/xxfclib/scan/xx_scan.h
+    include/xxfclib/nfd_engine/nfd_engine.h
+    include/xxfclib/nfd_engine/nfd_tables.h
     include/xxfclib/sig/xx_sig.h
     include/xxfclib/die_engine/die_engine.h
     include/xxfclib/die_engine/die_engine_debug.h
@@ -1591,6 +1594,8 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/archive/dh/xx_dh.h
     include/xxfclib/formats/archive/djcomp/xx_djcomp.h
     include/xxfclib/formats/archive/dpc/xx_dpc.h
+    include/xxfclib/formats/installer/dsl1/xx_dsl1.h
+    include/xxfclib/formats/archive/dwc/xx_dwc.h
     include/xxfclib/formats/image/bmp/xx_bmp.h
     include/xxfclib/formats/image/bmp/xx_bmp_make.h
     include/xxfclib/formats/firmware/cfe/xx_cfe.h
@@ -1919,17 +1924,33 @@ set(XXFCLIB_SOURCES
     src/json/xx_json.c
     src/xml/xx_xml.c
     src/fs/xx_fs.c
-    # Shared scan models, signature databases and engine callback interface.
+    # Engine-neutral scan models, traversal and versioned engine interface.
     src/scan/xx_scan.c
-    src/scan/xx_scan_db.c
+    src/scan/xx_scan_options.c
     src/scan/xx_scan_result.c
+    src/scan/xx_scan_result_format.c
     src/scan/xx_scan_color.c
     src/sort/xx_sort_scan.c
     src/scan/xx_scan_engine.c
     src/scan/xx_scan_types.c
+    src/scan/xx_scan_types_pe.c
+    src/scan/xx_scan_types_msdos.c
+    src/scan/xx_scan_types_ne_le_lx.c
+    src/scan/xx_scan_types_elf.c
+    src/scan/xx_scan_types_mach.c
+    src/scan/xx_scan_types_archive.c
+    src/scan/xx_scan_types_pdf.c
+    src/scan/xx_scan_types_dex_java_pyc.c
+    src/scan/xx_scan_types_image.c
+    src/scan/xx_scan_types_amiga_atarist_iso.c
+    # Detect It Easy concrete engine database and compatibility adapters.
+    src/die_engine/xx_die_engine_db.c
+    src/die_engine/xx_die_engine_db_lookup.c
+    src/die_engine/xx_die_engine_types.c
     src/scan/xx_scan_overlay.c
     src/scan/xx_scan_resources.c
     src/scan/xx_scan_archives.c
+    src/scan/xx_scan_archive_probe.c
     src/sig/xx_sig.c
     # Embedded ECMAScript interpreter.
     src/js/xx_js_deps.c
@@ -1955,11 +1976,36 @@ set(XXFCLIB_SOURCES
     src/die_engine/xx_die_engine_legacy.c
     src/die_engine/xx_die_engine_scan.c
     src/die_engine/xx_die_engine_api.c
+    src/die_engine/xx_die_engine_api_amiga.c
+    src/die_engine/xx_die_engine_api_apk.c
+    src/die_engine/xx_die_engine_api_archive.c
+    src/die_engine/xx_die_engine_api_atarist.c
     src/die_engine/xx_die_engine_api_binary.c
-    src/die_engine/xx_die_engine_api_elf_macho.c
-    src/die_engine/xx_die_engine_api_formats.c
+    src/die_engine/xx_die_engine_api_cfbf.c
+    src/die_engine/xx_die_engine_api_com.c
+    src/die_engine/xx_die_engine_api_dex.c
+    src/die_engine/xx_die_engine_api_dos16m.c
+    src/die_engine/xx_die_engine_api_dos4g.c
+    src/die_engine/xx_die_engine_api_dotnet.c
+    src/die_engine/xx_die_engine_api_elf.c
+    src/die_engine/xx_die_engine_api_image.c
+    src/die_engine/xx_die_engine_api_ipa.c
+    src/die_engine/xx_die_engine_api_iso9660.c
+    src/die_engine/xx_die_engine_api_jar.c
+    src/die_engine/xx_die_engine_api_javaclass.c
+    src/die_engine/xx_die_engine_api_jpeg.c
+    src/die_engine/xx_die_engine_api_le.c
+    src/die_engine/xx_die_engine_api_lx.c
+    src/die_engine/xx_die_engine_api_mach.c
+    src/die_engine/xx_die_engine_api_machofat.c
     src/die_engine/xx_die_engine_api_msdos.c
+    src/die_engine/xx_die_engine_api_ne.c
+    src/die_engine/xx_die_engine_api_npm.c
+    src/die_engine/xx_die_engine_api_pdf.c
     src/die_engine/xx_die_engine_api_pe.c
+    src/die_engine/xx_die_engine_api_png.c
+    src/die_engine/xx_die_engine_api_pyc.c
+    src/die_engine/xx_die_engine_api_zip.c
     src/regex/xx_regex_die.c
     # Its binary-format parsers. These answer predicate queries for signature
     # scripts ("is this import present?"), which is a different job from the
@@ -4722,6 +4768,10 @@ set(XXFCLIB_SOURCES
     src/formats/archive/djcomp/xx_djcomp_reader_adapters.c
     src/formats/archive/dpc/xx_dpc.c
     src/formats/archive/dpc/xx_dpc_reader_adapters.c
+    src/formats/installer/dsl1/xx_dsl1.c
+    src/formats/installer/dsl1/xx_dsl1_reader_adapters.c
+    src/formats/archive/dwc/xx_dwc.c
+    src/formats/archive/dwc/xx_dwc_reader_adapters.c
     src/formats/filesystem/vdi/xx_vdi_extractor.c
     src/formats/image/bmp/xx_bmp.c
     src/formats/image/bmp/xx_bmp_make.c
@@ -5604,6 +5654,22 @@ if(XXFC_BUILD_DIE_ENGINE)
     list(APPEND XXFCLIB_INSTALL_TARGETS die_engine)
 endif()
 
+# nfd_engine: built-in Nauz File Detector rules behind the same ABI. Its
+# focused closure deliberately excludes Qt, C++, the generic schema catalog,
+# external databases and hosted regex/decompressor libraries.
+if(XXFC_BUILD_NFD_ENGINE)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/nfd_engine.cmake")
+    xxfclib_select_stream_sources(XXFC_NFD_ENGINE_SOURCES)
+    add_library(nfd_engine STATIC ${XXFC_NFD_ENGINE_SOURCES})
+    xxfclib_configure_target(nfd_engine FALSE)
+    target_compile_definitions(nfd_engine PRIVATE XXFC_PROFILE_NFD_ENGINE=1 XXFC_PROFILE_DIE_ENGINE=1)
+    if(XXFC_STATIC_NO_CRT)
+        target_compile_definitions(nfd_engine PRIVATE XXFC_NFD_ENGINE_CRT_FREE=1)
+    endif()
+    add_library(xxfclib::nfd_engine ALIAS nfd_engine)
+    list(APPEND XXFCLIB_INSTALL_TARGETS nfd_engine)
+endif()
+
 if(TARGET xxfclib_no_crt_runtime)
     # Keep an installed freestanding ARM64 archive usable outside this source
     # tree by shipping the compiler-support library beside it.
@@ -5672,6 +5738,7 @@ install(FILES
     "${CMAKE_CURRENT_LIST_DIR}/FIND_TEST_RESULTS.md"
     DESTINATION . OPTIONAL
 )
+
 install(FILES "${CMAKE_CURRENT_LIST_DIR}/docs/BUILD.md" DESTINATION docs)
 
 # Optional tests
@@ -7979,3 +8046,9 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dh_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_diskdupe_im_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_djcomp_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dpc_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dsl1_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dwc_tests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_freearc_4x4_tests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_freearc_tor_tests.cmake")

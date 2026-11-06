@@ -21,7 +21,7 @@
 
 /**
  * @file xx_scan.h
- * @brief File types, signature databases, scan models and engine callbacks.
+ * @brief Engine-neutral scan options, records, traversal and engine ABI.
  */
 
 #ifndef XX_SCAN_H
@@ -36,142 +36,8 @@
 extern "C" {
 #endif
 
-/**
- * @brief What a file was detected as.
- *
- * The same numbering the signature databases use, so a database's declared
- * type can be compared against a detected one directly.
- */
-typedef enum {
-    XFT_UNKNOWN = 0,
-    XFT_BINARY,
-    XFT_COM,
-    XFT_MSDOS,
-    XFT_NE,
-    XFT_LE,
-    XFT_LX,
-    XFT_PE,
-    XFT_PE32,
-    XFT_PE64,
-    XFT_ELF,
-    XFT_ELF32,
-    XFT_ELF64,
-    XFT_MACHO,
-    XFT_MACHO32,
-    XFT_MACHO64,
-    XFT_ZIP,
-    XFT_JAR,
-    XFT_APK,
-    XFT_IPA,
-    XFT_DEX,
-    XFT_NPM,
-    XFT_MACHOFAT,
-    XFT_ARCHIVE,
-    XFT_PDF,
-    XFT_CFBF,
-    XFT_IMAGE,
-    XFT_JPEG,
-    XFT_PNG,
-    XFT_RAR,
-    XFT_ISO9660,
-    XFT_AMIGAHUNK,
-    XFT_ATARIST,
-    XFT_JAVACLASS,
-    XFT_PYC,
-    XFT_DOS16M,
-    XFT_DOS4G,
-    XFT_CLI_ASSEMBLY,
-    XFT_COUNT
-} XFileType;
-
-/** @brief The human-readable name of a type, as printed. */
-XXFC_API const char *xft_to_string(XFileType type);
-
-/**
- * @brief Does a database's declared file type match a detected one?
- *
- * Signature databases declare a broad type (XFT_PE) and files detect as a
- * specific one (XFT_PE64); this is the rule that decides which scripts run
- * against a file, so a caller driving the engine needs it to predict or
- * filter that set. Mirrors XBinary::checkFileType in the reference.
- */
-XXFC_API int xft_check(XFileType databaseType, XFileType fileType);
-
-/* Signature database models. Release loaded records with db_free(). */
-typedef enum {
-    DB_MAIN = 0,
-    /** Deprecated: reserved so DB_CUSTOM stays 2. No cdie frontend loads an
-     * extra database any more (Detect It Easy uses only main and custom). */
-    DB_EXTRA,
-    DB_CUSTOM
-} DBKind;
-
-typedef struct {
-    char *pName;     /* file name including the extension, e.g. "_PE.0.sg" */
-    char *pFilePath; /* absolute path                                      */
-    char *pText;     /* script source or precompiled bytecode              */
-    size_t nSize;    /* size of pText / bytecode in bytes                  */
-    XFileType fileType;
-    DBKind databaseType;
-    int64_t nElapsedTime; /* elapsed execution time in ms (when profiling/scan-time enabled) */
-    char *pTags;          /* owned, normalized semicolon-separated metadata tags             */
-} DBSignature;
-
-/** Retained metadata entry. Keeping the catalog on DBase lets metadata loaded
- * with the main database also tag records added later from db_custom. */
-typedef struct {
-    char *pName;
-    char *pTags;
-    XFileType fileType;
-    unsigned int databaseKinds; /**< Bit set for each DBKind described by this entry. */
-} DBSignatureMetadata;
-
-typedef struct {
-    DBSignature *pRecords;
-    int nCount;
-    int nCapacity;
-    DBSignatureMetadata *pMetadata;
-    int nMetadataCount;
-    int nMetadataCapacity;
-    /* Private retained JSProgramCache (64 MiB), created by successful loaders.
-     * Hand-built databases may leave this NULL. Database loading/freeing
-     * require exclusive ownership; concurrent scans share immutable programs. */
-    void *pJsProgramCache;
-} DBase;
-
-XXFC_API int db_load(DBase *pDb, const char *pPath, DBKind kind);
-XXFC_API int db_load_tar(DBase *pDb, const char *pTarPath, DBKind kind);
-/** Load the bundled Detect It Easy db/Binary/audio* rules and their helpers.
- * This provides named audio/tracker identification without a separate DIE DB.
- * Like db_load(), call db_free() when finished. */
-XXFC_API int db_load_builtin_audio(DBase *pDb, DBKind kind);
-/** Load only the framework/helper scripts and Binary/audio.1.sg tracker and
- * chiptune rules from the bundled audio database. This avoids executing the
- * separate voice/container rules when identifying music families. */
-XXFC_API int db_load_builtin_music(DBase *pDb, DBKind kind);
-XXFC_API int db_create_tar(const char *pDbPath, const char *pTarPath);
-XXFC_API int db_create_tar_precompiled(const char *pDbPath, const char *pTarPath);
-XXFC_API void db_sort(DBase *pDb);
-XXFC_API void db_free(DBase *pDb);
-XXFC_API int db_count_for_type(DBase *pDb, XFileType fileType);
-/** Exact ASCII case-insensitive membership in a signature's tag list. */
-XXFC_API int db_signature_has_tag(const DBSignature *signature, const char *tag);
-/** Apply semicolon-separated include/exclude lists. Include is any-match;
- * exclude is any-match and takes precedence. Empty lists impose no rule. */
-XXFC_API int db_signature_matches_tag_filters(const DBSignature *signature,
-                                              const char *include_tags,
-                                              const char *exclude_tags);
-/**
- * Return every distinct tag attached to a loaded signature, sorted
- * case-insensitively and joined with ';' (without a trailing separator).
- * Tag identity is ASCII case-insensitive; the spelling from the first loaded
- * signature that uses a tag is preserved. Metadata entries that are not
- * attached to a loaded signature are not included. The caller owns the
- * returned string and must release it with xx_rt_free(). An empty database
- * returns an allocated empty string. NULL is returned only on allocation
- * failure.
- */
-XXFC_API char *db_get_used_tags(const DBase *database);
+/** Stable display spelling used by all common result writers. */
+XXFC_API const char *xx_scan_file_type_name(xx_file_type_t type);
 
 /* --------------------------------------------------------------- options  */
 
@@ -282,6 +148,8 @@ typedef struct xx_scan_options xx_scan_options_t;
  * remain valid until that result is freed.
  */
 typedef struct xx_scan_record {
+    /** Concrete engine that produced this record. */
+    uint32_t engine_id;
     xx_file_type_t file_type;
     int64_t offset;
     int64_t size;
@@ -303,10 +171,9 @@ typedef struct xx_scan_record {
     int64_t archive_offset; /**< Physical packed member/stream start in the containing input. */
     int64_t archive_size; /**< Physical packed member/stream size. */
     bool archive_compressed; /**< offset/size describe decoded bytes when true. */
-    /** Owned database path of the script whose result this is (its file, a TAR
-     * member path or "Binary/audio.1.sg"). NULL for synthesized records such
-     * as Unknown. Frontends use it to show the signature. */
-    const char *signature;
+    /** Optional owned engine-specific source identifier. For DiE this is the
+     * database path of the script that produced the record. */
+    const char *source_ref;
     /** options.archive_method: a static string, never freed or copied; NULL
      * selects "Deflate"/"Store" from archive_compressed. */
     const char *archive_method;
@@ -317,18 +184,21 @@ typedef struct xx_scan_record xx_scan_record_t;
  * @brief Standard result storage used by signature scanners and formatters.
  *
  * Zero-initialise before scanning. Owns its arrays, record strings, errors
- * and file name; release them with xx_scan_result_free(). Engine callbacks
- * may instead manage private result storage, which must only be accessed
- * and freed through that engine. fileType uses the signature XFileType enum;
- * each record's file_type uses xx_file_type_t.
+ * and file name; release them with xx_scan_result_free(). Every engine uses
+ * this model. Result and record file types use xx_file_type_t.
  */
 typedef struct xx_scan_result {
+    /** Concrete engine selected for this result. */
+    uint32_t engine_id;
     xx_scan_record *pRecords;
     int nCount;
     int nCapacity;
     char **ppErrors;
     int nErrorCount;
-    XFileType fileType;
+    xx_file_type_t file_type;
+    /** Deprecated engine-specific type identifier retained for compatibility
+     * adapters. Common traversal and writers never interpret it. */
+    uint32_t compatibility_file_type;
     char *pFileName;
     int64_t nFileSize;
     bool sort; /**< options.sort of the scan, set by signature scans. Each pass sorted its own records; merging never re-sorts. */
@@ -359,154 +229,82 @@ XXFC_API char *xx_scan_translate_type(const char *pType);
 /** Largest COM image after the 0x100-byte program segment prefix. */
 #define XX_SCAN_COM_MAX_SIZE (0x10000 - 0x100)
 
-typedef struct xx_scan_file_type_set {
-    bool types[XFT_COUNT];
-} xx_scan_file_type_set;
-
-/**
- * Detect supported signature file types using a borrowed seekable device.
- * file_name may be NULL; it supplies the optional COM suffix. The set includes
- * generic parent types and .NET membership. The device is not closed and its
- * cursor is preserved when the device supports tell/seek. Returns false for
- * a missing device/set or failed detection.
- */
-XXFC_API bool xx_scan_file_type_set_detect(xx_io_device *device, const char *file_name, xx_scan_file_type_set *set);
-
-XXFC_API bool xx_scan_file_type_set_contains(const xx_scan_file_type_set *set, XFileType type);
-
-/**
- * Select the preferred signature file type from a detected set. Managed PE
- * retains PE32/PE64 as its preferred type. Unrecognized inputs fall back to
- * COM only for a known size no larger than XX_SCAN_COM_MAX_SIZE and a COM
- * suffix, otherwise BINARY. NULL device/set returns BINARY. No reads or seeks
- * are performed; the borrowed device and set remain unchanged.
- */
-XXFC_API XFileType xx_scan_pick_file_type(xx_io_device *device, const char *file_name, const xx_scan_file_type_set *set);
-
 typedef struct xx_scan_engine xx_scan_engine;
 typedef struct xx_scan_engine xx_scan_engine_t;
 
-/** A specialized scanner for one resolved file type. */
-typedef xx_scan_result *(*xx_scan_format_callback)(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
+/** No automatic or multi-engine selector exists: one concrete ID is chosen. */
+typedef enum xx_scan_engine_id {
+    XX_SCAN_ENGINE_UNKNOWN = 0,
+    XX_SCAN_ENGINE_DIE = 1,
+    XX_SCAN_ENGINE_NFD = 2,
+    XX_SCAN_ENGINE_YARA = 3,
+    XX_SCAN_ENGINE_PEID = 4
+} xx_scan_engine_id;
 
-typedef struct xx_scan_format_handler {
+#define XX_SCAN_ENGINE_ABI_VERSION UINT32_C(1)
+
+typedef enum xx_scan_engine_capability {
+    XX_SCAN_CAP_BUILTIN_SIGNATURES = UINT64_C(1) << 0,
+    XX_SCAN_CAP_EXTERNAL_DATABASE_REQUIRED = UINT64_C(1) << 1,
+    XX_SCAN_CAP_EXTERNAL_DATABASE_OPTIONAL = UINT64_C(1) << 2,
+    XX_SCAN_CAP_TAGS = UINT64_C(1) << 3,
+    XX_SCAN_CAP_DEEP = UINT64_C(1) << 4,
+    XX_SCAN_CAP_HEURISTIC = UINT64_C(1) << 5,
+    XX_SCAN_CAP_AGGRESSIVE = UINT64_C(1) << 6,
+    XX_SCAN_CAP_VERBOSE = UINT64_C(1) << 7,
+    XX_SCAN_CAP_FIRST_WRAPPER = UINT64_C(1) << 8,
+    XX_SCAN_CAP_TYPE_QUERY = UINT64_C(1) << 9,
+    XX_SCAN_CAP_THREAD_SAFE = UINT64_C(1) << 10,
+    XX_SCAN_CAP_REENTRANT = UINT64_C(1) << 11
+} xx_scan_engine_capability;
+
+/** One bounded, resolved pass. Concrete engines must not traverse children. */
+typedef struct xx_scan_region {
+    xx_io_device *device;
     xx_file_type_t file_type;
-    xx_scan_format_callback callback;
-} xx_scan_format_handler;
+    int64_t absolute_offset;
+    int64_t size;
+    uint64_t scan_id;
+    uint64_t parent_id;
+    xx_scan_part part;
+    unsigned int archive_depth;
+} xx_scan_region;
 
-/**
- * @brief Abstract scanning engine, implemented with callbacks.
- *
- * Zero-initialise before installing callbacks. get_record_count, get_record
- * and free_result are required. Engines using the standard xx_scan_result
- * model can install xx_scan_get_record_count, xx_scan_get_record and
- * xx_scan_free_result and xx_scan_append_result directly. get_file_types is
- * required when options.file_type is UNKNOWN. Each supported type prefers its dedicated
- * scan_* callback. PE32/PE64 share scan_pe, ELF32/ELF64 share scan_elf, and
- * MACHO32/MACHO64 share scan_macho. A PE scan requires scan_pe; other types
- * fall back to a matching format_handlers entry, then scan_device. cleanup is
- * optional. Every result must be accessed and freed with the engine that
- * created it, before cleanup.
- * The caller owns this struct; priv holds implementation-specific state.
- */
+typedef struct xx_scan_catalog {
+    char **items;
+    size_t count;
+} xx_scan_catalog;
+
+typedef struct xx_scan_engine_ops {
+    uint32_t abi_version;
+    size_t struct_size;
+    xx_scan_engine_id id;
+    const char *name;
+    const char *display_name;
+    uint64_t capabilities;
+    bool (*create)(xx_scan_engine *engine, const void *config, xx_pd_struct *pd);
+    void (*destroy)(xx_scan_engine *engine);
+    bool (*load_database)(xx_scan_engine *engine, const void *database, xx_pd_struct *pd);
+    bool (*supports_type)(const xx_scan_engine *engine, xx_file_type_t file_type);
+    xx_scan_result *(*scan_region)(xx_scan_engine *engine, const xx_scan_region *region,
+                                  const xx_scan_options *options, xx_pd_struct *pd);
+    bool (*list_signatures)(const xx_scan_engine *engine, xx_scan_catalog *catalog, xx_pd_struct *pd);
+    bool (*list_tags)(const xx_scan_engine *engine, xx_scan_catalog *catalog, xx_pd_struct *pd);
+} xx_scan_engine_ops;
+
 struct xx_scan_engine {
-    /**
-     * Scan synchronously. Return a result even when no detections were found;
-     * NULL means failure or cancellation. Report errors through optional pd,
-     * update progress and check pd->is_stop during long operations.
-     * The device and options belong to the caller. Do not close the device or
-     * retain it, the options, or input buffers after this call returns.
-     * Scanning may change the device position.
-     */
-    xx_scan_result *(*scan_device)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
-
-    size_t (*get_record_count)(xx_scan_engine *self, const xx_scan_result *result);
-
-    /** Return NULL for an index outside [0, get_record_count()). */
-    const xx_scan_record *(*get_record)(xx_scan_engine *self, const xx_scan_result *result, size_t index);
-
-    void (*free_result)(xx_scan_engine *self, xx_scan_result *result);
-
-    /** Release private state without freeing self. */
-    void (*cleanup)(xx_scan_engine *self);
-
-    const char *name; /**< Optional engine name; borrowed. */
-    void *priv;
-
-    /**
-     * Detect types for an UNKNOWN request. Return an owned xx_list_t of
-     * xx_file_type_t values, ordered from generic to preferred (last).
-     * The caller destroys the list. Return NULL on failure; use pd for errors.
-     * The device is borrowed and may be repositioned.
-     */
-    xx_list_t *(*get_file_types)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
-
-    /** Common handler for PE32 and PE64. options.file_type preserves the width. */
-    xx_scan_result *(*scan_pe)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
-
-    /** Dedicated PDF and DEX handlers. Same contract as scan_device. */
-    xx_scan_result *(*scan_pdf)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
-    xx_scan_result *(*scan_dex)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
-
-    /** Borrowed fallback table. First matching non-NULL callback wins. */
-    const xx_scan_format_handler *format_handlers;
-    size_t format_handler_count;
-
-    /** Dedicated handlers share the ownership and result contract of scan_device.
-     * The resolved file type is supplied in options.file_type. */
-    xx_scan_format_callback scan_binary;
-    xx_scan_format_callback scan_elf;   /**< ELF32 and ELF64. */
-    xx_scan_format_callback scan_macho; /**< MACHO32 and MACHO64. */
-    xx_scan_format_callback scan_machofat;
-    xx_scan_format_callback scan_java_class;
-    xx_scan_format_callback scan_zip;
-    xx_scan_format_callback scan_jar;
-    xx_scan_format_callback scan_npm;
-    xx_scan_format_callback scan_ipa;
-    xx_scan_format_callback scan_iso9660;
-    xx_scan_format_callback scan_apk;
-    xx_scan_format_callback scan_amigahunk;
-    xx_scan_format_callback scan_atarist;
-    xx_scan_format_callback scan_cfbf;
-    xx_scan_format_callback scan_com;
-    xx_scan_format_callback scan_dos16m;
-    xx_scan_format_callback scan_dos4g;
-    xx_scan_format_callback scan_jpeg;
-    xx_scan_format_callback scan_png;
-    xx_scan_format_callback scan_ne;
-    xx_scan_format_callback scan_le;
-    xx_scan_format_callback scan_lx;
-    xx_scan_format_callback scan_rar;
-
-    /** MSDOS parent scan for PE32/PE64, NE, LE and LX. */
-    xx_scan_format_callback scan_msdos;
-
-    /**
-     * Append all source records to destination. Required when all_types_scan
-     * selects multiple passes or an overlay/resource/archive child is scanned. Add source_offset to
-     * each copied record's offset (zero for passes on the same device), and
-     * keep its scan_id, parent_id, scan_part and child metadata. Compressed
-     * archive children use source_offset zero so decoded positions stay
-     * relative to the member; their archive_offset is already physical in
-     * the containing input and must not be rebased. Child metadata must not
-     * replace the containing input's type or size, even for offset zero.
-     * Both handles are borrowed; neither may be freed
-     * here. Source is freed immediately after this call, so copy its records
-     * and strings into destination-owned storage. Return false on failure and
-     * report the error through pd. Destination must remain safe to free after
-     * failure. Each scan callback must return a distinct owned result.
-     * Standard results can use xx_scan_append_result directly.
-     */
-    bool (*append_result)(xx_scan_engine *self, xx_scan_result *destination, const xx_scan_result *source, int64_t source_offset, xx_pd_struct *pd);
-
-    /**
-     * Optional overlay locator; NULL uses xx_scan_get_overlay. Return true
-     * with offset=-1 and size=0 when none exists, false on failure. A nonempty
-     * range must lie within options.offset/size and start after options.offset.
-     * Offsets are absolute in device. The device and options are borrowed.
-     */
-    bool (*get_overlay)(xx_scan_engine *self, xx_io_device *device, const xx_scan_options *options, int64_t *offset, int64_t *size, xx_pd_struct *pd);
+    const xx_scan_engine_ops *ops;
+    void *context;
 };
+
+XXFC_API bool xx_scan_engine_init(xx_scan_engine *engine, const xx_scan_engine_ops *ops,
+                                  const void *config, const void *database, xx_pd_struct *pd);
+XXFC_API xx_scan_engine_id xx_scan_engine_get_id(const xx_scan_engine *engine);
+XXFC_API const char *xx_scan_engine_get_name(const xx_scan_engine *engine);
+XXFC_API const char *xx_scan_engine_get_display_name(const xx_scan_engine *engine);
+XXFC_API uint64_t xx_scan_engine_get_capabilities(const xx_scan_engine *engine);
+XXFC_API bool xx_scan_engine_supports_type(const xx_scan_engine *engine, xx_file_type_t file_type);
+XXFC_API void xx_scan_catalog_free(xx_scan_catalog *catalog);
 
 /** Defaults: whole input, automatic file type, optional scan modes disabled;
  * type/version/info display, custom database and sorting enabled; the
@@ -533,14 +331,14 @@ XXFC_API void xx_scan_options_free(xx_scan_options *options);
 XXFC_API xx_list_t *xx_scan_detect_type(xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
 /**
- * Adapter for xx_scan_engine.get_file_types. Returns xx_scan_detect_type()'s
- * owned list; engine is unused. Can be installed directly as the callback.
+ * Compatibility wrapper for callers that previously used the engine's type
+ * callback. Returns xx_scan_detect_type()'s owned list; engine is unused.
  */
 XXFC_API xx_list_t *xx_scan_get_file_types(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
 
 /**
- * Locate a trailing overlay with the resolved format's reader. Matches the
- * engine.get_overlay callback. Detection is confined to options.offset/size;
+ * Locate a trailing overlay with the resolved format's reader. Detection is
+ * confined to options.offset/size;
  * the returned offset is absolute in device. Formats without a known boundary
  * return true with offset=-1 and size=0. Output pointers are required.
  */
@@ -553,21 +351,18 @@ XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device, 
  * return. Archive child scans retain their selected memory, temporary-file or
  * bounded source device and skip this eager input copy. Callbacks must not
  * retain a child device or its backing buffer.
- * UNKNOWN resolves through get_file_types; an explicit type bypasses detection.
- * PE32/PE64 use scan_pe, ELF32/ELF64 use scan_elf, and MACHO32/MACHO64 use
- * scan_macho. Other types prefer their dedicated scan_* callback. Non-PE
- * types fall back to a matching format_handlers entry, then scan_device.
+ * UNKNOWN resolves through common type detection; an explicit type bypasses
+ * detection. Every resolved pass invokes exactly one engine scan_region op.
  * all_types_scan adds parent passes: MSDOS for PE/NE/LE/LX; ZIP then JAR for
  * APK/IPA; ZIP for JAR; DOS16M for DOS4G. Each pass starts at options.offset
- * with its file_type and all_types_scan cleared. append_result merges results
- * in pass order; all partial results are freed on failure or cancellation.
+ * with its file_type and all_types_scan cleared. Common result merging keeps
+ * pass order; all partial results are freed on failure or cancellation.
  * overlay_scan locates an overlay once for the preferred type, detects its
  * type, and recursively invokes the common scanner through a read-only
  * xx_io_sub device. The child starts with file_type UNKNOWN and recursive_scan,
  * overlay_scan, resources_scan and all_types_scan cleared; it keeps
  * archives_scan, so an archive overlay expands as in XScanEngine.
- * get_file_types and append_result are required when an overlay exists;
- * merged offsets remain absolute in the original input. Scan callbacks
+ * Merged offsets remain absolute in the original input. Concrete region ops
  * receive overlay_scan, resources_scan and archives_scan cleared.
  * resources_scan visits nonempty PE/.NET resources and ELF GResources once
  * for the preferred type. Payloads are scanned as stored, including compressed
@@ -610,15 +405,14 @@ XXFC_API bool xx_scan_get_overlay(xx_scan_engine *engine, xx_io_device *device, 
  * the expansion and leaves "Last error: Archive member scan limit reached
  * (10000)" (or "(100000)") in the result. Input passes run first, then
  * resource, archive and overlay children. Unsupported container formats have
- * no corresponding child pass. get_file_types and append_result are
- * required when a child exists. Partial results are freed on any failure;
+ * no corresponding child pass. Partial results are freed on any failure;
  * only faults reading the input, allocation failures and cancellation fail an
  * archive expansion.
  * Each scan of a device draws a new random nonzero options.scan_id; all of
  * its passes share it. The input's scan has parent_id 0, a child's has
  * the input scan's scan_id. Caller-supplied IDs and child metadata are ignored.
  * The device stays open. NULL is returned for invalid arguments, incomplete
- * callback tables, engine failure, or cancellation. Validation errors are
+ * engine operations, engine failure, or cancellation. Validation errors are
  * reported through pd when supplied.
  */
 XXFC_API xx_scan_result *xx_scan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd);
@@ -633,9 +427,8 @@ XXFC_API xx_scan_result *xx_scan_file(xx_scan_engine *engine, const char *path, 
 XXFC_API xx_scan_result *xx_scan_memory(xx_scan_engine *engine, const void *data, size_t size, const xx_scan_options *options, xx_pd_struct *pd);
 
 /**
- * Dispatch result access through the engine's callbacks. These functions may
- * also be installed directly as callbacks for the standard xx_scan_result
- * model. NULL engines/results or missing access callbacks yield zero/NULL.
+ * Access the standard result model. engine is accepted for source compatibility
+ * and ignored. NULL results yield zero/NULL.
  */
 XXFC_API size_t xx_scan_get_record_count(xx_scan_engine *engine, const xx_scan_result *result);
 XXFC_API const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine, const xx_scan_result *result, size_t index);
@@ -644,32 +437,28 @@ XXFC_API const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine, const 
  * Deep-copy standard source records and diagnostics into destination, adding
  * source_offset to record offsets. Neither result is freed or borrowed from
  * the other. Preserve record IDs and destination file name/sort policy;
- * replace destination fileType/nFileSize only when source_offset is zero.
+ * replace destination file_type/nFileSize only when source_offset is zero.
  * Source records are appended after the destination's, in source order; the
  * merged list is never re-sorted, whatever destination.sort says. As in
  * XScanEngine, each pass sorts its own records, so passes, overlays,
  * resources and archive members keep their own order.
  * Return false on invalid arguments, offset overflow, allocation failure or
  * cancellation; destination remains safe to free. pd may be NULL.
- * May be installed as append_result; engine is unused and may be NULL.
- * Private result models must use their own engine's append_result callback.
+ * engine is accepted for source compatibility and may be NULL.
  */
 XXFC_API bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, const xx_scan_result *source,
                                   int64_t source_offset, xx_pd_struct *pd);
 
 /**
- * Dispatch result destruction through the engine's callback. When installed
- * directly, release the standard model's contents and its owning allocation
- * with xx_rt_free; the model must be the allocation's first member.
- * NULL engines/results or missing callbacks are ignored. Use the same engine
- * that created the result. For caller-owned storage use xx_scan_result_free.
+ * Release the standard model's contents and its owning allocation. engine is
+ * accepted for source compatibility and ignored. For caller-owned storage use
+ * xx_scan_result_free(). NULL results are ignored.
  */
 XXFC_API void xx_scan_free_result(xx_scan_engine *engine, xx_scan_result *result);
 
 /**
- * Invoke custom cleanup and clear the callback table. This function may be
- * installed directly when private state is borrowed and needs no release.
- * The engine struct is caller-owned; NULL is ignored.
+ * Invoke the concrete engine's destroy op and clear the caller-owned engine
+ * handle. NULL or already-cleared engines are ignored.
  */
 XXFC_API void xx_scan_engine_cleanup(xx_scan_engine *engine);
 

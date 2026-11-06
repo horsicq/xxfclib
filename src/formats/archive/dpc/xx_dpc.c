@@ -60,6 +60,13 @@ static bool dpc_safe_name(char *name, const uint8_t *field, size_t n)
     if (stem==4U && (!xx_rt_memcmp(lower,"com",3U)||!xx_rt_memcmp(lower,"lpt",3U)) && lower[3]>='1' && lower[3]<='9') return false;
     return true;
 }
+/* Alias-only portable output policy; retain the original metadata bytes. */
+static bool dpc_alias_name(char *name, const uint8_t *field, size_t n)
+{
+    while (n && field[n-1U]==' ') --n;
+    return dpc_safe_name(name,field,n);
+}
+
 typedef struct dpc_sink { uint8_t *output; size_t capacity,position; xx_pd_struct *pd; } dpc_sink;
 static ssize_t dpc_sink_write(xx_io_device *device, const void *buffer, size_t n)
 {
@@ -73,17 +80,16 @@ static ssize_t dpc_sink_write(xx_io_device *device, const void *buffer, size_t n
 static bool dpc_inflate(const uint8_t *input,size_t packed,uint8_t *plain,size_t raw,xx_pd_struct *pd)
 {
     xx_io_device out; dpc_sink sink; size_t consumed=0U;
-    if (!input || !plain || !raw || packed<8U || input[0]!=0x78U || !xx_zlib_stream_header_is_valid(input,packed) || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!input || !plain || packed<8U || input[0]!=0x78U || !xx_zlib_stream_header_is_valid(input,packed) || (pd && xx_pd_is_stopped(pd))) return false;
     xx_rt_memset(&out,0,sizeof(out));sink.output=plain;sink.capacity=raw;sink.position=0U;sink.pd=pd;out.priv=&sink;out.write=dpc_sink_write;
     return xx_deflate_unpack_memory_to_device_ex(input+2U,packed-6U,&out,&consumed,false,pd) && consumed==packed-6U && sink.position==raw &&
         !(pd && xx_pd_is_stopped(pd)) && xx_zlib_stream_trailer_matches(input,packed,plain,raw) && !(pd && xx_pd_is_stopped(pd));
 }
-static bool dpc_aliases(dpc_info *info,const uint8_t *map,size_t n,xx_pd_struct *pd)
+static bool dpc_alias_pass(dpc_info *info,const uint8_t *map,size_t n,xx_pd_struct *pd,bool apply,size_t *aliases)
 {
     size_t at=0U,ordinal=0U;bool section=false;
-    for (size_t i=0U;i<n;++i) if (!map[i] || map[i]>=127U || (map[i]<32U && map[i]!='\r' && map[i]!='\n' && map[i]!='\t')) return false;
     while (at<n) {
-        size_t begin=at,len,equal;char key[32];int keylen;
+        size_t begin=at,len,equal;char key[32],scratch[256];char *name;int keylen;
         if (pd && xx_pd_is_stopped(pd)) return false;
         while (at<n && map[at]!='\r' && map[at]!='\n') ++at;
         len=at-begin;
@@ -95,20 +101,50 @@ static bool dpc_aliases(dpc_info *info,const uint8_t *map,size_t n,xx_pd_struct 
             continue;
         }
         if (len<4U || xx_rt_memcmp(map+begin,"File",4U)) break;
-        if (ordinal+1U>=info->count) return false;
+        if (ordinal>=info->count || (apply && ordinal+1U>=info->count)) return false;
+        name=apply ? info->entries[ordinal+1U].name : scratch;
         equal=0U;while (equal<len && map[begin+equal]!='=') ++equal;
         keylen=snprintf(key,sizeof(key),"File%u",(unsigned)ordinal);
         if (keylen<0 || (size_t)keylen!=equal || equal==len || xx_rt_memcmp(map+begin,key,equal) ||
-            !dpc_safe_name(info->entries[ordinal+1U].name,map+begin+equal+1U,len-equal-1U)) return false;
+            !dpc_alias_name(name,map+begin+equal+1U,len-equal-1U)) return false;
         ++ordinal;
     }
-    if (!section || ordinal+1U!=info->count) return false;
-    for (size_t i=0U;i<info->count;++i) for (size_t j=0U;j<i;++j) {
-        if (pd && xx_pd_is_stopped(pd)) return false;
-        size_t k=0U;
-        while (dpc_lower(info->entries[i].name[k])==dpc_lower(info->entries[j].name[k])) {
-            if (!info->entries[i].name[k]) return false;
-            ++k;
+    if (!section) return false;
+    *aliases=ordinal;return true;
+}
+
+static bool dpc_aliases(dpc_info *info,const uint8_t *map,size_t n,xx_pd_struct *pd)
+{
+    size_t aliases=0U,applied=0U;
+    for (size_t i=0U;i<n;++i) if (!map[i] || map[i]==127U || (map[i]<32U && map[i]!='\r' && map[i]!='\n' && map[i]!='\t')) return false;
+    /* Validate every safe sequential alias before changing catalog names.
+     * Exactly one excess alias is ambiguous: preserve all catalog names and
+     * original info.dat bytes without assigning, shifting or dropping aliases. */
+    if (!dpc_alias_pass(info,map,n,pd,false,&aliases) ||
+        (aliases+1U!=info->count && aliases!=info->count)) return false;
+    if (aliases==info->count) return true;
+    if (!dpc_alias_pass(info,map,n,pd,true,&applied) || applied!=aliases) return false;
+    /* Preserve every record with an archive-only, deterministic output name.
+     * Compare only finalized earlier names, never future catalog placeholders.
+     * Every retry prefixes the original safe alias, not the previous retry. */
+    for (size_t i=1U;i<info->count;++i) {
+        char alias[256];unsigned attempt=0U;
+        xx_rt_memcpy(alias,info->entries[i].name,sizeof(alias));
+        for (;;) {
+            bool collision=false;
+            for (size_t j=0U;j<i;++j) {
+                size_t k=0U;
+                if (pd && xx_pd_is_stopped(pd)) return false;
+                while (dpc_lower(info->entries[i].name[k])==dpc_lower(info->entries[j].name[k])) {
+                    if (!info->entries[i].name[k]) { collision=true;break; }
+                    ++k;
+                }
+                if (collision) break;
+            }
+            if (!collision) break;
+            if (attempt>=info->count) return false;
+            int n=snprintf(info->entries[i].name,sizeof(info->entries[i].name),"(%u)%s",attempt++,alias);
+            if (n<0 || (size_t)n>=sizeof(info->entries[i].name)) return false;
         }
     }
     return true;
@@ -143,7 +179,7 @@ static bool dpc_parse(Abstractformat *f,dpc_info *info,const xx_list_s *options,
             }
         }
         at+=len;e->payload=dpc_u32(info->input+at);e->raw=dpc_u32(info->input+at+4U);e->packed=dpc_u32(info->input+at+8U);at+=16U;e->header_end=at;
-        if (e->payload!=expected || e->packed<8U || e->packed>DPC_MAX_MEMBER || !e->raw || e->raw>DPC_MAX_MEMBER || e->packed>dpc_u32(h+32U)-expected) goto done;
+        if (e->payload!=expected || e->packed<8U || e->packed>DPC_MAX_MEMBER || (i==0U && !e->raw) || e->raw>DPC_MAX_MEMBER || e->packed>dpc_u32(h+32U)-expected) goto done;
         e->end=e->payload+e->packed;expected=e->end;
         if (info->input[e->payload]!=0x78U || !xx_zlib_stream_header_is_valid(info->input+e->payload,e->packed)) goto done;
         info->total_raw+=e->raw;if(info->total_raw>DPC_MAX_TOTAL) goto done;
@@ -287,7 +323,7 @@ static bool dpc_decode(Abstractformat *f,const dpc_cursor *cursor,const xx_list_
 {
     const dpc_entry *e=&cursor->entry;uint8_t *plain;*result=NULL;
     if(!dpc_ready(f,&cursor->info,options,pd)||!dpc_unchanged(f,&cursor->info,pd))return false;
-    plain=(uint8_t *)xx_mem_alloc(e->raw);if(!plain)return false;
+    plain=(uint8_t *)xx_mem_alloc(e->raw ? e->raw : 1U);if(!plain)return false;
     if(!dpc_ready(f,&cursor->info,options,pd)||!dpc_inflate(cursor->info.input+e->payload,e->packed,plain,e->raw,pd)||
        !dpc_ready(f,&cursor->info,options,pd)||!dpc_unchanged(f,&cursor->info,pd)){xx_mem_free(plain);return false;}
     *result=plain;return true;

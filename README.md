@@ -15,4 +15,7 @@ Add this directory with CMake's `add_subdirectory()` and link
 `xxfclib::xxfclib`. Scanner applications can use the focused
 `xxfclib::die_engine` target. Public headers are in [include/xxfclib](include/xxfclib/).
 
+Native archive consumers can choose [format profiles](docs/FORMAT_PROFILES.md):
+ALL, DEFAULT, SCANENGINEMIN, or individual `XFU_SUPPORT_FORMAT_*` families.
+
 MIT license. See [LICENSE](LICENSE); bundled components retain their own notices.

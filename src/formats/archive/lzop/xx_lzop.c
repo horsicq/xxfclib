@@ -536,8 +536,16 @@ static char *xx_lzopfmt_make_name(const uint8_t *raw, size_t length)
         if (utf8 || ch < 0x80U) {
             text[text_length++] = ch;
         } else {
-            /* Latin-1; 0x80..0x9f become C1 controls and are refused below. */
-            text_length += xx_codepage_byte_to_utf8(xx_codepage_by_number(28591), ch, (unsigned char *)text + (text_length), 2);
+            /* Latin-1; 0x80..0x9f become C1 controls and are refused below.
+             * The byte is its own scalar, so a build without the ISO 8859-1
+             * table (XXFC_CODEPAGE_CP437_ONLY) encodes it directly. */
+            const xx_codepage *latin1 = xx_codepage_by_number(28591);
+            if (latin1) {
+                text_length += xx_codepage_byte_to_utf8(latin1, ch, (unsigned char *)text + (text_length), 2);
+            } else {
+                text[text_length++] = (char)(0xC0U | (ch >> 6));
+                text[text_length++] = (char)(0x80U | (ch & 0x3FU));
+            }
         }
     }
     if (text_length >= 4U && xx_lzopfmt_is_separator(text[0]) && xx_lzopfmt_is_separator(text[1]) && (text[2] == '?' || text[2] == '.') &&

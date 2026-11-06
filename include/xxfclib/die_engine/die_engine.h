@@ -21,8 +21,8 @@
 
 /* die_engine.h - the Detect It Easy signature execution engine.
  *
- * Shared database, option and result types are declared in scan/xx_scan.h.
- * The engine's own state and script bindings remain private to src/die_engine/.
+ * Engine-neutral options and results are declared in scan/xx_scan.h. Legacy
+ * DiE database and XFileType declarations are forwarded by die_engine_db.h.
  */
 
 #ifndef XX_DIE_ENGINE_H
@@ -30,6 +30,7 @@
 
 #include "xxfclib/xxfc_defs.h"
 #include "xxfclib/scan/xx_scan.h"
+#include "xxfclib/die_engine/die_engine_db.h"
 
 #include <stdint.h>
 
@@ -63,7 +64,16 @@ typedef xx_scan_result ScanResult;
 #define die_engine_format_xml xx_scan_format_xml
 #define die_engine_format_csv xx_scan_format_csv
 
-/** Initialise the signature implementation of every xx_scan_engine callback.
+/** Compatibility accessors for fields moved behind the neutral scan model. */
+#define die_engine_record_signature(record) ((record)->source_ref)
+#define die_engine_result_file_type(result) ((XFileType)((result)->compatibility_file_type))
+
+/** The immutable versioned ops table installed by die_engine_init(). */
+XXFC_API const xx_scan_engine_ops *die_engine_get_ops(void);
+XXFC_API xx_file_type_t die_engine_native_from_xft(XFileType type);
+XXFC_API XFileType die_engine_xft_from_native(xx_file_type_t type);
+
+/** Initialise the DiE implementation of the common versioned engine ABI.
  * The engine borrows database until xx_scan_engine_cleanup(); it never frees it.
  * Results returned by callbacks are owned and released with xx_scan_free_result().
  * Use xx_scan_file/device/memory for bounded scans, parent passes, overlays

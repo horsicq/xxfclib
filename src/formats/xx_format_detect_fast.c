@@ -3,6 +3,7 @@
  */
 #include "xxfclib/formats/xx_format.h"
 #include "xx_format_detect_internal.h"
+#if XFU_FORMAT_SUPPORT_FULL
 #include "xxfclib/formats/document/zxml/xx_zxml.h"
 #include "xxfclib/formats/filesystem/zisofs/xx_zisofs.h"
 #include "xxfclib/formats/other/nvp/xx_nvp.h"
@@ -144,20 +145,130 @@ xx_file_type_t xx_format_detect_signature_readers(xx_io_device *device, xx_pd_st
     return type;
 }
 
+#else
+#include <string.h>
+
+xx_file_type_t xx_format_detect_signature_readers(xx_io_device *device, xx_pd_struct *pd)
+{
+    xx_file_type_t type;
+    if (!device || (pd && xx_pd_is_stopped(pd))) return XX_FILE_TYPE_UNKNOWN;
+    type = xx_format_get_file_type_device(device);
+    return type == XX_FILE_TYPE_BINARY ? XX_FILE_TYPE_UNKNOWN : type;
+}
+#endif
+
 static const struct {
     const char *extension;
     xx_file_type_t type;
 } fast_extensions[] = {
+#if !XFU_FORMAT_SUPPORT_FULL
+#ifdef XFU_SUPPORT_FORMAT_7ZIP
+    {"7z", XX_FILE_TYPE_7ZIP},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_AR
+    {"a", XX_FILE_TYPE_AR},
+    {"ar", XX_FILE_TYPE_AR},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_BASE64
+    {"b64", XX_FILE_TYPE_BASE64},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_BZ2
+    {"bz2", XX_FILE_TYPE_BZ2},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_CAB
+    {"cab", XX_FILE_TYPE_CAB},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_CPIO
+    {"cpio", XX_FILE_TYPE_CPIO},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_GZ
+    {"gz", XX_FILE_TYPE_GZ},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_ISO9660
+    {"iso", XX_FILE_TYPE_ISO9660},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_AR
+    {"lib", XX_FILE_TYPE_AR},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZIP
+    {"lz", XX_FILE_TYPE_LZIP},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZ4
+    {"lz4", XX_FILE_TYPE_LZ4},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZMA
+    {"lzma", XX_FILE_TYPE_LZMA},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZOP
+    {"lzo", XX_FILE_TYPE_LZOP},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_RAR
+    {"rar", XX_FILE_TYPE_RAR},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_TAR
+    {"tar", XX_FILE_TYPE_TAR},
+#ifdef XFU_SUPPORT_FORMAT_BZ2
+    {"tar.bz2", XX_FILE_TYPE_TAR_BZ2},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_GZ
+    {"tar.gz", XX_FILE_TYPE_TAR_GZ},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZIP
+    {"tar.lz", XX_FILE_TYPE_TAR_LZIP},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZ4
+    {"tar.lz4", XX_FILE_TYPE_TAR_LZ4},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZMA
+    {"tar.lzma", XX_FILE_TYPE_TAR_LZMA},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_LZOP
+    {"tar.lzo", XX_FILE_TYPE_TAR_LZOP},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_XZ
+    {"tar.xz", XX_FILE_TYPE_TAR_XZ},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_UNIX_COMPRESS
+    {"tar.z", XX_FILE_TYPE_TAR_COMPRESS},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_ZSTD
+    {"tar.zst", XX_FILE_TYPE_TAR_ZSTD},
+#endif
+#endif
+#ifdef XFU_SUPPORT_FORMAT_UUE
+    {"uue", XX_FILE_TYPE_UUE},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_XZ
+    {"xz", XX_FILE_TYPE_XZ},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_UNIX_COMPRESS
+    {"z", XX_FILE_TYPE_UNIX_COMPRESS},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_ZIP
+    {"zip", XX_FILE_TYPE_ZIP},
+    {"zip64", XX_FILE_TYPE_ZIP64},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_ZSTD
+    {"zst", XX_FILE_TYPE_ZSTD},
+    {"zstd", XX_FILE_TYPE_ZSTD},
+#endif
+    {NULL, XX_FILE_TYPE_UNKNOWN}
+#else
 #include "xx_format_fast_extensions.inc"
+#endif
 };
 
+#if !XFU_FORMAT_SUPPORT_FULL
+static const size_t fast_extension_count = (sizeof(fast_extensions) / sizeof(fast_extensions[0])) - 1;
+#else
 static const size_t fast_extension_count = sizeof(fast_extensions) / sizeof(fast_extensions[0]);
+#endif
 
 xx_file_type_t xx_format_get_file_type_extension(const char *source_path)
 {
     const char *name, *cursor;
     size_t name_length;
-    if (!source_path) return XX_FILE_TYPE_UNKNOWN;
+    if (!source_path || !fast_extension_count) return XX_FILE_TYPE_UNKNOWN;
     name = source_path;
     for (cursor = source_path; *cursor; ++cursor)
         if (*cursor == '/' || *cursor == '\\') name = cursor + 1;

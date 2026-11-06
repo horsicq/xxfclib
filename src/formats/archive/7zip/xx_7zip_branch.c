@@ -6,8 +6,69 @@
 #include "xx_7zip_defs.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/data/xx_data.h"
+#include <string.h>
 
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+#include <emmintrin.h>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#include <stdlib.h>
+#endif
+#endif
 
+static inline size_t xx_bcj_scan_candidates(const uint8_t *data, size_t candidate, size_t limit)
+{
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+    const __m128i v_fe = _mm_set1_epi8((char)-2);  /* 0xFE */
+    const __m128i v_e8 = _mm_set1_epi8((char)-24); /* 0xE8 */
+
+    while (candidate + 32 <= limit) {
+        __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(data + candidate));
+        __m128i m0 = _mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8);
+        int mask0 = _mm_movemask_epi8(m0);
+        if (mask0 != 0) {
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask0);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask0);
+#endif
+            return candidate + (size_t)bit_idx;
+        }
+
+        __m128i d1 = _mm_loadu_si128((const __m128i *)(const void *)(data + candidate + 16));
+        __m128i m1 = _mm_cmpeq_epi8(_mm_and_si128(d1, v_fe), v_e8);
+        int mask1 = _mm_movemask_epi8(m1);
+        if (mask1 != 0) {
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask1);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask1);
+#endif
+            return candidate + 16 + (size_t)bit_idx;
+        }
+        candidate += 32;
+    }
+    while (candidate + 16 <= limit) {
+        __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(data + candidate));
+        __m128i m0 = _mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8);
+        int mask0 = _mm_movemask_epi8(m0);
+        if (mask0 != 0) {
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask0);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask0);
+#endif
+            return candidate + (size_t)bit_idx;
+        }
+        candidate += 16;
+    }
+#endif
+    while (candidate < limit && (data[candidate] & 0xFEU) != 0xE8U) ++candidate;
+    return candidate;
+}
 
 bool xx_7zip_branch_properties_supported(size_t properties_size)
 {
@@ -16,7 +77,7 @@ bool xx_7zip_branch_properties_supported(size_t properties_size)
 
 static uint32_t xx_7zip_branch_start_ip(const uint8_t *properties, size_t properties_size)
 {
-    return properties_size == 4U ? xx_data_get_u32(properties, 4, 0, false) : 0U;
+    return properties_size == 4U ? xx_data_get_le32(properties) : 0U;
 }
 
 bool xx_7zip_branch_method_supported(uint64_t method, size_t properties_size)
@@ -53,7 +114,7 @@ static size_t xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip, uint32
         size_t distance;
         uint32_t value;
         uint32_t current;
-        while (candidate < limit && (data[candidate] & 0xFEU) != 0xE8U) ++candidate;
+        candidate = xx_bcj_scan_candidates(data, candidate, limit);
         distance = candidate - pos;
         pos = candidate;
         if (candidate >= limit) {
@@ -75,7 +136,7 @@ static size_t xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip, uint32
             ++pos;
             continue;
         }
-        value = xx_data_get_u32(data + candidate + 1U, 4, 0, false);
+        value = xx_data_get_le32(data + candidate + 1U);
         current = ip + (uint32_t)candidate;
         value -= current;
         if (mask != 0U) {
@@ -98,15 +159,35 @@ static size_t xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip, uint32
 
 static void xx_7zip_filter_arm(uint8_t *data, size_t size, uint32_t ip)
 {
-    size_t pos;
+    size_t pos = 0U;
     if (!data) return;
-    for (pos = 0U; pos + 4U <= size; pos += 4U) {
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+    const __m128i v_eb = _mm_set1_epi8((char)-21); /* 0xEB */
+    while (pos + 16U <= size) {
+        __m128i chunk = _mm_loadu_si128((const __m128i *)(const void *)(data + pos));
+        int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(chunk, v_eb));
+        if ((mask & 0x8888) == 0) {
+            pos += 16U;
+            continue;
+        }
+        for (size_t step = 0; step < 16U; step += 4U) {
+            if (data[pos + step + 3U] == 0xEBU) {
+                uint32_t value = xx_data_get_le32(data + pos + step);
+                value = (value << 2U) - (ip + (uint32_t)(pos + step) + 8U);
+                value = (value >> 2U) & UINT32_C(0x00FFFFFF);
+                xx_data_set_le32(data + pos + step, value | UINT32_C(0xEB000000));
+            }
+        }
+        pos += 16U;
+    }
+#endif
+    for (; pos + 4U <= size; pos += 4U) {
         uint32_t value;
         if (data[pos + 3U] != 0xEBU) continue;
-        value = xx_data_get_u32(data + pos, 4, 0, false);
+        value = xx_data_get_le32(data + pos);
         value = (value << 2U) - (ip + (uint32_t)pos + 8U);
         value = (value >> 2U) & UINT32_C(0x00FFFFFF);
-        xx_data_set_u32(data + pos, 4, 0, value | UINT32_C(0xEB000000), false);
+        xx_data_set_le32(data + pos, value | UINT32_C(0xEB000000));
     }
 }
 
@@ -137,9 +218,9 @@ static void xx_7zip_filter_ppc(uint8_t *data, size_t size, uint32_t ip)
     for (pos = 0U; pos + 4U <= size; pos += 4U) {
         uint32_t value;
         if ((data[pos] & 0xFCU) != 0x48U || (data[pos + 3U] & 3U) != 1U) continue;
-        value = xx_data_get_u32(data + pos, 4, 0, true);
+        value = xx_data_get_be32(data + pos);
         value = (value - (ip + (uint32_t)pos)) & UINT32_C(0x03FFFFFF);
-        xx_data_set_u32(data + pos, 4, 0, value | UINT32_C(0x48000000), true);
+        xx_data_set_be32(data + pos, value | UINT32_C(0x48000000));
     }
 }
 
@@ -150,11 +231,11 @@ static void xx_7zip_filter_sparc(uint8_t *data, size_t size, uint32_t ip)
     for (pos = 0U; pos + 4U <= size; pos += 4U) {
         uint32_t value;
         if (!((data[pos] == 0x40U && (data[pos + 1U] & 0xC0U) == 0U) || (data[pos] == 0x7FU && data[pos + 1U] >= 0xC0U))) continue;
-        value = xx_data_get_u32(data + pos, 4, 0, true);
+        value = xx_data_get_be32(data + pos);
         value = (value << 2U) - (ip + (uint32_t)pos);
         value = ((value & UINT32_C(0x01FFFFFF)) - UINT32_C(0x01000000)) ^ UINT32_C(0xFF000000);
         value = (value >> 2U) | UINT32_C(0x40000000);
-        xx_data_set_u32(data + pos, 4, 0, value, true);
+        xx_data_set_be32(data + pos, value);
     }
 }
 
@@ -172,7 +253,7 @@ static void xx_7zip_filter_ia64(uint8_t *data, size_t size, uint32_t ip)
             uint32_t value;
             p = data + bundle + (size_t)slot * 5U - 8U;
             if (((p[3] >> slot) & 15U) != 5U || ((((uint32_t)p[-1] | ((uint32_t)p[0] << 8U)) >> slot) & 0x70U) != 0U) continue;
-            raw = xx_data_get_u32(p, 4, 0, false);
+            raw = xx_data_get_le32(p);
             value = raw >> slot;
             value = (value & UINT32_C(0xFFFFF)) | ((value & UINT32_C(0x800000)) >> 3U);
             value = (value << 4U) - (ip + (uint32_t)bundle);
@@ -180,7 +261,7 @@ static void xx_7zip_filter_ia64(uint8_t *data, size_t size, uint32_t ip)
             value = (value + UINT32_C(0x700000)) & UINT32_C(0x8FFFFF);
             raw &= ~(UINT32_C(0x8FFFFF) << slot);
             raw |= value << slot;
-            xx_data_set_u32(p, 4, 0, raw, false);
+            xx_data_set_le32(p, raw);
         } while (++slot <= 4U);
     }
 }
@@ -192,11 +273,11 @@ static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip)
     const uint32_t adrp_mask = (UINT32_C(1) << 24U) - (flag << 1U);
     if (!data) return;
     for (pos = 0U; pos + 4U <= size; pos += 4U) {
-        uint32_t value = xx_data_get_u32(data + pos, 4, 0, false);
+        uint32_t value = xx_data_get_le32(data + pos);
         uint32_t pc = ip + (uint32_t)pos;
         if (((value - UINT32_C(0x94000000)) & UINT32_C(0xFC000000)) == 0U) {
             value = (value - (pc >> 2U)) & UINT32_C(0x03FFFFFF);
-            xx_data_set_u32(data + pos, 4, 0, UINT32_C(0x94000000) | value, false);
+            xx_data_set_le32(data + pos, UINT32_C(0x94000000) | value);
         } else {
             uint32_t page_value = value - UINT32_C(0x90000000);
             uint32_t target;
@@ -209,7 +290,7 @@ static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip)
             value |= UINT32_C(0x90000000);
             value |= target << 26U;
             value |= UINT32_C(0x00FFFFE0) & ((target & ((flag << 1U) - 1U)) - flag);
-            xx_data_set_u32(data + pos, 4, 0, value, false);
+            xx_data_set_le32(data + pos, value);
         }
     }
 }
@@ -369,6 +450,67 @@ static inline size_t xx_7zip_bcj2_scan_and_copy(uint8_t *dst, const uint8_t *src
     const __m128i v_fe = _mm_set1_epi8((char)-2);  /* 0xFE */
     const __m128i v_0f = _mm_set1_epi8((char)0x0F);
 
+    while (i + 64 <= len) {
+        __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
+        __m128i m0 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8), _mm_cmpeq_epi8(d0, v_0f));
+        int mask0 = _mm_movemask_epi8(m0);
+        if (mask0 != 0) {
+            _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask0);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask0);
+#endif
+            return i + (size_t)bit_idx;
+        }
+
+        __m128i d1 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 16));
+        __m128i m1 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d1, v_fe), v_e8), _mm_cmpeq_epi8(d1, v_0f));
+        int mask1 = _mm_movemask_epi8(m1);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
+        if (mask1 != 0) {
+            _mm_storeu_si128((__m128i *)(void *)(dst + i + 16), d1);
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask1);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask1);
+#endif
+            return i + 16 + (size_t)bit_idx;
+        }
+
+        __m128i d2 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 32));
+        __m128i m2 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d2, v_fe), v_e8), _mm_cmpeq_epi8(d2, v_0f));
+        int mask2 = _mm_movemask_epi8(m2);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i + 16), d1);
+        if (mask2 != 0) {
+            _mm_storeu_si128((__m128i *)(void *)(dst + i + 32), d2);
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask2);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask2);
+#endif
+            return i + 32 + (size_t)bit_idx;
+        }
+
+        __m128i d3 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 48));
+        __m128i m3 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d3, v_fe), v_e8), _mm_cmpeq_epi8(d3, v_0f));
+        int mask3 = _mm_movemask_epi8(m3);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i + 32), d2);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i + 48), d3);
+        if (mask3 != 0) {
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask3);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask3);
+#endif
+            return i + 48 + (size_t)bit_idx;
+        }
+        i += 64;
+    }
     while (i + 32 <= len) {
         __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
         __m128i m0 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8), _mm_cmpeq_epi8(d0, v_0f));

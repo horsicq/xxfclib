@@ -6,11 +6,42 @@
 
 #include "xx_die_engine_api_internal.h"
 
+static const ApiEntry g_msdos_api_table[] = {
+    {"isRichSignaturePresent", A_isRichSignaturePresent, 0},
+    {"getNumberOfRichIDs", A_getNumberOfRichIDs, 0},
+    {"isRichVersionPresent", A_isRichVersionPresent, 1},
+    {"getRichVersion", A_getRichVersion, 1},
+    {"getRichID", A_getRichID, 1},
+    {"getRichCount", A_getRichCount, 1},
+    {"getDosStubOffset", A_getDosStubOffset, 0},
+    {"getDosStubSize", A_getDosStubSize, 0},
+    {"isDosStubPresent", A_isDosStubPresent, 0},
+    {"isNE", A_isNE, 0},
+    {"isLE", A_isLE, 0},
+    {"isLX", A_isLX, 0},
+    {NULL, A_NONE, 0}
+};
+
+void die_engine_api_register_msdos(JSCtx *pCtx, JSVal object)
+{
+    die_engine_api_register_entries(pCtx, object, g_msdos_api_table);
+}
 bool die_engine_api_dispatch_msdos(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult)
 {
     xx_pe_inspection *pPE = &pEngine->pe;
+    xx_io_device *pFile = pEngine->device;
 
     switch (id) {
+        case A_isNE:
+            *pResult = js_bool(xx_io_get_u16(pFile, (cd_i64)xx_io_get_u32(pFile, 0x3C, false), false) == 0x454E);
+            return true;
+        case A_isLE:
+            *pResult = js_bool(xx_io_get_u16(pFile, (cd_i64)xx_io_get_u32(pFile, 0x3C, false), false) == 0x454C);
+            return true;
+        case A_isLX:
+            *pResult = js_bool(xx_io_get_u16(pFile, (cd_i64)xx_io_get_u32(pFile, 0x3C, false), false) == 0x584C);
+            return true;
+
         case A_isRichSignaturePresent:
             *pResult = js_bool(pEngine->bHasPE && pPE->bRichPresent);
             return true;

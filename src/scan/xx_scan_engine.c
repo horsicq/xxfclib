@@ -32,10 +32,6 @@
 #include <intrin.h>
 #endif
 
-#ifdef fileType
-#undef fileType
-#endif
-
 /* Scan ids.
  *
  * An id only has to tell the scans of one process apart, and the CRT-free
@@ -102,53 +98,6 @@ static uint64_t xx_scan_new_id(void)
     return id;
 }
 
-static xx_scan_format_callback xx_scan_select_callback(const xx_scan_engine *engine, xx_file_type_t type)
-{
-    xx_scan_format_callback callback = NULL;
-    size_t index;
-    switch (type) {
-        case XX_FILE_TYPE_BINARY: callback = engine->scan_binary; break;
-        case XX_FILE_TYPE_PE32:
-        case XX_FILE_TYPE_PE64:
-        case XX_FILE_TYPE_DOTNET: return engine->scan_pe;
-        case XX_FILE_TYPE_ELF32:
-        case XX_FILE_TYPE_ELF64: callback = engine->scan_elf; break;
-        case XX_FILE_TYPE_MACHO32:
-        case XX_FILE_TYPE_MACHO64: callback = engine->scan_macho; break;
-        case XX_FILE_TYPE_MACHOFAT: callback = engine->scan_machofat; break;
-        case XX_FILE_TYPE_JAVA_CLASS: callback = engine->scan_java_class; break;
-        case XX_FILE_TYPE_ZIP:
-        case XX_FILE_TYPE_ZIP64: callback = engine->scan_zip; break;
-        case XX_FILE_TYPE_JAR: callback = engine->scan_jar; break;
-        case XX_FILE_TYPE_NPM: callback = engine->scan_npm; break;
-        case XX_FILE_TYPE_IPA: callback = engine->scan_ipa; break;
-        case XX_FILE_TYPE_ISO9660: callback = engine->scan_iso9660; break;
-        case XX_FILE_TYPE_APK: callback = engine->scan_apk; break;
-        case XX_FILE_TYPE_AMIGAHUNK: callback = engine->scan_amigahunk; break;
-        case XX_FILE_TYPE_ATARIST: callback = engine->scan_atarist; break;
-        case XX_FILE_TYPE_CFBF: callback = engine->scan_cfbf; break;
-        case XX_FILE_TYPE_COM: callback = engine->scan_com; break;
-        case XX_FILE_TYPE_DEX: callback = engine->scan_dex; break;
-        case XX_FILE_TYPE_DOS16M: callback = engine->scan_dos16m; break;
-        case XX_FILE_TYPE_DOS4G: callback = engine->scan_dos4g; break;
-        case XX_FILE_TYPE_JPEG: callback = engine->scan_jpeg; break;
-        case XX_FILE_TYPE_PNG: callback = engine->scan_png; break;
-        case XX_FILE_TYPE_PDF: callback = engine->scan_pdf; break;
-        case XX_FILE_TYPE_NE: callback = engine->scan_ne; break;
-        case XX_FILE_TYPE_LE: callback = engine->scan_le; break;
-        case XX_FILE_TYPE_LX: callback = engine->scan_lx; break;
-        case XX_FILE_TYPE_RAR: callback = engine->scan_rar; break;
-        case XX_FILE_TYPE_MSDOS: callback = engine->scan_msdos; break;
-        default: break;
-    }
-    if (callback) return callback;
-    for (index = 0; index < engine->format_handler_count; ++index) {
-        const xx_scan_format_handler *handler = &engine->format_handlers[index];
-        if (handler->file_type == type && handler->callback) return handler->callback;
-    }
-    return engine->scan_device;
-}
-
 static size_t xx_scan_build_plan(const xx_scan_options *options, xx_file_type_t types[3])
 {
     size_t count = 0;
@@ -174,62 +123,84 @@ static size_t xx_scan_build_plan(const xx_scan_options *options, xx_file_type_t 
     return count;
 }
 
-static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, const xx_scan_result *forbidden_result,
-                                        xx_pd_struct *pd)
+static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options,
+                                        const xx_scan_result *forbidden_result, unsigned int archive_depth, xx_pd_struct *pd)
 {
     xx_file_type_t types[3];
-    xx_scan_format_callback callbacks[3];
     size_t count = xx_scan_build_plan(options, types);
     size_t index;
     xx_scan_result *result = NULL;
 
-    /* Validate the whole plan before running any scan callbacks. */
+    /* Validate the whole plan before running the one concrete region op. */
     for (index = 0; index < count; ++index) {
-        callbacks[index] = xx_scan_select_callback(engine, types[index]);
-        if (!callbacks[index]) {
-            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                            types[index] == XX_FILE_TYPE_PE32 || types[index] == XX_FILE_TYPE_PE64 || types[index] == XX_FILE_TYPE_DOTNET ? "Missing PE scan callback"
-                                                                                                                                          : "Missing scan callback");
+        if (!xx_scan_engine_supports_type(engine, types[index])) {
+            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Scan engine does not support the resolved file type");
             return NULL;
         }
     }
-    if (count > 1 && !engine->append_result) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Missing scan result append callback");
-        return NULL;
-    }
     for (index = 0; index < count; ++index) {
         xx_scan_options pass = *options;
+        xx_scan_region region;
+        xx_io_device *view;
         xx_scan_result *part;
+        int64_t total = xx_io_total_size(device);
+        int64_t size = pass.size < 0 && total >= 0 ? total - pass.offset : pass.size;
+        int i;
         if (pd && pd->is_stop) goto failed;
+        if (size < 0) {
+            xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot determine scan region size");
+            goto failed;
+        }
         pass.file_type = types[index];
         pass.overlay_scan = false;
         pass.resources_scan = false;
         pass.archives_scan = false;
-        if (options->all_types_scan) {
-            pass.all_types_scan = false;
-            if (xx_io_seek64(device, pass.offset, SEEK_SET) != 0) {
-                xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot seek scan pass input");
-                goto failed;
-            }
+        pass.all_types_scan = false;
+        view = xx_io_sub_open_ro(device, pass.offset, size);
+        if (!view) {
+            xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create scan region device");
+            goto failed;
         }
-        part = callbacks[index](engine, device, &pass, pd);
+        region.device = view;
+        region.file_type = types[index];
+        region.absolute_offset = pass.offset;
+        region.size = size;
+        region.scan_id = pass.scan_id;
+        region.parent_id = pass.parent_id;
+        region.part = pass.scan_part;
+        region.archive_depth = archive_depth;
+        pass.offset = 0;
+        pass.size = size;
+        part = engine->ops->scan_region(engine, &region, &pass, pd);
+        xx_io_close(view);
         if (!part) {
-            if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan callback failed");
+            if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan region failed");
             goto failed;
         }
         if (part == result || part == forbidden_result) {
-            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Scan callbacks reused a result");
+            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Scan engine reused a result");
             goto failed;
         }
         if (pd && pd->is_stop) {
-            engine->free_result(engine, part);
+            xx_scan_free_result(engine, part);
             goto failed;
+        }
+        part->engine_id = (uint32_t)engine->ops->id;
+        for (i = 0; i < part->nCount; ++i) {
+            xx_scan_record *record = &part->pRecords[i];
+            if (record->offset < 0 || record->offset > INT64_MAX - region.absolute_offset) {
+                xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Scan record range overflows");
+                xx_scan_free_result(engine, part);
+                goto failed;
+            }
+            record->offset += region.absolute_offset;
+            record->engine_id = (uint32_t)engine->ops->id;
         }
         if (!result) {
             result = part;
         } else {
-            bool appended = engine->append_result(engine, result, part, 0, pd);
-            engine->free_result(engine, part);
+            bool appended = xx_scan_append_result(engine, result, part, 0, pd);
+            xx_scan_free_result(engine, part);
             if (!appended || (pd && pd->is_stop)) {
                 if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan result");
                 goto failed;
@@ -238,7 +209,7 @@ static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine, xx_io_device *de
     }
     return result;
 failed:
-    if (result) engine->free_result(engine, result);
+    if (result) xx_scan_free_result(engine, result);
     return NULL;
 }
 
@@ -248,12 +219,10 @@ static bool xx_scan_validate(xx_scan_engine *engine, const xx_scan_options *opti
         xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Scan engine is NULL");
         return false;
     }
-    if (!engine->get_record_count || !engine->get_record || !engine->free_result) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Incomplete scan engine callbacks");
-        return false;
-    }
-    if (engine->format_handler_count && !engine->format_handlers) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Missing format handler table");
+    if (!engine->ops || engine->ops->abi_version != XX_SCAN_ENGINE_ABI_VERSION ||
+        engine->ops->struct_size < sizeof(xx_scan_engine_ops) || engine->ops->id == XX_SCAN_ENGINE_UNKNOWN ||
+        !engine->ops->name || !engine->ops->display_name || !engine->ops->supports_type || !engine->ops->scan_region) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Incomplete or incompatible scan engine ops");
         return false;
     }
     if (options && (options->offset < 0 || options->size < -1 || (options->size >= 0 && options->size > INT64_MAX - options->offset))) {
@@ -267,11 +236,7 @@ static bool xx_scan_resolve_options(xx_scan_engine *engine, xx_io_device *device
 {
     if (options->file_type == XX_FILE_TYPE_UNKNOWN) {
         xx_list_t *types;
-        if (!engine->get_file_types) {
-            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Missing scan file-type callback");
-            return false;
-        }
-        types = engine->get_file_types(engine, device, options, pd);
+        types = xx_scan_detect_type(device, options, pd);
         if (!types) {
             if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan file-type detection failed");
             return false;
@@ -352,7 +317,7 @@ static bool xx_scan_take_pending_error(xx_scan_engine *engine, xx_scan_result *r
     if (!shared || !shared->pending_error) return true;
     message = shared->pending_error;
     shared->pending_error = NULL;
-    if (engine->append_result != xx_scan_append_result) return true;
+    (void)engine;
     xx_rt_snprintf(text, sizeof(text), "Last error: %s", message);
     return xx_scan_result_add_error(result, text, pd);
 }
@@ -412,7 +377,7 @@ static bool xx_scan_is_scanable_types(const xx_list_t *types)
  * detector names Binary. */
 static bool xx_scan_child_is_scanable(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
 {
-    xx_list_t *types = engine->get_file_types(engine, device, options, pd);
+    xx_list_t *types = xx_scan_detect_type(device, options, pd);
     bool scanable = xx_scan_is_scanable_types(types);
     if (types) xx_list_destroy(types);
     if (!scanable && !xx_pd_is_stopped(pd) && !(pd && pd->last_error)) scanable = xx_scan_archive_is_tar(device);
@@ -431,7 +396,7 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
     xx_scan_result *part;
     bool appended;
     bool preserve_metadata;
-    XFileType parent_type = XFT_UNKNOWN;
+    xx_file_type_t parent_type = XX_FILE_TYPE_UNKNOWN;
     int64_t parent_size = 0;
     char resource_type_id[16];
     size_t limit;
@@ -441,10 +406,6 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
      * aggressive), i.e. 21 (2001) of them. */
     limit = scan->options->aggressive_scan ? 2001 : 21;
     if (scan->scanned_count >= limit) return true;
-    if (!engine->get_file_types || !engine->append_result) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, !engine->get_file_types ? "Missing scan file-type callback" : "Missing scan result append callback");
-        return false;
-    }
     child_device = xx_io_sub_open_ro(scan->device, resource->offset, resource->size);
     if (!child_device) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create scan resource device");
@@ -479,7 +440,7 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
         return false;
     }
     if (xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
-        engine->free_result(engine, part);
+        xx_scan_free_result(engine, part);
         xx_io_close(child_device);
         return false;
     }
@@ -487,17 +448,17 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
      * pass. A resource can alias the input's first bytes, even when its scan
      * has no detections, so keep the containing input's metadata in that case.
      * Private result models remain opaque to the common scanner. */
-    preserve_metadata = resource->offset == 0 && engine->append_result == xx_scan_append_result;
+    preserve_metadata = resource->offset == 0;
     if (preserve_metadata) {
-        parent_type = scan->result->fileType;
+        parent_type = scan->result->file_type;
         parent_size = scan->result->nFileSize;
     }
-    appended = engine->append_result(engine, scan->result, part, resource->offset, pd);
+    appended = xx_scan_append_result(engine, scan->result, part, resource->offset, pd);
     if (preserve_metadata) {
-        scan->result->fileType = parent_type;
+        scan->result->file_type = parent_type;
         scan->result->nFileSize = parent_size;
     }
-    engine->free_result(engine, part);
+    xx_scan_free_result(engine, part);
     xx_io_close(child_device);
     if (!appended || xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan resource result");
@@ -520,7 +481,7 @@ static xx_scan_result *xx_scan_run_resources(xx_scan_engine *engine, xx_io_devic
     context.shared = shared;
     if (!xx_scan_visit_resources(device, options->file_type, options->offset, options->size, xx_scan_run_resource, &context, pd)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan resource enumeration failed");
-        engine->free_result(engine, result);
+        xx_scan_free_result(engine, result);
         return NULL;
     }
     return result;
@@ -537,7 +498,7 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
     xx_scan_options child_options = *scan->options;
     xx_scan_result *part;
     int64_t source_offset = member->is_compressed ? 0 : member->source_offset;
-    XFileType parent_type = XFT_UNKNOWN;
+    xx_file_type_t parent_type = XX_FILE_TYPE_UNKNOWN;
     int64_t parent_size = 0;
     bool preserve_metadata;
     bool appended;
@@ -546,10 +507,6 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
     if (xx_pd_is_stopped(pd)) return false;
     limit = scan->options->aggressive_scan ? 100000 : 21;
     if (scan->scanned_count >= limit) return false;
-    if (!engine->get_file_types || !engine->append_result) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, !engine->get_file_types ? "Missing scan file-type callback" : "Missing scan result append callback");
-        return false;
-    }
     child_options.offset = 0;
     child_options.size = member->size;
     child_options.file_type = XX_FILE_TYPE_UNKNOWN;
@@ -584,23 +541,23 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
                             scan->archive_depth + 1U, scan->shared, pd);
     if (!part) return false;
     if (xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
-        engine->free_result(engine, part);
+        xx_scan_free_result(engine, part);
         return false;
     }
     /* The standard zero-offset merger normally selects parent-format metadata.
      * Decoded members use that offset to keep positions relative to the member,
      * so preserve the container's metadata explicitly for the standard model. */
-    preserve_metadata = source_offset == 0 && engine->append_result == xx_scan_append_result;
+    preserve_metadata = source_offset == 0;
     if (preserve_metadata) {
-        parent_type = scan->result->fileType;
+        parent_type = scan->result->file_type;
         parent_size = scan->result->nFileSize;
     }
-    appended = engine->append_result(engine, scan->result, part, source_offset, pd);
+    appended = xx_scan_append_result(engine, scan->result, part, source_offset, pd);
     if (preserve_metadata) {
-        scan->result->fileType = parent_type;
+        scan->result->file_type = parent_type;
         scan->result->nFileSize = parent_size;
     }
-    engine->free_result(engine, part);
+    xx_scan_free_result(engine, part);
     if (!appended || xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan archive result");
         return false;
@@ -632,7 +589,7 @@ static xx_scan_result *xx_scan_run_archives(xx_scan_engine *engine, xx_io_device
     context.shared = shared;
     if (!xx_scan_visit_archives_ex(device, options, xx_scan_run_archive_member, xx_scan_report_archive_member, &context, pd)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan archive extraction failed");
-        engine->free_result(engine, result);
+        xx_scan_free_result(engine, result);
         return NULL;
     }
     return result;
@@ -652,7 +609,7 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
     bool appended;
 
     if (pd && pd->is_stop) goto failed;
-    found = engine->get_overlay ? engine->get_overlay(engine, device, options, &offset, &size, pd) : xx_scan_get_overlay(engine, device, options, &offset, &size, pd);
+    found = xx_scan_get_overlay(engine, device, options, &offset, &size, pd);
     if (!found) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan overlay detection failed");
         goto failed;
@@ -674,11 +631,6 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Invalid scan overlay range");
         goto failed;
     }
-    if (!engine->get_file_types || !engine->append_result) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, !engine->get_file_types ? "Missing scan file-type callback" : "Missing scan result append callback");
-        goto failed;
-    }
-
     overlay_device = xx_io_sub_open_ro(device, offset, size);
     if (!overlay_device) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create scan overlay device");
@@ -700,11 +652,11 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
     part = xx_scan_internal(engine, overlay_device, &overlay_options, result, options->scan_id, XX_SCAN_PART_OVERLAY, archive_depth, shared, pd);
     if (!part) goto failed;
     if (pd && pd->is_stop) {
-        engine->free_result(engine, part);
+        xx_scan_free_result(engine, part);
         goto failed;
     }
-    appended = engine->append_result(engine, result, part, offset, pd);
-    engine->free_result(engine, part);
+    appended = xx_scan_append_result(engine, result, part, offset, pd);
+    xx_scan_free_result(engine, part);
     if (!appended || (pd && pd->is_stop)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan overlay result");
         goto failed;
@@ -713,7 +665,7 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
     return result;
 failed:
     if (overlay_device) xx_io_close(overlay_device);
-    engine->free_result(engine, result);
+    xx_scan_free_result(engine, result);
     return NULL;
 }
 
@@ -748,15 +700,8 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Scan range exceeds input size");
         return NULL;
     }
-    if (options->file_type == XX_FILE_TYPE_UNKNOWN && !engine->get_file_types) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Missing scan file-type callback");
-        return NULL;
-    }
-    if (options->file_type != XX_FILE_TYPE_UNKNOWN && !xx_scan_select_callback(engine, options->file_type)) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
-                        options->file_type == XX_FILE_TYPE_PE32 || options->file_type == XX_FILE_TYPE_PE64 || options->file_type == XX_FILE_TYPE_DOTNET
-                            ? "Missing PE scan callback"
-                            : "Missing scan callback");
+    if (options->file_type != XX_FILE_TYPE_UNKNOWN && !xx_scan_engine_supports_type(engine, options->file_type)) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Scan engine does not support the requested file type");
         return NULL;
     }
 
@@ -807,13 +752,13 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
         resolved.archive_method = NULL;
     }
     if (!xx_scan_resolve_options(engine, scan_device, &resolved, pd)) goto done;
-    result = xx_scan_run_plan(engine, scan_device, &resolved, forbidden_result, pd);
+    result = xx_scan_run_plan(engine, scan_device, &resolved, forbidden_result, archive_depth, pd);
     if (result && resolved.resources_scan) {
 #if XXFC_ENABLE_STREAM_RESOURCES
         result = xx_scan_run_resources(engine, scan_device, &resolved, result, archive_depth, shared, pd);
 #else
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Resource stream support is disabled in this build");
-        engine->free_result(engine, result);
+        xx_scan_free_result(engine, result);
         result = NULL;
 #endif
     }
@@ -823,11 +768,11 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
     /* As XScanEngine::scanProcess ends: a pending archive error becomes this
      * scan's "Last error". */
     if (result && !xx_scan_take_pending_error(engine, result, shared, pd)) {
-        engine->free_result(engine, result);
+        xx_scan_free_result(engine, result);
         result = NULL;
     }
     if (result && xx_io_alloc_failures() != alloc_failures) {
-        engine->free_result(engine, result);
+        xx_scan_free_result(engine, result);
         result = NULL;
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate scan buffer");
     }
@@ -901,25 +846,21 @@ xx_scan_result *xx_scan_memory(xx_scan_engine *engine, const void *data, size_t 
 
 size_t xx_scan_get_record_count(xx_scan_engine *engine, const xx_scan_result *result)
 {
-    if (!engine || !engine->get_record_count || !result) return 0;
-    if (engine->get_record_count != xx_scan_get_record_count) return engine->get_record_count(engine, result);
+    (void)engine;
+    if (!result) return 0;
     return result->nCount > 0 ? (size_t)result->nCount : 0;
 }
 
 const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine, const xx_scan_result *result, size_t index)
 {
-    if (!engine || !engine->get_record || index >= xx_scan_get_record_count(engine, result)) return NULL;
-    if (engine->get_record != xx_scan_get_record) return engine->get_record(engine, result, index);
+    if (index >= xx_scan_get_record_count(engine, result)) return NULL;
     return result->nCount > 0 && index < (size_t)result->nCount && result->pRecords ? &result->pRecords[index] : NULL;
 }
 
 void xx_scan_free_result(xx_scan_engine *engine, xx_scan_result *result)
 {
-    if (!engine || !engine->free_result || !result) return;
-    if (engine->free_result != xx_scan_free_result) {
-        engine->free_result(engine, result);
-        return;
-    }
+    (void)engine;
+    if (!result) return;
     xx_scan_result_free(result);
     xx_rt_free(result);
 }
@@ -927,6 +868,73 @@ void xx_scan_free_result(xx_scan_engine *engine, xx_scan_result *result)
 void xx_scan_engine_cleanup(xx_scan_engine *engine)
 {
     if (!engine) return;
-    if (engine->cleanup && engine->cleanup != xx_scan_engine_cleanup) engine->cleanup(engine);
+    if (engine->ops && engine->ops->destroy) engine->ops->destroy(engine);
     xx_mem_zero(engine, sizeof(*engine));
+}
+
+bool xx_scan_engine_init(xx_scan_engine *engine, const xx_scan_engine_ops *ops,
+                         const void *config, const void *database, xx_pd_struct *pd)
+{
+    if (!engine || !ops) {
+        xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing scan engine or ops");
+        return false;
+    }
+    xx_mem_zero(engine, sizeof(*engine));
+    if (ops->abi_version != XX_SCAN_ENGINE_ABI_VERSION || ops->struct_size < sizeof(*ops) ||
+        ops->id == XX_SCAN_ENGINE_UNKNOWN || !ops->name || !ops->display_name ||
+        !ops->supports_type || !ops->scan_region) {
+        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Incompatible scan engine ops");
+        return false;
+    }
+    engine->ops = ops;
+    if (ops->create && !ops->create(engine, config, pd)) goto failed;
+    if (database) {
+        if (!ops->load_database) {
+            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Scan engine does not accept a database");
+            goto failed;
+        }
+        if (!ops->load_database(engine, database, pd)) goto failed;
+    } else if (ops->capabilities & XX_SCAN_CAP_EXTERNAL_DATABASE_REQUIRED) {
+        xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Scan engine requires a database");
+        goto failed;
+    }
+    return true;
+failed:
+    if (ops->destroy) ops->destroy(engine);
+    xx_mem_zero(engine, sizeof(*engine));
+    return false;
+}
+
+xx_scan_engine_id xx_scan_engine_get_id(const xx_scan_engine *engine)
+{
+    return engine && engine->ops ? engine->ops->id : XX_SCAN_ENGINE_UNKNOWN;
+}
+
+const char *xx_scan_engine_get_name(const xx_scan_engine *engine)
+{
+    return engine && engine->ops ? engine->ops->name : NULL;
+}
+
+const char *xx_scan_engine_get_display_name(const xx_scan_engine *engine)
+{
+    return engine && engine->ops ? engine->ops->display_name : NULL;
+}
+
+uint64_t xx_scan_engine_get_capabilities(const xx_scan_engine *engine)
+{
+    return engine && engine->ops ? engine->ops->capabilities : 0;
+}
+
+bool xx_scan_engine_supports_type(const xx_scan_engine *engine, xx_file_type_t file_type)
+{
+    return engine && engine->ops && engine->ops->supports_type && engine->ops->supports_type(engine, file_type);
+}
+
+void xx_scan_catalog_free(xx_scan_catalog *catalog)
+{
+    size_t index;
+    if (!catalog) return;
+    for (index = 0; index < catalog->count; ++index) xx_rt_free(catalog->items[index]);
+    xx_rt_free(catalog->items);
+    xx_mem_zero(catalog, sizeof(*catalog));
 }

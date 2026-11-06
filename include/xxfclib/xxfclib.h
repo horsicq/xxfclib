@@ -41,6 +41,8 @@
 #include "xxfclib/formats/archive/dh/xx_dh.h"
 #include "xxfclib/formats/archive/djcomp/xx_djcomp.h"
 #include "xxfclib/formats/archive/dpc/xx_dpc.h"
+#include "xxfclib/formats/installer/dsl1/xx_dsl1.h"
+#include "xxfclib/formats/archive/dwc/xx_dwc.h"
 #include "xxfclib/formats/game/fury_dat/xx_fury_dat.h"
 #include "xxfclib/formats/archive/starforce_ovl/xx_starforce_ovl.h"
 #include "xxfclib/formats/archive/self_unstuffer/xx_self_unstuffer.h"

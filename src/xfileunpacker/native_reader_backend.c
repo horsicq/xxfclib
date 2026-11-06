@@ -440,7 +440,9 @@ static bool native_filter_unpack(Abstractformat *format, xx_file_type_t filter_t
     case XX_FILE_TYPE_LZOP: return xx_lzop_unpack_to_device((xx_lzop *)format, destination, pd);
     case XX_FILE_TYPE_ZSTD: return xx_zstd_unpack_to_device((xx_zstd *)format, destination, pd);
     case XX_FILE_TYPE_UNIX_COMPRESS: return xx_unixcompress_unpack_to_device((xx_unixcompress *)format, destination, pd);
+#if XFU_FORMAT_SUPPORT_FULL
     case XX_FILE_TYPE_IS_STORED: return xx_is_stored_unpack_to_device((xx_is_stored *)format, destination, pd);
+#endif
     default: return false;
     }
 }

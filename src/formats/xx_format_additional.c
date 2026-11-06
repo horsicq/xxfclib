@@ -7,6 +7,8 @@
 #include "xxfclib/formats/archive/dh/xx_dh.h"
 #include "xxfclib/formats/archive/djcomp/xx_djcomp.h"
 #include "xxfclib/formats/archive/dpc/xx_dpc.h"
+#include "xxfclib/formats/installer/dsl1/xx_dsl1.h"
+#include "xxfclib/formats/archive/dwc/xx_dwc.h"
 #include "xxfclib/formats/archive/stor_resource/xx_stor_resource.h"
 #include "xxfclib/formats/archive/installshield_obl/xx_installshield_obl.h"
 #include "xxfclib/formats/archive/pftw_pkg/xx_pftw_pkg.h"
@@ -1484,6 +1486,13 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
             if (valid) result = XX_FILE_TYPE_BYTEKILLER;
         }
     }
+    if (result == XX_FILE_TYPE_UNKNOWN && size >= 61 && size <= 64 * 1024 * 1024 &&
+        matches(device, prefix, prefix_size, size, -3, (const unsigned char *)"DWC", 3U)) {
+        xx_dwc *reader = xx_dwc_create(device, 0);
+        bool valid = reader && xx_dwc_check_is_valid(&reader->format, NULL);
+        xx_dwc_free(reader);
+        if (valid) result = XX_FILE_TYPE_DWC;
+    }
     /* AnaDisk has no magic. Only try it after all anchored probes, and ask
      * its conservative parser to validate the complete stream: at least two
      * nonempty sectors, plausible per-sector geometry, and no trailing bytes.
@@ -1499,6 +1508,12 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
         }
         xx_pce_anadisk_free(reader);
         if (valid) result = XX_FILE_TYPE_PCE_ANADISK;
+    }
+    if (result == XX_FILE_TYPE_UNKNOWN && prefix_size >= 4U && !xx_rt_memcmp(prefix, "Img3", 4U)) {
+        xx_dsl1 *reader = xx_dsl1_create(device, 0);
+        bool valid = reader && xx_dsl1_check_is_valid(&reader->format, NULL);
+        xx_dsl1_free(reader);
+        if (valid) result = XX_FILE_TYPE_DSL1;
     }
     if (result == XX_FILE_TYPE_UNKNOWN && prefix_size >= 28U && !xx_rt_memcmp(prefix, "Delphi Package Collection\r\n\x1a", 28U)) {
         xx_dpc *reader = xx_dpc_create(device, 0);

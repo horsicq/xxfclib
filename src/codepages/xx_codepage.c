@@ -19,6 +19,12 @@
  * SOFTWARE.
  */
 #include "xx_codepage_internal.h"
+/* Without XXFC_CODEPAGE_ALL, cmake/xxfclib_codepages.cmake compiles only the
+ * registry, CP437 and the Unicode encodings, and defines
+ * XXFC_CODEPAGE_CP437_ONLY here. A build that bypasses it keeps every page.
+ * The East Asian pages are optional on their own: the same file defines
+ * XXFC_CODEPAGE_JAPANESE, _CHINESE and _KOREAN for the ones it compiles. */
+#ifndef XXFC_CODEPAGE_CP437_ONLY
 extern const xx_codepage xx_codepage_ascii;
 extern const xx_codepage xx_codepage_iso8859_1;
 extern const xx_codepage xx_codepage_iso8859_2;
@@ -44,7 +50,9 @@ extern const xx_codepage xx_codepage_cp1255;
 extern const xx_codepage xx_codepage_cp1256;
 extern const xx_codepage xx_codepage_cp1257;
 extern const xx_codepage xx_codepage_cp1258;
+#endif
 extern const xx_codepage xx_codepage_cp437;
+#ifndef XXFC_CODEPAGE_CP437_ONLY
 extern const xx_codepage xx_codepage_cp850;
 extern const xx_codepage xx_codepage_cp852;
 extern const xx_codepage xx_codepage_cp855;
@@ -64,14 +72,15 @@ extern const xx_codepage xx_codepage_mac_roman;
 extern const xx_codepage xx_codepage_hp_roman8;
 extern const xx_codepage xx_codepage_koi8_r;
 extern const xx_codepage xx_codepage_koi8_u;
+#endif
 extern const xx_codepage xx_codepage_utf8;
 extern const xx_codepage xx_codepage_utf16le;
 extern const xx_codepage xx_codepage_utf16be;
 extern const xx_codepage xx_codepage_utf32le;
 extern const xx_codepage xx_codepage_utf32be;
+#ifndef XXFC_CODEPAGE_CP437_ONLY
 extern const xx_codepage xx_codepage_cp037;
-/* The East Asian pages are optional: cmake/xxfclib_codepages.cmake defines
- * XXFC_CODEPAGE_JAPANESE, _CHINESE and _KOREAN for the ones it compiles. */
+#endif
 #ifdef XXFC_CODEPAGE_JAPANESE
 extern const xx_codepage xx_codepage_cp932;
 #endif
@@ -82,21 +91,30 @@ extern const xx_codepage xx_codepage_cp950;
 #ifdef XXFC_CODEPAGE_KOREAN
 extern const xx_codepage xx_codepage_cp949;
 #endif
+#ifndef XXFC_CODEPAGE_CP437_ONLY
 extern const xx_codepage xx_codepage_petscii_upper;
 extern const xx_codepage xx_codepage_petscii_lower;
 extern const xx_codepage xx_codepage_riscos;
+#endif
 static const xx_codepage *const pages[] = {
-    &xx_codepage_ascii,         &xx_codepage_iso8859_1,     &xx_codepage_iso8859_2,  &xx_codepage_iso8859_3,  &xx_codepage_iso8859_4,
-    &xx_codepage_iso8859_5,     &xx_codepage_iso8859_6,     &xx_codepage_iso8859_7,  &xx_codepage_iso8859_8,  &xx_codepage_iso8859_9,
-    &xx_codepage_iso8859_10,    &xx_codepage_iso8859_11,    &xx_codepage_iso8859_13, &xx_codepage_iso8859_14, &xx_codepage_iso8859_15,
-    &xx_codepage_iso8859_16,    &xx_codepage_cp1250,        &xx_codepage_cp1251,     &xx_codepage_cp1252,     &xx_codepage_cp1253,
-    &xx_codepage_cp1254,        &xx_codepage_cp1255,        &xx_codepage_cp1256,     &xx_codepage_cp1257,     &xx_codepage_cp1258,
-    &xx_codepage_cp437,         &xx_codepage_cp850,         &xx_codepage_cp852,      &xx_codepage_cp855,      &xx_codepage_cp857,
-    &xx_codepage_cp858,         &xx_codepage_cp860,         &xx_codepage_cp861,      &xx_codepage_cp862,      &xx_codepage_cp863,
-    &xx_codepage_cp864,         &xx_codepage_cp865,         &xx_codepage_cp866,      &xx_codepage_cp869,      &xx_codepage_tis_620,
-    &xx_codepage_cp874,         &xx_codepage_mac_roman,     &xx_codepage_hp_roman8,  &xx_codepage_koi8_r,     &xx_codepage_koi8_u,
-    &xx_codepage_utf8,          &xx_codepage_utf16le,       &xx_codepage_utf16be,    &xx_codepage_utf32le,    &xx_codepage_utf32be,
-    &xx_codepage_petscii_upper, &xx_codepage_petscii_lower, &xx_codepage_riscos,     &xx_codepage_cp037,
+#ifndef XXFC_CODEPAGE_CP437_ONLY
+    &xx_codepage_ascii,          &xx_codepage_iso8859_1,      &xx_codepage_iso8859_2,      &xx_codepage_iso8859_3,      &xx_codepage_iso8859_4,
+    &xx_codepage_iso8859_5,      &xx_codepage_iso8859_6,      &xx_codepage_iso8859_7,      &xx_codepage_iso8859_8,      &xx_codepage_iso8859_9,
+    &xx_codepage_iso8859_10,     &xx_codepage_iso8859_11,     &xx_codepage_iso8859_13,     &xx_codepage_iso8859_14,     &xx_codepage_iso8859_15,
+    &xx_codepage_iso8859_16,     &xx_codepage_cp1250,         &xx_codepage_cp1251,         &xx_codepage_cp1252,         &xx_codepage_cp1253,
+    &xx_codepage_cp1254,         &xx_codepage_cp1255,         &xx_codepage_cp1256,         &xx_codepage_cp1257,         &xx_codepage_cp1258,
+#endif
+    &xx_codepage_cp437,
+#ifndef XXFC_CODEPAGE_CP437_ONLY
+    &xx_codepage_cp850,          &xx_codepage_cp852,          &xx_codepage_cp855,          &xx_codepage_cp857,          &xx_codepage_cp858,
+    &xx_codepage_cp860,          &xx_codepage_cp861,          &xx_codepage_cp862,          &xx_codepage_cp863,          &xx_codepage_cp864,
+    &xx_codepage_cp865,          &xx_codepage_cp866,          &xx_codepage_cp869,          &xx_codepage_tis_620,        &xx_codepage_cp874,
+    &xx_codepage_mac_roman,      &xx_codepage_hp_roman8,      &xx_codepage_koi8_r,         &xx_codepage_koi8_u,
+#endif
+    &xx_codepage_utf8,           &xx_codepage_utf16le,        &xx_codepage_utf16be,        &xx_codepage_utf32le,        &xx_codepage_utf32be,
+#ifndef XXFC_CODEPAGE_CP437_ONLY
+    &xx_codepage_petscii_upper,  &xx_codepage_petscii_lower,  &xx_codepage_riscos,         &xx_codepage_cp037,
+#endif
 #ifdef XXFC_CODEPAGE_JAPANESE
     &xx_codepage_cp932,
 #endif
@@ -186,10 +204,13 @@ xx_codepage_status xx_codepage_sb_encode(const xx_codepage *cp, uint32_t u, unsi
 const xx_codepage *xx_codepage_by_number(unsigned int number)
 {
     switch (number) {
+#ifndef XXFC_CODEPAGE_CP437_ONLY
     case 37:
         return &xx_codepage_cp037;
+#endif
     case 437:
         return &xx_codepage_cp437;
+#ifndef XXFC_CODEPAGE_CP437_ONLY
     case 850:
         return &xx_codepage_cp850;
     case 852:
@@ -218,6 +239,7 @@ const xx_codepage *xx_codepage_by_number(unsigned int number)
         return &xx_codepage_cp869;
     case 874:
         return &xx_codepage_cp874;
+#endif
 #ifdef XXFC_CODEPAGE_JAPANESE
     case 932:
         return &xx_codepage_cp932;
@@ -236,6 +258,7 @@ const xx_codepage *xx_codepage_by_number(unsigned int number)
         return &xx_codepage_utf16le;
     case 1201:
         return &xx_codepage_utf16be;
+#ifndef XXFC_CODEPAGE_CP437_ONLY
     case 1250:
         return &xx_codepage_cp1250;
     case 1251:
@@ -256,10 +279,12 @@ const xx_codepage *xx_codepage_by_number(unsigned int number)
         return &xx_codepage_cp1258;
     case 10000:
         return &xx_codepage_mac_roman;
+#endif
     case 12000:
         return &xx_codepage_utf32le;
     case 12001:
         return &xx_codepage_utf32be;
+#ifndef XXFC_CODEPAGE_CP437_ONLY
     case 20127:
         return &xx_codepage_ascii;
     case 20866:
@@ -288,6 +313,7 @@ const xx_codepage *xx_codepage_by_number(unsigned int number)
         return &xx_codepage_iso8859_13;
     case 28605:
         return &xx_codepage_iso8859_15;
+#endif
     case 65001:
         return &xx_codepage_utf8;
     default:

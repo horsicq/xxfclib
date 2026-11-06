@@ -19,8 +19,8 @@
  * SOFTWARE.
  */
 
-/* Pure format names. This catalog is shared by every build profile and
- * depends only on public format identifiers, never concrete readers.
+/* Pure format names, selected by the same flags as the native registry.
+ * Depends only on public identifiers and labels, never concrete readers.
  */
 #include "xxfclib/formats/xx_format.h"
 
@@ -114,6 +114,7 @@ const char *xx_os_to_string(xx_os_t os)
 const char *xx_format_file_type_to_string(xx_file_type_t type)
 {
     switch (type) {
+#if XFU_FORMAT_SUPPORT_FULL
         case XX_FILE_TYPE_ZXML: return "ZXML compressed XML";
         case XX_FILE_TYPE_ZISOFS: return "ZISOFS compressed file";
         case XX_FILE_TYPE_NVP: return "NVP image/configuration container";
@@ -1341,6 +1342,8 @@ const char *xx_format_file_type_to_string(xx_file_type_t type)
         case XX_FILE_TYPE_DH: return "DH archive";
         case XX_FILE_TYPE_DJCOMP: return "DJcomp compressed data";
         case XX_FILE_TYPE_DPC: return "Delphi Package Collection";
+        case XX_FILE_TYPE_DSL1: return "DSL1 Img3 installer archive";
+        case XX_FILE_TYPE_DWC: return "DWC archive";
         case XX_FILE_TYPE_STARFORCE_OVL: return "StarForce OVL resource archive";
         case XX_FILE_TYPE_SELF_UNSTUFFER: return "Aladdin DOS Self-UnStuffer archive";
         case XX_FILE_TYPE_SECURA: return "Secura SAC1 archive";
@@ -1758,6 +1761,13 @@ const char *xx_format_file_type_to_string(xx_file_type_t type)
         case XX_FILE_TYPE_LE: return "LE";
         case XX_FILE_TYPE_LX: return "LX";
         case XX_FILE_TYPE_DEX: return "DEX";
+#else
+        /* BINARY is also needed for generic non-archive diagnostics. */
+        case XX_FILE_TYPE_BINARY: return "BINARY";
+#define XX_SUPPORTED_FORMAT(type, name, label) case XX_FILE_TYPE_##type: return label;
+#include "xxfclib/formats/xx_format_support_rows.inc"
+#undef XX_SUPPORTED_FORMAT
+#endif
         default: return "UNKNOWN";
     }
 }

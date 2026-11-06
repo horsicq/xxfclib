@@ -2,8 +2,11 @@
  * SPDX-License-Identifier: MIT
  * Frontend compatibility bridge to the format-owned native reader factories. */
 #include "xxfc_readers.h"
+#ifdef XFU_SUPPORT_FORMAT_TAR
 #include "xxfclib/formats/archive/tar/xx_tar.h"
+#endif
 #include "xxfclib/formats/archive/zip/xx_zip.h"
+#if XFU_FORMAT_SUPPORT_FULL
 #include "xxfclib/formats/archive/uue/xx_uue.h"
 #include "xxfclib/formats/archive/sfx_lha/xx_sfx_lha.h"
 #include "xxfclib/formats/archive/bigaf/xx_bigaf.h"
@@ -14,10 +17,28 @@
 #include "xxfclib/formats/archive/sfx_swag/xx_sfx_swag.h"
 #include "xxfclib/formats/other/base64/xx_base64.h"
 #include "xxfclib/formats/xx_legacy_archive.h"
+#endif
 #include <string.h>
 
 typedef struct xxfc_reader_alias { const char *name; xx_file_type_t type; } xxfc_reader_alias;
 static const xxfc_reader_alias aliases[] = {
+#if !XFU_FORMAT_SUPPORT_FULL
+#define XX_SUPPORTED_FORMAT(type, name, label) {#name, XX_FILE_TYPE_##type},
+#include "xxfclib/formats/xx_format_support_rows.inc"
+#undef XX_SUPPORTED_FORMAT
+#ifdef XFU_SUPPORT_FORMAT_ZIP
+    {"zip64", XX_FILE_TYPE_ZIP64},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_7ZIP
+    {"7z", XX_FILE_TYPE_7ZIP},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_GZ
+    {"gzip", XX_FILE_TYPE_GZ},
+#endif
+#ifdef XFU_SUPPORT_FORMAT_BZ2
+    {"bzip2", XX_FILE_TYPE_BZ2},
+#endif
+#else
     {"7z", XX_FILE_TYPE_7ZIP}, {"gzip", XX_FILE_TYPE_GZ},
     {"bzip2", XX_FILE_TYPE_BZ2}, {"compress", XX_FILE_TYPE_UNIX_COMPRESS},
     {"txt", XX_FILE_TYPE_TEXT},
@@ -43,6 +64,8 @@ static const xxfc_reader_alias aliases[] = {
     {"dh", XX_FILE_TYPE_DH},
     {"djcomp", XX_FILE_TYPE_DJCOMP},
     {"dpc", XX_FILE_TYPE_DPC},
+    {"dsl1", XX_FILE_TYPE_DSL1},
+    {"dwc", XX_FILE_TYPE_DWC},
     {"fury_dat", XX_FILE_TYPE_FURY_DAT},
     {"fury", XX_FILE_TYPE_FURY_DAT},
     {"sod_package", XX_FILE_TYPE_SOD_INSTALLER},
@@ -57,6 +80,7 @@ static const xxfc_reader_alias aliases[] = {
     {"Executable overlay", XX_FILE_TYPE_EXECUTABLE_OVERLAY},
     {"tar_lz", XX_FILE_TYPE_TAR_LZIP}, {"tar_zst", XX_FILE_TYPE_TAR_ZSTD},
 #include "xxfc_reader_aliases.inc"
+#endif
 };
 
 static bool same_name(const char *a, const char *b)
@@ -226,11 +250,17 @@ bool xxfc_is_incomplete(const xxfc_opened *opened)
     xx_file_type_t type;
     if (!opened || !opened->format) return false;
     type = opened->format->file_type != XX_FILE_TYPE_UNKNOWN ? opened->format->file_type : opened->type;
+#ifdef XFU_SUPPORT_FORMAT_TAR
     if (xx_tar_compressed_is_incomplete(opened->format)) return true;
+#endif
     /* Destructors can be identical across native formats and folded by the
      * linker. Use the reader's actual enum identity before concrete casts. */
     if (type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64)
         return ((const xx_zip *)opened->format)->directory_damaged;
+
+#if !XFU_FORMAT_SUPPORT_FULL
+    return false;
+#else
     if (type == XX_FILE_TYPE_BASE64) {
         const xx_base64 *archive = (const xx_base64 *)opened->format;
         /* Bare RFC 4648 text has no envelope terminator to lose. The native
@@ -258,4 +288,5 @@ bool xxfc_is_incomplete(const xxfc_opened *opened)
         return ((const xx_legacy_archive_info *)opened->format)->incomplete;
     default: return false;
     }
+#endif
 }

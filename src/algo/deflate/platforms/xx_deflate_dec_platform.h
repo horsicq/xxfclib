@@ -7,6 +7,7 @@
 #if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
 #define XX_DEFLATE_DEC_X86 1
 #include <emmintrin.h>
+#include <immintrin.h>
 #endif
 
 #if (defined(_M_ARM64) && !defined(_M_ARM64EC)) || defined(__aarch64__)
@@ -24,8 +25,10 @@
 
 #if defined(XX_DEFLATE_DEC_X86) && (defined(__GNUC__) || defined(__clang__))
 #define XX_DEFLATE_DEC_TARGET_SSE2 __attribute__((target("sse2")))
+#define XX_DEFLATE_DEC_TARGET_AVX2 __attribute__((target("avx2")))
 #else
 #define XX_DEFLATE_DEC_TARGET_SSE2
+#define XX_DEFLATE_DEC_TARGET_AVX2
 #endif
 
 #endif /* XX_DEFLATE_DEC_PLATFORM_H */

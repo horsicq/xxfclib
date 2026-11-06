@@ -38,12 +38,39 @@ typedef enum extra_kind {
     EXTRA_ISO9660
 } extra_kind;
 
+/* Byte helpers of the ar, cpio, xar and ISO 9660 writers. */
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_ISO9660)
+static void extra_put16le(unsigned char *buffer, uint16_t value) {
+    buffer[0] = (unsigned char)value;
+    buffer[1] = (unsigned char)(value >> 8U);
+}
+
+static void extra_put16be(unsigned char *buffer, uint16_t value) {
+    buffer[0] = (unsigned char)(value >> 8U);
+    buffer[1] = (unsigned char)value;
+}
+
+static void extra_put32be(unsigned char *buffer, uint32_t value) {
+    buffer[0] = (unsigned char)(value >> 24U);
+    buffer[1] = (unsigned char)(value >> 16U);
+    buffer[2] = (unsigned char)(value >> 8U);
+    buffer[3] = (unsigned char)value;
+}
+#endif
+
 static extra_kind extra_select(const char *format) {
     if (!format) return EXTRA_NONE;
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_AR)
     if (!strcmp(format, "ar") || !strcmp(format, "ar_bsd") ||
         !strcmp(format, "arbsd")) return EXTRA_AR_BSD;
     if (!strcmp(format, "ar_svr4") || !strcmp(format, "ar_gnu") ||
         !strcmp(format, "argnu") || !strcmp(format, "arsvr4")) return EXTRA_AR_GNU;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_ISO9660)
+    if (!strcmp(format, "iso9660") || !strcmp(format, "iso") ||
+        !strcmp(format, "cd9660")) return EXTRA_ISO9660;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL
     if (!strcmp(format, "mtree")) return EXTRA_MTREE;
     if (!strcmp(format, "mtree_classic") || !strcmp(format, "mtree-classic"))
         return EXTRA_MTREE_CLASSIC;
@@ -58,8 +85,7 @@ static extra_kind extra_select(const char *format) {
     if (!strcmp(format, "cpio_pwb") || !strcmp(format, "pwb"))
         return EXTRA_CPIO_PWB;
     if (!strcmp(format, "xar")) return EXTRA_XAR;
-    if (!strcmp(format, "iso9660") || !strcmp(format, "iso") ||
-        !strcmp(format, "cd9660")) return EXTRA_ISO9660;
+#endif
     return EXTRA_NONE;
 }
 
@@ -136,6 +162,7 @@ static bool extra_text(xx_io_device *output, const char *text) {
     return extra_write(output, text, strlen(text));
 }
 
+#if XFU_FORMAT_SUPPORT_FULL
 static bool extra_printf(xx_io_device *output, const char *format, ...) {
     va_list arguments, copy;
     char *buffer;
@@ -164,6 +191,7 @@ static bool extra_printf(xx_io_device *output, const char *format, ...) {
     free(buffer);
     return result;
 }
+#endif
 
 /* A folder separator: '/', and on Windows also '\\'. Elsewhere '\\' is part
  * of a name, as the file system has it. */
@@ -461,6 +489,7 @@ done:
  * characters and those of UTF-8 sequences), and '#', '=' and '\\', which the
  * format gives a meaning, are written as a backslash and three octal digits,
  * as libarchive and the BSD mtree do. */
+#if XFU_FORMAT_SUPPORT_FULL
 static bool extra_mtree_name(xx_io_device *output, const char *name) {
     const unsigned char *at = (const unsigned char *)name;
     if (!extra_text(output, "./")) return false;
@@ -794,11 +823,6 @@ static bool extra_warc_write(const xfu_request *request, extra_source *sources,
     return !extra_cancelled(request, pd);
 }
 
-static void extra_put16le(unsigned char *buffer, uint16_t value) {
-    buffer[0] = (unsigned char)value;
-    buffer[1] = (unsigned char)(value >> 8U);
-}
-
 /* Binary CPIO stores 32-bit values as two 16-bit words in host order. This
  * produces the documented little-endian wire variant on every host. */
 static void extra_put32words_le(unsigned char *buffer, uint32_t value) {
@@ -973,24 +997,13 @@ static bool extra_xml_text(xx_io_device *output, const char *text, size_t size) 
     return true;
 }
 
-static void extra_put16be(unsigned char *buffer, uint16_t value) {
-    buffer[0] = (unsigned char)(value >> 8U);
-    buffer[1] = (unsigned char)value;
-}
-
-static void extra_put32be(unsigned char *buffer, uint32_t value) {
-    buffer[0] = (unsigned char)(value >> 24U);
-    buffer[1] = (unsigned char)(value >> 16U);
-    buffer[2] = (unsigned char)(value >> 8U);
-    buffer[3] = (unsigned char)value;
-}
-
 static void extra_put64be(unsigned char *buffer, uint64_t value) {
     extra_put32be(buffer, (uint32_t)(value >> 32U));
     extra_put32be(buffer + 4U, (uint32_t)value);
 }
 
 /* Component order: a folder's members follow it directly ('/' sorts first). */
+#endif
 static int extra_compare_members(const void *left, const void *right) {
     const extra_source *x = *(const extra_source *const *)left;
     const extra_source *y = *(const extra_source *const *)right;
@@ -1017,6 +1030,7 @@ static extra_source **extra_member_order(const xfu_request *request, extra_sourc
     return order;
 }
 
+#if XFU_FORMAT_SUPPORT_FULL
 /* XAR's times are ISO 8601 in UTC, "2024-03-04T05:06:07Z": years 1 to 9999. */
 #define EXTRA_XAR_FIRST_TIME (-INT64_C(62135596800))
 #define EXTRA_XAR_LAST_TIME INT64_C(253402300799)
@@ -1191,13 +1205,13 @@ done:
     free(offsets);
     return okay;
 }
+#endif
 
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_ISO9660)
 #define EXTRA_ISO_BLOCK 2048U
 /* libarchive (bsdtar) reads 48 KiB before it takes a file for ISO 9660 and
  * otherwise sees an empty tar: a smaller image is padded with zero sectors. */
 #define EXTRA_ISO_MIN_SECTORS 32U
-
-static void extra_put16be(unsigned char *buffer, uint16_t value);
 
 static void extra_put32le(unsigned char *buffer, uint32_t value) {
     buffer[0] = (unsigned char)value;
@@ -1645,6 +1659,7 @@ done:
     return okay;
 }
 
+#endif
 bool xfu_native_extra_write(const xfu_request *request, const char *format,
                             const xfu_native_member *members, xx_io_device *output,
                             xx_pd_struct *pd) {
@@ -1668,6 +1683,7 @@ bool xfu_native_extra_write(const xfu_request *request, const char *format,
     switch (kind) {
         case EXTRA_AR_BSD: case EXTRA_AR_GNU:
             okay = extra_ar_write(request, sources, kind, output, pd); break;
+#if XFU_FORMAT_SUPPORT_FULL
         case EXTRA_MTREE: case EXTRA_MTREE_CLASSIC:
             okay = extra_mtree_write(request, sources, kind, output, pd); break;
         case EXTRA_SHAR: case EXTRA_SHAR_DUMP:
@@ -1678,8 +1694,11 @@ bool xfu_native_extra_write(const xfu_request *request, const char *format,
             okay = extra_cpio_write(request, sources, kind, output, pd); break;
         case EXTRA_XAR:
             okay = extra_xar_write(request, sources, output, pd); break;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_ISO9660)
         case EXTRA_ISO9660:
             okay = extra_iso_write(request, sources, output, pd); break;
+#endif
         default: break;
     }
 done:

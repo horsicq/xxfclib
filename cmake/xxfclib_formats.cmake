@@ -59,6 +59,10 @@ if(MSVC)
         target_sources(xxfclib PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/lzma/asm/lzma_windows_x64.asm"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_windows_x64.asm")
+    elseif(CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(x86|i.86|X86)$" OR CMAKE_SIZEOF_VOID_P EQUAL 4)
+        enable_language(ASM_MASM)
+        target_sources(xxfclib PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/asm/bzip2_windows_x86.asm")
     endif()
 else()
     target_compile_options(xxfclib PRIVATE -Wall -Wextra -Wpedantic)
@@ -232,3 +236,9 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dh_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_diskdupe_im_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_djcomp_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dpc_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dsl1_tests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dwc_tests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_freearc_4x4_tests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_freearc_tor_tests.cmake")

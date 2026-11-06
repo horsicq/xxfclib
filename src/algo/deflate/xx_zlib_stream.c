@@ -14,6 +14,7 @@
  */
 
 #include "xxfclib/algo/deflate/xx_deflate.h"
+#include "xxfclib/algo/adler32/xx_adler32.h"
 
 #define XX_ZLIB_HEADER_SIZE 2U
 #define XX_ZLIB_TRAILER_SIZE 4U
@@ -108,42 +109,7 @@ bool xx_zlib_stream_decode_memory(const uint8_t *input, size_t input_size, uint8
 
 uint32_t xx_zlib_stream_adler32(const uint8_t *data, size_t size)
 {
-    uint32_t a = 1U;
-    uint32_t b = 0U;
-    /* With reduced initial sums, 5552 worst-case bytes fit in uint32_t.
-     * Reduce once per bounded chunk instead of twice for every byte. */
-    while (size != 0U) {
-        size_t chunk = size < 5552U ? size : 5552U;
-        size -= chunk;
-        while (chunk >= 8U) {
-            a += data[0];
-            b += a;
-            a += data[1];
-            b += a;
-            a += data[2];
-            b += a;
-            a += data[3];
-            b += a;
-            a += data[4];
-            b += a;
-            a += data[5];
-            b += a;
-            a += data[6];
-            b += a;
-            a += data[7];
-            b += a;
-            data += 8U;
-            chunk -= 8U;
-        }
-        while (chunk != 0U) {
-            a += *data++;
-            b += a;
-            --chunk;
-        }
-        a %= 65521U;
-        b %= 65521U;
-    }
-    return (b << 16) | a;
+    return xx_adler32(data, size);
 }
 
 bool xx_zlib_stream_trailer_matches(const uint8_t *input, size_t input_size, const uint8_t *plain, size_t plain_size)

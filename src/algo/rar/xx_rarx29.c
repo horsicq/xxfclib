@@ -68,11 +68,15 @@ typedef struct xx_rar29_bits_s {
     xx_rarx_status_t error;
 } xx_rar29_bits;
 
+#define XX_RAR29_FAST_BITS 10u
+#define XX_RAR29_FAST_SIZE (1u << XX_RAR29_FAST_BITS)
+
 typedef struct xx_rar29_huffman_s {
     uint16_t count[XX_RAR29_MAX_BITS + 1u];
     uint16_t first_symbol[XX_RAR29_MAX_BITS + 1u];
     uint16_t symbols[XX_RAR29_TABLE_LENGTHS];
     uint32_t first_code[XX_RAR29_MAX_BITS + 1u];
+    uint16_t fast_table[XX_RAR29_FAST_SIZE];
     uint16_t symbol_count;
     bool valid;
 } xx_rar29_huffman;
@@ -169,33 +173,52 @@ static const uint8_t xx_rar29_distance_bits[XX_RAR29_DISTANCE_SYMBOLS] = {0,  0,
 static const uint8_t xx_rar29_short_base[8] = {0, 4, 8, 16, 32, 64, 128, 192};
 static const uint8_t xx_rar29_short_bits[8] = {2, 2, 3, 4, 5, 6, 6, 6};
 
-static bool xx_rar29_read_bits(xx_rar29_bits *bits, unsigned count, uint32_t *value)
+static inline bool xx_rar29_peek_bits(xx_rar29_bits *bits, unsigned count, uint32_t *value)
 {
-    uint32_t result = 0;
-    size_t end_bit;
-    size_t required_bytes;
-    unsigned i;
+    size_t byte_pos = bits->bit >> 3;
+    unsigned bit_offset = (unsigned)(bits->bit & 7u);
 
+    if (byte_pos + 8 <= bits->size) {
+        if (bit_offset + count <= 32u) {
+            uint32_t w = xx_data_get_be32(&bits->data[byte_pos]);
+            *value = (w << bit_offset) >> (32u - count);
+            return true;
+        }
+        uint64_t w = xx_data_get_be64(&bits->data[byte_pos]);
+        *value = (uint32_t)((w << bit_offset) >> (64u - count));
+        return true;
+    }
     if (!bits || !value || count > 32u) {
         if (bits) bits->error = XX_RARX_STATUS_CORRUPT;
         return false;
     }
-    if (bits->bit > SIZE_MAX - count) {
+    if (count == 0) {
+        *value = 0;
+        return true;
+    }
+    size_t end_bit = bits->bit + count;
+    if (end_bit < bits->bit) {
         bits->error = XX_RARX_STATUS_LIMIT;
         return false;
     }
-    end_bit = bits->bit + count;
-    required_bytes = end_bit >> 3;
-    if ((end_bit & 7u) != 0) ++required_bytes;
+    size_t required_bytes = (end_bit + 7u) >> 3;
     if (required_bytes > bits->size) {
         bits->error = XX_RARX_STATUS_TRUNCATED;
         return false;
     }
-    for (i = 0; i < count; ++i) {
-        size_t position = bits->bit++;
-        result = (result << 1) | ((bits->data[position >> 3] >> (7u - (position & 7u))) & 1u);
+    uint64_t w = 0;
+    size_t rem = bits->size - byte_pos;
+    for (size_t j = 0; j < rem && j < 8; ++j) {
+        w |= (uint64_t)bits->data[byte_pos + j] << (56u - j * 8u);
     }
-    *value = result;
+    *value = (uint32_t)((w << bit_offset) >> (64u - count));
+    return true;
+}
+
+static inline bool xx_rar29_read_bits(xx_rar29_bits *bits, unsigned count, uint32_t *value)
+{
+    if (!xx_rar29_peek_bits(bits, count, value)) return false;
+    bits->bit += count;
     return true;
 }
 
@@ -257,26 +280,74 @@ static bool xx_rar29_build_huffman(xx_rar29_huffman *code, const uint8_t *length
             if (bits != 0) code->symbols[cursor[bits]++] = (uint16_t)symbol;
         }
     }
+
+    /* Build fast lookup table for codes with length <= XX_RAR29_FAST_BITS */
+    for (length = 1; length <= XX_RAR29_FAST_BITS; ++length) {
+        uint16_t cnt = code->count[length];
+        uint32_t first = code->first_code[length];
+        uint16_t fidx = code->first_symbol[length];
+        unsigned shift = XX_RAR29_FAST_BITS - length;
+        uint32_t step = 1u << shift;
+        uint16_t k;
+
+        for (k = 0; k < cnt; ++k) {
+            uint32_t sym_code = first + (uint32_t)k;
+            uint16_t sym = code->symbols[fidx + k];
+            uint16_t cur_entry = (uint16_t)((sym << 4) | length);
+            uint32_t base_pattern = sym_code << shift;
+            uint32_t p = 0;
+
+            if (step >= 4) {
+                uint32_t cur2 = ((uint32_t)cur_entry << 16) | cur_entry;
+                uint64_t cur4 = ((uint64_t)cur2 << 32) | cur2;
+                while (p + 4 <= step) {
+                    xx_mem_store64(&code->fast_table[base_pattern + p], cur4);
+                    p += 4;
+                }
+            }
+            while (p < step) {
+                code->fast_table[base_pattern + p] = cur_entry;
+                p++;
+            }
+        }
+    }
+
     code->valid = true;
     return true;
 }
 
-static bool xx_rar29_decode_symbol(xx_rar29_bits *bits, const xx_rar29_huffman *code, uint32_t *symbol)
+static bool xx_rar29_decode_symbol_slow(xx_rar29_bits *bits, const xx_rar29_huffman *code, uint32_t *symbol)
 {
-    uint32_t current = 0;
+    uint32_t peek15;
     unsigned length;
 
-    if (!bits || !code || !symbol || !code->valid) {
-        if (bits) bits->error = XX_RARX_STATUS_CORRUPT;
+    if (!xx_rar29_peek_bits(bits, XX_RAR29_MAX_BITS, &peek15)) {
+        uint32_t current = 0;
+        for (length = 1; length <= XX_RAR29_MAX_BITS; ++length) {
+            uint32_t bit;
+            uint32_t delta;
+            if (!xx_rar29_read_bits(bits, 1, &bit)) return false;
+            current = (current << 1) | bit;
+            if (current < code->first_code[length]) continue;
+            delta = current - code->first_code[length];
+            if (delta < code->count[length]) {
+                uint32_t index = (uint32_t)code->first_symbol[length] + delta;
+                if (index >= code->symbol_count) {
+                    bits->error = XX_RARX_STATUS_CORRUPT;
+                    return false;
+                }
+                *symbol = code->symbols[index];
+                return true;
+            }
+        }
+        bits->error = XX_RARX_STATUS_CORRUPT;
         return false;
     }
-    for (length = 1; length <= XX_RAR29_MAX_BITS; ++length) {
-        uint32_t bit;
-        uint32_t delta;
-        if (!xx_rar29_read_bits(bits, 1, &bit)) return false;
-        current = (current << 1) | bit;
-        if (current < code->first_code[length]) continue;
-        delta = current - code->first_code[length];
+
+    for (length = XX_RAR29_FAST_BITS + 1u; length <= XX_RAR29_MAX_BITS; ++length) {
+        uint32_t cur = peek15 >> (XX_RAR29_MAX_BITS - length);
+        if (cur < code->first_code[length]) continue;
+        uint32_t delta = cur - code->first_code[length];
         if (delta < code->count[length]) {
             uint32_t index = (uint32_t)code->first_symbol[length] + delta;
             if (index >= code->symbol_count) {
@@ -284,11 +355,31 @@ static bool xx_rar29_decode_symbol(xx_rar29_bits *bits, const xx_rar29_huffman *
                 return false;
             }
             *symbol = code->symbols[index];
+            bits->bit += length;
             return true;
         }
     }
     bits->error = XX_RARX_STATUS_CORRUPT;
     return false;
+}
+
+static inline bool xx_rar29_decode_symbol(xx_rar29_bits *bits, const xx_rar29_huffman *code, uint32_t *symbol)
+{
+    uint32_t peek;
+
+    if (!bits || !code || !symbol || !code->valid) {
+        if (bits) bits->error = XX_RARX_STATUS_CORRUPT;
+        return false;
+    }
+    if (xx_rar29_peek_bits(bits, XX_RAR29_FAST_BITS, &peek)) {
+        uint32_t entry = code->fast_table[peek];
+        if (entry != 0) {
+            *symbol = entry >> 4;
+            bits->bit += (entry & 0x0Fu);
+            return true;
+        }
+    }
+    return xx_rar29_decode_symbol_slow(bits, code, symbol);
 }
 
 static xx_rarx_status_t xx_rar29_read_tables(xx_rarx29_state *state, xx_rar29_bits *bits, bool *ppm_mode)
@@ -880,12 +971,12 @@ static void xx_rar29_filter_e8(uint8_t *data, size_t size, size_t file_offset, b
     while (pos + 4u < size) {
         uint8_t opcode = data[pos++];
         if (opcode == 0xe8u || (include_e9 && opcode == 0xe9u)) {
-            uint32_t address = xx_data_get_u32(data + pos, 4, 0, false);
-            uint32_t offset = (uint32_t)(((file_offset % file_span) + (pos % file_span)) % file_span);
+            uint32_t address = xx_data_get_le32(data + pos);
+            uint32_t offset = (uint32_t)(((file_offset & 0xffffffu) + (pos & 0xffffffu)) & 0xffffffu);
             if ((address & 0x80000000u) != 0) {
-                if (((address + offset) & 0x80000000u) == 0) xx_data_set_u32(data + pos, 4, 0, address + file_span, false);
+                if (((address + offset) & 0x80000000u) == 0) xx_data_set_le32(data + pos, address + file_span);
             } else if (address < file_span) {
-                xx_data_set_u32(data + pos, 4, 0, address - offset, false);
+                xx_data_set_le32(data + pos, address - offset);
             }
             pos += 4u;
         }
@@ -898,6 +989,14 @@ static xx_rarx_status_t xx_rar29_filter_delta(uint8_t *data, size_t size, uint32
     size_t source = 0;
     size_t channel;
     if (channels == 0 || channels > 1024u || size > XX_RAR29_VM_HALF_SIZE) return XX_RARX_STATUS_CORRUPT;
+    if (channels == 1) {
+        uint8_t previous = 0;
+        for (size_t i = 0; i < size; ++i) {
+            previous = (uint8_t)(previous - data[i]);
+            data[i] = previous;
+        }
+        return XX_RARX_STATUS_OK;
+    }
     result = (uint8_t *)xx_mem_alloc(size ? size : 1u);
     if (!result) return XX_RARX_STATUS_NO_MEMORY;
     for (channel = 0; channel < channels; ++channel) {
@@ -1105,24 +1204,60 @@ static xx_rarx_status_t xx_rar29_apply_filters(uint8_t *destination, size_t dest
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rar29_emit_byte(xx_rarx29_state *state, uint8_t *destination, size_t destination_size, size_t *produced, uint8_t byte)
+static inline xx_rarx_status_t xx_rar29_emit_byte(xx_rarx29_state *state, uint8_t *destination, size_t destination_size, size_t *produced, uint8_t byte)
 {
     if (*produced >= destination_size) return XX_RARX_STATUS_CORRUPT;
     destination[(*produced)++] = byte;
-    state->window[state->window_pos] = byte;
-    state->window_pos = (state->window_pos + 1u) % state->window_size;
+    state->window[state->window_pos++] = byte;
+    if (state->window_pos == state->window_size) state->window_pos = 0;
     if (state->history_size < state->window_size) ++state->history_size;
     return XX_RARX_STATUS_OK;
 }
 
 static xx_rarx_status_t xx_rar29_emit_match(xx_rarx29_state *state, uint8_t *destination, size_t destination_size, size_t *produced, uint32_t distance, uint32_t length)
 {
-    uint32_t i;
     if (distance == 0 || distance > state->window_size || distance > state->history_size) return XX_RARX_STATUS_CORRUPT;
     if ((size_t)length > destination_size - *produced) return XX_RARX_STATUS_CORRUPT;
-    for (i = 0; i < length; ++i) {
-        size_t source = state->window_pos >= (size_t)distance ? state->window_pos - (size_t)distance : state->window_size - ((size_t)distance - state->window_pos);
-        xx_rarx_status_t status = xx_rar29_emit_byte(state, destination, destination_size, produced, state->window[source]);
+
+    size_t wpos = state->window_pos;
+    size_t wsize = state->window_size;
+    size_t source = wpos >= (size_t)distance ? (wpos - (size_t)distance) : (wsize - ((size_t)distance - wpos));
+
+    /* Fast path: non-wrapping window_pos and source */
+    if (wpos + length <= wsize && source + length <= wsize) {
+        uint8_t *dst_win = &state->window[wpos];
+        uint8_t *dst_out = &destination[*produced];
+        const uint8_t *src_win = &state->window[source];
+
+        if (distance >= length) {
+            xx_rt_memcpy(dst_win, src_win, length);
+            xx_rt_memcpy(dst_out, src_win, length);
+        } else if (distance == 1) {
+            uint8_t b = *src_win;
+            xx_rt_memset(dst_win, b, length);
+            xx_rt_memset(dst_out, b, length);
+        } else {
+            for (uint32_t j = 0; j < length; ++j) {
+                uint8_t b = (j < distance) ? src_win[j] : dst_win[j - distance];
+                dst_win[j] = b;
+                dst_out[j] = b;
+            }
+        }
+        wpos += length;
+        if (wpos == wsize) wpos = 0;
+        state->window_pos = wpos;
+        *produced += length;
+        if (state->history_size < wsize) {
+            state->history_size += length;
+            if (state->history_size > wsize) state->history_size = wsize;
+        }
+        return XX_RARX_STATUS_OK;
+    }
+
+    /* Fallback: wrapping window copy */
+    for (uint32_t i = 0; i < length; ++i) {
+        size_t src = state->window_pos >= (size_t)distance ? state->window_pos - (size_t)distance : state->window_size - ((size_t)distance - state->window_pos);
+        xx_rarx_status_t status = xx_rar29_emit_byte(state, destination, destination_size, produced, state->window[src]);
         if (status != XX_RARX_STATUS_OK) return status;
     }
     return XX_RARX_STATUS_OK;

@@ -47,6 +47,8 @@ static inline size_t xx_deflate_resolve_window(bool is_deflate64, size_t size)
 #define XX_DEFLATE_MAX_CLEN_CODES 19
 
 #define XX_DEFLATE_MAX_BITS 15
+#define XX_DEFLATE_FAST_BITS 10
+#define XX_DEFLATE_FAST_SIZE (1 << XX_DEFLATE_FAST_BITS)
 
 /* Huffman decode lookup entry */
 typedef struct {
@@ -57,7 +59,7 @@ typedef struct {
 /* Canonical Huffman Decoder */
 typedef struct {
     int num_symbols;
-    xx_huff_entry fast[1 << 9]; /* 9-bit fast lookup table */
+    xx_huff_entry fast[XX_DEFLATE_FAST_SIZE]; /* 10-bit fast lookup table */
     uint16_t count[16];         /* Number of codes of each length */
     uint16_t offset[16];        /* Offset into symbol table for each length */
     uint16_t first_code[16];    /* First canonical code of each length */

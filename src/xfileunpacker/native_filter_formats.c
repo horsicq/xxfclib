@@ -27,6 +27,7 @@ static bool put(xx_io_device *output, const void *data, size_t size)
     return true;
 }
 
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZ4) || defined(XFU_SUPPORT_FORMAT_LZIP)
 static bool put_u32le(xx_io_device *output, uint32_t value)
 {
     unsigned char bytes[4] = {
@@ -36,6 +37,9 @@ static bool put_u32le(xx_io_device *output, uint32_t value)
     return put(output, bytes, sizeof(bytes));
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZOP)
 static bool put_u32be(xx_io_device *output, uint32_t value)
 {
     unsigned char bytes[4] = {
@@ -45,6 +49,9 @@ static bool put_u32be(xx_io_device *output, uint32_t value)
     return put(output, bytes, sizeof(bytes));
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZIP)
 static bool put_u64le(xx_io_device *output, uint64_t value)
 {
     unsigned char bytes[8];
@@ -53,6 +60,8 @@ static bool put_u64le(xx_io_device *output, uint64_t value)
     return put(output, bytes, sizeof(bytes));
 }
 
+#endif
+
 static bool stopped(const xfu_request *request, xx_pd_struct *pd)
 {
     if (request->callbacks.cancelled &&
@@ -60,6 +69,7 @@ static bool stopped(const xfu_request *request, xx_pd_struct *pd)
     return xx_pd_is_stopped(pd);
 }
 
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZ4)
 /* The frame descriptor is only two bytes, so XXH32 needs its short-input
  * branch. Stored blocks are legal LZ4 frames and need no external codec. */
 static uint32_t lz4_header_hash(const unsigned char descriptor[2])
@@ -101,8 +111,11 @@ static bool encode_lz4(const xfu_request *request, xx_io_device *input,
     return amount == 0 && !stopped(request, pd) && put_u32le(output, 0);
 }
 
-static bool encode_lzop(const xfu_request *request, xx_io_device *input,
-                        xx_io_device *output, xx_pd_struct *pd)
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZOP)
+static bool encode_lzop(const xfu_request *request, const char *stream_name,
+                        xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
     static const unsigned char magic[9] =
         {0x89, 'L', 'Z', 'O', 0, 0x0d, 0x0a, 0x1a, 0x0a};
@@ -115,10 +128,24 @@ static bool encode_lzop(const xfu_request *request, xx_io_device *input,
         0                             /* filename length */
     };
     unsigned char buffer[FILTER_CHUNK];
+    size_t name_length = 0;
+    uint32_t checksum;
     ssize_t amount;
+    /* The header name is Latin-1 in lzop(1): an ASCII name is stored. */
+    if (stream_name) {
+        for (name_length = 0; stream_name[name_length]; ++name_length)
+            if ((unsigned char)stream_name[name_length] >= 0x80U || name_length >= 255U) {
+                name_length = 0;
+                break;
+            }
+    }
+    header[24] = (unsigned char)name_length;
+    checksum = xx_adler32_update(1, header, sizeof(header));
+    if (name_length) checksum = xx_adler32_update(checksum, (const unsigned char *)stream_name, name_length);
     if (!put(output, magic, sizeof(magic)) ||
         !put(output, header, sizeof(header)) ||
-        !put_u32be(output, xx_adler32_update(1, header, sizeof(header))))
+        (name_length && !put(output, stream_name, name_length)) ||
+        !put_u32be(output, checksum))
         return false;
     while ((amount = xx_io_read(input, buffer, sizeof(buffer))) > 0) {
         if (stopped(request, pd) ||
@@ -130,6 +157,9 @@ static bool encode_lzop(const xfu_request *request, xx_io_device *input,
     return amount == 0 && !stopped(request, pd) && put_u32be(output, 0);
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UNIX_COMPRESS)
 /* compress(1): LZW codes of 9 to 16 bits in block mode, as ncompress writes
  * them. Codes are packed from the low bit up; the width grows by one when
  * the next table entry needs it, and a CLEAR (256) starts again at 9 bits
@@ -275,6 +305,9 @@ done:
     return success;
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZIP)
 static bool copy_device(const xfu_request *request, xx_io_device *input,
                         xx_io_device *output, xx_pd_struct *pd)
 {
@@ -324,9 +357,12 @@ done:
     return success && !stopped(request, pd);
 }
 
+#endif
+
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UUE) || defined(XFU_SUPPORT_FORMAT_BASE64)
 static bool encode_text(const xfu_request *request, const char *name,
-                        xx_io_device *input, xx_io_device *output,
-                        xx_pd_struct *pd)
+                        const char *stream_name, xx_io_device *input,
+                        xx_io_device *output, xx_pd_struct *pd)
 {
     static const char base64[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -334,8 +370,9 @@ static bool encode_text(const xfu_request *request, const char *name,
     char line[82];
     bool b64 = !strcmp(name, "b64encode");
     ssize_t amount;
-    if (!put(output, b64 ? "begin-base64 644 payload\n" : "begin 644 payload\n",
-             b64 ? 25U : 18U)) return false;
+    if (!stream_name || !*stream_name) stream_name = "payload";
+    if (!put(output, b64 ? "begin-base64 644 " : "begin 644 ", b64 ? 17U : 10U) ||
+        !put(output, stream_name, strlen(stream_name)) || !put(output, "\n", 1U)) return false;
     while ((amount = xx_io_read(input, data, b64 ? 57U : 45U)) > 0) {
         size_t index, used = 0;
         if (stopped(request, pd)) return false;
@@ -363,25 +400,57 @@ static bool encode_text(const xfu_request *request, const char *name,
     return b64 ? put(output, "====\n", 5U) : put(output, "`\nend\n", 6U);
 }
 
+#endif
+
+/* The encoders this build has: all of them in the complete engine and the
+ * TAR component, else those of the selected XFU_SUPPORT_FORMAT_* flags. */
 bool xfu_native_filter_can_encode(const char *name)
 {
-    return name && (!strcmp(name, "lz4") || !strcmp(name, "lzop") ||
-                    !strcmp(name, "lzip") || !strcmp(name, "compress") ||
-                    !strcmp(name, "uuencode") ||
-                    !strcmp(name, "b64encode"));
+    if (!name) return false;
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZ4)
+    if (!strcmp(name, "lz4")) return true;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZOP)
+    if (!strcmp(name, "lzop")) return true;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZIP)
+    if (!strcmp(name, "lzip")) return true;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UNIX_COMPRESS)
+    if (!strcmp(name, "compress")) return true;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UUE)
+    if (!strcmp(name, "uuencode")) return true;
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_BASE64)
+    if (!strcmp(name, "b64encode")) return true;
+#endif
+    return false;
 }
 
 bool xfu_native_filter_encode(const xfu_request *request, const char *name,
+                              const char *stream_name,
                               xx_io_device *input, xx_io_device *output,
                               xx_pd_struct *pd)
 {
     if (!request || !name || !input || !output || !pd ||
         xx_io_seek64(input, 0, SEEK_SET) != 0) return false;
+    (void)stream_name;
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZ4)
     if (!strcmp(name, "lz4")) return encode_lz4(request, input, output, pd);
-    if (!strcmp(name, "lzop")) return encode_lzop(request, input, output, pd);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZOP)
+    if (!strcmp(name, "lzop")) return encode_lzop(request, stream_name, input, output, pd);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZIP)
     if (!strcmp(name, "lzip")) return encode_lzip(request, input, output, pd);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UNIX_COMPRESS)
     if (!strcmp(name, "compress")) return encode_compress(request, input, output, pd);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UUE) || defined(XFU_SUPPORT_FORMAT_BASE64)
     if (!strcmp(name, "uuencode") || !strcmp(name, "b64encode"))
-        return encode_text(request, name, input, output, pd);
+        return encode_text(request, name, stream_name, input, output, pd);
+#endif
     return false;
 }

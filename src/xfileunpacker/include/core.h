@@ -4,6 +4,8 @@
 #ifndef XFILEUNPACKER_CORE_H
 #define XFILEUNPACKER_CORE_H
 
+#include <xxfclib/formats/xx_format_support.h>
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

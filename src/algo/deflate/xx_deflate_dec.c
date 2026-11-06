@@ -288,9 +288,9 @@ static bool xx_huff_build(xx_huff_decoder *dec, const uint8_t *lengths, int num_
             rev |= ((c >> (len - 1 - b)) & 1) << b;
         }
 
-        if (len <= 9) {
+        if (len <= XX_DEFLATE_FAST_BITS) {
             int step = 1 << len;
-            int count = 1 << (9 - len);
+            int count = 1 << (XX_DEFLATE_FAST_BITS - len);
             for (int k = 0; k < count; ++k) {
                 int idx = rev | (k * step);
                 dec->fast[idx].bits = len;
@@ -306,11 +306,11 @@ static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br)
 {
     uint32_t reversed;
     int len, available;
-    /* Refill opportunistically. A final code can need fewer than nine bits;
+    /* Refill opportunistically. A final code can need fewer than XX_DEFLATE_FAST_BITS bits;
      * a failed lookahead must not reject it or consume padded missing bits. */
-    if (br->bit_count < 9) (void)xx_br_refill(br, 9);
+    if (br->bit_count < XX_DEFLATE_FAST_BITS) (void)xx_br_refill(br, XX_DEFLATE_FAST_BITS);
     if (br->bit_count > 0) {
-        xx_huff_entry entry = dec->fast[(uint32_t)br->bit_buf & 511U];
+        xx_huff_entry entry = dec->fast[(uint32_t)br->bit_buf & (XX_DEFLATE_FAST_SIZE - 1U)];
         if (entry.bits > 0 && entry.bits <= br->bit_count) {
             xx_br_drop(br, entry.bits);
             return entry.sym;
@@ -327,7 +327,7 @@ static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br)
     reversed = ((reversed & 0x3333U) << 2U) | ((reversed >> 2U) & 0x3333U);
     reversed = ((reversed & 0x0f0fU) << 4U) | ((reversed >> 4U) & 0x0f0fU);
     reversed = ((reversed & 255U) << 8U) | (reversed >> 8U);
-    len = br->bit_count >= 9 ? 10 : dec->min_bits;
+    len = br->bit_count >= XX_DEFLATE_FAST_BITS ? (XX_DEFLATE_FAST_BITS + 1) : dec->min_bits;
     for (; len <= available; ++len) {
         uint32_t code = reversed >> (16 - len);
         uint32_t first_code = dec->first_code[len];
@@ -528,6 +528,77 @@ static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_sse2(uint8_t *window, size_t
         }
     }
 }
+
+XX_DEFLATE_DEC_TARGET_AVX2
+static inline void xx_decode_copy_vectors_avx2(uint8_t *dst, const uint8_t *src, size_t size)
+{
+    while (size >= 32U) {
+        __m256i value = _mm256_loadu_si256((const __m256i *)(const void *)src);
+        _mm256_storeu_si256((__m256i *)(void *)dst, value);
+        src += 32U;
+        dst += 32U;
+        size -= 32U;
+    }
+    if (size >= 16U) {
+        __m128i value = _mm_loadu_si128((const __m128i *)(const void *)src);
+        _mm_storeu_si128((__m128i *)(void *)dst, value);
+        src += 16U;
+        dst += 16U;
+        size -= 16U;
+    }
+    xx_decode_copy_words(dst, src, size);
+}
+
+XX_DEFLATE_DEC_TARGET_AVX2
+static XX_DEFLATE_DEC_NOINLINE void xx_decode_copy_avx2(uint8_t *dst, const uint8_t *src, size_t size)
+{
+    xx_decode_copy_vectors_avx2(dst, src, size);
+}
+
+XX_DEFLATE_DEC_TARGET_AVX2
+static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_avx2(uint8_t *window, size_t win_size, size_t target, size_t source, uint32_t distance, size_t chunk)
+{
+    uint8_t *dst = window + target;
+    if (distance == 1U) {
+        uint8_t value = window[source];
+        __m256i repeated = _mm256_set1_epi8((char)value);
+        while (chunk >= 32U) {
+            _mm256_storeu_si256((__m256i *)(void *)dst, repeated);
+            dst += 32U;
+            chunk -= 32U;
+        }
+        if (chunk >= 16U) {
+            _mm_storeu_si128((__m128i *)(void *)dst, _mm256_castsi256_si128(repeated));
+            dst += 16U;
+            chunk -= 16U;
+        }
+        xx_decode_fill_words(dst, value, chunk);
+    } else if ((distance >= 32U || chunk <= distance) && chunk <= win_size - source) {
+        xx_decode_copy_vectors_avx2(dst, window + source, chunk);
+    } else if (distance >= 32U) {
+        while (chunk != 0U) {
+            size_t span = win_size - source;
+            if (span > chunk) span = chunk;
+            xx_decode_copy_vectors_avx2(dst, window + source, span);
+            dst += span;
+            chunk -= span;
+            source = 0U;
+        }
+    } else {
+        size_t seed = chunk < distance ? chunk : distance;
+        size_t first = win_size - source;
+        size_t produced = seed;
+        if (first > seed) first = seed;
+        xx_decode_move_words(dst, window + source, first);
+        if (seed > first) xx_decode_move_words(dst + first, window, seed - first);
+        while (produced < chunk) {
+            size_t copy = chunk - produced;
+            if (copy > produced) copy = produced;
+            xx_decode_copy_vectors_avx2(dst + produced, dst, copy);
+            produced += copy;
+        }
+    }
+}
 #endif
 
 #ifdef XX_DEFLATE_DEC_NEON
@@ -617,7 +688,10 @@ static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, si
 #ifdef XX_DEFLATE_DEC_X86
     /* Respect the existing acceleration switch and resolve it once per
      * operation, avoiding CPU-feature dispatch for each short output match. */
-    if (xx_is_sse2_enabled()) {
+    if (xx_is_avx2_enabled()) {
+        out->copy = xx_decode_copy_avx2;
+        out->match = xx_decode_match_avx2;
+    } else if (xx_is_sse2_enabled()) {
         out->copy = xx_decode_copy_sse2;
         out->match = xx_decode_match_sse2;
     }

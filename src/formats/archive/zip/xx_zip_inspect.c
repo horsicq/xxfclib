@@ -10,10 +10,28 @@
 
 #define ZIP_INSPECT_LIMIT ((size_t)16 * 1024 * 1024)
 typedef struct {
+    uint32_t hash;
+    const char *name;
+} zip_name_slot;
+
+typedef struct {
     xx_list_s names;
+    zip_name_slot *slots;
+    size_t slot_mask;
     char *manifest, *package;
     char jvm[24];
 } zip_analysis;
+
+static uint32_t zip_name_hash(const char *s)
+{
+    uint32_t h = 2166136261u;
+    while (*s) {
+        h ^= (uint8_t)*s++;
+        h *= 16777619u;
+    }
+    return h ? h : 1u;
+}
+
 static void zip_name_free(void *element)
 {
     xx_str_free(*(char **)element);
@@ -23,6 +41,7 @@ void xx_zip_cleanup_analysis(xx_zip *zip)
     zip_analysis *a;
     if (!zip || !(a = (zip_analysis *)zip->analysis)) return;
     xx_list_cleanup(&a->names);
+    if (a->slots) xx_mem_free(a->slots);
     xx_str_free(a->manifest);
     xx_str_free(a->package);
     xx_mem_free(a);
@@ -94,6 +113,29 @@ bool xx_zip_analyze(xx_zip *zip, xx_pd_struct *pd)
         if (!xx_zip_archive_record_move_to_next(&zip->format, state, NULL)) break;
     }
     ok = !xx_pd_is_stopped(pd) && a->names.count == zip->number_of_records;
+    if (a->names.count > 0) {
+        size_t cap = 16;
+        while (cap < a->names.count * 2 && cap < (SIZE_MAX / 2)) {
+            cap <<= 1;
+        }
+        a->slots = (zip_name_slot *)xx_mem_calloc(cap, sizeof(zip_name_slot));
+        if (a->slots) {
+            size_t slot_i;
+            a->slot_mask = cap - 1;
+            for (slot_i = 0; slot_i < a->names.count; ++slot_i) {
+                const char *entry_name = *(const char **)xx_list_at(&a->names, slot_i);
+                if (entry_name) {
+                    uint32_t h = zip_name_hash(entry_name);
+                    size_t idx = (size_t)h & a->slot_mask;
+                    while (a->slots[idx].name) {
+                        idx = (idx + 1) & a->slot_mask;
+                    }
+                    a->slots[idx].hash = h;
+                    a->slots[idx].name = entry_name;
+                }
+            }
+        }
+    }
     if (state) {
         xx_zip_free_archive_records_reading(&zip->format, state);
         state = NULL;
@@ -136,9 +178,22 @@ const xx_list_s *xx_zip_get_record_names(const xx_zip *zip)
 }
 bool xx_zip_record_present(const xx_zip *zip, const char *name)
 {
+    if (!zip || !name) return false;
+    const zip_analysis *a = (const zip_analysis *)zip->analysis;
+    if (a && a->slots && a->slot_mask) {
+        uint32_t h = zip_name_hash(name);
+        size_t idx = (size_t)h & a->slot_mask;
+        while (a->slots[idx].name) {
+            if (a->slots[idx].hash == h && !xx_rt_strcmp(a->slots[idx].name, name)) {
+                return true;
+            }
+            idx = (idx + 1) & a->slot_mask;
+        }
+        return false;
+    }
     const xx_list_s *names = xx_zip_get_record_names(zip);
     size_t i;
-    for (i = 0; name && names && i < names->count; ++i)
+    for (i = 0; names && i < names->count; ++i)
         if (!xx_rt_strcmp(*(char **)xx_list_at(names, i), name)) return true;
     return false;
 }

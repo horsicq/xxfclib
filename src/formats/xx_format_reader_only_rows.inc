@@ -423,3 +423,5 @@
 { XX_FILE_TYPE_DH, xx_dh_get_abstract_extractor, xx_dh_get_abstract_detector },
 { XX_FILE_TYPE_DJCOMP, xx_djcomp_get_abstract_extractor, xx_djcomp_get_abstract_detector },
 { XX_FILE_TYPE_DPC, xx_dpc_get_abstract_extractor, xx_dpc_get_abstract_detector },
+{ XX_FILE_TYPE_DSL1, xx_dsl1_get_abstract_extractor, xx_dsl1_get_abstract_detector },
+{ XX_FILE_TYPE_DWC, xx_dwc_get_abstract_extractor, xx_dwc_get_abstract_detector },

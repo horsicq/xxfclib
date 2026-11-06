@@ -385,6 +385,67 @@ static inline size_t xx_7zip_bcj2_scan_and_copy(uint8_t *dst, const uint8_t *src
     const __m128i v_fe = _mm_set1_epi8((char)-2);  /* 0xFE */
     const __m128i v_0f = _mm_set1_epi8((char)0x0F);
 
+    while (i + 64 <= len) {
+        __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
+        __m128i m0 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8), _mm_cmpeq_epi8(d0, v_0f));
+        int mask0 = _mm_movemask_epi8(m0);
+        if (mask0 != 0) {
+            _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask0);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask0);
+#endif
+            return i + (size_t)bit_idx;
+        }
+
+        __m128i d1 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 16));
+        __m128i m1 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d1, v_fe), v_e8), _mm_cmpeq_epi8(d1, v_0f));
+        int mask1 = _mm_movemask_epi8(m1);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
+        if (mask1 != 0) {
+            _mm_storeu_si128((__m128i *)(void *)(dst + i + 16), d1);
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask1);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask1);
+#endif
+            return i + 16 + (size_t)bit_idx;
+        }
+
+        __m128i d2 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 32));
+        __m128i m2 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d2, v_fe), v_e8), _mm_cmpeq_epi8(d2, v_0f));
+        int mask2 = _mm_movemask_epi8(m2);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i + 16), d1);
+        if (mask2 != 0) {
+            _mm_storeu_si128((__m128i *)(void *)(dst + i + 32), d2);
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask2);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask2);
+#endif
+            return i + 32 + (size_t)bit_idx;
+        }
+
+        __m128i d3 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 48));
+        __m128i m3 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d3, v_fe), v_e8), _mm_cmpeq_epi8(d3, v_0f));
+        int mask3 = _mm_movemask_epi8(m3);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i + 32), d2);
+        _mm_storeu_si128((__m128i *)(void *)(dst + i + 48), d3);
+        if (mask3 != 0) {
+            unsigned long bit_idx;
+#if defined(_MSC_VER)
+            _BitScanForward(&bit_idx, (unsigned long)mask3);
+#else
+            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask3);
+#endif
+            return i + 48 + (size_t)bit_idx;
+        }
+        i += 64;
+    }
     while (i + 32 <= len) {
         __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
         __m128i m0 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8), _mm_cmpeq_epi8(d0, v_0f));

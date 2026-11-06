@@ -575,6 +575,20 @@ int Z7_FASTCALL LZMA_DECODE_REAL(CLzmaDec *p, SizeT limit, const Byte *bufLimit)
           ptrdiff_t src = (ptrdiff_t)pos - (ptrdiff_t)dicPos;
           const Byte *lim = dest + curLen;
           dicPos += (SizeT)curLen;
+          if (curLen > 8)
+          {
+            size_t dist = (size_t)(-src);
+            if (src < 0 && dist == 1)
+            {
+              memset(dest, *(dest - 1), curLen);
+              continue;
+            }
+            if (src > 0 || dist >= curLen)
+            {
+              memcpy(dest, dest + src, curLen);
+              continue;
+            }
+          }
           do
             *(dest) = (Byte)*(dest + src);
           while (++dest != lim);
