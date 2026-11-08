@@ -197,6 +197,10 @@ if(MSVC)
         target_sources(xxfclib_zip PRIVATE
             "${_xxfc_zip_root}/src/algo/lzma/asm/lzma_windows_x64.asm"
             "${_xxfc_zip_root}/src/algo/bzip2/asm/bzip2_windows_x64.asm")
+    elseif(CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(X86|x86)$")
+        enable_language(ASM_MASM)
+        target_sources(xxfclib_zip PRIVATE
+            "${_xxfc_zip_root}/src/algo/bzip2/asm/bzip2_windows_x86.asm")
     endif()
     if(CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(X86|x86|x64|AMD64)$")
         foreach(_xxfc_zip_avx_source

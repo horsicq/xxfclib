@@ -26,6 +26,21 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/io/xx_io.h"
 
+#if defined(_MSC_VER)
+uint32_t xx_crc32_calc_store_fallback(uint32_t crc, const void *data, size_t size)
+{
+    (void)crc;
+    (void)data;
+    (void)size;
+    return 0;
+}
+#if defined(_M_IX86)
+#pragma comment(linker, "/alternatename:_xx_crc32_calc=_xx_crc32_calc_store_fallback")
+#elif defined(_M_X64) || defined(_M_ARM64)
+#pragma comment(linker, "/alternatename:xx_crc32_calc=xx_crc32_calc_store_fallback")
+#endif
+#endif
+
 #define _XX_STORE_BUFFER_SIZE xx_get_file_buffer_size()
 
 /* ========================================================================= */

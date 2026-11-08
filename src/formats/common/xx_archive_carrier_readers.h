@@ -35,12 +35,14 @@ static bool archive_carrier_range(size_t n, uint64_t p, uint64_t z)
 }
 static uint16_t archive_carrier_crc16(const uint8_t *b, size_t n, uint16_t c, xx_pd_struct *pd)
 {
-    size_t at = 0U;
-    while (at < n) {
-        size_t part = n - at > 4096U ? 4096U : n - at;
-        if (carrier_stop(pd)) return 0U;
-        c = xx_crc16_ccitt_calc(c, b + at, part);
-        at += part;
+    size_t i;
+    for (i = 0; i < n; ++i) {
+        int j;
+        if ((i & 4095U) == 0 && carrier_stop(pd)) return 0U;
+        c ^= (uint16_t)((uint16_t)b[i] << 8);
+        for (j = 0; j < 8; ++j) {
+            c = (c & 0x8000U) ? (uint16_t)((c << 1) ^ 0x1021U) : (uint16_t)(c << 1);
+        }
     }
     return c;
 }

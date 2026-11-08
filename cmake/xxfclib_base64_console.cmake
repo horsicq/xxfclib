@@ -3,6 +3,7 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/xxfclib_family_console.cmake")
 xxfclib_add_family_console(base64
     FORMATS BASE64
+    CODECS crc
     ENGINE native_filter_formats.c
     ENGINE_DEFINES XFU_NATIVE_FILTER_WRITERS=1
     SOURCES

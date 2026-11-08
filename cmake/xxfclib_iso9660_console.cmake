@@ -3,7 +3,7 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/xxfclib_family_console.cmake")
 xxfclib_add_family_console(iso9660
     FORMATS ISO9660
-    CODECS adler32 deflate sha
+    CODECS adler32 crc deflate sha
     ENGINE native_extra_formats.c
     ENGINE_DEFINES XFU_NATIVE_EXTRA_WRITERS=1
     SOURCES
