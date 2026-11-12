@@ -94,5 +94,5 @@ void xx_patchwise_free(Abstractformat *f) { if(f) { xx_format_destroy(f);xx_mem_
 #include "../../xx_format_abstract_extractor_adapter.h"
 static Abstractformat *pw_open(xx_io_device *d) { return xx_patchwise_create(d,0); }
 static const xx_file_type_t pw_types[]={XX_FILE_TYPE_PATCHWISE};
-static const xx_format_search_desc pw_desc={pw_types,1U,NULL,0U,pw_open,xx_patchwise_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(patchwise,pw_desc)
+const xx_format_search_desc xx_patchwise_search_desc={pw_types,1U,NULL,0U,pw_open,xx_patchwise_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(patchwise,xx_patchwise_search_desc)

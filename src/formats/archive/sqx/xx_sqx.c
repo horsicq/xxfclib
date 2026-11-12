@@ -81,11 +81,34 @@ typedef struct xx_sqx_member_s {
     bool is_folder;
 } xx_sqx_member;
 
+/* xxfclib/algo/sqx/xx_sqx.h is deliberately NOT included: it typedefs the
+ * name xx_sqx_member for the codec's member descriptor, and the generator
+ * uses that same name for this reader's member. The two struct TAGS differ
+ * (struct xx_sqx_member against struct xx_sqx_member_s), so completing the
+ * library's tag below (as xx_sqx_codec_member) and declaring the entry
+ * points here against that tag names the library's own functions, not
+ * copies of them. Keep the struct in step with xx_sqx.h. */
+typedef struct xx_sqx_decoder_s xx_sqx_decoder;
+struct xx_sqx_member;
+
+XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, const struct xx_sqx_member *members, size_t member_count, size_t target_index,
+                                   uint8_t *output, size_t output_size, size_t *written);
+
+XXFC_API xx_sqx_decoder *xx_sqx_decoder_create(void);
+XXFC_API void xx_sqx_decoder_free(xx_sqx_decoder *dec);
+XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, size_t input_size, const struct xx_sqx_member *member, uint8_t *output, size_t output_size, size_t *written);
+
 typedef struct xx_sqx_stream_s {
     xx_sqx_member *items;
     size_t count;
     size_t index;
     int64_t archive_size;
+    xx_sqx_decoder *decoder;
+    uint8_t *cached_image;
+    size_t cached_image_size;
+    struct xx_sqx_member *cached_table;
+    size_t cached_table_count;
+    size_t next_codec_index;
 } xx_sqx_stream;
 
 static void xx_sqx_vtable_destroy(Abstractformat *self);
@@ -140,6 +163,9 @@ static void xx_sqx_stream_free(void *pointer)
     for (index = 0U; index < stream->count; ++index) {
         xx_str_free(stream->items[index].name);
     }
+    if (stream->decoder) xx_sqx_decoder_free(stream->decoder);
+    if (stream->cached_image) xx_mem_free(stream->cached_image);
+    if (stream->cached_table) xx_mem_free(stream->cached_table);
     xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
@@ -190,19 +216,8 @@ static bool xx_sqx_name_byte_ok(uint8_t byte);
 static bool xx_sqx_table_add(xx_sqx_codec_member **table, size_t *count, const xx_sqx_codec_member *entry);
 static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd, xx_sqx_stream *stream, xx_sqx_codec_member **table, size_t *table_count);
 static xx_sqx_stream *xx_sqx_parse(Abstractformat *self, xx_pd_struct *pd);
-static bool xx_sqx_decode(Abstractformat *self, const xx_sqx_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
+static bool xx_sqx_decode(Abstractformat *self, xx_sqx_stream *stream, const xx_sqx_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
 
-/* xxfclib/algo/sqx/xx_sqx.h is deliberately NOT included: it typedefs the
- * name xx_sqx_member for the codec's member descriptor, and the generator
- * uses that same name for this reader's member. The two struct TAGS differ
- * (struct xx_sqx_member against struct xx_sqx_member_s), so completing the
- * library's tag here and giving it a second, non-colliding alias produces a
- * type compatible with the library's own declaration; the entry point
- * declared below is therefore the same function, not a copy of it. Keep this
- * struct in step with xx_sqx.h. */
-
-XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, const struct xx_sqx_member *members, size_t member_count, size_t target_index,
-                                   uint8_t *output, size_t output_size, size_t *written);
 
 static bool xx_sqx_is_end_type(uint8_t type)
 {
@@ -467,14 +482,11 @@ fail:
     return NULL;
 }
 
-/* Extraction of a coded member re-walks the chain and loads the whole
- * archive. That is not laziness: flag 0x0004 makes a member's plaintext
- * depend on the LZ state left by every coded member in front of it, and the
- * generator hands the decode one member with no way back to the member list,
- * so the table the codec replays has to be rebuilt here. A stored member is
- * exempt and takes the cheap path. */
+/* Flag 0x0004 makes a coded member depend on preceding decoder state.
+ * Cache the image and codec table per stream, replaying earlier members only
+ * when the caller moves backward. Stored members take the direct path. */
 
-static bool xx_sqx_decode(Abstractformat *self, const xx_sqx_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+static bool xx_sqx_decode(Abstractformat *self, xx_sqx_stream *stream, const xx_sqx_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd)
 {
     xx_sqx_codec_member *table = NULL;
     size_t table_count = 0U;
@@ -532,12 +544,35 @@ static bool xx_sqx_decode(Abstractformat *self, const xx_sqx_member *member, uin
         return true;
     }
 
-    total = xx_io_total_size(self->device);
-    if (total < self->base_address) return false;
-    span = total - self->base_address;
-    if (span > XX_SQX_MAX_IMAGE) return false;
-    if (!xx_sqx_walk(self, pd, NULL, &table, &table_count)) goto fail;
-    if (table_count == 0U) goto fail;
+    if (stream) {
+        if (!stream->cached_image) {
+            total = xx_io_total_size(self->device);
+            if (total < self->base_address) return false;
+            span = total - self->base_address;
+            if (span > XX_SQX_MAX_IMAGE) return false;
+            if (!xx_sqx_walk(self, pd, NULL, &stream->cached_table, &stream->cached_table_count)) goto fail;
+            if (stream->cached_table_count == 0U) goto fail;
+            stream->cached_image = (uint8_t *)xx_mem_alloc((size_t)span);
+            if (!stream->cached_image || !xx_sqx_read_at(self, self->base_address, stream->cached_image, (size_t)span)) goto fail;
+            stream->cached_image_size = (size_t)span;
+            stream->decoder = xx_sqx_decoder_create();
+            if (!stream->decoder) goto fail;
+            stream->next_codec_index = 0U;
+        }
+        image = stream->cached_image;
+        span = (int64_t)stream->cached_image_size;
+        table = stream->cached_table;
+        table_count = stream->cached_table_count;
+    } else {
+        total = xx_io_total_size(self->device);
+        if (total < self->base_address) return false;
+        span = total - self->base_address;
+        if (span > XX_SQX_MAX_IMAGE) return false;
+        if (!xx_sqx_walk(self, pd, NULL, &table, &table_count)) goto fail;
+        if (table_count == 0U) goto fail;
+        image = (uint8_t *)xx_mem_alloc((size_t)span);
+        if (!image || !xx_sqx_read_at(self, self->base_address, image, (size_t)span)) goto fail;
+    }
 
     /* Coded members occupy disjoint, strictly increasing packed ranges, so
      * the payload offset identifies one of them exactly. A member the walk
@@ -554,18 +589,34 @@ static bool xx_sqx_decode(Abstractformat *self, const xx_sqx_member *member, uin
     if (!found) goto fail;
     if (table[target_index].unpacked_size != (uint64_t)plain_size) goto fail;
 
-    image = (uint8_t *)xx_mem_alloc((size_t)span);
-    if (!image) goto fail;
-    if (!xx_sqx_read_at(self, self->base_address, image, (size_t)span)) {
-        goto fail;
-    }
     if (pd && xx_pd_is_stopped(pd)) goto fail;
 
     plain = (uint8_t *)xx_mem_alloc(plain_size);
     if (!plain) goto fail;
-    if (!xx_sqx_decode_memory(image, (size_t)span, (const struct xx_sqx_member *)table, table_count, target_index, plain, plain_size, &written)) {
-        goto fail;
+
+    if (stream && stream->decoder) {
+        if (target_index < stream->next_codec_index) {
+            xx_sqx_decoder_free(stream->decoder);
+            stream->decoder = xx_sqx_decoder_create();
+            if (!stream->decoder) goto fail;
+            stream->next_codec_index = 0U;
+        }
+        for (index = stream->next_codec_index; index < target_index; ++index) {
+            size_t ignored = 0;
+            if (!xx_sqx_decoder_decode(stream->decoder, image, (size_t)span, (const struct xx_sqx_member *)&table[index], NULL, 0, &ignored)) {
+                goto fail;
+            }
+        }
+        if (!xx_sqx_decoder_decode(stream->decoder, image, (size_t)span, (const struct xx_sqx_member *)&table[target_index], plain, plain_size, &written)) {
+            goto fail;
+        }
+        stream->next_codec_index = target_index + 1U;
+    } else {
+        if (!xx_sqx_decode_memory(image, (size_t)span, (const struct xx_sqx_member *)table, table_count, target_index, plain, plain_size, &written)) {
+            goto fail;
+        }
     }
+
     /* Never true with fewer bytes than the header promised: a solid member
      * decoded against a window that was rebuilt only partway produces
      * plausible bytes of very nearly the right length, and the count is the
@@ -583,16 +634,30 @@ static bool xx_sqx_decode(Abstractformat *self, const xx_sqx_member *member, uin
         if (crc != member->crc32) goto fail;
     }
 
-    xx_mem_free(image);
-    xx_mem_free(table);
+    if (!stream) {
+        xx_mem_free(image);
+        xx_mem_free(table);
+    }
     *out = plain;
     *out_size = written;
     return true;
 
 fail:
     xx_mem_free(plain);
-    xx_mem_free(image);
-    xx_mem_free(table);
+    if (stream) {
+        xx_sqx_decoder_free(stream->decoder);
+        xx_mem_free(stream->cached_image);
+        xx_mem_free(stream->cached_table);
+        stream->decoder = NULL;
+        stream->cached_image = NULL;
+        stream->cached_image_size = 0U;
+        stream->cached_table = NULL;
+        stream->cached_table_count = 0U;
+        stream->next_codec_index = 0U;
+    } else {
+        xx_mem_free(image);
+        xx_mem_free(table);
+    }
     return false;
 }
 
@@ -828,7 +893,7 @@ bool xx_sqx_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = xx_sqx_decode(self, member, &plain, &plain_size, pd);
+        result = xx_sqx_decode(self, stream, member, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
@@ -855,7 +920,7 @@ bool xx_sqx_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
         xx_str_free(target_path);
         return result;
     }
-    if (!xx_store_create_dirs_a(target_path, false) || !xx_sqx_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target_path, false) || !xx_sqx_decode(self, stream, member, &plain, &plain_size, pd)) {
         xx_str_free(target_path);
         return false;
     }

@@ -132,5 +132,5 @@ static Abstractformat *mskn2_open(xx_io_device *device)
     return xx_mskn2_create(device, 0);
 }
 static const xx_file_type_t mskn2_types[] = {XX_FILE_TYPE_MSKN2};
-static const xx_format_search_desc mskn2_descriptor = {mskn2_types, 1, NULL, 0, mskn2_open, xx_mskn2_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(mskn2, mskn2_descriptor)
+const xx_format_search_desc xx_mskn2_search_desc = {mskn2_types, 1, NULL, 0, mskn2_open, xx_mskn2_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(mskn2, xx_mskn2_search_desc)

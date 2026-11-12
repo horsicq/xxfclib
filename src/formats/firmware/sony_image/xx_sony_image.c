@@ -135,5 +135,5 @@ static Abstractformat *xx_sony_image_open(xx_io_device *d)
     return xx_sony_image_create(d, 0);
 }
 static const xx_file_type_t xx_sony_image_types[] = {XX_FILE_TYPE_SONY_IMAGE};
-static const xx_format_search_desc xx_sony_image_desc = {xx_sony_image_types, 1, NULL, 0, xx_sony_image_open, xx_sony_image_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sony_image, xx_sony_image_desc)
+const xx_format_search_desc xx_sony_image_search_desc = {xx_sony_image_types, 1, NULL, 0, xx_sony_image_open, xx_sony_image_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sony_image, xx_sony_image_search_desc)

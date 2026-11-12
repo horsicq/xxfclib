@@ -38,14 +38,22 @@ XXFC_API bool xx_mlb_ft_unpack_current_archive_record(Abstractformat *self, xx_a
 XXFC_API bool xx_mlb_ft_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_mlb_ft_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-XXFC_API bool xx_mlb_ft_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
-XXFC_API xx_file_type_t xx_mlb_ft_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
-XXFC_API int64_t xx_mlb_ft_size(xx_io_device *device, int64_t base_address, bool is_mapped);
-XXFC_API Abstractextractor *xx_mlb_ft_get_abstract_extractor(void);
-XXFC_API Abstractdetector *xx_mlb_ft_get_abstract_detector(void);
 
 #ifdef __cplusplus
 }
 #endif
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_mlb_ft_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_mlb_ft_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_mlb_ft_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_mlb_ft_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_mlb_ft_get_abstract_detector(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif /* XXFCLIB_FORMAT_MLB_FT_H */

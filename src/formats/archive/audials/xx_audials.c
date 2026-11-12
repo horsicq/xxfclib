@@ -214,5 +214,5 @@ static Abstractformat *xx_audials_open(xx_io_device *d)
     return xx_audials_create(d, 0);
 }
 static const xx_file_type_t xx_audials_types[] = {XX_FILE_TYPE_AUDIALS};
-static const xx_format_search_desc xx_audials_desc = {xx_audials_types, 1, NULL, 0, xx_audials_open, xx_audials_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(audials, xx_audials_desc)
+const xx_format_search_desc xx_audials_search_desc = {xx_audials_types, 1, NULL, 0, xx_audials_open, xx_audials_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(audials, xx_audials_search_desc)

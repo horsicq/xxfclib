@@ -1321,6 +1321,159 @@ extern xx_format_extractor xx_ztc_extractor;
 extern xx_format_extractor xx_zxzip_extractor;
 extern xx_format_extractor xx_zz_extractor;
 extern xx_format_extractor xx_zzz_extractor;
+extern xx_format_extractor xx_larc_pfx_extractor;
+extern xx_format_extractor xx_bzip1_extractor;
+extern xx_format_extractor xx_freeze_extractor;
+extern xx_format_extractor xx_lpak_extractor;
+extern xx_format_extractor xx_is_stored_extractor;
+extern xx_format_extractor xx_he_tlkb_extractor;
+extern xx_format_extractor xx_apridisk_extractor;
+extern xx_format_extractor xx_pce_anadisk_extractor;
+extern xx_format_extractor xx_pklite_extractor;
+extern xx_format_extractor xx_pe_rawfile_extractor;
+extern xx_format_extractor xx_fury_dat_extractor;
+extern xx_format_extractor xx_executable_overlay_extractor;
+extern xx_format_extractor xx_mas_pack_extractor;
+extern xx_format_extractor xx_demonstar_glb_extractor;
+extern xx_format_extractor xx_carman_extractor;
+extern xx_format_extractor xx_cbm_ark_extractor;
+extern xx_format_extractor xx_arc_cbm_extractor;
+extern xx_format_extractor xx_cwc_extractor;
+extern xx_format_extractor xx_cork_extractor;
+extern xx_format_extractor xx_cvrb_extractor;
+extern xx_format_extractor xx_cpz_extractor;
+extern xx_format_extractor xx_apple_diags_extractor;
+extern xx_format_extractor xx_eid_extractor;
+extern xx_format_extractor xx_natata_ebook_extractor;
+extern xx_format_extractor xx_stor_resource_extractor;
+extern xx_format_extractor xx_installshield_obl_extractor;
+extern xx_format_extractor xx_pftw_pkg_extractor;
+extern xx_format_extractor xx_sod_installer_extractor;
+extern xx_format_extractor xx_starforce_ovl_extractor;
+extern xx_format_extractor xx_self_unstuffer_extractor;
+extern xx_format_extractor xx_secura_extractor;
+extern xx_format_extractor xx_patchwise_extractor;
+extern xx_format_extractor xx_installjammer_extractor;
+extern xx_format_extractor xx_zxml_extractor;
+extern xx_format_extractor xx_zisofs_extractor;
+extern xx_format_extractor xx_nvp_extractor;
+extern xx_format_extractor xx_sqze_extractor;
+extern xx_format_extractor xx_zip_psc_extractor;
+extern xx_format_extractor xx_dcs_extractor;
+extern xx_format_extractor xx_mskn1_extractor;
+extern xx_format_extractor xx_mskn2_extractor;
+extern xx_format_extractor xx_mskn3_extractor;
+extern xx_format_extractor xx_csq_extractor;
+extern xx_format_extractor xx_zoot1_extractor;
+extern xx_format_extractor xx_rdfz_extractor;
+extern xx_format_extractor xx_zbeos_extractor;
+extern xx_format_extractor xx_solarispkg_zip_extractor;
+extern xx_format_extractor xx_gta_img_extractor;
+extern xx_format_extractor xx_pbo_extractor;
+extern xx_format_extractor xx_pam_pak_extractor;
+extern xx_format_extractor xx_pfpk_extractor;
+extern xx_format_extractor xx_birdies_extractor;
+extern xx_format_extractor xx_xuiz_extractor;
+extern xx_format_extractor xx_titan_quest_extractor;
+extern xx_format_extractor xx_sbpak_extractor;
+extern xx_format_extractor xx_cgjp_extractor;
+extern xx_format_extractor xx_pirs_extractor;
+extern xx_format_extractor xx_px_extractor;
+extern xx_format_extractor xx_binsh_starkit_extractor;
+extern xx_format_extractor xx_evd_extractor;
+extern xx_format_extractor xx_desksoft_extractor;
+extern xx_format_extractor xx_metaproducts_extractor;
+extern xx_format_extractor xx_visualware_extractor;
+extern xx_format_extractor xx_lyme_sfx_extractor;
+extern xx_format_extractor xx_audials_extractor;
+extern xx_format_extractor xx_psa_disk_extractor;
+extern xx_format_extractor xx_webexe_extractor;
+extern xx_format_extractor xx_asd_extractor;
+extern xx_format_extractor xx_cfd_extractor;
+extern xx_format_extractor xx_rdc_extractor;
+extern xx_format_extractor xx_fox_sqz_extractor;
+extern xx_format_extractor xx_skf_extractor;
+extern xx_format_extractor xx_osl2000_extractor;
+extern xx_format_extractor xx_lds_extractor;
+extern xx_format_extractor xx_dcp_disk_extractor;
+extern xx_format_extractor xx_sony_image_extractor;
+extern xx_format_extractor xx_dh_extractor;
+extern xx_format_extractor xx_djcomp_extractor;
+extern xx_format_extractor xx_dpc_extractor;
+extern xx_format_extractor xx_dwc_extractor;
+extern xx_format_extractor xx_dfsee_imz_extractor;
+extern xx_format_extractor xx_dsl1_extractor;
+extern xx_format_extractor xx_scummvm_dxa_extractor;
+extern xx_format_extractor xx_sfx_inftool_extractor;
+extern xx_format_extractor xx_cadc_extractor;
+extern xx_format_extractor xx_cfbf_extractor;
+extern xx_format_extractor xx_nsis_extractor;
+extern xx_format_extractor xx_squirrel_extractor;
+extern xx_format_extractor xx_dotnet_bundle_extractor;
+extern xx_format_extractor xx_installshield_script_setup_extractor;
+extern xx_format_extractor xx_msi_resource_extractor;
+extern xx_format_extractor xx_node_pkg_extractor;
+extern xx_format_extractor xx_chromium_mini_installer_extractor;
+extern xx_format_extractor xx_msmpi_bootstrapper_extractor;
+extern xx_format_extractor xx_splashtop_unpackc_extractor;
+extern xx_format_extractor xx_autohotkey_compiled_extractor;
+extern xx_format_extractor xx_omaha_meta_installer_extractor;
+extern xx_format_extractor xx_dotnet_resources_archive_extractor;
+extern xx_format_extractor xx_install4j_extractor;
+extern xx_format_extractor xx_sumatra_lzsa_extractor;
+extern xx_format_extractor xx_calibre_portable_extractor;
+extern xx_format_extractor xx_palminput_360_extractor;
+extern xx_format_extractor xx_sdi_extractor;
+extern xx_format_extractor xx_superdat_extractor;
+extern xx_format_extractor xx_excelsior_extractor;
+extern xx_format_extractor xx_smart_install_maker_extractor;
+extern xx_format_extractor xx_cpoint_extractor;
+extern xx_format_extractor xx_ziso_extractor;
+extern xx_format_extractor xx_dax_extractor;
+extern xx_format_extractor xx_ciso2_extractor;
+extern xx_format_extractor xx_windows_help_extractor;
+extern xx_format_extractor xx_qt_qm_extractor;
+extern xx_format_extractor xx_mime_message_extractor;
+extern xx_format_extractor xx_gnu_gettext_mo_extractor;
+extern xx_format_extractor xx_ycg_image_extractor;
+extern xx_format_extractor xx_utage_media_extractor;
+extern xx_format_extractor xx_unreal_pak_extractor;
+extern xx_format_extractor xx_smile_game_pack_extractor;
+extern xx_format_extractor xx_rpg_maker_mv_extractor;
+extern xx_format_extractor xx_live_maker_gal_extractor;
+extern xx_format_extractor xx_fallout_dat_extractor;
+extern xx_format_extractor xx_bruns_media_extractor;
+extern xx_format_extractor xx_windows_thumbnail_cache_extractor;
+extern xx_format_extractor xx_molebox_extractor;
+extern xx_format_extractor xx_enigma_virtual_box_extractor;
+extern xx_format_extractor xx_outlook_express_dbx_mailbox_extractor;
+extern xx_format_extractor xx_microsoft_lit_extractor;
+extern xx_format_extractor xx_ypf_extractor;
+extern xx_format_extractor xx_telltale_ttarch_extractor;
+extern xx_format_extractor xx_rpg_maker_rgssad_extractor;
+extern xx_format_extractor xx_livemaker_extractor;
+extern xx_format_extractor xx_sfark_compressed_soundfont_extractor;
+extern xx_format_extractor xx_fmod_sample_bank_extractor;
+extern xx_format_extractor xx_vmdk_sesparse_extractor;
+extern xx_format_extractor xx_vmdk_cowd_sparse_extractor;
+extern xx_format_extractor xx_mds_extractor;
+extern xx_format_extractor xx_uif_extractor;
+extern xx_format_extractor xx_htc_nbh_rom_image_extractor;
+extern xx_format_extractor xx_gbi_extractor;
+extern xx_format_extractor xx_ecm_extractor;
+extern xx_format_extractor xx_gdi_extractor;
+extern xx_format_extractor xx_ccd_extractor;
+extern xx_format_extractor xx_amiga_old_ext_adf_extractor;
+extern xx_format_extractor xx_amiga_ext_adf_extractor;
+extern xx_format_extractor xx_sis_extractor;
+extern xx_format_extractor xx_fead_extractor;
+extern xx_format_extractor xx_bitrock_extractor;
+extern xx_format_extractor xx_upx_engine_extractor;
+extern xx_format_extractor xx_stuffitx_extractor;
+extern xx_format_extractor xx_kgb_archiver_extractor;
+extern xx_format_extractor xx_dgca_extractor;
+extern xx_format_extractor xx_chromium_pak_extractor;
+extern xx_format_extractor xx_bga_extractor;
 
 static const struct {
     xx_file_type_t type;
@@ -2650,6 +2803,159 @@ static const struct {
     { XX_FILE_TYPE_AUDIO_PVF, &xx_audio_pvf_extractor },
     { XX_FILE_TYPE_AUDIO_RIFX_WAVE, &xx_audio_rifx_wave_extractor },
     { XX_FILE_TYPE_AUDIO_SHOCKWAVE_SWA, &xx_audio_shockwave_swa_extractor },
+    { XX_FILE_TYPE_LARC_PFX, &xx_larc_pfx_extractor },
+    { XX_FILE_TYPE_BZIP1, &xx_bzip1_extractor },
+    { XX_FILE_TYPE_FREEZE, &xx_freeze_extractor },
+    { XX_FILE_TYPE_LPAK, &xx_lpak_extractor },
+    { XX_FILE_TYPE_IS_STORED, &xx_is_stored_extractor },
+    { XX_FILE_TYPE_HE_TLKB, &xx_he_tlkb_extractor },
+    { XX_FILE_TYPE_APRIDISK, &xx_apridisk_extractor },
+    { XX_FILE_TYPE_PCE_ANADISK, &xx_pce_anadisk_extractor },
+    { XX_FILE_TYPE_PKLITE, &xx_pklite_extractor },
+    { XX_FILE_TYPE_PE_RAWFILE, &xx_pe_rawfile_extractor },
+    { XX_FILE_TYPE_FURY_DAT, &xx_fury_dat_extractor },
+    { XX_FILE_TYPE_EXECUTABLE_OVERLAY, &xx_executable_overlay_extractor },
+    { XX_FILE_TYPE_MAS_PACK, &xx_mas_pack_extractor },
+    { XX_FILE_TYPE_DEMONSTAR_GLB, &xx_demonstar_glb_extractor },
+    { XX_FILE_TYPE_CARMAN, &xx_carman_extractor },
+    { XX_FILE_TYPE_CBM_ARK, &xx_cbm_ark_extractor },
+    { XX_FILE_TYPE_ARC_CBM, &xx_arc_cbm_extractor },
+    { XX_FILE_TYPE_CWC, &xx_cwc_extractor },
+    { XX_FILE_TYPE_CORK, &xx_cork_extractor },
+    { XX_FILE_TYPE_CVRB, &xx_cvrb_extractor },
+    { XX_FILE_TYPE_CPZ, &xx_cpz_extractor },
+    { XX_FILE_TYPE_APPLE_DIAGS, &xx_apple_diags_extractor },
+    { XX_FILE_TYPE_EID, &xx_eid_extractor },
+    { XX_FILE_TYPE_NATATA_EBOOK, &xx_natata_ebook_extractor },
+    { XX_FILE_TYPE_STOR_RESOURCE, &xx_stor_resource_extractor },
+    { XX_FILE_TYPE_INSTALLSHIELD_OBL, &xx_installshield_obl_extractor },
+    { XX_FILE_TYPE_PFTW_PKG, &xx_pftw_pkg_extractor },
+    { XX_FILE_TYPE_SOD_INSTALLER, &xx_sod_installer_extractor },
+    { XX_FILE_TYPE_STARFORCE_OVL, &xx_starforce_ovl_extractor },
+    { XX_FILE_TYPE_SELF_UNSTUFFER, &xx_self_unstuffer_extractor },
+    { XX_FILE_TYPE_SECURA, &xx_secura_extractor },
+    { XX_FILE_TYPE_PATCHWISE, &xx_patchwise_extractor },
+    { XX_FILE_TYPE_INSTALLJAMMER, &xx_installjammer_extractor },
+    { XX_FILE_TYPE_ZXML, &xx_zxml_extractor },
+    { XX_FILE_TYPE_ZISOFS, &xx_zisofs_extractor },
+    { XX_FILE_TYPE_NVP, &xx_nvp_extractor },
+    { XX_FILE_TYPE_SQZE, &xx_sqze_extractor },
+    { XX_FILE_TYPE_ZIP_PSC, &xx_zip_psc_extractor },
+    { XX_FILE_TYPE_DCS, &xx_dcs_extractor },
+    { XX_FILE_TYPE_MSKN1, &xx_mskn1_extractor },
+    { XX_FILE_TYPE_MSKN2, &xx_mskn2_extractor },
+    { XX_FILE_TYPE_MSKN3, &xx_mskn3_extractor },
+    { XX_FILE_TYPE_CSQ, &xx_csq_extractor },
+    { XX_FILE_TYPE_ZOOT1, &xx_zoot1_extractor },
+    { XX_FILE_TYPE_RDFZ, &xx_rdfz_extractor },
+    { XX_FILE_TYPE_ZBEOS, &xx_zbeos_extractor },
+    { XX_FILE_TYPE_SOLARISPKG_ZIP, &xx_solarispkg_zip_extractor },
+    { XX_FILE_TYPE_GTA_IMG, &xx_gta_img_extractor },
+    { XX_FILE_TYPE_PBO, &xx_pbo_extractor },
+    { XX_FILE_TYPE_PAM_PAK, &xx_pam_pak_extractor },
+    { XX_FILE_TYPE_PFPK, &xx_pfpk_extractor },
+    { XX_FILE_TYPE_BIRDIES, &xx_birdies_extractor },
+    { XX_FILE_TYPE_XUIZ, &xx_xuiz_extractor },
+    { XX_FILE_TYPE_TITAN_QUEST, &xx_titan_quest_extractor },
+    { XX_FILE_TYPE_SBPAK, &xx_sbpak_extractor },
+    { XX_FILE_TYPE_CGJP, &xx_cgjp_extractor },
+    { XX_FILE_TYPE_PIRS, &xx_pirs_extractor },
+    { XX_FILE_TYPE_PX, &xx_px_extractor },
+    { XX_FILE_TYPE_BINSH_STARKIT, &xx_binsh_starkit_extractor },
+    { XX_FILE_TYPE_EVD, &xx_evd_extractor },
+    { XX_FILE_TYPE_DESKSOFT, &xx_desksoft_extractor },
+    { XX_FILE_TYPE_METAPRODUCTS, &xx_metaproducts_extractor },
+    { XX_FILE_TYPE_VISUALWARE, &xx_visualware_extractor },
+    { XX_FILE_TYPE_LYME_SFX, &xx_lyme_sfx_extractor },
+    { XX_FILE_TYPE_AUDIALS, &xx_audials_extractor },
+    { XX_FILE_TYPE_PSA_DISK, &xx_psa_disk_extractor },
+    { XX_FILE_TYPE_WEBEXE, &xx_webexe_extractor },
+    { XX_FILE_TYPE_ASD, &xx_asd_extractor },
+    { XX_FILE_TYPE_CFD, &xx_cfd_extractor },
+    { XX_FILE_TYPE_RDC, &xx_rdc_extractor },
+    { XX_FILE_TYPE_FOX_SQZ, &xx_fox_sqz_extractor },
+    { XX_FILE_TYPE_SKF, &xx_skf_extractor },
+    { XX_FILE_TYPE_OSL2000, &xx_osl2000_extractor },
+    { XX_FILE_TYPE_LDS, &xx_lds_extractor },
+    { XX_FILE_TYPE_DCP_DISK, &xx_dcp_disk_extractor },
+    { XX_FILE_TYPE_SONY_IMAGE, &xx_sony_image_extractor },
+    { XX_FILE_TYPE_DH, &xx_dh_extractor },
+    { XX_FILE_TYPE_DJCOMP, &xx_djcomp_extractor },
+    { XX_FILE_TYPE_DPC, &xx_dpc_extractor },
+    { XX_FILE_TYPE_DWC, &xx_dwc_extractor },
+    { XX_FILE_TYPE_DFSEE_IMZ, &xx_dfsee_imz_extractor },
+    { XX_FILE_TYPE_DSL1, &xx_dsl1_extractor },
+    { XX_FILE_TYPE_SCUMMVM_DXA, &xx_scummvm_dxa_extractor },
+    { XX_FILE_TYPE_SFX_INFTOOL, &xx_sfx_inftool_extractor },
+    { XX_FILE_TYPE_CADC, &xx_cadc_extractor },
+    { XX_FILE_TYPE_CFBF, &xx_cfbf_extractor },
+    { XX_FILE_TYPE_NSIS, &xx_nsis_extractor },
+    { XX_FILE_TYPE_SQUIRREL, &xx_squirrel_extractor },
+    { XX_FILE_TYPE_DOTNET_BUNDLE, &xx_dotnet_bundle_extractor },
+    { XX_FILE_TYPE_INSTALLSHIELD_SCRIPT_SETUP, &xx_installshield_script_setup_extractor },
+    { XX_FILE_TYPE_MSI_RESOURCE, &xx_msi_resource_extractor },
+    { XX_FILE_TYPE_NODE_PKG, &xx_node_pkg_extractor },
+    { XX_FILE_TYPE_CHROMIUM_MINI_INSTALLER, &xx_chromium_mini_installer_extractor },
+    { XX_FILE_TYPE_MSMPI_BOOTSTRAPPER, &xx_msmpi_bootstrapper_extractor },
+    { XX_FILE_TYPE_SPLASHTOP_UNPACKC, &xx_splashtop_unpackc_extractor },
+    { XX_FILE_TYPE_AUTOHOTKEY_COMPILED, &xx_autohotkey_compiled_extractor },
+    { XX_FILE_TYPE_OMAHA_META_INSTALLER, &xx_omaha_meta_installer_extractor },
+    { XX_FILE_TYPE_DOTNET_RESOURCES_ARCHIVE, &xx_dotnet_resources_archive_extractor },
+    { XX_FILE_TYPE_INSTALL4J, &xx_install4j_extractor },
+    { XX_FILE_TYPE_SUMATRA_LZSA, &xx_sumatra_lzsa_extractor },
+    { XX_FILE_TYPE_CALIBRE_PORTABLE, &xx_calibre_portable_extractor },
+    { XX_FILE_TYPE_PALMINPUT_360, &xx_palminput_360_extractor },
+    { XX_FILE_TYPE_SDI, &xx_sdi_extractor },
+    { XX_FILE_TYPE_SUPERDAT, &xx_superdat_extractor },
+    { XX_FILE_TYPE_EXCELSIOR_INSTALLER, &xx_excelsior_extractor },
+    { XX_FILE_TYPE_SMART_INSTALL_MAKER, &xx_smart_install_maker_extractor },
+    { XX_FILE_TYPE_CPOINT, &xx_cpoint_extractor },
+    { XX_FILE_TYPE_ZISO, &xx_ziso_extractor },
+    { XX_FILE_TYPE_DAX, &xx_dax_extractor },
+    { XX_FILE_TYPE_CISO2, &xx_ciso2_extractor },
+    { XX_FILE_TYPE_WINDOWS_HELP, &xx_windows_help_extractor },
+    { XX_FILE_TYPE_QT_QM, &xx_qt_qm_extractor },
+    { XX_FILE_TYPE_MIME_MESSAGE, &xx_mime_message_extractor },
+    { XX_FILE_TYPE_GNU_GETTEXT_MO, &xx_gnu_gettext_mo_extractor },
+    { XX_FILE_TYPE_YCG_IMAGE, &xx_ycg_image_extractor },
+    { XX_FILE_TYPE_UTAGE_MEDIA, &xx_utage_media_extractor },
+    { XX_FILE_TYPE_UNREAL_PAK, &xx_unreal_pak_extractor },
+    { XX_FILE_TYPE_SMILE_GAME_PACK, &xx_smile_game_pack_extractor },
+    { XX_FILE_TYPE_RPG_MAKER_MV, &xx_rpg_maker_mv_extractor },
+    { XX_FILE_TYPE_LIVE_MAKER_GAL, &xx_live_maker_gal_extractor },
+    { XX_FILE_TYPE_FALLOUT_DAT, &xx_fallout_dat_extractor },
+    { XX_FILE_TYPE_BRUNS_MEDIA, &xx_bruns_media_extractor },
+    { XX_FILE_TYPE_WINDOWS_THUMBNAIL_CACHE, &xx_windows_thumbnail_cache_extractor },
+    { XX_FILE_TYPE_MOLEBOX, &xx_molebox_extractor },
+    { XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX, &xx_enigma_virtual_box_extractor },
+    { XX_FILE_TYPE_OUTLOOK_EXPRESS_DBX_MAILBOX, &xx_outlook_express_dbx_mailbox_extractor },
+    { XX_FILE_TYPE_MICROSOFT_LIT, &xx_microsoft_lit_extractor },
+    { XX_FILE_TYPE_YPF, &xx_ypf_extractor },
+    { XX_FILE_TYPE_TELLTALE_TTARCH, &xx_telltale_ttarch_extractor },
+    { XX_FILE_TYPE_RPG_MAKER_RGSSAD, &xx_rpg_maker_rgssad_extractor },
+    { XX_FILE_TYPE_LIVEMAKER, &xx_livemaker_extractor },
+    { XX_FILE_TYPE_SFARK_COMPRESSED_SOUNDFONT, &xx_sfark_compressed_soundfont_extractor },
+    { XX_FILE_TYPE_FMOD_SAMPLE_BANK, &xx_fmod_sample_bank_extractor },
+    { XX_FILE_TYPE_VMDK_SESPARSE, &xx_vmdk_sesparse_extractor },
+    { XX_FILE_TYPE_VMDK_COWD_SPARSE, &xx_vmdk_cowd_sparse_extractor },
+    { XX_FILE_TYPE_MDS, &xx_mds_extractor },
+    { XX_FILE_TYPE_UIF, &xx_uif_extractor },
+    { XX_FILE_TYPE_HTC_NBH_ROM_IMAGE, &xx_htc_nbh_rom_image_extractor },
+    { XX_FILE_TYPE_GBI, &xx_gbi_extractor },
+    { XX_FILE_TYPE_ECM, &xx_ecm_extractor },
+    { XX_FILE_TYPE_GDI, &xx_gdi_extractor },
+    { XX_FILE_TYPE_CCD, &xx_ccd_extractor },
+    { XX_FILE_TYPE_AMIGA_OLD_EXT_ADF, &xx_amiga_old_ext_adf_extractor },
+    { XX_FILE_TYPE_AMIGA_EXT_ADF, &xx_amiga_ext_adf_extractor },
+    { XX_FILE_TYPE_SIS, &xx_sis_extractor },
+    { XX_FILE_TYPE_NETOPSYSTEMS_FEAD, &xx_fead_extractor },
+    { XX_FILE_TYPE_BITROCK, &xx_bitrock_extractor },
+    { XX_FILE_TYPE_UPX, &xx_upx_engine_extractor },
+    { XX_FILE_TYPE_STUFFITX, &xx_stuffitx_extractor },
+    { XX_FILE_TYPE_KGB_ARCHIVER, &xx_kgb_archiver_extractor },
+    { XX_FILE_TYPE_DGCA, &xx_dgca_extractor },
+    { XX_FILE_TYPE_CHROMIUM_PAK, &xx_chromium_pak_extractor },
+    { XX_FILE_TYPE_BGA, &xx_bga_extractor },
 #ifndef XXFC_FORMATS_ONLY
 #include "die_music/xx_die_music_extractor_rows.inc"
 #endif

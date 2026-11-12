@@ -126,6 +126,6 @@ static Abstractformat *apple_diags_open(xx_io_device *device) { return xx_apple_
 static const xx_file_type_t apple_diags_types[] = {XX_FILE_TYPE_APPLE_DIAGS};
 static const uint8_t apple_diags_magic[] = {'|', '_', '|', '_'};
 static const xx_format_search_anchor apple_diags_anchors[] = {{apple_diags_magic, 4U, 0U}};
-static const xx_format_search_desc apple_diags_desc = {
+const xx_format_search_desc xx_apple_diags_search_desc = {
     apple_diags_types, 1U, apple_diags_anchors, 1U, apple_diags_open, xx_apple_diags_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(apple_diags, apple_diags_desc)
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(apple_diags, xx_apple_diags_search_desc)

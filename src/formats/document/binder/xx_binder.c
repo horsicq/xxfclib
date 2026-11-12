@@ -630,10 +630,15 @@ static bool binder_parse_impl(Abstractformat *format, binder_stream **result, xx
     stream->mini_cutoff = cutoff;
     {
         int64_t available = size - (int64_t)stream->sector_size;
-        int64_t sectors = available / (int64_t)stream->sector_size;
+        int64_t sectors = available < 0 ? 0 : available / (int64_t)stream->sector_size;
+        int64_t partial = available < 0 ? 0 : available % (int64_t)stream->sector_size;
+        /* Some writers end the file at the last byte of the last stream
+         * (version 4 installers): that partial final sector still counts,
+         * and every read of it is bounded by the stream sizes. */
+        if (partial != 0) ++sectors;
         if (available < 0 || sectors < 2 || sectors > (int64_t)BINDER_MAXREGSECT) goto fail;
         stream->sector_count = (uint32_t)sectors;
-        stream->archive_size = (int64_t)stream->sector_size + sectors * (int64_t)stream->sector_size;
+        stream->archive_size = (int64_t)stream->sector_size + available;
     }
     if (major == 4U) {
         uint8_t padding[4096U - BINDER_HEADER_SIZE];
@@ -649,7 +654,8 @@ static bool binder_parse_impl(Abstractformat *format, binder_stream **result, xx
 
     /* Directory chain. */
     if (!binder_chain_length(stream->fat, stream->fat_count, dir_start, stream->sector_count, &dir_chain, pd) || dir_chain == 0U) goto fail;
-    if (major == 4U && dir_chain != dir_count_field) goto fail;
+    /* The version 4 directory sector count is advisory: some writers leave
+     * a stale value (one more than the chain). The chain itself is checked. */
     per_dir_sector = (size_t)(stream->sector_size / BINDER_DIR_ENTRY_SIZE);
     if (dir_chain > (size_t)BINDER_MAX_DIR_ENTRIES / per_dir_sector) goto fail;
     entry_count = dir_chain * per_dir_sector;

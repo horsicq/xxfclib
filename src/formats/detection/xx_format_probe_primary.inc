@@ -582,6 +582,36 @@ XX_FORMAT_READER_PROBE(pmarc_sfx, XX_FILE_TYPE_PMARC_SFX,
     (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x18\x0a",2) == 0 || xx_rt_memcmp(header+0,"\x18\x79",2) == 0 || xx_rt_memcmp(header+0,"\xeb\x18",2) == 0))))
 XX_FORMAT_READER_PROBE(sfx_7zip, XX_FILE_TYPE_SFX_7ZIP,
     (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(squirrel, XX_FILE_TYPE_SQUIRREL,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(dotnet_bundle, XX_FILE_TYPE_DOTNET_BUNDLE,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(installshield_script_setup, XX_FILE_TYPE_INSTALLSHIELD_SCRIPT_SETUP,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(msi_resource, XX_FILE_TYPE_MSI_RESOURCE,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(node_pkg, XX_FILE_TYPE_NODE_PKG,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(chromium_mini_installer, XX_FILE_TYPE_CHROMIUM_MINI_INSTALLER,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(msmpi_bootstrapper, XX_FILE_TYPE_MSMPI_BOOTSTRAPPER,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(splashtop_unpackc, XX_FILE_TYPE_SPLASHTOP_UNPACKC,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(autohotkey_compiled, XX_FILE_TYPE_AUTOHOTKEY_COMPILED,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(omaha_meta_installer, XX_FILE_TYPE_OMAHA_META_INSTALLER,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(dotnet_resources_archive, XX_FILE_TYPE_DOTNET_RESOURCES_ARCHIVE,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(install4j, XX_FILE_TYPE_INSTALL4J,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(sumatra_lzsa, XX_FILE_TYPE_SUMATRA_LZSA,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(calibre_portable, XX_FILE_TYPE_CALIBRE_PORTABLE,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(palminput_360, XX_FILE_TYPE_PALMINPUT_360,
+    (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
 XX_FORMAT_READER_PROBE(sfx_ace, XX_FILE_TYPE_SFX_ACE,
     (!is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
 XX_FORMAT_READER_PROBE(sfx_zipcentral, XX_FILE_TYPE_SFX_ZIPCENTRAL,

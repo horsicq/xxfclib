@@ -11,7 +11,11 @@
 #include "xxfclib/algo/compress/xx_compress.h"
 #include "xxfclib/formats/archive/pp20/xx_pp20.h"
 #include "xxfclib/data/xx_data.h"
+/* A reader whose files are routinely larger may raise this before including
+ * the helpers (xx_nsis.c); the memory budget still bounds the blob. */
+#ifndef AC_MAX_BYTES
 #define AC_MAX_BYTES (64U * 1024U * 1024U)
+#endif
 #define AC_MAX_MEMBERS 65535U
 typedef struct ac_blob {
     uint8_t *p;

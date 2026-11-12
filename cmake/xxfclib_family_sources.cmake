@@ -653,8 +653,10 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/alz
     src/formats/archive/amigalzx
     src/formats/archive/ampk
+    src/formats/archive/apple_diags
     src/formats/archive/applesingle
     src/formats/archive/ar
+    src/formats/archive/arc_cbm
     src/formats/archive/arcfs
     src/formats/archive/arj
     src/formats/archive/arq
@@ -663,9 +665,12 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/asar
     src/formats/archive/ascend
     src/formats/archive/ascendbackup
+    src/formats/archive/asd
     src/formats/archive/ash0
+    src/formats/archive/audials
     src/formats/archive/bagf
     src/formats/archive/bcm
+    src/formats/archive/bga
     src/formats/archive/bigaf
     src/formats/archive/binaryii
     src/formats/archive/binhex
@@ -678,41 +683,59 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/bwcf
     src/formats/archive/bwf
     src/formats/archive/bz2
+    src/formats/archive/bzip1
     src/formats/archive/c64wraptor
     src/formats/archive/cab
+    src/formats/archive/cadc
+    src/formats/archive/carman
     src/formats/archive/cazip
+    src/formats/archive/cbm_ark
     src/formats/archive/cfl
     src/formats/archive/chieflz
     src/formats/archive/chieflzmulti
+    src/formats/archive/chromium_pak
     src/formats/archive/chz
     src/formats/archive/claylz
     src/formats/archive/cmp
     src/formats/archive/compactpro
     src/formats/archive/compaqlzh
+    src/formats/archive/cork
     src/formats/archive/cpio
     src/formats/archive/cpx
+    src/formats/archive/cpz
     src/formats/archive/cru
+    src/formats/archive/csq
+    src/formats/archive/cvrb
+    src/formats/archive/cwc
     src/formats/archive/dclft
     src/formats/archive/dclraw
+    src/formats/archive/dcs
     src/formats/archive/dfc
     src/formats/archive/dgca
+    src/formats/archive/dh
     src/formats/archive/diskdoubler
+    src/formats/archive/djcomp
     src/formats/archive/dmapacked
     src/formats/archive/dn
+    src/formats/archive/dpc
     src/formats/archive/dpk
     src/formats/archive/dtpacked
+    src/formats/archive/dwc
     src/formats/archive/ealib
     src/formats/archive/ecmpacked
     src/formats/archive/edc
     src/formats/archive/edilzss
     src/formats/archive/egg
+    src/formats/archive/eid
     src/formats/archive/esp_archive
     src/formats/archive/fastlz_sixpack
     src/formats/archive/finear
     src/formats/archive/fiz
     src/formats/archive/fls
     src/formats/archive/fmc1
+    src/formats/archive/fox_sqz
     src/formats/archive/freearc
+    src/formats/archive/freeze
     src/formats/archive/ftcomp
     src/formats/archive/gamos
     src/formats/archive/gashuff
@@ -732,7 +755,10 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/igf1
     src/formats/archive/imp
     src/formats/archive/insa
+    src/formats/archive/installjammer
+    src/formats/archive/installshield_obl
     src/formats/archive/inteduft
+    src/formats/archive/is_stored
     src/formats/archive/ixa
     src/formats/archive/jam
     src/formats/archive/jbf
@@ -741,16 +767,21 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/jm93
     src/formats/archive/ka
     src/formats/archive/kboom
+    src/formats/archive/kgb_archiver
     src/formats/archive/kolibrikpack
     src/formats/archive/kpck
     src/formats/archive/kwaj
+    src/formats/archive/larc_pfx
     src/formats/archive/lbr
+    src/formats/archive/lds
+    src/formats/archive/legacy_archive_engine
     src/formats/archive/lha
     src/formats/archive/lif
     src/formats/archive/lim
     src/formats/archive/lingvoarc
     src/formats/archive/lizard
     src/formats/archive/logitechcompress
+    src/formats/archive/lpak
     src/formats/archive/lpaq8
     src/formats/archive/lspack10
     src/formats/archive/lz4
@@ -775,6 +806,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/mi10
     src/formats/archive/microfox_put
     src/formats/archive/miz
+    src/formats/archive/mlb_ft
     src/formats/archive/mrnz
     src/formats/archive/ms_dos_backup
     src/formats/archive/mscompress
@@ -783,16 +815,21 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/npack
     src/formats/archive/nufx
     src/formats/archive/oraclesqueeze
+    src/formats/archive/osl2000
     src/formats/archive/packit
     src/formats/archive/packit_mac
     src/formats/archive/pakleo
     src/formats/archive/panorama
+    src/formats/archive/patchwise
     src/formats/archive/pax
     src/formats/archive/pcommos2
     src/formats/archive/pcsecure
     src/formats/archive/pdp11ar
+    src/formats/archive/pe_rawfile
     src/formats/archive/pea
+    src/formats/archive/pftw_pkg
     src/formats/archive/phar
+    src/formats/archive/pklite
     src/formats/archive/pma
     src/formats/archive/pmarc_sfx
     src/formats/archive/povlablzh
@@ -806,6 +843,8 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/rar
     src/formats/archive/raw_deflate_compressed_data
     src/formats/archive/rawstac
+    src/formats/archive/rdc
+    src/formats/archive/rdfz
     src/formats/archive/riversoft
     src/formats/archive/rnc
     src/formats/archive/rnca
@@ -813,6 +852,10 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/saf
     src/formats/archive/sco
     src/formats/archive/seaarc
+    src/formats/archive/secura
+    src/formats/archive/self_unstuffer
+    src/formats/archive/sevenzip_backend
+    src/formats/archive/sevenzip_engine
     src/formats/archive/sfx_7zip
     src/formats/archive/sfx_ace
     src/formats/archive/sfx_ain
@@ -835,6 +878,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/sfx_imp
     src/formats/archive/sfx_kwaj
     src/formats/archive/sfx_lha
+    src/formats/archive/sfx_localzip
     src/formats/archive/sfx_lzx
     src/formats/archive/sfx_nss
     src/formats/archive/sfx_rsfx
@@ -853,6 +897,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/shar
     src/formats/archive/sls
     src/formats/archive/snappy_framed
+    src/formats/archive/sod_installer
     src/formats/archive/softronics
     src/formats/archive/spis
     src/formats/archive/spk
@@ -861,11 +906,15 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/squeeze2
     src/formats/archive/sqx
     src/formats/archive/sqz
+    src/formats/archive/sqze
     src/formats/archive/ssm
     src/formats/archive/stac
+    src/formats/archive/starforce_ovl
+    src/formats/archive/stor_resource
     src/formats/archive/stuffit
     src/formats/archive/stuffit5
     src/formats/archive/stuffit_split_file
+    src/formats/archive/stuffitx
     src/formats/archive/swag
     src/formats/archive/swagpacket
     src/formats/archive/tar
@@ -898,6 +947,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/vmarc
     src/formats/archive/vmssaveset
     src/formats/archive/warc
+    src/formats/archive/webexe
     src/formats/archive/wiilz77
     src/formats/archive/wim
     src/formats/archive/winlink
@@ -914,9 +964,11 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/zfsf
     src/formats/archive/zie
     src/formats/archive/zip
+    src/formats/archive/zip_psc
     src/formats/archive/zlib
     src/formats/archive/zlwb
     src/formats/archive/zoo
+    src/formats/archive/zoot1
     src/formats/archive/zpak
     src/formats/archive/zpaq
     src/formats/archive/zstd
@@ -924,12 +976,365 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/zxzip
     src/formats/archive/zz
     src/formats/archive/zzz
+    src/formats/audio/fmod_sample_bank
+    src/formats/audio/sfark_compressed_soundfont
+    src/formats/audio/sfpack
+    src/formats/database/dbz
+    src/formats/database/pdb
+    src/formats/database/sqlite3
+    src/formats/database/tps
+    src/formats/document/binder
+    src/formats/document/cfbf
+    src/formats/document/chm
+    src/formats/document/frontpagetheme
+    src/formats/document/gnu_gettext_mo
+    src/formats/document/ivt
+    src/formats/document/lsz
+    src/formats/document/mathcad
+    src/formats/document/microsoft_lit
+    src/formats/document/mime_message
+    src/formats/document/notetab
+    src/formats/document/outlook_express_dbx_mailbox
+    src/formats/document/pain
+    src/formats/document/paperport
+    src/formats/document/perform
+    src/formats/document/pkt
+    src/formats/document/qt_qm
+    src/formats/document/sfx_ebook_compiler_executables
+    src/formats/document/stylus
+    src/formats/document/thebat_msb
+    src/formats/document/tnef
+    src/formats/document/ue2_documents
+    src/formats/document/windows_help
+    src/formats/document/zxml
+    src/formats/executable/autohotkey_compiled
+    src/formats/executable/binsh_starkit
+    src/formats/executable/copyqmexe
+    src/formats/executable/debugscr
+    src/formats/executable/dotnet/platforms
+    src/formats/executable/dotnet
+    src/formats/executable/dotnet_bundle
+    src/formats/executable/dotnet_resources_archive
+    src/formats/executable/enigma_virtual_box
+    src/formats/executable/executable_overlay
+    src/formats/executable/lbrcobol
+    src/formats/executable/molebox
     src/formats/executable/ne
+    src/formats/executable/node_pkg
     src/formats/executable/pe
+    src/formats/executable/pyinstaller_one_executable
+    src/formats/executable/pyz
+    src/formats/executable/resourcefork
+    src/formats/executable/sfx_flashjester_jugglor
     src/formats/executable/starkit
+    src/formats/executable/upx_engine
+    src/formats/filesystem/adf
+    src/formats/filesystem/amiga_ext_adf
+    src/formats/filesystem/amiga_old_ext_adf
+    src/formats/filesystem/aodos
+    src/formats/filesystem/apple_disk_copy_6_ndif_image
+    src/formats/filesystem/apple_sparse_bundle
+    src/formats/filesystem/apridisk
+    src/formats/filesystem/ccd
+    src/formats/filesystem/cfd
+    src/formats/filesystem/ciso
+    src/formats/filesystem/ciso2
+    src/formats/filesystem/cloop
+    src/formats/filesystem/copydisk
+    src/formats/filesystem/copyqm
+    src/formats/filesystem/cramfs
+    src/formats/filesystem/csidos
+    src/formats/filesystem/cue
+    src/formats/filesystem/dax
+    src/formats/filesystem/dcp_disk
+    src/formats/filesystem/dfsee_imz
+    src/formats/filesystem/diskdupe
     src/formats/filesystem/diskexpress
+    src/formats/filesystem/diskjuggler
+    src/formats/filesystem/dmg
+    src/formats/filesystem/dms
+    src/formats/filesystem/ecm
+    src/formats/filesystem/emt
+    src/formats/filesystem/encrypted_apple_disk_image
+    src/formats/filesystem/fat
+    src/formats/filesystem/fdi
+    src/formats/filesystem/gbi
+    src/formats/filesystem/hdcopy
+    src/formats/filesystem/hfe
+    src/formats/filesystem/imd
+    src/formats/filesystem/irixsa
+    src/formats/filesystem/iso9660
+    src/formats/filesystem/isz
+    src/formats/filesystem/lofi
+    src/formats/filesystem/mbr
+    src/formats/filesystem/mds
+    src/formats/filesystem/nextstep_diskimage
+    src/formats/filesystem/nrg
+    src/formats/filesystem/pc_magazine_flp
+    src/formats/filesystem/pce_anadisk
+    src/formats/filesystem/pmdiskcopy
+    src/formats/filesystem/prodos
+    src/formats/filesystem/psa_disk
+    src/formats/filesystem/qrst
+    src/formats/filesystem/rawcd
+    src/formats/filesystem/romfs
+    src/formats/filesystem/sabdu
+    src/formats/filesystem/savedskf
+    src/formats/filesystem/scl
+    src/formats/filesystem/sdi
+    src/formats/filesystem/sfx_sydex_diskette_image
+    src/formats/filesystem/shrinkwrap
+    src/formats/filesystem/sos
+    src/formats/filesystem/squashfs
+    src/formats/filesystem/squashfs_sqlz
+    src/formats/filesystem/sufs
+    src/formats/filesystem/t64
+    src/formats/filesystem/teledisk
+    src/formats/filesystem/trdos
+    src/formats/filesystem/twoimg
+    src/formats/filesystem/uif
+    src/formats/filesystem/vdi
+    src/formats/filesystem/vhddynamic
+    src/formats/filesystem/vhdx
+    src/formats/filesystem/vice_x64
+    src/formats/filesystem/vmdk
+    src/formats/filesystem/vmdk_cowd_sparse
+    src/formats/filesystem/vmdk_sesparse
+    src/formats/filesystem/ziso
+    src/formats/filesystem/zisofs
+    src/formats/filesystem/zoom
+    src/formats/firmware/androidboot
+    src/formats/firmware/htc_nbh_rom_image
+    src/formats/firmware/mwave
+    src/formats/firmware/qnxbase
+    src/formats/firmware/rompaq
+    src/formats/firmware/sony_image
+    src/formats/firmware/uimage
+    src/formats/firmware/zbeos
+    src/formats/game/agis
+    src/formats/game/battleisle
+    src/formats/game/beatthehouse
+    src/formats/game/bethesda_ba2
+    src/formats/game/bethesda_bsa
+    src/formats/game/bigf
+    src/formats/game/birdies
+    src/formats/game/bruns_media
+    src/formats/game/build_grp
+    src/formats/game/cat
+    src/formats/game/cgjp
+    src/formats/game/demonstar_glb
+    src/formats/game/ea
+    src/formats/game/earefpack
+    src/formats/game/epf
+    src/formats/game/fallout_dat
+    src/formats/game/fury_dat
+    src/formats/game/gdi
+    src/formats/game/gob
+    src/formats/game/godot_engine_pck
+    src/formats/game/gta_img
+    src/formats/game/he_tlkb
+    src/formats/game/hog
+    src/formats/game/hog2
+    src/formats/game/infogramesft
+    src/formats/game/kirikiri_xp3
+    src/formats/game/krml
+    src/formats/game/live_maker_gal
+    src/formats/game/livemaker
+    src/formats/game/mas_pack
+    src/formats/game/megatechvol
+    src/formats/game/mpq
+    src/formats/game/mxs
+    src/formats/game/ns2
+    src/formats/game/nsa
+    src/formats/game/pam_pak
+    src/formats/game/pbo
+    src/formats/game/pfpk
+    src/formats/game/pirs
+    src/formats/game/ppd
+    src/formats/game/quake_pak
+    src/formats/game/renpy_rpa
+    src/formats/game/res
+    src/formats/game/rpa
+    src/formats/game/rpg_maker_mv
+    src/formats/game/rpg_maker_rgssad
+    src/formats/game/rsc
+    src/formats/game/sar_ns
+    src/formats/game/sbpak
+    src/formats/game/sci
+    src/formats/game/seadata
+    src/formats/game/settlersft
+    src/formats/game/sfx_clickteam_multimedia_fusion
+    src/formats/game/sfx_mpq
+    src/formats/game/silmarilsft
+    src/formats/game/sinner
+    src/formats/game/smile_game_pack
+    src/formats/game/sony_psarc
+    src/formats/game/stunts
+    src/formats/game/teacy
+    src/formats/game/telltale_ttarch
+    src/formats/game/titan_quest
+    src/formats/game/ue2_games
+    src/formats/game/unity_serialized
+    src/formats/game/unityfs
+    src/formats/game/unreal_pak
+    src/formats/game/utage_media
+    src/formats/game/visionaire_studio_vis
+    src/formats/game/volitionvpft
+    src/formats/game/wintermutedcp
+    src/formats/game/wolfft
+    src/formats/game/xuiz
+    src/formats/game/ycg_image
+    src/formats/game/ypf
+    src/formats/image/evd
+    src/formats/image/fss
     src/formats/image/gxl
+    src/formats/image/mskn1
+    src/formats/image/mskn2
+    src/formats/image/mskn3
+    src/formats/image/pcxlib
+    src/formats/image/px
+    src/formats/image/secondnature
+    src/formats/image/skf
+    src/formats/image/windows_thumbnail_cache
+    src/formats/installer/advanced_installer_bootstrapper
+    src/formats/installer/aixbff
+    src/formats/installer/arcv
+    src/formats/installer/arcv2
+    src/formats/installer/arcv4
+    src/formats/installer/ardi_installer
+    src/formats/installer/arni_installer_container
+    src/formats/installer/asymetrix
+    src/formats/installer/bcw
+    src/formats/installer/beospkg
+    src/formats/installer/bitrock
+    src/formats/installer/bnd
+    src/formats/installer/calibre_portable
+    src/formats/installer/chromium_mini_installer
+    src/formats/installer/clickteam_install_creator
+    src/formats/installer/corelltec
+    src/formats/installer/cpoint
+    src/formats/installer/createinstall_instcrin_extractor
+    src/formats/installer/crx
+    src/formats/installer/desksoft
+    src/formats/installer/dsl1
+    src/formats/installer/dsl2
+    src/formats/installer/ej_technologies_install
+    src/formats/installer/eschalon_setup_epsf
+    src/formats/installer/excelsior
+    src/formats/installer/fead/encoder
+    src/formats/installer/fead
+    src/formats/installer/finstall
+    src/formats/installer/fld
+    src/formats/installer/fpak
+    src/formats/installer/gentee_installer
+    src/formats/installer/ghost_installer
+    src/formats/installer/gksetup
+    src/formats/installer/gst
+    src/formats/installer/gtu
+    src/formats/installer/ibm_zpak_installer
+    src/formats/installer/ifah_installer
+    src/formats/installer/igf2
+    src/formats/installer/inno_setup
+    src/formats/installer/install4j
+    src/formats/installer/installanywhere_unix
+    src/formats/installer/installer_vise_windows
+    src/formats/installer/installshield_12_setup
+    src/formats/installer/installshield_3
+    src/formats/installer/installshield_7_setup2
+    src/formats/installer/installshield_issetupstream
+    src/formats/installer/installshield_multiplatform
+    src/formats/installer/installshield_script_setup
+    src/formats/installer/installshield_skin
+    src/formats/installer/irwinpac
+    src/formats/installer/is11
+    src/formats/installer/is3
+    src/formats/installer/is5
+    src/formats/installer/is7inx
+    src/formats/installer/izpack
+    src/formats/installer/jasc
+    src/formats/installer/lifkd
+    src/formats/installer/lyme_sfx
+    src/formats/installer/makeself
+    src/formats/installer/metaproducts
+    src/formats/installer/msi_resource
+    src/formats/installer/msmpi_bootstrapper
+    src/formats/installer/mva
+    src/formats/installer/natata_ebook
+    src/formats/installer/netware2
+    src/formats/installer/nid
+    src/formats/installer/nsis
+    src/formats/installer/oberon
+    src/formats/installer/omaha_meta_installer
+    src/formats/installer/opc
+    src/formats/installer/palminput_360
+    src/formats/installer/pc_install_setup
+    src/formats/installer/pcinstall
+    src/formats/installer/qip1
+    src/formats/installer/qip2
+    src/formats/installer/qsetup_installation_suite
+    src/formats/installer/qualitas
+    src/formats/installer/quarterdeckqp
+    src/formats/installer/rcf
+    src/formats/installer/recognita
+    src/formats/installer/red
+    src/formats/installer/rid
+    src/formats/installer/rpm
     src/formats/installer/rta
+    src/formats/installer/rtpatch
+    src/formats/installer/rtpatch_setup_data
+    src/formats/installer/scf
+    src/formats/installer/setup_factory
+    src/formats/installer/sfx_abbyy_fine_objects
+    src/formats/installer/sfx_ad01
+    src/formats/installer/sfx_analogx_emucore_ffs
+    src/formats/installer/sfx_asymetrix
+    src/formats/installer/sfx_compaq_softpaq
+    src/formats/installer/sfx_hci_instalit
+    src/formats/installer/sfx_inftool
+    src/formats/installer/sfx_krzip
+    src/formats/installer/sfx_nullsoft_pimp
+    src/formats/installer/sfx_packagefortheweb
+    src/formats/installer/sfx_red
+    src/formats/installer/sfx_rtpatch
+    src/formats/installer/sfx_sbx_extractor
+    src/formats/installer/sfx_softpaq4
+    src/formats/installer/sfx_warpin_package
+    src/formats/installer/sfxstart
+    src/formats/installer/sis
+    src/formats/installer/smart_install_maker
+    src/formats/installer/smsipak
+    src/formats/installer/softpaq2
+    src/formats/installer/solarispkg
+    src/formats/installer/solarispkg_zip
+    src/formats/installer/solitaire_deluxe
+    src/formats/installer/splashtop_unpackc
+    src/formats/installer/spoon_installer
+    src/formats/installer/squirrel
+    src/formats/installer/stork
+    src/formats/installer/sumatra_lzsa
+    src/formats/installer/sun_java_binsh
+    src/formats/installer/superdat
+    src/formats/installer/sw
+    src/formats/installer/tarma_installer
+    src/formats/installer/tivoli
+    src/formats/installer/topspeed
+    src/formats/installer/twrx
+    src/formats/installer/visualware
+    src/formats/installer/vmsdb
+    src/formats/installer/vmspcsi
+    src/formats/installer/wise_installation_system
+    src/formats/installer/wpk
+    src/formats/other/binary_plist
+    src/formats/other/clp
+    src/formats/other/elm
+    src/formats/other/gitobject
+    src/formats/other/hp3000_wrq
+    src/formats/other/lmd_container
+    src/formats/other/nvp
+    src/formats/other/riff
+    src/formats/video/grasp
+    src/formats/video/scummvm_dxa
+    src/formats/video/swf
     src/formats
     src/fs/platforms
     src/sort/platforms
@@ -1416,6 +1821,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ampk
     src/formats/archive/ampk/xx_ampk.c
     src/formats/archive/ampk/xx_ampk_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_apple_diags
+    src/formats/archive/apple_diags/xx_apple_diags.c
+    src/formats/archive/apple_diags/xx_apple_diags_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_applesingle
     src/formats/archive/applesingle/xx_applesingle.c
     src/formats/archive/applesingle/xx_applesingle_extractor.c
@@ -1424,6 +1833,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ar
     src/formats/archive/ar/xx_ar.c
     src/formats/archive/ar/xx_ar_datastructs.c
     src/formats/archive/ar/xx_ar_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_arc_cbm
+    src/formats/archive/arc_cbm/xx_arc_cbm.c
+    src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_arcfs
     src/formats/archive/arcfs/xx_arcfs.c
@@ -1457,9 +1870,17 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ascendbackup
     src/formats/archive/ascendbackup/xx_ascendbackup.c
     src/formats/archive/ascendbackup/xx_ascendbackup_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_asd
+    src/formats/archive/asd/xx_asd.c
+    src/formats/archive/asd/xx_asd_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ash0
     src/formats/archive/ash0/xx_ash0.c
     src/formats/archive/ash0/xx_ash0_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_audials
+    src/formats/archive/audials/xx_audials.c
+    src/formats/archive/audials/xx_audials_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bagf
     src/formats/archive/bagf/xx_bagf.c
@@ -1468,6 +1889,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bagf
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bcm
     src/formats/archive/bcm/xx_bcm.c
     src/formats/archive/bcm/xx_bcm_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bga
+    src/formats/archive/bga/xx_bga.c
+    src/formats/archive/bga/xx_bga_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bigaf
     src/formats/archive/bigaf/xx_bigaf.c
@@ -1518,6 +1943,11 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bz2
     src/formats/archive/bz2/xx_bz2_datastructs.c
     src/formats/archive/bz2/xx_bz2_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bzip1
+    src/formats/archive/bzip1/xx_bzip1.c
+    src/formats/archive/bzip1/xx_bzip1_codec.c
+    src/formats/archive/bzip1/xx_bzip1_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_c64wraptor
     src/formats/archive/c64wraptor/xx_c64wraptor.c
     src/formats/archive/c64wraptor/xx_c64wraptor_extractor.c
@@ -1526,9 +1956,21 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cab
     src/formats/archive/cab/xx_cab.c
     src/formats/archive/cab/xx_cab_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cadc
+    src/formats/archive/cadc/xx_cadc.c
+    src/formats/archive/cadc/xx_cadc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_carman
+    src/formats/archive/carman/xx_carman.c
+    src/formats/archive/carman/xx_carman_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cazip
     src/formats/archive/cazip/xx_cazip.c
     src/formats/archive/cazip/xx_cazip_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cbm_ark
+    src/formats/archive/cbm_ark/xx_cbm_ark.c
+    src/formats/archive/cbm_ark/xx_cbm_ark_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cfl
     src/formats/archive/cfl/xx_cfl.c
@@ -1541,6 +1983,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chieflz
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chieflzmulti
     src/formats/archive/chieflzmulti/xx_chieflzmulti.c
     src/formats/archive/chieflzmulti/xx_chieflzmulti_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chromium_pak
+    src/formats/archive/chromium_pak/xx_chromium_pak.c
+    src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chz
     src/formats/archive/chz/xx_chz.c
@@ -1562,6 +2008,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_compaqlzh
     src/formats/archive/compaqlzh/xx_compaqlzh.c
     src/formats/archive/compaqlzh/xx_compaqlzh_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cork
+    src/formats/archive/cork/xx_cork.c
+    src/formats/archive/cork/xx_cork_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cpio
     src/formats/archive/cpio/xx_cpio.c
     src/formats/archive/cpio/xx_cpio_extractor.c
@@ -1571,9 +2021,25 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cpx
     src/formats/archive/cpx/xx_cpx_extractor.c
     src/formats/archive/cpx/xx_cpx_reader_adapters.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cpz
+    src/formats/archive/cpz/xx_cpz.c
+    src/formats/archive/cpz/xx_cpz_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cru
     src/formats/archive/cru/xx_cru.c
     src/formats/archive/cru/xx_cru_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_csq
+    src/formats/archive/csq/xx_csq.c
+    src/formats/archive/csq/xx_csq_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cvrb
+    src/formats/archive/cvrb/xx_cvrb.c
+    src/formats/archive/cvrb/xx_cvrb_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cwc
+    src/formats/archive/cwc/xx_cwc.c
+    src/formats/archive/cwc/xx_cwc_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dclft
     src/formats/archive/dclft/xx_dclft.c
@@ -1582,6 +2048,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dclft
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dclraw
     src/formats/archive/dclraw/xx_dclraw.c
     src/formats/archive/dclraw/xx_dclraw_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dcs
+    src/formats/archive/dcs/xx_dcs.c
+    src/formats/archive/dcs/xx_dcs_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dfc
     src/formats/archive/dfc/xx_dfc.c
@@ -1592,15 +2062,23 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dgca
     src/formats/archive/dgca/xx_dgca_cipher.c
     src/formats/archive/dgca/xx_dgca_decode.c
     src/formats/archive/dgca/xx_dgca_entropy.c
+    src/formats/archive/dgca/xx_dgca_extractor.c
     src/formats/archive/dgca/xx_dgca_lzp.c
     src/formats/archive/dgca/xx_dgca_payload.c
     src/formats/archive/dgca/xx_dgca_range.c
-    src/formats/archive/dgca/xx_dgca_reader_adapters.c
     src/formats/archive/dgca/xx_dgca_transform.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dh
+    src/formats/archive/dh/xx_dh.c
+    src/formats/archive/dh/xx_dh_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_diskdoubler
     src/formats/archive/diskdoubler/xx_diskdoubler.c
     src/formats/archive/diskdoubler/xx_diskdoubler_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_djcomp
+    src/formats/archive/djcomp/xx_djcomp.c
+    src/formats/archive/djcomp/xx_djcomp_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dmapacked
     src/formats/archive/dmapacked/xx_dmapacked.c
@@ -1610,6 +2088,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dn
     src/formats/archive/dn/xx_dn.c
     src/formats/archive/dn/xx_dn_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dpc
+    src/formats/archive/dpc/xx_dpc.c
+    src/formats/archive/dpc/xx_dpc_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dpk
     src/formats/archive/dpk/xx_dpk.c
     src/formats/archive/dpk/xx_dpk_extractor.c
@@ -1617,6 +2099,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dpk
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dtpacked
     src/formats/archive/dtpacked/xx_dtpacked.c
     src/formats/archive/dtpacked/xx_dtpacked_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dwc
+    src/formats/archive/dwc/xx_dwc.c
+    src/formats/archive/dwc/xx_dwc_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ealib
     src/formats/archive/ealib/xx_ealib.c
@@ -1637,6 +2123,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_edilzss
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_egg
     src/formats/archive/egg/xx_egg.c
     src/formats/archive/egg/xx_egg_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_eid
+    src/formats/archive/eid/xx_eid.c
+    src/formats/archive/eid/xx_eid_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_esp_archive
     src/formats/archive/esp_archive/xx_esp_archive.c
@@ -1662,9 +2152,18 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_fmc1
     src/formats/archive/fmc1/xx_fmc1.c
     src/formats/archive/fmc1/xx_fmc1_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_fox_sqz
+    src/formats/archive/fox_sqz/xx_fox_sqz.c
+    src/formats/archive/fox_sqz/xx_fox_sqz_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_freearc
     src/formats/archive/freearc/xx_freearc.c
     src/formats/archive/freearc/xx_freearc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_freeze
+    src/formats/archive/freeze/xx_freeze.c
+    src/formats/archive/freeze/xx_freeze_codec.c
+    src/formats/archive/freeze/xx_freeze_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ftcomp
     src/formats/archive/ftcomp/xx_ftcomp.c
@@ -1742,9 +2241,21 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_insa
     src/formats/archive/insa/xx_insa.c
     src/formats/archive/insa/xx_insa_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_installjammer
+    src/formats/archive/installjammer/xx_installjammer.c
+    src/formats/archive/installjammer/xx_installjammer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_installshield_obl
+    src/formats/archive/installshield_obl/xx_installshield_obl.c
+    src/formats/archive/installshield_obl/xx_installshield_obl_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_inteduft
     src/formats/archive/inteduft/xx_inteduft.c
     src/formats/archive/inteduft/xx_inteduft_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_is_stored
+    src/formats/archive/is_stored/xx_is_stored.c
+    src/formats/archive/is_stored/xx_is_stored_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ixa
     src/formats/archive/ixa/xx_ixa.c
@@ -1778,6 +2289,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kboom
     src/formats/archive/kboom/xx_kboom.c
     src/formats/archive/kboom/xx_kboom_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kgb_archiver
+    src/formats/archive/kgb_archiver/xx_kgb_archiver.c
+    src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kolibrikpack
     src/formats/archive/kolibrikpack/xx_kolibrikpack.c
     src/formats/archive/kolibrikpack/xx_kolibrikpack_extractor.c
@@ -1790,9 +2305,20 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kwaj
     src/formats/archive/kwaj/xx_kwaj.c
     src/formats/archive/kwaj/xx_kwaj_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_larc_pfx
+    src/formats/archive/larc_pfx/xx_larc_pfx.c
+    src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lbr
     src/formats/archive/lbr/xx_lbr.c
     src/formats/archive/lbr/xx_lbr_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lds
+    src/formats/archive/lds/xx_lds.c
+    src/formats/archive/lds/xx_lds_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_legacy_archive_engine
+    src/formats/archive/legacy_archive_engine/xx_legacy_archive_engine.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lha
     src/formats/archive/lha/xx_lha.c
@@ -1817,6 +2343,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lizard
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_logitechcompress
     src/formats/archive/logitechcompress/xx_logitechcompress.c
     src/formats/archive/logitechcompress/xx_logitechcompress_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lpak
+    src/formats/archive/lpak/xx_lpak.c
+    src/formats/archive/lpak/xx_lpak_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lpaq8
     src/formats/archive/lpaq8/xx_lpaq8.c
@@ -1915,6 +2445,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_miz
     src/formats/archive/miz/xx_miz.c
     src/formats/archive/miz/xx_miz_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_mlb_ft
+    src/formats/archive/mlb_ft/xx_mlb_ft.c
+    src/formats/archive/mlb_ft/xx_mlb_ft_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_mrnz
     src/formats/archive/mrnz/xx_mrnz.c
     src/formats/archive/mrnz/xx_mrnz_extractor.c
@@ -1947,6 +2481,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_oraclesqueeze
     src/formats/archive/oraclesqueeze/xx_oraclesqueeze.c
     src/formats/archive/oraclesqueeze/xx_oraclesqueeze_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_osl2000
+    src/formats/archive/osl2000/xx_osl2000.c
+    src/formats/archive/osl2000/xx_osl2000_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_packit
     src/formats/archive/packit/xx_packit.c
     src/formats/archive/packit/xx_packit_extractor.c
@@ -1962,6 +2500,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pakleo
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_panorama
     src/formats/archive/panorama/xx_panorama.c
     src/formats/archive/panorama/xx_panorama_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_patchwise
+    src/formats/archive/patchwise/xx_patchwise.c
+    src/formats/archive/patchwise/xx_patchwise_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pax
     src/formats/archive/pax/xx_pax.c
@@ -1979,13 +2521,25 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pdp11ar
     src/formats/archive/pdp11ar/xx_pdp11ar.c
     src/formats/archive/pdp11ar/xx_pdp11ar_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pe_rawfile
+    src/formats/archive/pe_rawfile/xx_pe_rawfile.c
+    src/formats/archive/pe_rawfile/xx_pe_rawfile_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pea
     src/formats/archive/pea/xx_pea.c
     src/formats/archive/pea/xx_pea_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pftw_pkg
+    src/formats/archive/pftw_pkg/xx_pftw_pkg.c
+    src/formats/archive/pftw_pkg/xx_pftw_pkg_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_phar
     src/formats/archive/phar/xx_phar.c
     src/formats/archive/phar/xx_phar_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pklite
+    src/formats/archive/pklite/xx_pklite.c
+    src/formats/archive/pklite/xx_pklite_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_pma
     src/formats/archive/pma/xx_pma.c
@@ -2040,6 +2594,14 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_rawstac
     src/formats/archive/rawstac/xx_rawstac.c
     src/formats/archive/rawstac/xx_rawstac_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_rdc
+    src/formats/archive/rdc/xx_rdc.c
+    src/formats/archive/rdc/xx_rdc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_rdfz
+    src/formats/archive/rdfz/xx_rdfz.c
+    src/formats/archive/rdfz/xx_rdfz_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_riversoft
     src/formats/archive/riversoft/xx_riversoft.c
     src/formats/archive/riversoft/xx_riversoft_extractor.c
@@ -2067,6 +2629,20 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sco
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_seaarc
     src/formats/archive/seaarc/xx_seaarc.c
     src/formats/archive/seaarc/xx_seaarc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_secura
+    src/formats/archive/secura/xx_secura.c
+    src/formats/archive/secura/xx_secura_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_self_unstuffer
+    src/formats/archive/self_unstuffer/xx_self_unstuffer.c
+    src/formats/archive/self_unstuffer/xx_self_unstuffer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sevenzip_backend
+    src/formats/archive/sevenzip_backend/xx_sevenzip_backend.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sevenzip_engine
+    src/formats/archive/sevenzip_engine/xx_sevenzip_engine.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_7zip
     src/formats/archive/sfx_7zip/xx_sfx_7zip.c
@@ -2156,6 +2732,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_lha
     src/formats/archive/sfx_lha/xx_sfx_lha.c
     src/formats/archive/sfx_lha/xx_sfx_lha_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_localzip
+    src/formats/archive/sfx_localzip/xx_sfx_localzip.c
+    src/formats/archive/sfx_localzip/xx_sfx_localzip_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_lzx
     src/formats/archive/sfx_lzx/xx_sfx_lzx.c
     src/formats/archive/sfx_lzx/xx_sfx_lzx_extractor.c
@@ -2228,6 +2808,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_snappy_framed
     src/formats/archive/snappy_framed/xx_snappy_framed.c
     src/formats/archive/snappy_framed/xx_snappy_framed_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sod_installer
+    src/formats/archive/sod_installer/xx_sod_installer.c
+    src/formats/archive/sod_installer/xx_sod_installer_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_softronics
     src/formats/archive/softronics/xx_softronics.c
     src/formats/archive/softronics/xx_softronics_extractor.c
@@ -2260,6 +2844,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sqz
     src/formats/archive/sqz/xx_sqz.c
     src/formats/archive/sqz/xx_sqz_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sqze
+    src/formats/archive/sqze/xx_sqze.c
+    src/formats/archive/sqze/xx_sqze_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ssm
     src/formats/archive/ssm/xx_ssm.c
     src/formats/archive/ssm/xx_ssm_extractor.c
@@ -2267,6 +2855,14 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ssm
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stac
     src/formats/archive/stac/xx_stac.c
     src/formats/archive/stac/xx_stac_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_starforce_ovl
+    src/formats/archive/starforce_ovl/xx_starforce_ovl.c
+    src/formats/archive/starforce_ovl/xx_starforce_ovl_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stor_resource
+    src/formats/archive/stor_resource/xx_stor_resource.c
+    src/formats/archive/stor_resource/xx_stor_resource_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stuffit
     src/formats/archive/stuffit/xx_stuffit.c
@@ -2279,6 +2875,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stuffit5
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stuffit_split_file
     src/formats/archive/stuffit_split_file/xx_stuffit_split_file.c
     src/formats/archive/stuffit_split_file/xx_stuffit_split_file_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stuffitx
+    src/formats/archive/stuffitx/xx_stuffitx.c
+    src/formats/archive/stuffitx/xx_stuffitx_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_swag
     src/formats/archive/swag/xx_swag.c
@@ -2414,6 +3014,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_warc
     src/formats/archive/warc/xx_warc.c
     src/formats/archive/warc/xx_warc_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_webexe
+    src/formats/archive/webexe/xx_webexe.c
+    src/formats/archive/webexe/xx_webexe_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_wiilz77
     src/formats/archive/wiilz77/xx_wiilz77.c
     src/formats/archive/wiilz77/xx_wiilz77_extractor.c
@@ -2483,6 +3087,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zip
     src/formats/archive/zip/xx_zip_inspect.c
     src/formats/archive/zip/xx_zip_legacy_encoder.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zip_psc
+    src/formats/archive/zip_psc/xx_zip_psc.c
+    src/formats/archive/zip_psc/xx_zip_psc_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zlib
     src/formats/archive/zlib/xx_zlib.c
     src/formats/archive/zlib/xx_zlib_extractor.c
@@ -2494,6 +3102,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zlwb
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zoo
     src/formats/archive/zoo/xx_zoo.c
     src/formats/archive/zoo/xx_zoo_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zoot1
+    src/formats/archive/zoot1/xx_zoot1.c
+    src/formats/archive/zoot1/xx_zoot1_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zpak
     src/formats/archive/zpak/xx_zpak.c
@@ -2523,6 +3135,179 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zzz
     src/formats/archive/zzz/xx_zzz.c
     src/formats/archive/zzz/xx_zzz_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_audio_fmod_sample_bank
+    src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank.c
+    src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_audio_sfark_compressed_soundfont
+    src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont.c
+    src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_audio_sfpack
+    src/formats/audio/sfpack/xx_sfpack.c
+    src/formats/audio/sfpack/xx_sfpack_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_database_dbz
+    src/formats/database/dbz/xx_dbz.c
+    src/formats/database/dbz/xx_dbz_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_database_pdb
+    src/formats/database/pdb/xx_pdb.c
+    src/formats/database/pdb/xx_pdb_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_database_sqlite3
+    src/formats/database/sqlite3/xx_sqlite3.c
+    src/formats/database/sqlite3/xx_sqlite3_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_database_tps
+    src/formats/database/tps/xx_tps.c
+    src/formats/database/tps/xx_tps_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_binder
+    src/formats/document/binder/xx_binder.c
+    src/formats/document/binder/xx_binder_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_cfbf
+    src/formats/document/cfbf/xx_cfbf.c
+    src/formats/document/cfbf/xx_cfbf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_chm
+    src/formats/document/chm/xx_chm.c
+    src/formats/document/chm/xx_chm_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_frontpagetheme
+    src/formats/document/frontpagetheme/xx_frontpagetheme.c
+    src/formats/document/frontpagetheme/xx_frontpagetheme_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_gnu_gettext_mo
+    src/formats/document/gnu_gettext_mo/xx_gnu_gettext_mo_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_ivt
+    src/formats/document/ivt/xx_ivt.c
+    src/formats/document/ivt/xx_ivt_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_lsz
+    src/formats/document/lsz/xx_lsz.c
+    src/formats/document/lsz/xx_lsz_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_mathcad
+    src/formats/document/mathcad/xx_mathcad.c
+    src/formats/document/mathcad/xx_mathcad_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_microsoft_lit
+    src/formats/document/microsoft_lit/xx_microsoft_lit.c
+    src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_mime_message
+    src/formats/document/mime_message/xx_mime_message_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_notetab
+    src/formats/document/notetab/xx_notetab.c
+    src/formats/document/notetab/xx_notetab_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_outlook_express_dbx_mailbox
+    src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox.c
+    src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_pain
+    src/formats/document/pain/xx_pain.c
+    src/formats/document/pain/xx_pain_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_paperport
+    src/formats/document/paperport/xx_paperport.c
+    src/formats/document/paperport/xx_paperport_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_perform
+    src/formats/document/perform/xx_perform.c
+    src/formats/document/perform/xx_perform_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_pkt
+    src/formats/document/pkt/xx_pkt.c
+    src/formats/document/pkt/xx_pkt_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_qt_qm
+    src/formats/document/qt_qm/xx_qt_qm_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_sfx_ebook_compiler_executables
+    src/formats/document/sfx_ebook_compiler_executables/xx_sfx_ebook_compiler_executables.c
+    src/formats/document/sfx_ebook_compiler_executables/xx_sfx_ebook_compiler_executables_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_stylus
+    src/formats/document/stylus/xx_stylus.c
+    src/formats/document/stylus/xx_stylus_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_thebat_msb
+    src/formats/document/thebat_msb/xx_thebat_msb.c
+    src/formats/document/thebat_msb/xx_thebat_msb_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_tnef
+    src/formats/document/tnef/xx_tnef.c
+    src/formats/document/tnef/xx_tnef_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_ue2_documents
+    src/formats/document/ue2_documents/xx_ue2_documents.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_windows_help
+    src/formats/document/windows_help/xx_windows_help_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_zxml
+    src/formats/document/zxml/xx_zxml.c
+    src/formats/document/zxml/xx_zxml_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_autohotkey_compiled
+    src/formats/executable/autohotkey_compiled/xx_autohotkey_compiled.c
+    src/formats/executable/autohotkey_compiled/xx_autohotkey_compiled_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_binsh_starkit
+    src/formats/executable/binsh_starkit/xx_binsh_starkit.c
+    src/formats/executable/binsh_starkit/xx_binsh_starkit_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_copyqmexe
+    src/formats/executable/copyqmexe/xx_copyqmexe.c
+    src/formats/executable/copyqmexe/xx_copyqmexe_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_debugscr
+    src/formats/executable/debugscr/xx_debugscr.c
+    src/formats/executable/debugscr/xx_debugscr_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_dotnet_platforms
+    src/formats/executable/dotnet/platforms/xx_dotnet_us_avx2.c
+    src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_dotnet
+    src/formats/executable/dotnet/xx_dotnet.c
+    src/formats/executable/dotnet/xx_dotnet_cil.c
+    src/formats/executable/dotnet/xx_dotnet_datastructs.c
+    src/formats/executable/dotnet/xx_dotnet_edit.c
+    src/formats/executable/dotnet/xx_dotnet_extractor.c
+    src/formats/executable/dotnet/xx_dotnet_inspect.c
+    src/formats/executable/dotnet/xx_dotnet_reader.c
+    src/formats/executable/dotnet/xx_dotnet_resource_reader.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_dotnet_bundle
+    src/formats/executable/dotnet_bundle/xx_dotnet_bundle.c
+    src/formats/executable/dotnet_bundle/xx_dotnet_bundle_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_dotnet_resources_archive
+    src/formats/executable/dotnet_resources_archive/xx_dotnet_resources_archive.c
+    src/formats/executable/dotnet_resources_archive/xx_dotnet_resources_archive_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_enigma_virtual_box
+    src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box.c
+    src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_executable_overlay
+    src/formats/executable/executable_overlay/xx_executable_overlay.c
+    src/formats/executable/executable_overlay/xx_executable_overlay_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_lbrcobol
+    src/formats/executable/lbrcobol/xx_lbrcobol.c
+    src/formats/executable/lbrcobol/xx_lbrcobol_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_molebox
+    src/formats/executable/molebox/xx_molebox.c
+    src/formats/executable/molebox/xx_molebox_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_ne
     src/formats/executable/ne/xx_ne.c
     src/formats/executable/ne/xx_ne_datastructs.c
@@ -2530,6 +3315,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_ne
     src/formats/executable/ne/xx_ne_extractor.c
     src/formats/executable/ne/xx_ne_import.c
     src/formats/executable/ne/xx_ne_resources.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_node_pkg
+    src/formats/executable/node_pkg/xx_node_pkg.c
+    src/formats/executable/node_pkg/xx_node_pkg_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pe
     src/formats/executable/pe/xx_pe.c
@@ -2546,24 +3335,1256 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pe
     src/formats/executable/pe/xx_pe_symbols.c
     src/formats/executable/pe/xx_pe_unwind_validate.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pyinstaller_one_executable
+    src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable.c
+    src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pyz
+    src/formats/executable/pyz/xx_pyz.c
+    src/formats/executable/pyz/xx_pyz_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_resourcefork
+    src/formats/executable/resourcefork/xx_resourcefork.c
+    src/formats/executable/resourcefork/xx_resourcefork_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_sfx_flashjester_jugglor
+    src/formats/executable/sfx_flashjester_jugglor/xx_sfx_flashjester_jugglor.c
+    src/formats/executable/sfx_flashjester_jugglor/xx_sfx_flashjester_jugglor_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_starkit
     src/formats/executable/starkit/xx_starkit.c
     src/formats/executable/starkit/xx_starkit_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_upx_engine
+    src/formats/executable/upx_engine/xx_upx_engine.c
+    src/formats/executable/upx_engine/xx_upx_engine_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_adf
+    src/formats/filesystem/adf/xx_adf.c
+    src/formats/filesystem/adf/xx_adf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_amiga_ext_adf
+    src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf.c
+    src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_amiga_old_ext_adf
+    src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf.c
+    src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_aodos
+    src/formats/filesystem/aodos/xx_aodos.c
+    src/formats/filesystem/aodos/xx_aodos_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_apple_disk_copy_6_ndif_image
+    src/formats/filesystem/apple_disk_copy_6_ndif_image/xx_apple_disk_copy_6_ndif_image.c
+    src/formats/filesystem/apple_disk_copy_6_ndif_image/xx_apple_disk_copy_6_ndif_image_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_apple_sparse_bundle
+    src/formats/filesystem/apple_sparse_bundle/xx_apple_sparse_bundle.c
+    src/formats/filesystem/apple_sparse_bundle/xx_apple_sparse_bundle_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_apridisk
+    src/formats/filesystem/apridisk/xx_apridisk.c
+    src/formats/filesystem/apridisk/xx_apridisk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ccd
+    src/formats/filesystem/ccd/xx_ccd.c
+    src/formats/filesystem/ccd/xx_ccd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_cfd
+    src/formats/filesystem/cfd/xx_cfd.c
+    src/formats/filesystem/cfd/xx_cfd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ciso
+    src/formats/filesystem/ciso/xx_ciso.c
+    src/formats/filesystem/ciso/xx_ciso_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ciso2
+    src/formats/filesystem/ciso2/xx_ciso2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_cloop
+    src/formats/filesystem/cloop/xx_cloop.c
+    src/formats/filesystem/cloop/xx_cloop_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_copydisk
+    src/formats/filesystem/copydisk/xx_copydisk.c
+    src/formats/filesystem/copydisk/xx_copydisk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_copyqm
+    src/formats/filesystem/copyqm/xx_copyqm.c
+    src/formats/filesystem/copyqm/xx_copyqm_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_cramfs
+    src/formats/filesystem/cramfs/xx_cramfs.c
+    src/formats/filesystem/cramfs/xx_cramfs_direct_native.c
+    src/formats/filesystem/cramfs/xx_cramfs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_csidos
+    src/formats/filesystem/csidos/xx_csidos.c
+    src/formats/filesystem/csidos/xx_csidos_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_cue
+    src/formats/filesystem/cue/xx_cue.c
+    src/formats/filesystem/cue/xx_cue_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dax
+    src/formats/filesystem/dax/xx_dax_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dcp_disk
+    src/formats/filesystem/dcp_disk/xx_dcp_disk.c
+    src/formats/filesystem/dcp_disk/xx_dcp_disk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dfsee_imz
+    src/formats/filesystem/dfsee_imz/xx_dfsee_imz.c
+    src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_diskdupe
+    src/formats/filesystem/diskdupe/xx_diskdupe.c
+    src/formats/filesystem/diskdupe/xx_diskdupe_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_diskexpress
     src/formats/filesystem/diskexpress/xx_diskexpress.c
     src/formats/filesystem/diskexpress/xx_diskexpress_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_diskjuggler
+    src/formats/filesystem/diskjuggler/xx_diskjuggler.c
+    src/formats/filesystem/diskjuggler/xx_diskjuggler_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dmg
+    src/formats/filesystem/dmg/xx_dmg.c
+    src/formats/filesystem/dmg/xx_dmg_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dms
+    src/formats/filesystem/dms/xx_dms.c
+    src/formats/filesystem/dms/xx_dms_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ecm
+    src/formats/filesystem/ecm/xx_ecm.c
+    src/formats/filesystem/ecm/xx_ecm_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_emt
+    src/formats/filesystem/emt/xx_emt.c
+    src/formats/filesystem/emt/xx_emt_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_encrypted_apple_disk_image
+    src/formats/filesystem/encrypted_apple_disk_image/xx_encrypted_apple_disk_image.c
+    src/formats/filesystem/encrypted_apple_disk_image/xx_encrypted_apple_disk_image_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_fat
+    src/formats/filesystem/fat/xx_fat.c
+    src/formats/filesystem/fat/xx_fat_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_fdi
+    src/formats/filesystem/fdi/xx_fdi.c
+    src/formats/filesystem/fdi/xx_fdi_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_gbi
+    src/formats/filesystem/gbi/xx_gbi.c
+    src/formats/filesystem/gbi/xx_gbi_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_hdcopy
+    src/formats/filesystem/hdcopy/xx_hdcopy.c
+    src/formats/filesystem/hdcopy/xx_hdcopy_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_hfe
+    src/formats/filesystem/hfe/xx_hfe.c
+    src/formats/filesystem/hfe/xx_hfe_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_imd
+    src/formats/filesystem/imd/xx_imd.c
+    src/formats/filesystem/imd/xx_imd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_irixsa
+    src/formats/filesystem/irixsa/xx_irixsa.c
+    src/formats/filesystem/irixsa/xx_irixsa_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_iso9660
+    src/formats/filesystem/iso9660/xx_iso9660.c
+    src/formats/filesystem/iso9660/xx_iso9660_extractor.c
+    src/formats/filesystem/iso9660/xx_iso_zisofs_native.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_isz
+    src/formats/filesystem/isz/xx_isz.c
+    src/formats/filesystem/isz/xx_isz_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_lofi
+    src/formats/filesystem/lofi/xx_lofi.c
+    src/formats/filesystem/lofi/xx_lofi_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_mbr
+    src/formats/filesystem/mbr/xx_mbr.c
+    src/formats/filesystem/mbr/xx_mbr_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_mds
+    src/formats/filesystem/mds/xx_mds.c
+    src/formats/filesystem/mds/xx_mds_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_nextstep_diskimage
+    src/formats/filesystem/nextstep_diskimage/xx_nextstep_diskimage.c
+    src/formats/filesystem/nextstep_diskimage/xx_nextstep_diskimage_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_nrg
+    src/formats/filesystem/nrg/xx_nrg.c
+    src/formats/filesystem/nrg/xx_nrg_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_pc_magazine_flp
+    src/formats/filesystem/pc_magazine_flp/xx_pc_magazine_flp.c
+    src/formats/filesystem/pc_magazine_flp/xx_pc_magazine_flp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_pce_anadisk
+    src/formats/filesystem/pce_anadisk/xx_pce_anadisk.c
+    src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_pmdiskcopy
+    src/formats/filesystem/pmdiskcopy/xx_pmdiskcopy.c
+    src/formats/filesystem/pmdiskcopy/xx_pmdiskcopy_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_prodos
+    src/formats/filesystem/prodos/xx_prodos.c
+    src/formats/filesystem/prodos/xx_prodos_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_psa_disk
+    src/formats/filesystem/psa_disk/xx_psa_disk.c
+    src/formats/filesystem/psa_disk/xx_psa_disk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_qrst
+    src/formats/filesystem/qrst/xx_qrst.c
+    src/formats/filesystem/qrst/xx_qrst_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_rawcd
+    src/formats/filesystem/rawcd/xx_rawcd.c
+    src/formats/filesystem/rawcd/xx_rawcd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_romfs
+    src/formats/filesystem/romfs/xx_romfs.c
+    src/formats/filesystem/romfs/xx_romfs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_sabdu
+    src/formats/filesystem/sabdu/xx_sabdu.c
+    src/formats/filesystem/sabdu/xx_sabdu_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_savedskf
+    src/formats/filesystem/savedskf/xx_savedskf.c
+    src/formats/filesystem/savedskf/xx_savedskf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_scl
+    src/formats/filesystem/scl/xx_scl.c
+    src/formats/filesystem/scl/xx_scl_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_sdi
+    src/formats/filesystem/sdi/xx_sdi.c
+    src/formats/filesystem/sdi/xx_sdi_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_sfx_sydex_diskette_image
+    src/formats/filesystem/sfx_sydex_diskette_image/xx_sfx_sydex_diskette_image.c
+    src/formats/filesystem/sfx_sydex_diskette_image/xx_sfx_sydex_diskette_image_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_shrinkwrap
+    src/formats/filesystem/shrinkwrap/xx_shrinkwrap.c
+    src/formats/filesystem/shrinkwrap/xx_shrinkwrap_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_sos
+    src/formats/filesystem/sos/xx_sos.c
+    src/formats/filesystem/sos/xx_sos_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_squashfs
+    src/formats/filesystem/squashfs/xx_squashfs.c
+    src/formats/filesystem/squashfs/xx_squashfs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_squashfs_sqlz
+    src/formats/filesystem/squashfs_sqlz/xx_squashfs_sqlz.c
+    src/formats/filesystem/squashfs_sqlz/xx_squashfs_sqlz_reader_adapters.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_sufs
+    src/formats/filesystem/sufs/xx_sufs.c
+    src/formats/filesystem/sufs/xx_sufs_reader_adapters.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_t64
+    src/formats/filesystem/t64/xx_t64.c
+    src/formats/filesystem/t64/xx_t64_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_teledisk
+    src/formats/filesystem/teledisk/xx_teledisk.c
+    src/formats/filesystem/teledisk/xx_teledisk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_trdos
+    src/formats/filesystem/trdos/xx_trdos.c
+    src/formats/filesystem/trdos/xx_trdos_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_twoimg
+    src/formats/filesystem/twoimg/xx_twoimg.c
+    src/formats/filesystem/twoimg/xx_twoimg_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_uif
+    src/formats/filesystem/uif/xx_uif.c
+    src/formats/filesystem/uif/xx_uif_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vdi
+    src/formats/filesystem/vdi/xx_vdi.c
+    src/formats/filesystem/vdi/xx_vdi_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vhddynamic
+    src/formats/filesystem/vhddynamic/xx_vhddynamic.c
+    src/formats/filesystem/vhddynamic/xx_vhddynamic_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vhdx
+    src/formats/filesystem/vhdx/xx_vhdx.c
+    src/formats/filesystem/vhdx/xx_vhdx_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vice_x64
+    src/formats/filesystem/vice_x64/xx_vice_x64.c
+    src/formats/filesystem/vice_x64/xx_vice_x64_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vmdk
+    src/formats/filesystem/vmdk/xx_vmdk.c
+    src/formats/filesystem/vmdk/xx_vmdk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vmdk_cowd_sparse
+    src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse.c
+    src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vmdk_sesparse
+    src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse.c
+    src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ziso
+    src/formats/filesystem/ziso/xx_ziso_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_zisofs
+    src/formats/filesystem/zisofs/xx_zisofs.c
+    src/formats/filesystem/zisofs/xx_zisofs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_zoom
+    src/formats/filesystem/zoom/xx_zoom.c
+    src/formats/filesystem/zoom/xx_zoom_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_androidboot
+    src/formats/firmware/androidboot/xx_androidboot.c
+    src/formats/firmware/androidboot/xx_androidboot_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_htc_nbh_rom_image
+    src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image.c
+    src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_mwave
+    src/formats/firmware/mwave/xx_mwave.c
+    src/formats/firmware/mwave/xx_mwave_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_qnxbase
+    src/formats/firmware/qnxbase/xx_qnxbase.c
+    src/formats/firmware/qnxbase/xx_qnxbase_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_rompaq
+    src/formats/firmware/rompaq/xx_rompaq.c
+    src/formats/firmware/rompaq/xx_rompaq_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_sony_image
+    src/formats/firmware/sony_image/xx_sony_image.c
+    src/formats/firmware/sony_image/xx_sony_image_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_uimage
+    src/formats/firmware/uimage/xx_uimage.c
+    src/formats/firmware/uimage/xx_uimage_extractor.c
+    src/formats/firmware/uimage/xx_uimage_lz4_native.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_zbeos
+    src/formats/firmware/zbeos/xx_zbeos.c
+    src/formats/firmware/zbeos/xx_zbeos_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_agis
+    src/formats/game/agis/xx_agis.c
+    src/formats/game/agis/xx_agis_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_battleisle
+    src/formats/game/battleisle/xx_battleisle.c
+    src/formats/game/battleisle/xx_battleisle_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_beatthehouse
+    src/formats/game/beatthehouse/xx_beatthehouse.c
+    src/formats/game/beatthehouse/xx_beatthehouse_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_bethesda_ba2
+    src/formats/game/bethesda_ba2/xx_bethesda_ba2.c
+    src/formats/game/bethesda_ba2/xx_bethesda_ba2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_bethesda_bsa
+    src/formats/game/bethesda_bsa/xx_bethesda_bsa.c
+    src/formats/game/bethesda_bsa/xx_bethesda_bsa_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_bigf
+    src/formats/game/bigf/xx_bigf.c
+    src/formats/game/bigf/xx_bigf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_birdies
+    src/formats/game/birdies/xx_birdies.c
+    src/formats/game/birdies/xx_birdies_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_bruns_media
+    src/formats/game/bruns_media/xx_bruns_media_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_build_grp
+    src/formats/game/build_grp/xx_build_grp.c
+    src/formats/game/build_grp/xx_build_grp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_cat
+    src/formats/game/cat/xx_cat.c
+    src/formats/game/cat/xx_cat_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_cgjp
+    src/formats/game/cgjp/xx_cgjp.c
+    src/formats/game/cgjp/xx_cgjp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_demonstar_glb
+    src/formats/game/demonstar_glb/xx_demonstar_glb.c
+    src/formats/game/demonstar_glb/xx_demonstar_glb_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ea
+    src/formats/game/ea/xx_ea.c
+    src/formats/game/ea/xx_ea_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_earefpack
+    src/formats/game/earefpack/xx_earefpack.c
+    src/formats/game/earefpack/xx_earefpack_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_epf
+    src/formats/game/epf/xx_epf.c
+    src/formats/game/epf/xx_epf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_fallout_dat
+    src/formats/game/fallout_dat/xx_fallout_dat_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_fury_dat
+    src/formats/game/fury_dat/xx_fury_dat.c
+    src/formats/game/fury_dat/xx_fury_dat_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_gdi
+    src/formats/game/gdi/xx_gdi.c
+    src/formats/game/gdi/xx_gdi_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_gob
+    src/formats/game/gob/xx_gob.c
+    src/formats/game/gob/xx_gob_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_godot_engine_pck
+    src/formats/game/godot_engine_pck/xx_godot_engine_pck.c
+    src/formats/game/godot_engine_pck/xx_godot_engine_pck_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_gta_img
+    src/formats/game/gta_img/xx_gta_img.c
+    src/formats/game/gta_img/xx_gta_img_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_he_tlkb
+    src/formats/game/he_tlkb/xx_he_tlkb.c
+    src/formats/game/he_tlkb/xx_he_tlkb_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_hog
+    src/formats/game/hog/xx_hog.c
+    src/formats/game/hog/xx_hog_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_hog2
+    src/formats/game/hog2/xx_hog2.c
+    src/formats/game/hog2/xx_hog2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_infogramesft
+    src/formats/game/infogramesft/xx_infogramesft.c
+    src/formats/game/infogramesft/xx_infogramesft_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_kirikiri_xp3
+    src/formats/game/kirikiri_xp3/xx_kirikiri_xp3.c
+    src/formats/game/kirikiri_xp3/xx_kirikiri_xp3_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_krml
+    src/formats/game/krml/xx_krml.c
+    src/formats/game/krml/xx_krml_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_live_maker_gal
+    src/formats/game/live_maker_gal/xx_live_maker_gal_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_livemaker
+    src/formats/game/livemaker/xx_livemaker.c
+    src/formats/game/livemaker/xx_livemaker_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_mas_pack
+    src/formats/game/mas_pack/xx_mas_pack.c
+    src/formats/game/mas_pack/xx_mas_pack_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_megatechvol
+    src/formats/game/megatechvol/xx_megatechvol.c
+    src/formats/game/megatechvol/xx_megatechvol_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_mpq
+    src/formats/game/mpq/xx_mpq.c
+    src/formats/game/mpq/xx_mpq_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_mxs
+    src/formats/game/mxs/xx_mxs.c
+    src/formats/game/mxs/xx_mxs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ns2
+    src/formats/game/ns2/xx_ns2.c
+    src/formats/game/ns2/xx_ns2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_nsa
+    src/formats/game/nsa/xx_nsa.c
+    src/formats/game/nsa/xx_nsa_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_pam_pak
+    src/formats/game/pam_pak/xx_pam_pak.c
+    src/formats/game/pam_pak/xx_pam_pak_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_pbo
+    src/formats/game/pbo/xx_pbo.c
+    src/formats/game/pbo/xx_pbo_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_pfpk
+    src/formats/game/pfpk/xx_pfpk.c
+    src/formats/game/pfpk/xx_pfpk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_pirs
+    src/formats/game/pirs/xx_pirs.c
+    src/formats/game/pirs/xx_pirs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ppd
+    src/formats/game/ppd/xx_ppd.c
+    src/formats/game/ppd/xx_ppd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_quake_pak
+    src/formats/game/quake_pak/xx_quake_pak.c
+    src/formats/game/quake_pak/xx_quake_pak_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_renpy_rpa
+    src/formats/game/renpy_rpa/xx_renpy_rpa.c
+    src/formats/game/renpy_rpa/xx_renpy_rpa_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_res
+    src/formats/game/res/xx_res.c
+    src/formats/game/res/xx_res_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_rpa
+    src/formats/game/rpa/xx_rpa.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_rpg_maker_mv
+    src/formats/game/rpg_maker_mv/xx_rpg_maker_mv_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_rpg_maker_rgssad
+    src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad.c
+    src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_rsc
+    src/formats/game/rsc/xx_rsc.c
+    src/formats/game/rsc/xx_rsc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_sar_ns
+    src/formats/game/sar_ns/xx_sar_ns.c
+    src/formats/game/sar_ns/xx_sar_ns_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_sbpak
+    src/formats/game/sbpak/xx_sbpak.c
+    src/formats/game/sbpak/xx_sbpak_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_sci
+    src/formats/game/sci/xx_sci.c
+    src/formats/game/sci/xx_sci_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_seadata
+    src/formats/game/seadata/xx_seadata.c
+    src/formats/game/seadata/xx_seadata_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_settlersft
+    src/formats/game/settlersft/xx_settlersft.c
+    src/formats/game/settlersft/xx_settlersft_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_sfx_clickteam_multimedia_fusion
+    src/formats/game/sfx_clickteam_multimedia_fusion/xx_sfx_clickteam_multimedia_fusion.c
+    src/formats/game/sfx_clickteam_multimedia_fusion/xx_sfx_clickteam_multimedia_fusion_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_sfx_mpq
+    src/formats/game/sfx_mpq/xx_sfx_mpq.c
+    src/formats/game/sfx_mpq/xx_sfx_mpq_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_silmarilsft
+    src/formats/game/silmarilsft/xx_silmarilsft.c
+    src/formats/game/silmarilsft/xx_silmarilsft_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_sinner
+    src/formats/game/sinner/xx_sinner.c
+    src/formats/game/sinner/xx_sinner_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_smile_game_pack
+    src/formats/game/smile_game_pack/xx_smile_game_pack_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_sony_psarc
+    src/formats/game/sony_psarc/xx_sony_psarc.c
+    src/formats/game/sony_psarc/xx_sony_psarc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_stunts
+    src/formats/game/stunts/xx_stunts.c
+    src/formats/game/stunts/xx_stunts_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_teacy
+    src/formats/game/teacy/xx_teacy.c
+    src/formats/game/teacy/xx_teacy_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_telltale_ttarch
+    src/formats/game/telltale_ttarch/xx_telltale_ttarch.c
+    src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_titan_quest
+    src/formats/game/titan_quest/xx_titan_quest.c
+    src/formats/game/titan_quest/xx_titan_quest_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ue2_games
+    src/formats/game/ue2_games/xx_ue2_games.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_unity_serialized
+    src/formats/game/unity_serialized/xx_unity_serialized.c
+    src/formats/game/unity_serialized/xx_unity_serialized_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_unityfs
+    src/formats/game/unityfs/xx_unityfs.c
+    src/formats/game/unityfs/xx_unityfs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_unreal_pak
+    src/formats/game/unreal_pak/xx_unreal_pak_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_utage_media
+    src/formats/game/utage_media/xx_utage_media_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_visionaire_studio_vis
+    src/formats/game/visionaire_studio_vis/xx_visionaire_studio_vis.c
+    src/formats/game/visionaire_studio_vis/xx_visionaire_studio_vis_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_volitionvpft
+    src/formats/game/volitionvpft/xx_volitionvpft.c
+    src/formats/game/volitionvpft/xx_volitionvpft_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_wintermutedcp
+    src/formats/game/wintermutedcp/xx_wintermutedcp.c
+    src/formats/game/wintermutedcp/xx_wintermutedcp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_wolfft
+    src/formats/game/wolfft/xx_wolfft.c
+    src/formats/game/wolfft/xx_wolfft_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_xuiz
+    src/formats/game/xuiz/xx_xuiz.c
+    src/formats/game/xuiz/xx_xuiz_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ycg_image
+    src/formats/game/ycg_image/xx_ycg_image_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ypf
+    src/formats/game/ypf/xx_ypf.c
+    src/formats/game/ypf/xx_ypf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_evd
+    src/formats/image/evd/xx_evd.c
+    src/formats/image/evd/xx_evd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_fss
+    src/formats/image/fss/xx_fss.c
+    src/formats/image/fss/xx_fss_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_gxl
     src/formats/image/gxl/xx_gxl.c
     src/formats/image/gxl/xx_gxl_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_mskn1
+    src/formats/image/mskn1/xx_mskn1.c
+    src/formats/image/mskn1/xx_mskn1_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_mskn2
+    src/formats/image/mskn2/xx_mskn2.c
+    src/formats/image/mskn2/xx_mskn2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_mskn3
+    src/formats/image/mskn3/xx_mskn3.c
+    src/formats/image/mskn3/xx_mskn3_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_pcxlib
+    src/formats/image/pcxlib/xx_pcxlib.c
+    src/formats/image/pcxlib/xx_pcxlib_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_px
+    src/formats/image/px/xx_px.c
+    src/formats/image/px/xx_px_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_secondnature
+    src/formats/image/secondnature/xx_secondnature.c
+    src/formats/image/secondnature/xx_secondnature_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_skf
+    src/formats/image/skf/xx_skf.c
+    src/formats/image/skf/xx_skf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_windows_thumbnail_cache
+    src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache.c
+    src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_advanced_installer_bootstrapper
+    src/formats/installer/advanced_installer_bootstrapper/xx_advanced_installer_bootstrapper.c
+    src/formats/installer/advanced_installer_bootstrapper/xx_advanced_installer_bootstrapper_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_aixbff
+    src/formats/installer/aixbff/xx_aixbff.c
+    src/formats/installer/aixbff/xx_aixbff_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_arcv
+    src/formats/installer/arcv/xx_arcv.c
+    src/formats/installer/arcv/xx_arcv_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_arcv2
+    src/formats/installer/arcv2/xx_arcv2.c
+    src/formats/installer/arcv2/xx_arcv2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_arcv4
+    src/formats/installer/arcv4/xx_arcv4.c
+    src/formats/installer/arcv4/xx_arcv4_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_ardi_installer
+    src/formats/installer/ardi_installer/xx_ardi_installer.c
+    src/formats/installer/ardi_installer/xx_ardi_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_arni_installer_container
+    src/formats/installer/arni_installer_container/xx_arni_installer_container.c
+    src/formats/installer/arni_installer_container/xx_arni_installer_container_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_asymetrix
+    src/formats/installer/asymetrix/xx_asymetrix.c
+    src/formats/installer/asymetrix/xx_asymetrix_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_bcw
+    src/formats/installer/bcw/xx_bcw.c
+    src/formats/installer/bcw/xx_bcw_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_beospkg
+    src/formats/installer/beospkg/xx_beospkg.c
+    src/formats/installer/beospkg/xx_beospkg_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_bitrock
+    src/formats/installer/bitrock/xx_bitrock.c
+    src/formats/installer/bitrock/xx_bitrock_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_bnd
+    src/formats/installer/bnd/xx_bnd.c
+    src/formats/installer/bnd/xx_bnd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_calibre_portable
+    src/formats/installer/calibre_portable/xx_calibre_portable.c
+    src/formats/installer/calibre_portable/xx_calibre_portable_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_chromium_mini_installer
+    src/formats/installer/chromium_mini_installer/xx_chromium_mini_installer.c
+    src/formats/installer/chromium_mini_installer/xx_chromium_mini_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_clickteam_install_creator
+    src/formats/installer/clickteam_install_creator/xx_clickteam_install_creator.c
+    src/formats/installer/clickteam_install_creator/xx_clickteam_install_creator_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_corelltec
+    src/formats/installer/corelltec/xx_corelltec.c
+    src/formats/installer/corelltec/xx_corelltec_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_cpoint
+    src/formats/installer/cpoint/xx_cpoint.c
+    src/formats/installer/cpoint/xx_cpoint_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_createinstall_instcrin_extractor
+    src/formats/installer/createinstall_instcrin_extractor/xx_createinstall_instcrin_extractor.c
+    src/formats/installer/createinstall_instcrin_extractor/xx_createinstall_instcrin_extractor_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_crx
+    src/formats/installer/crx/xx_crx.c
+    src/formats/installer/crx/xx_crx_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_desksoft
+    src/formats/installer/desksoft/xx_desksoft.c
+    src/formats/installer/desksoft/xx_desksoft_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_dsl1
+    src/formats/installer/dsl1/xx_dsl1.c
+    src/formats/installer/dsl1/xx_dsl1_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_dsl2
+    src/formats/installer/dsl2/xx_dsl2.c
+    src/formats/installer/dsl2/xx_dsl2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_ej_technologies_install
+    src/formats/installer/ej_technologies_install/xx_ej_technologies_install.c
+    src/formats/installer/ej_technologies_install/xx_ej_technologies_install_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_eschalon_setup_epsf
+    src/formats/installer/eschalon_setup_epsf/xx_eschalon_setup_epsf.c
+    src/formats/installer/eschalon_setup_epsf/xx_eschalon_setup_epsf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_excelsior
+    src/formats/installer/excelsior/xx_excelsior.c
+    src/formats/installer/excelsior/xx_excelsior_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_fead_encoder
+    src/formats/installer/fead/encoder/adler32.c
+    src/formats/installer/fead/encoder/compress.c
+    src/formats/installer/fead/encoder/crc32.c
+    src/formats/installer/fead/encoder/deflate.c
+    src/formats/installer/fead/encoder/trees.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_fead
+    src/formats/installer/fead/xx_fead.c
+    src/formats/installer/fead/xx_fead_bcj2.c
+    src/formats/installer/fead/xx_fead_extractor.c
+    src/formats/installer/fead/xx_fead_restore.c
+    src/formats/installer/fead/xx_fead_zlib_encoder.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_finstall
+    src/formats/installer/finstall/xx_finstall.c
+    src/formats/installer/finstall/xx_finstall_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_fld
+    src/formats/installer/fld/xx_fld.c
+    src/formats/installer/fld/xx_fld_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_fpak
+    src/formats/installer/fpak/xx_fpak.c
+    src/formats/installer/fpak/xx_fpak_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_gentee_installer
+    src/formats/installer/gentee_installer/xx_gentee_installer.c
+    src/formats/installer/gentee_installer/xx_gentee_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_ghost_installer
+    src/formats/installer/ghost_installer/xx_ghost_installer.c
+    src/formats/installer/ghost_installer/xx_ghost_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_gksetup
+    src/formats/installer/gksetup/xx_gksetup.c
+    src/formats/installer/gksetup/xx_gksetup_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_gst
+    src/formats/installer/gst/xx_gst.c
+    src/formats/installer/gst/xx_gst_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_gtu
+    src/formats/installer/gtu/xx_gtu.c
+    src/formats/installer/gtu/xx_gtu_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_ibm_zpak_installer
+    src/formats/installer/ibm_zpak_installer/xx_ibm_zpak_installer.c
+    src/formats/installer/ibm_zpak_installer/xx_ibm_zpak_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_ifah_installer
+    src/formats/installer/ifah_installer/xx_ifah_installer.c
+    src/formats/installer/ifah_installer/xx_ifah_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_igf2
+    src/formats/installer/igf2/xx_igf2.c
+    src/formats/installer/igf2/xx_igf2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_inno_setup
+    src/formats/installer/inno_setup/xx_inno_setup.c
+    src/formats/installer/inno_setup/xx_inno_setup_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_install4j
+    src/formats/installer/install4j/xx_install4j.c
+    src/formats/installer/install4j/xx_install4j_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installanywhere_unix
+    src/formats/installer/installanywhere_unix/xx_installanywhere_unix.c
+    src/formats/installer/installanywhere_unix/xx_installanywhere_unix_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installer_vise_windows
+    src/formats/installer/installer_vise_windows/xx_installer_vise_windows.c
+    src/formats/installer/installer_vise_windows/xx_installer_vise_windows_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installshield_12_setup
+    src/formats/installer/installshield_12_setup/xx_installshield_12_setup.c
+    src/formats/installer/installshield_12_setup/xx_installshield_12_setup_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installshield_3
+    src/formats/installer/installshield_3/xx_installshield_3.c
+    src/formats/installer/installshield_3/xx_installshield_3_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installshield_7_setup2
+    src/formats/installer/installshield_7_setup2/xx_installshield_7_setup2.c
+    src/formats/installer/installshield_7_setup2/xx_installshield_7_setup2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installshield_issetupstream
+    src/formats/installer/installshield_issetupstream/xx_installshield_issetupstream.c
+    src/formats/installer/installshield_issetupstream/xx_installshield_issetupstream_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installshield_multiplatform
+    src/formats/installer/installshield_multiplatform/xx_installshield_multiplatform.c
+    src/formats/installer/installshield_multiplatform/xx_installshield_multiplatform_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installshield_script_setup
+    src/formats/installer/installshield_script_setup/xx_installshield_script_setup.c
+    src/formats/installer/installshield_script_setup/xx_installshield_script_setup_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_installshield_skin
+    src/formats/installer/installshield_skin/xx_installshield_skin.c
+    src/formats/installer/installshield_skin/xx_installshield_skin_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_irwinpac
+    src/formats/installer/irwinpac/xx_irwinpac.c
+    src/formats/installer/irwinpac/xx_irwinpac_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_is11
+    src/formats/installer/is11/xx_is11.c
+    src/formats/installer/is11/xx_is11_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_is3
+    src/formats/installer/is3/xx_is3.c
+    src/formats/installer/is3/xx_is3_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_is5
+    src/formats/installer/is5/xx_is5.c
+    src/formats/installer/is5/xx_is5_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_is7inx
+    src/formats/installer/is7inx/xx_is7inx.c
+    src/formats/installer/is7inx/xx_is7inx_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_izpack
+    src/formats/installer/izpack/xx_izpack.c
+    src/formats/installer/izpack/xx_izpack_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_jasc
+    src/formats/installer/jasc/xx_jasc.c
+    src/formats/installer/jasc/xx_jasc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_lifkd
+    src/formats/installer/lifkd/xx_lifkd.c
+    src/formats/installer/lifkd/xx_lifkd_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_lyme_sfx
+    src/formats/installer/lyme_sfx/xx_lyme_sfx.c
+    src/formats/installer/lyme_sfx/xx_lyme_sfx_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_makeself
+    src/formats/installer/makeself/xx_makeself.c
+    src/formats/installer/makeself/xx_makeself_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_metaproducts
+    src/formats/installer/metaproducts/xx_metaproducts.c
+    src/formats/installer/metaproducts/xx_metaproducts_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_msi_resource
+    src/formats/installer/msi_resource/xx_msi_resource.c
+    src/formats/installer/msi_resource/xx_msi_resource_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_msmpi_bootstrapper
+    src/formats/installer/msmpi_bootstrapper/xx_msmpi_bootstrapper.c
+    src/formats/installer/msmpi_bootstrapper/xx_msmpi_bootstrapper_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_mva
+    src/formats/installer/mva/xx_mva.c
+    src/formats/installer/mva/xx_mva_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_natata_ebook
+    src/formats/installer/natata_ebook/xx_natata_ebook.c
+    src/formats/installer/natata_ebook/xx_natata_ebook_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_netware2
+    src/formats/installer/netware2/xx_netware2.c
+    src/formats/installer/netware2/xx_netware2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_nid
+    src/formats/installer/nid/xx_nid.c
+    src/formats/installer/nid/xx_nid_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_nsis
+    src/formats/installer/nsis/nsis_bzip2.c
+    src/formats/installer/nsis/xx_nsis.c
+    src/formats/installer/nsis/xx_nsis_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_oberon
+    src/formats/installer/oberon/xx_oberon.c
+    src/formats/installer/oberon/xx_oberon_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_omaha_meta_installer
+    src/formats/installer/omaha_meta_installer/xx_omaha_meta_installer.c
+    src/formats/installer/omaha_meta_installer/xx_omaha_meta_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_opc
+    src/formats/installer/opc/xx_opc.c
+    src/formats/installer/opc/xx_opc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_palminput_360
+    src/formats/installer/palminput_360/xx_palminput_360.c
+    src/formats/installer/palminput_360/xx_palminput_360_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_pc_install_setup
+    src/formats/installer/pc_install_setup/xx_pc_install_setup.c
+    src/formats/installer/pc_install_setup/xx_pc_install_setup_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_pcinstall
+    src/formats/installer/pcinstall/xx_pcinstall.c
+    src/formats/installer/pcinstall/xx_pcinstall_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_qip1
+    src/formats/installer/qip1/xx_qip1.c
+    src/formats/installer/qip1/xx_qip1_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_qip2
+    src/formats/installer/qip2/xx_qip2.c
+    src/formats/installer/qip2/xx_qip2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_qsetup_installation_suite
+    src/formats/installer/qsetup_installation_suite/xx_qsetup_installation_suite.c
+    src/formats/installer/qsetup_installation_suite/xx_qsetup_installation_suite_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_qualitas
+    src/formats/installer/qualitas/xx_qualitas.c
+    src/formats/installer/qualitas/xx_qualitas_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_quarterdeckqp
+    src/formats/installer/quarterdeckqp/xx_quarterdeckqp.c
+    src/formats/installer/quarterdeckqp/xx_quarterdeckqp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_rcf
+    src/formats/installer/rcf/xx_rcf.c
+    src/formats/installer/rcf/xx_rcf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_recognita
+    src/formats/installer/recognita/xx_recognita.c
+    src/formats/installer/recognita/xx_recognita_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_red
+    src/formats/installer/red/xx_red.c
+    src/formats/installer/red/xx_red_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_rid
+    src/formats/installer/rid/xx_rid.c
+    src/formats/installer/rid/xx_rid_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_rpm
+    src/formats/installer/rpm/xx_rpm.c
+    src/formats/installer/rpm/xx_rpm_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_rta
     src/formats/installer/rta/xx_rta.c
     src/formats/installer/rta/xx_rta_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_rtpatch
+    src/formats/installer/rtpatch/xx_rtpatch.c
+    src/formats/installer/rtpatch/xx_rtpatch_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_rtpatch_setup_data
+    src/formats/installer/rtpatch_setup_data/xx_rtpatch_setup_data.c
+    src/formats/installer/rtpatch_setup_data/xx_rtpatch_setup_data_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_scf
+    src/formats/installer/scf/xx_scf.c
+    src/formats/installer/scf/xx_scf_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_setup_factory
+    src/formats/installer/setup_factory/xx_setup_factory.c
+    src/formats/installer/setup_factory/xx_setup_factory_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_abbyy_fine_objects
+    src/formats/installer/sfx_abbyy_fine_objects/xx_sfx_abbyy_fine_objects.c
+    src/formats/installer/sfx_abbyy_fine_objects/xx_sfx_abbyy_fine_objects_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_ad01
+    src/formats/installer/sfx_ad01/xx_sfx_ad01.c
+    src/formats/installer/sfx_ad01/xx_sfx_ad01_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_analogx_emucore_ffs
+    src/formats/installer/sfx_analogx_emucore_ffs/xx_sfx_analogx_emucore_ffs.c
+    src/formats/installer/sfx_analogx_emucore_ffs/xx_sfx_analogx_emucore_ffs_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_asymetrix
+    src/formats/installer/sfx_asymetrix/xx_sfx_asymetrix.c
+    src/formats/installer/sfx_asymetrix/xx_sfx_asymetrix_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_compaq_softpaq
+    src/formats/installer/sfx_compaq_softpaq/xx_sfx_compaq_softpaq.c
+    src/formats/installer/sfx_compaq_softpaq/xx_sfx_compaq_softpaq_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_hci_instalit
+    src/formats/installer/sfx_hci_instalit/xx_sfx_hci_instalit.c
+    src/formats/installer/sfx_hci_instalit/xx_sfx_hci_instalit_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_inftool
+    src/formats/installer/sfx_inftool/xx_sfx_inftool.c
+    src/formats/installer/sfx_inftool/xx_sfx_inftool_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_krzip
+    src/formats/installer/sfx_krzip/xx_sfx_krzip.c
+    src/formats/installer/sfx_krzip/xx_sfx_krzip_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_nullsoft_pimp
+    src/formats/installer/sfx_nullsoft_pimp/xx_sfx_nullsoft_pimp.c
+    src/formats/installer/sfx_nullsoft_pimp/xx_sfx_nullsoft_pimp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_packagefortheweb
+    src/formats/installer/sfx_packagefortheweb/xx_sfx_packagefortheweb.c
+    src/formats/installer/sfx_packagefortheweb/xx_sfx_packagefortheweb_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_red
+    src/formats/installer/sfx_red/xx_sfx_red.c
+    src/formats/installer/sfx_red/xx_sfx_red_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_rtpatch
+    src/formats/installer/sfx_rtpatch/xx_sfx_rtpatch.c
+    src/formats/installer/sfx_rtpatch/xx_sfx_rtpatch_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_sbx_extractor
+    src/formats/installer/sfx_sbx_extractor/xx_sfx_sbx_extractor.c
+    src/formats/installer/sfx_sbx_extractor/xx_sfx_sbx_extractor_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_softpaq4
+    src/formats/installer/sfx_softpaq4/xx_sfx_softpaq4.c
+    src/formats/installer/sfx_softpaq4/xx_sfx_softpaq4_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfx_warpin_package
+    src/formats/installer/sfx_warpin_package/xx_sfx_warpin_package.c
+    src/formats/installer/sfx_warpin_package/xx_sfx_warpin_package_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfxstart
+    src/formats/installer/sfxstart/xx_sfxstart.c
+    src/formats/installer/sfxstart/xx_sfxstart_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sis
+    src/formats/installer/sis/xx_sis.c
+    src/formats/installer/sis/xx_sis_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_smart_install_maker
+    src/formats/installer/smart_install_maker/xx_smart_install_maker.c
+    src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_smsipak
+    src/formats/installer/smsipak/xx_smsipak.c
+    src/formats/installer/smsipak/xx_smsipak_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_softpaq2
+    src/formats/installer/softpaq2/xx_softpaq2.c
+    src/formats/installer/softpaq2/xx_softpaq2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_solarispkg
+    src/formats/installer/solarispkg/xx_solarispkg.c
+    src/formats/installer/solarispkg/xx_solarispkg_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_solarispkg_zip
+    src/formats/installer/solarispkg_zip/xx_solarispkg_zip.c
+    src/formats/installer/solarispkg_zip/xx_solarispkg_zip_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_solitaire_deluxe
+    src/formats/installer/solitaire_deluxe/xx_solitaire_deluxe.c
+    src/formats/installer/solitaire_deluxe/xx_solitaire_deluxe_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_splashtop_unpackc
+    src/formats/installer/splashtop_unpackc/xx_splashtop_unpackc.c
+    src/formats/installer/splashtop_unpackc/xx_splashtop_unpackc_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_spoon_installer
+    src/formats/installer/spoon_installer/xx_spoon_installer.c
+    src/formats/installer/spoon_installer/xx_spoon_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_squirrel
+    src/formats/installer/squirrel/xx_squirrel.c
+    src/formats/installer/squirrel/xx_squirrel_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_stork
+    src/formats/installer/stork/xx_stork.c
+    src/formats/installer/stork/xx_stork_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sumatra_lzsa
+    src/formats/installer/sumatra_lzsa/xx_sumatra_lzsa.c
+    src/formats/installer/sumatra_lzsa/xx_sumatra_lzsa_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sun_java_binsh
+    src/formats/installer/sun_java_binsh/xx_sun_java_binsh.c
+    src/formats/installer/sun_java_binsh/xx_sun_java_binsh_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_superdat
+    src/formats/installer/superdat/xx_superdat.c
+    src/formats/installer/superdat/xx_superdat_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sw
+    src/formats/installer/sw/xx_sw.c
+    src/formats/installer/sw/xx_sw_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_tarma_installer
+    src/formats/installer/tarma_installer/xx_tarma_installer.c
+    src/formats/installer/tarma_installer/xx_tarma_installer_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_tivoli
+    src/formats/installer/tivoli/xx_tivoli.c
+    src/formats/installer/tivoli/xx_tivoli_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_topspeed
+    src/formats/installer/topspeed/xx_topspeed.c
+    src/formats/installer/topspeed/xx_topspeed_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_twrx
+    src/formats/installer/twrx/xx_twrx.c
+    src/formats/installer/twrx/xx_twrx_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_visualware
+    src/formats/installer/visualware/xx_visualware.c
+    src/formats/installer/visualware/xx_visualware_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_vmsdb
+    src/formats/installer/vmsdb/xx_vmsdb.c
+    src/formats/installer/vmsdb/xx_vmsdb_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_vmspcsi
+    src/formats/installer/vmspcsi/xx_vmspcsi.c
+    src/formats/installer/vmspcsi/xx_vmspcsi_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_wise_installation_system
+    src/formats/installer/wise_installation_system/xx_wise_installation_system.c
+    src/formats/installer/wise_installation_system/xx_wise_installation_system_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_wpk
+    src/formats/installer/wpk/xx_wpk.c
+    src/formats/installer/wpk/xx_wpk_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_binary_plist
+    src/formats/other/binary_plist/xx_binary_plist.c
+    src/formats/other/binary_plist/xx_binary_plist_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_clp
+    src/formats/other/clp/xx_clp.c
+    src/formats/other/clp/xx_clp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_elm
+    src/formats/other/elm/xx_elm.c
+    src/formats/other/elm/xx_elm_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_gitobject
+    src/formats/other/gitobject/xx_gitobject.c
+    src/formats/other/gitobject/xx_gitobject_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_hp3000_wrq
+    src/formats/other/hp3000_wrq/xx_hp3000_wrq.c
+    src/formats/other/hp3000_wrq/xx_hp3000_wrq_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_lmd_container
+    src/formats/other/lmd_container/xx_lmd_container.c
+    src/formats/other/lmd_container/xx_lmd_container_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_nvp
+    src/formats/other/nvp/xx_nvp.c
+    src/formats/other/nvp/xx_nvp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_other_riff
+    src/formats/other/riff/xx_riff.c
+    src/formats/other/riff/xx_riff_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_video_grasp
+    src/formats/video/grasp/xx_grasp.c
+    src/formats/video/grasp/xx_grasp_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_video_scummvm_dxa
+    src/formats/video/scummvm_dxa/xx_scummvm_dxa.c
+    src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_video_swf
+    src/formats/video/swf/xx_swf.c
+    src/formats/video/swf/xx_swf_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats
-    src/formats/xx_corpus_extra_extractors.c
     src/formats/xx_data_signature.c
     src/formats/xx_format_additional.c
     src/formats/xx_format_datastructs.c

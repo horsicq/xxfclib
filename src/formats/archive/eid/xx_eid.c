@@ -300,5 +300,5 @@ static Abstractformat *eid_open(xx_io_device *device) { return xx_eid_create(dev
 static const xx_file_type_t eid_types[] = {XX_FILE_TYPE_EID};
 static const uint8_t eid_anchor[] = {4,0,0,0,4,0,0,0};
 static const xx_format_search_anchor eid_anchors[] = {{eid_anchor, 8U, 108U}};
-static const xx_format_search_desc eid_desc = {eid_types, 1U, eid_anchors, 1U, eid_open, xx_eid_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(eid, eid_desc)
+const xx_format_search_desc xx_eid_search_desc = {eid_types, 1U, eid_anchors, 1U, eid_open, xx_eid_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(eid, xx_eid_search_desc)

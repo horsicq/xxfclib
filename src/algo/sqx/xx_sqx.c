@@ -65,30 +65,25 @@ typedef struct sqx_bits {
     int64_t bit_offset;
 } sqx_bits;
 
-static bool sqx_peek(sqx_bits *bits, int32_t count, uint32_t *value)
+static inline bool sqx_peek(sqx_bits *bits, int32_t count, uint32_t *value)
 {
-    int64_t word;
-    int32_t shift;
-    uint32_t acc;
-    const uint8_t *p;
-
-    word = bits->bit_offset >> 5;
-    shift = (int32_t)(bits->bit_offset & 31);
+    int64_t word = bits->bit_offset >> 5;
+    int32_t shift = (int32_t)(bits->bit_offset & 31);
     if ((word < 0) || ((word + 1) >= bits->word_count)) return false;
-    p = bits->words + word * 4;
-    acc = xx_data_get_u32(p, 4, 0, false) << shift;
-    if (shift) acc |= xx_data_get_u32(p + 4, 4, 0, false) >> (32 - shift);
+    const uint8_t *p = bits->words + (word << 2);
+    uint32_t acc = xx_data_get_le32(p) << shift;
+    if (shift) acc |= xx_data_get_le32(p + 4) >> (32 - shift);
     *value = acc >> ((32 - count) & 31);
 
     return true;
 }
 
-static void sqx_skip(sqx_bits *bits, int32_t count)
+static inline void sqx_skip(sqx_bits *bits, int32_t count)
 {
     bits->bit_offset += count;
 }
 
-static bool sqx_get(sqx_bits *bits, int32_t count, uint32_t *value)
+static inline bool sqx_get(sqx_bits *bits, int32_t count, uint32_t *value)
 {
     if (!sqx_peek(bits, count, value)) return false;
     bits->bit_offset += count;
@@ -189,20 +184,16 @@ static bool sqx_huff_build(sqx_huff *huff)
     return true;
 }
 
-static bool sqx_huff_decode(sqx_huff *huff, sqx_bits *bits, int32_t *symbol_out)
+static inline bool sqx_huff_decode(sqx_huff *huff, sqx_bits *bits, int32_t *symbol_out)
 {
-    uint32_t index;
-    int32_t symbol;
-    int32_t length;
-
-    index = 0;
+    uint32_t index = 0;
     if (!sqx_peek(bits, huff->max_len, &index)) return false;
     if (index >= (uint32_t)(1 << huff->max_len)) return false;
-    symbol = (int32_t)huff->lut[index];
+    int32_t symbol = (int32_t)huff->lut[index];
     if (symbol >= huff->count) return false;
-    length = huff->lengths[symbol];
+    int32_t length = huff->lengths[symbol];
     if (length == 0) return false;
-    sqx_skip(bits, length);
+    bits->bit_offset += length;
     *symbol_out = symbol;
 
     return true;
@@ -330,7 +321,7 @@ typedef struct sqx_state {
  * the bytes are then counted rather than kept.  When `out` is present the
  * reference appends into a growing array and truncates at the end, so bytes
  * past out_capacity are counted and dropped here -- same result. */
-static void sqx_put(sqx_state *state, uint8_t byte)
+static inline void sqx_put(sqx_state *state, uint8_t byte)
 {
     state->window[state->position] = byte;
     if (state->out && ((uint64_t)state->produced < (uint64_t)state->out_capacity)) {
@@ -343,28 +334,46 @@ static void sqx_put(sqx_state *state, uint8_t byte)
 
 static void sqx_copy(sqx_state *state, int64_t length, int32_t distance)
 {
-    int32_t mask;
-    int32_t position;
-    int64_t i;
+    int32_t mask = state->dict_size - 1;
+    int32_t position = state->position;
+    int32_t src_pos;
 
     state->rep[state->rep_index & 3] = distance;
     state->rep_index++;
-    mask = state->dict_size - 1;
-    position = state->position;
-    for (i = 0; i < length; i++) {
-        /* The reference does not test the back-reference against the number
-         * of bytes produced so far: the window is a fixed 4 MiB buffer and
-         * the index is masked, so a reference before the start of output
-         * reads the window's zero fill (or, for a solid member, the
-         * preceding member's bytes -- which is the point).  Matched
-         * deliberately; the masked index is always in range. */
-        uint8_t byte = state->window[(position - distance) & mask];
-        state->window[position] = byte;
-        if (state->out && ((uint64_t)(state->produced + i) < (uint64_t)state->out_capacity)) {
-            state->out[state->produced + i] = byte;
+
+    src_pos = (position - distance) & mask;
+    if (position + length <= state->dict_size && src_pos + length <= state->dict_size) {
+        uint8_t *dst = state->window + position;
+        const uint8_t *src = state->window + src_pos;
+        if (distance == 1) {
+            xx_rt_memset(dst, *src, (size_t)length);
+        } else if (distance >= length &&
+                   (src_pos + length <= position || position + length <= src_pos)) {
+            xx_rt_memcpy(dst, src, (size_t)length);
+        } else {
+            for (int64_t i = 0; i < length; i++) {
+                dst[i] = src[i];
+            }
         }
-        position++;
+        if (state->out) {
+            int64_t avail = state->out_capacity - state->produced;
+            if (avail > 0) {
+                int64_t to_copy = (length < avail) ? length : avail;
+                xx_rt_memcpy(state->out + state->produced, dst, (size_t)to_copy);
+            }
+        }
+        position += (int32_t)length;
         if (position >= state->dict_size) position = 0;
+    } else {
+        for (int64_t i = 0; i < length; i++) {
+            uint8_t byte = state->window[(position - distance) & mask];
+            state->window[position] = byte;
+            if (state->out && ((uint64_t)(state->produced + i) < (uint64_t)state->out_capacity)) {
+                state->out[state->produced + i] = byte;
+            }
+            position++;
+            if (position >= state->dict_size) position = 0;
+        }
     }
     state->position = position;
     state->produced += length;
@@ -799,5 +808,47 @@ XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, cons
 
     *written = (size_t)target_size;
 
+    return true;
+}
+
+struct xx_sqx_decoder_s {
+    sqx_state state;
+};
+
+XXFC_API xx_sqx_decoder *xx_sqx_decoder_create(void)
+{
+    xx_sqx_decoder *dec = (xx_sqx_decoder *)xx_mem_alloc(sizeof(xx_sqx_decoder));
+    if (!dec) return NULL;
+    if (!sqx_state_init(&dec->state)) {
+        xx_mem_free(dec);
+        return NULL;
+    }
+    return dec;
+}
+
+XXFC_API void xx_sqx_decoder_free(xx_sqx_decoder *dec)
+{
+    if (!dec) return;
+    sqx_state_release(&dec->state);
+    xx_mem_free(dec);
+}
+
+XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, size_t input_size,
+                                    const xx_sqx_member *member, uint8_t *output, size_t output_size, size_t *written)
+{
+    if (written) *written = 0;
+    if (!dec || !input || !member || !written) return false;
+    uint64_t target_size = member->unpacked_size;
+    if (target_size > (uint64_t)XX_SQX_MAX_UNCOMPRESSED_SIZE) return false;
+    if (output && target_size > (uint64_t)output_size) return false;
+    if ((member->data_offset > (uint64_t)input_size) || (member->packed_size > ((uint64_t)input_size - member->data_offset))) return false;
+    if ((member->method < 1) || (member->method > 4 && member->method != 6)) return false;
+
+    bool ok = sqx_unpack_member(&dec->state, input + member->data_offset, (size_t)member->packed_size,
+                                (int64_t)member->unpacked_size, member->flags, member->filter, member->method,
+                                output, output ? (size_t)target_size : 0);
+    if (!ok) return false;
+    if (output && dec->state.produced < (int64_t)target_size) return false;
+    *written = (size_t)target_size;
     return true;
 }

@@ -101,6 +101,9 @@
  * crafted file cannot buy a large allocation. */
 #define XX_IBMPACK_MAX_DECODED ((int64_t)128 * 1024 * 1024)
 #define XX_IBMPACK_MAX_EXPANSION ((int64_t)2560)
+/* How many declared bytes a stream may fall short by (unemitted alignment
+ * zeros of a resource); longer shortfalls are damage. */
+#define XX_IBMPACK_SHORT_TAIL 16U
 
 #define XX_IBMPACK_METHOD_LZW 0U
 
@@ -539,6 +542,21 @@ static xx_ibmpack_stream *xx_ibmpack_parse(Abstractformat *self, xx_pd_struct *p
             goto fail;
         }
         if (next == 0) break;
+        /* PACK2 chains written by IBM's OS/2 installers (ADMIN.PAK,
+         * BANK.PAK) end with the last successor pointing at a four-byte
+         * zero terminator instead of holding 0.  A successor that leaves
+         * fewer than a header's worth of bytes, all zero, is that end. */
+        if (span - next < XX_IBMPACK_MIN_HEADER) {
+            uint8_t tail[XX_IBMPACK_MIN_HEADER];
+            int64_t remain = span - next;
+            int64_t at;
+
+            if (remain > 0 && !xx_ibmpack_read_at(self, self->base_address + next, tail, (size_t)remain)) goto fail;
+            for (at = 0; at < remain; ++at) {
+                if (tail[at] != 0U) goto fail;
+            }
+            break;
+        }
         cursor = next;
     }
     stream->archive_size = span;
@@ -548,9 +566,8 @@ fail:
     return NULL;
 }
 
-/* Produce the member's plaintext.  Members whose dialect records a length
- * must reproduce it exactly; the others are measured first so the allocation
- * is never larger than the stream can actually produce. */
+/* Produce the member's plaintext. Measure the decoded stream first, then
+ * honor recorded logical lengths with bounded alignment padding or trimming. */
 static bool xx_ibmpack_decode(Abstractformat *self, const xx_ibmpack_member *member, uint8_t **plain, size_t *plain_size, xx_pd_struct *pd)
 {
     uint8_t *input = NULL;
@@ -558,6 +575,7 @@ static bool xx_ibmpack_decode(Abstractformat *self, const xx_ibmpack_member *mem
     int64_t ceiling;
     size_t produced = 0U;
     size_t wanted;
+    size_t final_size;
 
     *plain = NULL;
     *plain_size = 0U;
@@ -580,22 +598,38 @@ static bool xx_ibmpack_decode(Abstractformat *self, const xx_ibmpack_member *mem
         xx_mem_free(input);
         return false;
     }
-    if (member->uncompressed_size >= 0) {
-        wanted = (size_t)member->uncompressed_size;
-    } else {
-        /* Measuring pass: nothing is allocated for the plaintext until its
-         * real size is known. */
-        if (!xx_ibmpack_lzw_run(input, (size_t)member->compressed_size, NULL, (size_t)ceiling, &produced) || produced == 0U) {
+    /* Measuring pass: nothing is allocated for the plaintext until its real
+     * size is known.  It runs against the stream's own ceiling even when a
+     * length is declared, because PACK2 records the LX/NE logical length
+     * rather than the bytes it compressed: a member can come out longer
+     * (DSKLOG.EXE: 4,295 unstripped trailing bytes, cut back to the declared
+     * length) or a few bytes shorter (CPQLQV08: the final alignment zeros of
+     * an NE icon resource were never emitted, padded with zeros).  Anything
+     * further off than that is a damaged stream. */
+    {
+        int64_t stream_ceiling = XX_IBMPACK_MAX_DECODED;
+        if (member->compressed_size < stream_ceiling / XX_IBMPACK_MAX_EXPANSION) stream_ceiling = member->compressed_size * XX_IBMPACK_MAX_EXPANSION;
+        if (!xx_ibmpack_lzw_run(input, (size_t)member->compressed_size, NULL, (size_t)stream_ceiling, &produced) || produced == 0U) {
             xx_mem_free(input);
             return false;
         }
-        wanted = produced;
+    }
+    wanted = produced;
+    if (member->uncompressed_size >= 0) {
+        size_t declared = (size_t)member->uncompressed_size;
+        if (produced < declared && declared - produced > XX_IBMPACK_SHORT_TAIL) {
+            xx_mem_free(input);
+            return false;
+        }
+        final_size = declared;
+    } else {
+        final_size = produced;
     }
     if (pd && xx_pd_is_stopped(pd)) {
         xx_mem_free(input);
         return false;
     }
-    output = (uint8_t *)xx_mem_alloc(wanted);
+    output = (uint8_t *)xx_mem_alloc(wanted > final_size ? wanted : final_size);
     if (!output) {
         xx_mem_free(input);
         return false;
@@ -605,9 +639,10 @@ static bool xx_ibmpack_decode(Abstractformat *self, const xx_ibmpack_member *mem
         xx_mem_free(input);
         return false;
     }
+    if (final_size > wanted) xx_mem_zero(output + wanted, final_size - wanted);
     xx_mem_free(input);
     *plain = output;
-    *plain_size = wanted;
+    *plain_size = final_size;
     return true;
 }
 

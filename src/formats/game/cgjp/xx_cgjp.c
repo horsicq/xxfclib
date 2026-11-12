@@ -180,5 +180,5 @@ static Abstractformat *cgjp_open(xx_io_device *d)
     return xx_cgjp_create(d, 0);
 }
 static const xx_file_type_t cgjp_types[] = {XX_FILE_TYPE_CGJP};
-static const xx_format_search_desc cgjp_desc = {cgjp_types, 1, NULL, 0, cgjp_open, xx_cgjp_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(cgjp, cgjp_desc)
+const xx_format_search_desc xx_cgjp_search_desc = {cgjp_types, 1, NULL, 0, cgjp_open, xx_cgjp_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(cgjp, xx_cgjp_search_desc)

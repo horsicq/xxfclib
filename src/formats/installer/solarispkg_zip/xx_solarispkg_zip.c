@@ -124,5 +124,5 @@ static Abstractformat *solarispkg_zip_open(xx_io_device *device)
     return xx_solarispkg_zip_create(device, 0);
 }
 static const xx_file_type_t solarispkg_zip_types[] = {XX_FILE_TYPE_SOLARISPKG_ZIP};
-static const xx_format_search_desc solarispkg_zip_descriptor = {solarispkg_zip_types, 1, NULL, 0, solarispkg_zip_open, xx_solarispkg_zip_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(solarispkg_zip, solarispkg_zip_descriptor)
+const xx_format_search_desc xx_solarispkg_zip_search_desc = {solarispkg_zip_types, 1, NULL, 0, solarispkg_zip_open, xx_solarispkg_zip_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(solarispkg_zip, xx_solarispkg_zip_search_desc)

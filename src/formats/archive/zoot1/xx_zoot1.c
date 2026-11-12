@@ -76,5 +76,5 @@ static Abstractformat *zoot1_open(xx_io_device *device)
     return xx_zoot1_create(device, 0);
 }
 static const xx_file_type_t zoot1_types[] = {XX_FILE_TYPE_ZOOT1};
-static const xx_format_search_desc zoot1_descriptor = {zoot1_types, 1, NULL, 0, zoot1_open, xx_zoot1_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zoot1, zoot1_descriptor)
+const xx_format_search_desc xx_zoot1_search_desc = {zoot1_types, 1, NULL, 0, zoot1_open, xx_zoot1_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zoot1, xx_zoot1_search_desc)

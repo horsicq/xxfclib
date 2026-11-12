@@ -95,5 +95,5 @@ static Abstractformat *px_open(xx_io_device *d)
     return xx_px_create(d, 0);
 }
 static const xx_file_type_t px_types[] = {XX_FILE_TYPE_PX};
-static const xx_format_search_desc px_desc = {px_types, 1, NULL, 0, px_open, xx_px_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(px, px_desc)
+const xx_format_search_desc xx_px_search_desc = {px_types, 1, NULL, 0, px_open, xx_px_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(px, xx_px_search_desc)

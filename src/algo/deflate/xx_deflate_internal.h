@@ -47,7 +47,7 @@ static inline size_t xx_deflate_resolve_window(bool is_deflate64, size_t size)
 #define XX_DEFLATE_MAX_CLEN_CODES 19
 
 #define XX_DEFLATE_MAX_BITS 15
-#define XX_DEFLATE_FAST_BITS 10
+#define XX_DEFLATE_FAST_BITS 11
 #define XX_DEFLATE_FAST_SIZE (1 << XX_DEFLATE_FAST_BITS)
 
 /* Huffman decode lookup entry */

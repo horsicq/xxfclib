@@ -130,5 +130,5 @@ static Abstractformat *csq_open(xx_io_device *device)
     return xx_csq_create(device, 0);
 }
 static const xx_file_type_t csq_types[] = {XX_FILE_TYPE_CSQ};
-static const xx_format_search_desc csq_descriptor = {csq_types, 1, NULL, 0, csq_open, xx_csq_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(csq, csq_descriptor)
+const xx_format_search_desc xx_csq_search_desc = {csq_types, 1, NULL, 0, csq_open, xx_csq_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(csq, xx_csq_search_desc)

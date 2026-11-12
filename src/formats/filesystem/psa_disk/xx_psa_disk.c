@@ -163,5 +163,5 @@ static Abstractformat *xx_psa_disk_open(xx_io_device *d)
     return xx_psa_disk_create(d, 0);
 }
 static const xx_file_type_t xx_psa_disk_types[] = {XX_FILE_TYPE_PSA_DISK};
-static const xx_format_search_desc xx_psa_disk_desc = {xx_psa_disk_types, 1, NULL, 0, xx_psa_disk_open, xx_psa_disk_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(psa_disk, xx_psa_disk_desc)
+const xx_format_search_desc xx_psa_disk_search_desc = {xx_psa_disk_types, 1, NULL, 0, xx_psa_disk_open, xx_psa_disk_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(psa_disk, xx_psa_disk_search_desc)

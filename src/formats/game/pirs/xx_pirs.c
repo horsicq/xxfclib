@@ -261,5 +261,5 @@ static Abstractformat *pirs_open(xx_io_device *d)
     return xx_pirs_create(d, 0);
 }
 static const xx_file_type_t pirs_types[] = {XX_FILE_TYPE_PIRS};
-static const xx_format_search_desc pirs_desc = {pirs_types, 1, NULL, 0, pirs_open, xx_pirs_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pirs, pirs_desc)
+const xx_format_search_desc xx_pirs_search_desc = {pirs_types, 1, NULL, 0, pirs_open, xx_pirs_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pirs, xx_pirs_search_desc)

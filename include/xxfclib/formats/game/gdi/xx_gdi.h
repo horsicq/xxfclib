@@ -64,4 +64,17 @@ static inline Abstractformat *xx_gdi_to_format(xx_gdi *v)
 #ifdef __cplusplus
 }
 #endif
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_gdi_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_gdi_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_gdi_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_gdi_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_gdi_get_abstract_detector(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

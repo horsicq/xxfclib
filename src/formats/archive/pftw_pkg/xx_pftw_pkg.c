@@ -187,5 +187,5 @@ void xx_pftw_pkg_free(Abstractformat *f) { if(f) { pw_destroy(f);xx_mem_free(f);
 #include "../../xx_format_abstract_extractor_adapter.h"
 static Abstractformat *pw_open(xx_io_device *d) { return xx_pftw_pkg_create(d,0); }
 static const xx_file_type_t pw_types[]={XX_FILE_TYPE_PFTW_PKG};
-static const xx_format_search_desc pw_desc={pw_types,1U,NULL,0U,pw_open,xx_pftw_pkg_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pftw_pkg,pw_desc)
+const xx_format_search_desc xx_pftw_pkg_search_desc={pw_types,1U,NULL,0U,pw_open,xx_pftw_pkg_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pftw_pkg,xx_pftw_pkg_search_desc)

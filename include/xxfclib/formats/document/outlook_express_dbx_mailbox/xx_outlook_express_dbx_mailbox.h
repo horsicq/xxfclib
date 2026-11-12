@@ -94,4 +94,17 @@ XXFC_API bool xx_outlook_express_dbx_mailbox_unpack_message(xx_outlook_express_d
 }
 #endif
 
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_outlook_express_dbx_mailbox_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_outlook_express_dbx_mailbox_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_outlook_express_dbx_mailbox_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_outlook_express_dbx_mailbox_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_outlook_express_dbx_mailbox_get_abstract_detector(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif /* XXFCLIB_FORMAT_OUTLOOK_EXPRESS_DBX_MAILBOX_H */

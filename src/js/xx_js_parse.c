@@ -332,7 +332,9 @@ void js_prepare_program(JSNode *pNode)
  * recursive descent unwinds on its own without a non-local jump.          */
 static JSToken *tok(JSParser *pParser)
 {
-    if (pParser->bError) {
+    /* A label at the very end of the input steps past the EOF token; the
+     * EOF token answers every read beyond the stream. */
+    if (pParser->bError || (pParser->nPos >= pParser->lexer.nCount)) {
         return &pParser->lexer.pTokens[pParser->lexer.nCount - 1];
     }
 
@@ -1022,6 +1024,10 @@ static JSNode *parse_for(JSParser *pParser)
     if (tok(pParser)->type == T_IN) {
         JSNode *pNode = node_new(N_FORIN, nLine);
 
+        /* for (var a, b in o) is an early error: one binding only. */
+        if (pInit && (pInit->type == N_VAR) && (pInit->nList != 1)) {
+            parse_error(pParser, "invalid for-in variable declaration");
+        }
         pParser->nPos++;
         pNode->a = pInit;
         pNode->b = parse_expression(pParser, 0);
@@ -1110,6 +1116,9 @@ static JSNode *parse_try(JSParser *pParser)
 
     if (accept(pParser, T_FINALLY)) {
         pNode->c = parse_block(pParser);
+    }
+    if (!pNode->b && !pNode->c) {
+        parse_error(pParser, "missing catch or finally after try");
     }
 
     return pNode;

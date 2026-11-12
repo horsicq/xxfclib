@@ -61,6 +61,31 @@ static void xx_overlay_free_search(Abstractextractor *self, xx_format_search_sta
     (void)self;
     xx_format_search_free(state);
 }
+static xx_format_search_state *xx_overlay_legacy_create(xx_format_extractor *x, xx_io_device *d, const xx_list_s *o, xx_pd_struct *pd)
+{
+    (void)x;
+    return xx_format_search_create(&xx_overlay_desc, d, o, pd);
+}
+static const xx_format_search_info *xx_overlay_legacy_current(xx_format_extractor *x, xx_format_search_state *s)
+{
+    (void)x;
+    return xx_format_search_current(s);
+}
+static bool xx_overlay_legacy_next(xx_format_extractor *x, xx_format_search_state *s, xx_pd_struct *pd)
+{
+    (void)x;
+    return xx_format_search_find_next(s, pd);
+}
+static void xx_overlay_legacy_free(xx_format_extractor *x, xx_format_search_state *s)
+{
+    (void)x;
+    xx_format_search_free(s);
+}
+/* The legacy search makes the overlay a family of its own
+ * (XFU_SUPPORT_FORMAT_EXECUTABLE_OVERLAY); the complete library reaches the
+ * same descriptor through the Abstractextractor below. */
+xx_format_extractor xx_executable_overlay_extractor = {xx_overlay_legacy_create, xx_overlay_legacy_current, xx_overlay_legacy_next, xx_overlay_legacy_free};
+
 Abstractextractor *xx_executable_overlay_get_abstract_extractor(void)
 {
     static Abstractextractor descriptor = {

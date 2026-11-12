@@ -125,5 +125,5 @@ static Abstractformat *pam_pak_open(xx_io_device *d)
     return xx_pam_pak_create(d, 0);
 }
 static const xx_file_type_t pam_pak_types[] = {XX_FILE_TYPE_PAM_PAK};
-static const xx_format_search_desc pam_pak_desc = {pam_pak_types, 1, NULL, 0, pam_pak_open, xx_pam_pak_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pam_pak, pam_pak_desc)
+const xx_format_search_desc xx_pam_pak_search_desc = {pam_pak_types, 1, NULL, 0, pam_pak_open, xx_pam_pak_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pam_pak, xx_pam_pak_search_desc)

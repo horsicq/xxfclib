@@ -26,12 +26,20 @@ XXFC_API const xx_archive_record *xx_dpc_get_current_archive_record(Abstractform
 XXFC_API bool xx_dpc_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API bool xx_dpc_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API void xx_dpc_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
-XXFC_API bool xx_dpc_fast_detect(xx_io_device *, int64_t, bool);
-XXFC_API xx_file_type_t xx_dpc_file_type(xx_io_device *, int64_t, bool);
-XXFC_API int64_t xx_dpc_size(xx_io_device *, int64_t, bool);
+#ifdef __cplusplus
+}
+#endif
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_dpc_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_dpc_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_dpc_size(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API Abstractextractor *xx_dpc_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_dpc_get_abstract_detector(void);
 #ifdef __cplusplus
 }
 #endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

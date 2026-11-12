@@ -59,3 +59,15 @@ the full registry or unrelated formats. It is used by `XDotNetEmul`.
 Consumers needing both families, including `xxdecompiler`, can select
 `XXFC_BUILD_PROFILE=bytecode`. `xxfclib_bytecode.cmake` combines the APK/DEX
 and PE/CLI manifests with one shared core (62 C sources on Windows).
+
+# Archive family components
+
+`formats/` holds one CMake component per archive family, all of the same
+shape: `xxfclib_<component>.cmake` (ZIP, TAR, AR: the source lists) and
+`xxfclib_<component>_console.cmake` (every family: its library, unpacker core
+and console, exporting `xxfclib::archive_console_<component>`). Nineteen are
+hand-written; the rest are written by `tools/generate_archive_families.py`
+and start with a "Generated" line. The shared machinery stays here:
+`xxfclib_family_console.cmake` (`xxfclib_add_family_console()`),
+`xxfclib_family_sources.cmake` (the generated directory tables) and
+`xxfclib_format_profiles.cmake`. See `docs/FORMAT_PROFILES.md`.

@@ -155,5 +155,5 @@ static Abstractformat *rdfz_open(xx_io_device *device)
     return xx_rdfz_create(device, 0);
 }
 static const xx_file_type_t rdfz_types[] = {XX_FILE_TYPE_RDFZ};
-static const xx_format_search_desc rdfz_descriptor = {rdfz_types, 1, NULL, 0, rdfz_open, xx_rdfz_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(rdfz, rdfz_descriptor)
+const xx_format_search_desc xx_rdfz_search_desc = {rdfz_types, 1, NULL, 0, rdfz_open, xx_rdfz_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(rdfz, xx_rdfz_search_desc)

@@ -33,6 +33,9 @@ static const uint8_t sqz_distance_extra[31] = {0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 
 static const uint16_t sqz_distance_base[31] = {0,   1,   2,   3,   4,   5,    7,    9,    13,   17,   25,   33,   49,    65,    97,   129,
                                                193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
 
+#define SQZ_LUT_BITS 10
+#define SQZ_LUT_SIZE (1 << SQZ_LUT_BITS)
+
 typedef struct sqz_huffman {
     bool constant;
     uint16_t constant_symbol;
@@ -41,6 +44,7 @@ typedef struct sqz_huffman {
     uint32_t first_code[SQZ_MAX_BITS + 1];
     uint16_t first_symbol[SQZ_MAX_BITS + 1];
     uint16_t symbols[SQZ_NC];
+    uint16_t lut[SQZ_LUT_SIZE];
 } sqz_huffman;
 
 typedef struct sqz_state {
@@ -69,6 +73,16 @@ typedef struct sqz_state {
 /* ----------------------------------------------------------- huffman --- */
 
 static bool sqz_read_bits(sqz_state *s, int32_t bits, uint32_t *value);
+static bool sqz_peek_bits(sqz_state *s, int32_t bits, uint32_t *value);
+static inline void sqz_skip_bits(sqz_state *s, int32_t bits)
+{
+    s->bit_count -= bits;
+    if (s->bit_count == 0) {
+        s->bit_buffer = 0;
+    } else {
+        s->bit_buffer &= (1U << s->bit_count) - 1U;
+    }
+}
 
 static bool sqz_huff_set_constant(sqz_huffman *t, uint32_t symbol, int32_t count)
 {
@@ -78,6 +92,7 @@ static bool sqz_huff_set_constant(sqz_huffman *t, uint32_t symbol, int32_t count
     t->constant = true;
     t->constant_symbol = (uint16_t)symbol;
     t->symbol_count = count;
+    xx_rt_memset(t->lut, 0, sizeof(t->lut));
     return true;
 }
 
@@ -99,6 +114,7 @@ static bool sqz_huff_build(sqz_huffman *t, const uint8_t *lengths, int32_t count
     xx_rt_memset(t->first_code, 0, sizeof(t->first_code));
     xx_rt_memset(t->first_symbol, 0, sizeof(t->first_symbol));
     xx_rt_memset(t->symbols, 0, sizeof(t->symbols));
+    xx_rt_memset(t->lut, 0, sizeof(t->lut));
 
     for (i = 0; i < count; ++i) {
         length = (int32_t)lengths[i];
@@ -130,6 +146,24 @@ static bool sqz_huff_build(sqz_huffman *t, const uint8_t *lengths, int32_t count
         }
     }
 
+    /* Populate acceleration LUT for codes of length <= SQZ_LUT_BITS */
+    for (length = 1; length <= SQZ_LUT_BITS; ++length) {
+        uint32_t f_code = t->first_code[length];
+        uint32_t c_cnt = t->counts[length];
+        uint16_t f_sym = t->first_symbol[length];
+        int shift = SQZ_LUT_BITS - length;
+        for (i = 0; i < (int32_t)c_cnt; ++i) {
+            uint32_t c = f_code + (uint32_t)i;
+            uint16_t s_val = t->symbols[f_sym + i];
+            uint32_t base = c << shift;
+            uint32_t end = (c + 1) << shift;
+            uint16_t entry = (uint16_t)((s_val << 5) | (uint16_t)length);
+            for (uint32_t j = base; j < end; ++j) {
+                t->lut[j] = entry;
+            }
+        }
+    }
+
     t->symbol_count = count;
     return (symbol_index > 0) && (symbol_index <= (uint32_t)count);
 }
@@ -147,6 +181,27 @@ static bool sqz_huff_decode(const sqz_huffman *t, sqz_state *s, uint32_t *symbol
     if (t->constant) {
         *symbol = t->constant_symbol;
         return (int32_t)t->constant_symbol < t->symbol_count;
+    }
+
+    size_t saved_input_pos = s->input_pos;
+    uint32_t saved_bit_buffer = s->bit_buffer;
+    int32_t saved_bit_count = s->bit_count;
+    int32_t saved_padding_bytes = s->padding_bytes;
+    bool saved_error = s->error;
+    if (sqz_peek_bits(s, SQZ_LUT_BITS, &code)) {
+        uint16_t entry = t->lut[code];
+        if (entry != 0) {
+            length = (int32_t)(entry & 31U);
+            sqz_skip_bits(s, length);
+            *symbol = (uint32_t)(entry >> 5U);
+            return true;
+        }
+    } else {
+        s->input_pos = saved_input_pos;
+        s->bit_buffer = saved_bit_buffer;
+        s->bit_count = saved_bit_count;
+        s->padding_bytes = saved_padding_bytes;
+        s->error = saved_error;
     }
 
     code = 0;
@@ -541,12 +596,29 @@ bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size, uint32_t meth
         if ((size_t)copy_length > (s->raw_size - s->produced)) {
             copy_length = (uint32_t)(s->raw_size - s->produced);
         }
-        for (i = 0; i < copy_length; ++i) {
-            uint8_t byte = s->window[source];
-            source = (source + 1) & SQZ_WINDOW_MASK;
-            if (!sqz_emit_byte(s, byte)) {
-                s->error = true;
-                break;
+        if ((uint32_t)s->window_position + copy_length <= SQZ_WINDOW_SIZE && (uint32_t)source + copy_length <= SQZ_WINDOW_SIZE) {
+            uint8_t *dst = s->window + s->window_position;
+            const uint8_t *src = s->window + source;
+            if (source + 1 == s->window_position) {
+                xx_rt_memset(dst, *src, copy_length);
+            } else if ((uint32_t)distance >= copy_length &&
+                       ((uint32_t)source + copy_length <= (uint32_t)s->window_position ||
+                        (uint32_t)s->window_position + copy_length <= (uint32_t)source)) {
+                xx_rt_memcpy(dst, src, copy_length);
+            } else {
+                for (i = 0; i < copy_length; ++i) dst[i] = src[i];
+            }
+            xx_rt_memcpy(s->output + s->produced, dst, copy_length);
+            s->window_position = (s->window_position + (int32_t)copy_length) & SQZ_WINDOW_MASK;
+            s->produced += copy_length;
+        } else {
+            for (i = 0; i < copy_length; ++i) {
+                uint8_t byte = s->window[source];
+                source = (source + 1) & SQZ_WINDOW_MASK;
+                if (!sqz_emit_byte(s, byte)) {
+                    s->error = true;
+                    break;
+                }
             }
         }
     }

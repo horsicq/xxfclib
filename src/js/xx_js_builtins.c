@@ -268,6 +268,13 @@ static JSVal fn_function_apply(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pAr
 
             for (i = 0; i < nCount; i++) {
                 pCallArgs[i] = js_get_index(pCtx, args, i);
+                if (pCtx->bException) {
+                    /* A getter threw: release what was read and give up. */
+                    int64_t k;
+                    for (k = 0; k <= i; k++) js_release(pCtx, pCallArgs[k]);
+                    if (pCallArgs != localArgs) xx_js_free(pCallArgs);
+                    return js_undefined();
+                }
             }
         }
     }
@@ -432,7 +439,7 @@ static JSVal fn_array_pop(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
 
     if (thisVal.tag == JT_OBJ) {
         jsobj_del(pCtx, thisVal.u.o, sKey);
-        thisVal.u.o->nArrayLen = nLength - 1;
+        if (thisVal.u.o->cls == JCLASS_ARRAY) thisVal.u.o->nArrayLen = nLength - 1;
     }
 
     return result;
@@ -467,7 +474,7 @@ static JSVal fn_array_shift(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
 
     if (thisVal.tag == JT_OBJ) {
         jsobj_del(pCtx, thisVal.u.o, sKey);
-        thisVal.u.o->nArrayLen = nLength - 1;
+        if (thisVal.u.o->cls == JCLASS_ARRAY) thisVal.u.o->nArrayLen = nLength - 1;
     }
 
     return result;
@@ -702,7 +709,8 @@ static JSVal fn_array_splice(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv
     int64_t nStart = (nArgc > 0) ? clamp_index(js_to_number(pCtx, pArgv[0]), nLength) : 0;
     /* The reference engine narrows the delete count to an int32 before it
      * clamps, so 2^32 + 1 deletes one element and 1e300 deletes none.     */
-    int64_t nDelete = (nArgc > 1) ? (int64_t)js_to_int32(pCtx, pArgv[1]) : (nLength - nStart);
+    /* splice() with no start deletes nothing; splice(start) deletes to the end. */
+    int64_t nDelete = (nArgc == 0) ? 0 : (nArgc > 1) ? (int64_t)js_to_int32(pCtx, pArgv[1]) : (nLength - nStart);
     JSVal removed = js_new_array(pCtx);
     JSVal tail = js_new_array(pCtx);
     int64_t i = 0;
@@ -751,7 +759,10 @@ static JSVal fn_array_splice(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv
         }
     }
 
-    if (thisVal.tag == JT_OBJ) {
+    /* Only an Array owns a nominal length: a Uint32Array's length is its
+     * allocation, and growing it here would let later index writes run past
+     * the buffer. */
+    if (thisVal.tag == JT_OBJ && thisVal.u.o->cls == JCLASS_ARRAY) {
         thisVal.u.o->nArrayLen = nNewLength;
     }
 
@@ -913,8 +924,33 @@ static JSVal array_iterate(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, 
 
     for (i = 0; i < nLength; i++) {
         JSVal args[3];
-        JSVal item = js_get_index(pCtx, thisVal, i);
+        JSVal item;
         JSVal callResult;
+
+        /* The iteration methods skip holes: no prototype lookup and no
+         * callback for a missing element of a dense array, and nothing
+         * exists past its used part however large the nominal length is. */
+        if (thisVal.tag == JT_OBJ && thisVal.u.o->cls == JCLASS_ARRAY) {
+            if (!thisVal.u.o->bArraySparse && i < (int64_t)thisVal.u.o->nArrayUsed) {
+                if ((int)thisVal.u.o->pArrayData[thisVal.u.o->nArrayStart + i].tag < 0) {
+                    continue;
+                }
+            } else {
+                /* Past the dense part an element can only live in the
+                 * property map (a far index write): a missing key is a hole,
+                 * and with no live property at all the rest is holes. */
+                char sKey[32];
+                size_t nKeySize;
+                if (thisVal.u.o->props.nLive == 0) {
+                    break;
+                }
+                nKeySize = (size_t)xx_rt_snprintf(sKey, sizeof(sKey), "%lld", (long long)i);
+                if (!jsprops_find(&thisVal.u.o->props, sKey, nKeySize)) {
+                    continue;
+                }
+            }
+        }
+        item = js_get_index(pCtx, thisVal, i);
 
         args[0] = item;
         args[1] = js_num((double)i);
@@ -1010,6 +1046,10 @@ static JSVal fn_array_reduce(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv
         return js_throw(pCtx, "TypeError: callback is not a function");
     }
 
+    if ((nArgc <= 1) && (nLength == 0)) {
+        return js_throw(pCtx, "TypeError: Reduce of empty array with no initial value");
+    }
+
     if (nArgc > 1) {
         accumulator = js_dup(pArgv[1]);
     } else if (nLength > 0) {
@@ -1044,14 +1084,22 @@ static JSVal fn_array_reduce(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv
 
 static JSVal fn_string_ctor(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
 {
+    JSVal text = (nArgc == 0) ? js_str(pCtx, "") : js_to_string(pCtx, pArgv[0]);
+
     (void)thisVal;
     (void)pUser;
 
-    if (nArgc == 0) {
-        return js_str(pCtx, "");
+    /* new String(x) is a wrapper object whose primitive the string methods
+     * unwrap; without it they looped through toString until the call limit. */
+    if (pCtx->bNativeConstruct && !pCtx->bException) {
+        JSObj *pObj = jsobj_new(pCtx, JCLASS_STRING, pCtx->pStringProto);
+
+        pObj->primitive = text; /* takes the reference */
+
+        return jsval_obj(pObj);
     }
 
-    return js_to_string(pCtx, pArgv[0]);
+    return text;
 }
 
 static JSVal fn_string_fromcharcode(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
@@ -1068,7 +1116,11 @@ static JSVal fn_string_fromcharcode(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal
     for (i = 0; i < nArgc; i++) {
         uint32_t nCode = (uint32_t)js_to_int32(pCtx, pArgv[i]) & 0xFFFF;
 
-        if (nCode < 0x80) {
+        /* Strings are byte strings (length, charCodeAt and indexOf count
+         * bytes), so a code below 256 is one byte: the scripts build raw
+         * signatures this way and compare them with Binary.getString. Only
+         * larger code units still take the UTF-8 spelling. */
+        if (nCode < 0x100) {
             xx_buf_append_char(&buf, (char)nCode);
         } else if (nCode < 0x800) {
             xx_buf_append_char(&buf, (char)(0xC0 | (nCode >> 6)));
@@ -1327,6 +1379,29 @@ static JSVal fn_string_slice(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv
     return result;
 }
 
+/* substring arguments: ToInteger first, then clamp to 0..length, so that
+ * Infinity, -Infinity and oversized doubles never reach an int64_t cast. */
+static int64_t substring_index(double nValue, int64_t nLength)
+{
+    double nTrunc;
+
+    if (nValue != nValue) {
+        return 0;
+    }
+
+    nTrunc = (nValue < 0) ? (-xx_rt_floor(-nValue)) : xx_rt_floor(nValue);
+
+    if (nTrunc <= 0) {
+        return 0;
+    }
+
+    if (nTrunc >= (double)nLength) {
+        return nLength;
+    }
+
+    return (int64_t)nTrunc;
+}
+
 static JSVal fn_string_substring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
 {
     JSVal text = js_builtin_string_value(pCtx, thisVal);
@@ -1338,15 +1413,11 @@ static JSVal fn_string_substring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *p
     (void)pUser;
 
     if (nArgc > 0) {
-        double nValue = js_to_number(pCtx, pArgv[0]);
-
-        nStart = (nValue != nValue) ? 0 : (int64_t)nValue;
+        nStart = substring_index(js_to_number(pCtx, pArgv[0]), nLength);
     }
 
     if ((nArgc > 1) && (pArgv[1].tag != JT_UNDEF)) {
-        double nValue = js_to_number(pCtx, pArgv[1]);
-
-        nEnd = (nValue != nValue) ? 0 : (int64_t)nValue;
+        nEnd = substring_index(js_to_number(pCtx, pArgv[1]), nLength);
     }
 
     if (nStart < 0) {
@@ -1589,14 +1660,20 @@ int js_is_string_concat(JSObj *pObj)
 
 static JSVal fn_number_ctor(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
 {
+    double nValue = (nArgc == 0) ? 0 : js_to_number(pCtx, pArgv[0]);
+
     (void)thisVal;
     (void)pUser;
 
-    if (nArgc == 0) {
-        return js_num(0);
+    if (pCtx->bNativeConstruct) {
+        JSObj *pObj = jsobj_new(pCtx, JCLASS_NUMBER, pCtx->pNumberProto);
+
+        pObj->primitive = js_num(nValue);
+
+        return jsval_obj(pObj);
     }
 
-    return js_num(js_to_number(pCtx, pArgv[0]));
+    return js_num(nValue);
 }
 
 static JSVal fn_number_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
@@ -1607,7 +1684,7 @@ static JSVal fn_number_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pA
     (void)pUser;
 
     if ((nRadix < 2) || (nRadix > 36)) {
-        nRadix = 10;
+        return js_throw(pCtx, "RangeError: toString() radix must be between 2 and 36");
     }
 
     return js_number_to_string(pCtx, nValue, nRadix);
@@ -1668,10 +1745,39 @@ static JSVal fn_number_toprecision(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal 
 
 static JSVal fn_boolean_ctor(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
 {
+    int bValue = (nArgc > 0) ? js_to_bool(pCtx, pArgv[0]) : 0;
+
     (void)thisVal;
     (void)pUser;
 
-    return js_bool((nArgc > 0) ? js_to_bool(pCtx, pArgv[0]) : 0);
+    if (pCtx->bNativeConstruct) {
+        JSObj *pObj = jsobj_new(pCtx, JCLASS_BOOLEAN, pCtx->pBooleanProto);
+
+        pObj->primitive = js_bool(bValue);
+
+        return jsval_obj(pObj);
+    }
+
+    return js_bool(bValue);
+}
+
+/* The boolean behind a Boolean wrapper, or the value's own truth. */
+static int this_boolean(JSCtx *pCtx, JSVal thisVal)
+{
+    if ((thisVal.tag == JT_OBJ) && (thisVal.u.o->cls == JCLASS_BOOLEAN)) {
+        return js_to_bool(pCtx, thisVal.u.o->primitive);
+    }
+
+    return js_to_bool(pCtx, thisVal);
+}
+
+static JSVal fn_boolean_valueof(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
+{
+    (void)nArgc;
+    (void)pArgv;
+    (void)pUser;
+
+    return js_bool(this_boolean(pCtx, thisVal));
 }
 
 static JSVal fn_boolean_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
@@ -1680,7 +1786,7 @@ static JSVal fn_boolean_tostring(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *p
     (void)pArgv;
     (void)pUser;
 
-    return js_str(pCtx, js_to_bool(pCtx, thisVal) ? "true" : "false");
+    return js_str(pCtx, this_boolean(pCtx, thisVal) ? "true" : "false");
 }
 
 /* ------------------------------------------------------------------ Date  */
@@ -2033,7 +2139,12 @@ static JSVal fn_math_unary(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, 
         case MATH_ABS: return js_num(xx_rt_fabs(nValue));
         case MATH_FLOOR: return js_num(xx_rt_floor(nValue));
         case MATH_CEIL: return js_num(xx_rt_ceil(nValue));
-        case MATH_ROUND: return js_num(xx_rt_floor(nValue + 0.5));
+        case MATH_ROUND: {
+            /* floor(x + 0.5) rounds 0.49999999999999994 up and misplaces
+             * values whose x + 0.5 is not representable. */
+            double nFloor = xx_rt_floor(nValue);
+            return js_num(((nValue - nFloor) >= 0.5) ? (nFloor + 1) : nFloor);
+        }
         case MATH_SQRT: return js_num(xx_rt_sqrt(nValue));
         case MATH_LOG: return js_num(xx_rt_log(nValue));
         case MATH_EXP: return js_num(xx_rt_exp(nValue));
@@ -2359,12 +2470,19 @@ static void json_stringify_raw(JSCtx *pCtx, xx_buf_t *pBuf, JSVal value, int nDe
                         continue;
                     }
 
+                    /* Properties holding undefined or a function are omitted, as
+                     * JSON has no spelling for them (array slots write null). */
+                    if ((pMap->pEntries[i].value.tag == JT_UNDEF) ||
+                        ((pMap->pEntries[i].value.tag == JT_OBJ) && js_is_callable(pMap->pEntries[i].value))) {
+                        continue;
+                    }
+
                     if (!bFirst) {
                         xx_buf_append_char(pBuf, ',');
                     }
 
                     bFirst = 0;
-                    json_quote(pBuf, pMap->pEntries[i].pKey, xx_rt_strlen(pMap->pEntries[i].pKey));
+                    json_quote(pBuf, pMap->pEntries[i].pKey, pMap->pEntries[i].nKeySize);
                     xx_buf_append_char(pBuf, ':');
                     json_stringify_value(pCtx, pBuf, pMap->pEntries[i].value, nDepth + 1);
                 }
@@ -2411,6 +2529,12 @@ static JSVal fn_json_stringify(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pAr
 
     (void)thisVal;
     (void)pUser;
+
+    /* At the top level undefined and functions serialise to undefined; the
+     * "null" spelling is for nested values only. */
+    if ((ARG(0).tag == JT_UNDEF) || ((ARG(0).tag == JT_OBJ) && js_is_callable(ARG(0)))) {
+        return js_undefined();
+    }
 
     xx_buf_init(&buf);
     json_stringify_value(pCtx, &buf, ARG(0), 0);
@@ -2641,6 +2765,9 @@ static JSVal json_parse_value(JsonParser *pParser)
 
         if (*pParser->p == '"') {
             pParser->p++;
+        } else {
+            /* An unterminated string is not JSON. */
+            pParser->bError = 1;
         }
 
         result = js_strn(pCtx, buf.data, buf.size);
@@ -2698,6 +2825,11 @@ static JSVal fn_json_parse(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, 
     parser.nDepth = 0;
 
     result = json_parse_value(&parser);
+    /* Anything but white space after the value makes the document invalid. */
+    json_skip_ws(&parser);
+    if (*parser.p) {
+        parser.bError = 1;
+    }
     js_release(pCtx, text);
 
     if (parser.bError) {
@@ -2792,7 +2924,7 @@ void js_install_builtins(JSCtx *pCtx)
 
     /* Boolean.prototype */
     def_proto_method(pCtx, pCtx->pBooleanProto, "toString", fn_boolean_tostring, 0, NULL);
-    def_proto_method(pCtx, pCtx->pBooleanProto, "valueOf", fn_object_valueof, 0, NULL);
+    def_proto_method(pCtx, pCtx->pBooleanProto, "valueOf", fn_boolean_valueof, 0, NULL);
 
     /* Error.prototype */
     def_proto_method(pCtx, pCtx->pErrorProto, "toString", fn_error_tostring, 0, NULL);

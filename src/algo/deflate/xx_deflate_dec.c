@@ -42,7 +42,7 @@ bool xx_br_init(xx_bit_reader *br, xx_io_device *dev, const uint8_t *mem_src, si
             br->buffer_cap = sizeof(br->inline_buffer);
             br->owns_buffer = false;
         } else {
-            size_t cap = 64 * 1024;
+            size_t cap = 128 * 1024;
             if (remaining_input >= 0 && (uint64_t)remaining_input < (uint64_t)cap) {
                 cap = (size_t)remaining_input;
                 if (cap < sizeof(br->inline_buffer)) cap = sizeof(br->inline_buffer);
@@ -162,7 +162,7 @@ static inline uint32_t xx_br_read(xx_bit_reader *br, int n)
         br->error = true;
         return 0U;
     }
-    uint32_t v = xx_br_peek(br, n);
+    uint32_t v = (uint32_t)(br->bit_buf & ((1ULL << n) - 1));
     xx_br_drop(br, n);
     return v;
 }
@@ -309,7 +309,13 @@ static inline int xx_huff_decode(const xx_huff_decoder *dec, xx_bit_reader *br)
     /* Refill opportunistically. A final code can need fewer than XX_DEFLATE_FAST_BITS bits;
      * a failed lookahead must not reject it or consume padded missing bits. */
     if (br->bit_count < XX_DEFLATE_FAST_BITS) (void)xx_br_refill(br, XX_DEFLATE_FAST_BITS);
-    if (br->bit_count > 0) {
+    if (br->bit_count >= XX_DEFLATE_FAST_BITS) {
+        xx_huff_entry entry = dec->fast[(uint32_t)br->bit_buf & (XX_DEFLATE_FAST_SIZE - 1U)];
+        if (entry.bits > 0) {
+            xx_br_drop(br, entry.bits);
+            return entry.sym;
+        }
+    } else if (br->bit_count > 0) {
         xx_huff_entry entry = dec->fast[(uint32_t)br->bit_buf & (XX_DEFLATE_FAST_SIZE - 1U)];
         if (entry.bits > 0 && entry.bits <= br->bit_count) {
             xx_br_drop(br, entry.bits);
@@ -487,14 +493,7 @@ static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_sse2(uint8_t *window, size_t
 {
     uint8_t *dst = window + target;
     if (distance == 1U) {
-        uint8_t value = window[source];
-        __m128i repeated = _mm_set1_epi8((char)value);
-        while (chunk >= 16U) {
-            _mm_storeu_si128((__m128i *)(void *)dst, repeated);
-            dst += 16U;
-            chunk -= 16U;
-        }
-        xx_decode_fill_words(dst, value, chunk);
+        xx_rt_memset(dst, window[source], chunk);
     } else if ((distance >= 16U || chunk <= distance) && chunk <= win_size - source) {
         /* A vector-wide distance permits forward LZ copies; a shorter
          * distance is safe when the complete match is prior history. */
@@ -560,19 +559,7 @@ static XX_DEFLATE_DEC_NOINLINE void xx_decode_match_avx2(uint8_t *window, size_t
 {
     uint8_t *dst = window + target;
     if (distance == 1U) {
-        uint8_t value = window[source];
-        __m256i repeated = _mm256_set1_epi8((char)value);
-        while (chunk >= 32U) {
-            _mm256_storeu_si256((__m256i *)(void *)dst, repeated);
-            dst += 32U;
-            chunk -= 32U;
-        }
-        if (chunk >= 16U) {
-            _mm_storeu_si128((__m128i *)(void *)dst, _mm256_castsi256_si128(repeated));
-            dst += 16U;
-            chunk -= 16U;
-        }
-        xx_decode_fill_words(dst, value, chunk);
+        xx_rt_memset(dst, window[source], chunk);
     } else if ((distance >= 32U || chunk <= distance) && chunk <= win_size - source) {
         xx_decode_copy_vectors_avx2(dst, window + source, chunk);
     } else if (distance >= 32U) {
@@ -704,9 +691,15 @@ static bool xx_out_init(xx_out_acc *out, xx_io_device *dev, uint8_t *mem_dst, si
 #endif
 
     if (dev) {
-        out->buf = out->inline_buf;
-        out->buf_cap = sizeof(out->inline_buf);
-        out->owns_buf = false;
+        out->buf = (uint8_t *)xx_mem_alloc(128 * 1024);
+        if (out->buf) {
+            out->buf_cap = 128 * 1024;
+            out->owns_buf = true;
+        } else {
+            out->buf = out->inline_buf;
+            out->buf_cap = sizeof(out->inline_buf);
+            out->owns_buf = false;
+        }
     }
     return true;
 }
@@ -823,7 +816,7 @@ static bool xx_out_copy_match(xx_out_acc *out, uint8_t *window, size_t win_size,
         if (out->dev) out->total_written += (int64_t)chunk;
         else if (!xx_out_write(out, window + target, chunk)) return false;
         *win_pos += chunk;
-        if (out->dev && !xx_out_emit_window(out, window, win_size, *win_pos, false)) return false;
+        if (out->dev && (*win_pos & (win_size - 1U)) == 0U && !xx_out_emit_window(out, window, win_size, *win_pos, false)) return false;
         length -= (uint32_t)chunk;
     }
     return true;
@@ -834,6 +827,26 @@ static bool xx_out_copy_match(xx_out_acc *out, uint8_t *window, size_t win_size,
 /* ========================================================================= */
 
 static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+
+static const uint16_t g_deflate_length_base[29] = {
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
+    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258
+};
+static const uint8_t g_deflate_length_extra[29] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
+};
+
+static const uint16_t g_deflate_dist_base[32] = {
+    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
+    257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
+    32769, 49153
+};
+static const uint8_t g_deflate_dist_extra[32] = {
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
+    7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13,
+    14, 14
+};
 
 bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
                                                size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size)
@@ -1027,7 +1040,10 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                     window[win_pos++ & (win_size - 1)] = b;
                     if (out.dev) {
                         out.total_written++;
-                        if (!xx_out_emit_window(&out, window, win_size, win_pos, false)) { success = false; break; }
+                        if ((win_pos & (win_size - 1U)) == 0U && !xx_out_emit_window(&out, window, win_size, win_pos, false)) {
+                            success = false;
+                            break;
+                        }
                     } else if (!xx_out_put_byte(&out, b)) {
                         success = false;
                         break;
@@ -1037,19 +1053,20 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                     break;
                 } else if (sym <= 285) {
                     /* Length code */
-                    uint32_t length = 0;
-                    if (sym <= 260) {
-                        length = (uint32_t)(sym - 257) + 3;
-                    } else if (sym <= 284) {
-                        uint32_t more_bits = (uint32_t)(sym - 261) / 4;
-                        uint32_t base = ((4 + (uint32_t)(sym + 3) % 4) << more_bits) + 3;
-                        length = base + xx_br_read(reader, (int)more_bits);
+                    uint32_t len_idx = (uint32_t)(sym - 257);
+                    uint32_t length;
+                    if (len_idx < 28) {
+                        uint32_t extra = g_deflate_length_extra[len_idx];
+                        length = g_deflate_length_base[len_idx] + (extra ? xx_br_read(reader, (int)extra) : 0);
                     } else if (sym == 285) {
                         if (is_deflate64) {
                             length = 3 + xx_br_read(reader, 16);
                         } else {
                             length = 258;
                         }
+                    } else {
+                        success = false;
+                        break;
                     }
 
                     /* Distance code */
@@ -1059,16 +1076,12 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                         break;
                     }
 
-                    uint32_t dist = 0;
-                    if (dist_sym <= 3) {
-                        dist = (uint32_t)dist_sym + 1;
-                    } else if (dist_sym <= 29) {
-                        uint32_t more_bits = ((uint32_t)dist_sym / 2) - 1;
-                        uint32_t base = (2 + ((uint32_t)dist_sym % 2)) << more_bits;
-                        dist = base + 1 + xx_br_read(reader, (int)more_bits);
-                    } else if (is_deflate64 && (dist_sym == 30 || dist_sym == 31)) {
-                        uint32_t base = (dist_sym == 30) ? 32769 : 49153;
-                        dist = base + xx_br_read(reader, 14);
+                    uint32_t dist;
+                    if (dist_sym < 30) {
+                        uint32_t extra = g_deflate_dist_extra[dist_sym];
+                        dist = g_deflate_dist_base[dist_sym] + (extra ? xx_br_read(reader, (int)extra) : 0);
+                    } else if (is_deflate64 && dist_sym < 32) {
+                        dist = g_deflate_dist_base[dist_sym] + xx_br_read(reader, 14);
                     } else {
                         success = false;
                         break;
@@ -1079,8 +1092,10 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                         break;
                     }
 
-                    if (!xx_out_copy_match(&out, window, win_size, &win_pos, dist, length)) success = false;
-                    if (!success) break;
+                    if (!xx_out_copy_match(&out, window, win_size, &win_pos, dist, length)) {
+                        success = false;
+                        break;
+                    }
                 } else {
                     success = false;
                     break;

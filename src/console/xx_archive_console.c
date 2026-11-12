@@ -1051,7 +1051,8 @@ static void usage(const xx_archive_console_config *config, FILE *out, const char
             "  --password-env=<name>  Read the password from an environment variable\n"
             "  --format=<name>  Creation format or variant (see --capabilities)\n"
             "  --filter=<name>  Outer creation filter (see --capabilities)\n"
-            "  --options=<text>  Format-specific reader or writer options\n"
+            "  --options=<key>=<value>[;...]  All archive options as one string (keys below)\n"
+            "  --defaultoptions  Show the default pack and unpack option strings\n"
             "  --compression=<method>  Writer-specific compression method\n"
             "  --compression-level=<n>  Writer-specific compression level\n"
             "  --volume-size=<bytes>  Split writer only; binary K/M/G suffixes accepted\n"
@@ -1091,7 +1092,12 @@ static void usage(const xx_archive_console_config *config, FILE *out, const char
                      "  regardless of the destination extension. The outer filter must be none.\n",
                 profile_description(config), profile_of(config)->create);
     fputs("  `a` creates an archive; it does not append to an existing archive.\n"
-          "  Use -- before input filenames that begin with a dash.\n", out);
+          "  Use -- before input filenames that begin with a dash.\n"
+          "  --options keys: handle, reader, password, password-env and output for\n"
+          "  l, t, p and x; format, filter, compression, level, volume-size,\n"
+          "  password and password-env for a. A <format>:<name> key goes to the\n"
+          "  reader or writer (cpio:hdrcharset=CP437). An empty value or auto keeps\n"
+          "  the default, so the strings of --defaultoptions can be given back.\n", out);
     free(shown);
 }
 
@@ -1123,6 +1129,313 @@ static bool parse_volume_size(const char *text, uint64_t *size) {
  * any name for the same file) keeps that stream for its own bytes: the member
  * lines and the summary then go to standard error. */
 static bool console_log_to_stderr;
+
+/* ---- Archive options ------------------------------------------------------
+ * The options of a request come from the long options of the command line
+ * or from one string, --options=<key>=<value>[;<key>=<value>...], with the
+ * same keys for both. A key with ':' (cpio:hdrcharset=CP437) is a
+ * format-specific option handed to the reader or writer. An empty value in
+ * the string, or `auto` for a selector, leaves the default: the strings that
+ * --defaultoptions prints can be given back unchanged. */
+typedef enum option_key {
+    OPTION_PASSWORD, OPTION_PASSWORD_ENV, OPTION_HANDLE, OPTION_READER, OPTION_OUTPUT,
+    OPTION_FORMAT, OPTION_FILTER, OPTION_COMPRESSION, OPTION_LEVEL, OPTION_VOLUME_SIZE,
+    OPTION_COUNT
+} option_key;
+
+static const struct option_name {
+    const char *key;       /* the --options spelling */
+    bool pack, unpack;     /* applies to a; applies to l, t, p and x */
+    bool selector;         /* `auto` leaves the default */
+} option_names[OPTION_COUNT] = {
+    {"password", true, true, false},
+    {"password-env", true, true, false},
+    {"handle", false, true, true},
+    {"reader", false, true, true},
+    {"output", false, true, false},
+    {"format", true, false, true},
+    {"filter", true, false, true},
+    {"compression", true, false, true},
+    {"level", true, false, true},
+    {"volume-size", true, false, true},
+};
+
+typedef struct console_options {
+    xfu_request *request;
+    bool set[OPTION_COUNT];
+    char *environment_password; /* owned; wiped on release */
+    char *passthrough;          /* owned: the format-specific pairs, ';'-separated */
+} console_options;
+
+/* --password-env=<name>: a copy of the variable in *password. Returns the
+ * failure message, or NULL. */
+static const char *environment_password(const char *name, char **password) {
+    if (!*name) return "name a password environment variable";
+#ifdef _WIN32
+    {
+        wchar_t *wide_name = xx_str_utf8_to_unicode(name);
+        wchar_t *wide_value;
+        char *utf8_value;
+        DWORD needed, copied;
+        if (!wide_name) return "cannot allocate environment variable name";
+        SetLastError(ERROR_SUCCESS);
+        needed = GetEnvironmentVariableW(wide_name, NULL, 0);
+        if (!needed && GetLastError() != ERROR_SUCCESS) {
+            xx_str_wfree(wide_name);
+            return "password environment variable is not set";
+        }
+        wide_value = (wchar_t *)calloc(needed ? needed : 1, sizeof(wchar_t));
+        SetLastError(ERROR_SUCCESS);
+        copied = wide_value && needed ? GetEnvironmentVariableW(wide_name, wide_value, needed) : 0;
+        if (!wide_value || copied >= (needed ? needed : 1) ||
+            (!copied && GetLastError() != ERROR_SUCCESS)) {
+            xx_str_wfree(wide_name); free(wide_value);
+            return "cannot read password environment variable";
+        }
+        xx_str_wfree(wide_name);
+        utf8_value = xx_str_unicode_to_utf8(wide_value);
+        SecureZeroMemory(wide_value, (needed ? needed : 1) * sizeof(wchar_t));
+        free(wide_value);
+        if (utf8_value) {
+            size_t length = strlen(utf8_value);
+            *password = (char *)malloc(length + 1);
+            if (*password) memcpy(*password, utf8_value, length + 1);
+            SecureZeroMemory(utf8_value, length);
+            xx_str_free(utf8_value);
+        }
+    }
+#else
+    {
+        const char *value = getenv(name);
+        if (!value) return "password environment variable is not set";
+        *password = (char *)malloc(strlen(value) + 1);
+        if (*password) strcpy(*password, value);
+    }
+#endif
+    return *password ? NULL : "cannot allocate password";
+}
+
+static void options_release(console_options *options) {
+    if (options->environment_password) {
+        volatile char *wipe = options->environment_password;
+        size_t size = strlen(options->environment_password);
+        while (size--) *wipe++ = 0;
+        free(options->environment_password);
+    }
+    free(options->passthrough);
+}
+
+static bool option_failure(const char *shown, const char *message) {
+    fprintf(stderr, "%s: %s\n", shown, message);
+    return false;
+}
+
+/* Sets one option of the request. `shown` names it in messages. `literal`
+ * values come from an --options string: there an empty value leaves the
+ * default, on the command line it is an error. */
+static bool option_set(console_options *options, option_key key, const char *shown,
+                       const char *value, bool literal) {
+    xfu_request *request = options->request;
+    option_key slot = key == OPTION_PASSWORD_ENV ? OPTION_PASSWORD : key;
+    if (!value || (!literal && key != OPTION_PASSWORD && (!*value || (*value == '-' && key != OPTION_LEVEL))))
+        return option_failure(shown, key == OPTION_OUTPUT ? "name an output directory" :
+                              key == OPTION_LEVEL ? "specify one integer" : "specify one value");
+    if (literal && !*value && key != OPTION_PASSWORD) return true;
+    if (option_names[key].selector && !strcmp(value, "auto")) return true;
+    if (options->set[slot])
+        return option_failure(shown, slot == OPTION_PASSWORD ? "password specified more than once" :
+                              "specified more than once");
+    switch (key) {
+        case OPTION_PASSWORD:
+            request->password = value;
+            break;
+        case OPTION_PASSWORD_ENV: {
+            const char *failure = environment_password(value, &options->environment_password);
+            if (failure) return option_failure(shown, failure);
+            request->password = options->environment_password;
+            break;
+        }
+        case OPTION_HANDLE: {
+            xx_handle_type_t handle = XX_HANDLE_TYPE_UNKNOWN;
+            if (options->set[OPTION_READER]) return option_failure(shown, "cannot combine with --reader");
+            if (!parse_unpack_handle(value, &handle))
+                return option_failure(shown, "select one supported unpack handle for l, t, p or x");
+            if (handle == XX_HANDLE_TYPE_UNKNOWN) return true;
+            request->handle_type = handle;
+            break;
+        }
+        case OPTION_READER:
+            if (options->set[OPTION_HANDLE]) return option_failure(shown, "cannot combine with --handle");
+            request->reader_name = value;
+            break;
+        case OPTION_OUTPUT: request->output_dir = value; break;
+        case OPTION_FORMAT: request->archive_format = value; break;
+        case OPTION_FILTER: request->archive_filter = value; break;
+        case OPTION_COMPRESSION: request->compression_method = value; break;
+        case OPTION_LEVEL: {
+            char *end = NULL;
+            long level;
+            if ((value[0] != '-' && (value[0] < '0' || value[0] > '9')) ||
+                (value[0] == '-' && (value[1] < '0' || value[1] > '9')))
+                return option_failure(shown, "specify one integer");
+            errno = 0;
+            level = strtol(value, &end, 10);
+            if (errno == ERANGE || !end || *end || level < INT_MIN || level > INT_MAX)
+                return option_failure(shown, "invalid integer");
+            request->compression_level = (int)level;
+            request->compression_level_set = true;
+            break;
+        }
+        case OPTION_VOLUME_SIZE:
+            if (!parse_volume_size(value, &request->volume_size))
+                return option_failure(shown, "specify one positive size in bytes, K, M or G");
+            break;
+        default: return false;
+    }
+    options->set[slot] = true;
+    return true;
+}
+
+static bool passthrough_append(console_options *options, const char *pair) {
+    size_t used = options->passthrough ? strlen(options->passthrough) : 0, add = strlen(pair);
+    char *grown = (char *)realloc(options->passthrough, used + add + 2);
+    if (!grown) { fprintf(stderr, "cannot allocate options\n"); return false; }
+    if (used) grown[used++] = ';';
+    memcpy(grown + used, pair, add + 1);
+    options->passthrough = grown;
+    return true;
+}
+
+/* --options=<text>: key=value pairs separated by ';', split in place. */
+static bool options_apply(console_options *options, char *text) {
+    bool pack = options->request->command == XFU_COMMAND_ADD;
+    char *pair = text;
+    while (pair) {
+        char *next = strchr(pair, ';'), *end, *value;
+        char shown[80];
+        size_t i;
+        if (next) *next++ = '\0';
+        while (*pair == ' ' || *pair == '\t') ++pair;
+        end = pair + strlen(pair);
+        while (end > pair && (end[-1] == ' ' || end[-1] == '\t')) *--end = '\0';
+        if (*pair) {
+            value = strchr(pair, '=');
+            if (!value) {
+                console_error_argument("--options: expected key=value: ", pair, "");
+                return false;
+            }
+            *value++ = '\0';
+            for (end = value - 1; end > pair && (end[-1] == ' ' || end[-1] == '\t'); --end) end[-1] = '\0';
+            while (*value == ' ' || *value == '\t') ++value;
+            if (strchr(pair, ':')) {
+                /* A format-specific option for the reader or writer. */
+                if (*value) {
+                    char joined[160];
+                    if (snprintf(joined, sizeof(joined), "%s=%s", pair, value) >= (int)sizeof(joined)) {
+                        console_error_argument("--options: value too long: ", pair, "");
+                        return false;
+                    }
+                    if (!passthrough_append(options, joined)) return false;
+                }
+            } else {
+                for (i = 0; i < OPTION_COUNT && strcmp(option_names[i].key, pair); ++i) {}
+                if (i == OPTION_COUNT) {
+                    console_error_argument("--options: unknown key: ", pair, "");
+                    return false;
+                }
+                if (pack ? !option_names[i].pack : !option_names[i].unpack) {
+                    fprintf(stderr, "--options: %s applies to %s only\n", option_names[i].key,
+                            pack ? "l, t, p and x" : "a");
+                    return false;
+                }
+                snprintf(shown, sizeof(shown), "--options: %s", option_names[i].key);
+                if (!option_set(options, (option_key)i, shown, value, true)) return false;
+            }
+        }
+        pair = next;
+    }
+    return true;
+}
+
+/* `--name=value` or `--name value`: *value (NULL when missing), advancing
+ * *index past a separate value. */
+static bool long_option(char **argv, int argc, int *index, const char *name, char **value) {
+    size_t length = strlen(name);
+    const char *argument = argv[*index];
+    if (strncmp(argument, name, length) || (argument[length] && argument[length] != '=')) return false;
+    *value = argument[length] == '=' ? argv[*index] + length + 1 :
+             (++*index < argc ? argv[*index] : NULL);
+    return true;
+}
+
+/* The pack options the tool uses when none are given, as an --options
+ * string, or NULL for a tool without a writer. `auto` is a choice the
+ * engine makes from the destination name or the input; an empty value is an
+ * option that is not set. The compression defaults are the writers': ZIP
+ * deflate level 6, 7-Zip LZMA2 level 5, gzip, XZ, LZMA-Alone and lzip
+ * level 6, bzip2 level 6, Zstandard level 3. */
+static const char *default_pack_options(const xx_archive_console_config *config,
+                                        char *buffer, size_t size) {
+    const profile_info *profile = profile_of(config);
+    const char *compression = NULL, *level = NULL, *password = "", *volume = "";
+    bool all = config->format == XX_ARCHIVE_CONSOLE_ALL;
+    if (!all && !profile->create) return NULL;
+    switch (config->format) {
+        case XX_ARCHIVE_CONSOLE_ALL:
+            compression = "auto"; level = "auto"; password = ";password="; volume = ";volume-size=";
+            break;
+        case XX_ARCHIVE_CONSOLE_ZIP: compression = "deflate"; level = "6"; password = ";password="; break;
+        case XX_ARCHIVE_CONSOLE_7ZIP: compression = "lzma2"; level = "5"; password = ";password="; break;
+        case XX_ARCHIVE_CONSOLE_TAR: level = "auto"; break;
+        case XX_ARCHIVE_CONSOLE_GZ: case XX_ARCHIVE_CONSOLE_BZ2: case XX_ARCHIVE_CONSOLE_XZ:
+        case XX_ARCHIVE_CONSOLE_LZMA: case XX_ARCHIVE_CONSOLE_LZIP: level = "6"; break;
+        case XX_ARCHIVE_CONSOLE_ZSTD: level = "3"; break;
+        default: break;
+    }
+    snprintf(buffer, size, "format=%s;filter=%s%s%s%s%s%s%s",
+             all ? "auto" : profile->create,
+             all || !profile->filter ? "auto" : profile->filter,
+             compression ? ";compression=" : "", compression ? compression : "",
+             level ? ";level=" : "", level ? level : "", password, volume);
+    return buffer;
+}
+
+#define DEFAULT_UNPACK_OPTIONS "handle=auto;reader=auto;password=;output=."
+
+static int show_default_options(const xx_archive_console_config *config, output_format format) {
+    static const char *const modes[] = {"pack", "unpack"};
+    char pack[160];
+    const char *strings[2];
+    size_t i;
+    strings[0] = default_pack_options(config, pack, sizeof(pack));
+    strings[1] = DEFAULT_UNPACK_OPTIONS;
+    if (format == OUTPUT_TEXT) {
+        for (i = 0; i < 2; ++i)
+            if (strings[i] && printf("%s %s\n", modes[i], strings[i]) < 0) return 2;
+        return fflush(stdout) == EOF || ferror(stdout) ? 2 : 0;
+    }
+    {
+        structured_output document = {0};
+        document.format = format;
+        structured_begin(config, &document, "default-options", NULL);
+        for (i = 0; i < 2; ++i) {
+            if (!strings[i]) continue;
+            if (structured_event_prefix(&document) < 0) break;
+            if (format == OUTPUT_JSON) {
+                if (fputs("\"type\":\"default-options\",\"mode\":", stdout) == EOF ||
+                    json_string(stdout, modes[i]) < 0 ||
+                    fputs(",\"options\":", stdout) == EOF ||
+                    json_string(stdout, strings[i]) < 0 ||
+                    fputc('}', stdout) == EOF) document.output_failed = true;
+            } else if (fputs("    <default-options mode=\"", stdout) == EOF ||
+                       xml_string(stdout, modes[i]) < 0 ||
+                       fputs("\" options=\"", stdout) == EOF ||
+                       xml_string(stdout, strings[i]) < 0 ||
+                       fputs("\"/>\n", stdout) == EOF) document.output_failed = true;
+        }
+        return structured_end(&document, 0);
+    }
+}
 
 static bool console_names_stdout(const char *path) {
 #ifdef _WIN32
@@ -1475,13 +1788,12 @@ static int run_cli_arguments(const xx_archive_console_config *config,
     bool get_password = false;
     bool verbose_test = false;
     bool advanced_listing = false;
-    bool handle_specified = false;
+    console_options options = {0};
     console_test test = {0};
     password_retrieval retrieval = {0};
     structured_output document = {0};
     encryption_notice encryption = {0};
     output_format output = initial_output;
-    char *environment_password = NULL;
     int i, result;
 
     if (argc >= 2 && !strcmp(argv[1], "--version")) {
@@ -1521,6 +1833,14 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         }
         return show_raw_profiles(config, output);
     }
+    if (argc >= 2 && !strcmp(argv[1], "--defaultoptions")) {
+        for (i = 2; i < argc; ++i) {
+            int consumed = consume_output_option(argv[i], &output);
+            if (consumed < 0) return 2;
+            if (!consumed) { fprintf(stderr, "--defaultoptions takes no arguments except --json or --xml\n"); return 2; }
+        }
+        return show_default_options(config, output);
+    }
 
     if (argc == 1 || (argc == 2 &&
         (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0))) {
@@ -1555,198 +1875,82 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         }
         request.files = files;
     }
+    options.request = &request;
     for (i = 3; i < argc; ++i) {
+        char *value = NULL;
+        bool ok = true;
         int output_option = !literal_files ? consume_output_option(argv[i], &output) : 0;
         if (output_option < 0) { result = 2; goto cleanup; }
         if (output_option > 0) continue;
-        if (!literal_files && (strncmp(argv[i], "-p", 2) == 0 ||
-                   strncmp(argv[i], "--password-env=", 15) == 0)) {
-            if (request.password) {
-                fprintf(stderr, "password specified more than once\n");
-                result = 2;
-                goto cleanup;
-            }
-            if (strncmp(argv[i], "-p", 2) == 0) request.password = argv[i] + 2;
-            else {
-                const char *name = argv[i] + 15;
-                if (!*name) { fprintf(stderr, "name a password environment variable\n"); result = 2; goto cleanup; }
-#ifdef _WIN32
-                wchar_t *wide_name = xx_str_utf8_to_unicode(name);
-                wchar_t *wide_value;
-                char *utf8_value;
-                DWORD needed, copied;
-                if (!wide_name) { fprintf(stderr, "cannot allocate environment variable name\n"); result = 2; goto cleanup; }
-                SetLastError(ERROR_SUCCESS);
-                needed = GetEnvironmentVariableW(wide_name, NULL, 0);
-                if (!needed && GetLastError() != ERROR_SUCCESS) {
-                    xx_str_wfree(wide_name);
-                    fprintf(stderr, "password environment variable is not set\n");
-                    result = 2; goto cleanup;
-                }
-                wide_value = (wchar_t *)calloc(needed ? needed : 1, sizeof(wchar_t));
-                SetLastError(ERROR_SUCCESS);
-                copied = wide_value && needed ? GetEnvironmentVariableW(wide_name, wide_value, needed) : 0;
-                if (!wide_value || copied >= (needed ? needed : 1) ||
-                    (!copied && GetLastError() != ERROR_SUCCESS)) {
-                    xx_str_wfree(wide_name); free(wide_value);
-                    fprintf(stderr, "cannot read password environment variable\n");
-                    result = 2; goto cleanup;
-                }
-                xx_str_wfree(wide_name);
-                utf8_value = xx_str_unicode_to_utf8(wide_value);
-                SecureZeroMemory(wide_value, (needed ? needed : 1) * sizeof(wchar_t));
-                free(wide_value);
-                if (utf8_value) {
-                    size_t length = strlen(utf8_value);
-                    environment_password = (char *)malloc(length + 1);
-                    if (environment_password) memcpy(environment_password, utf8_value, length + 1);
-                    SecureZeroMemory(utf8_value, length);
-                    xx_str_free(utf8_value);
-                }
-#else
-                const char *value = getenv(name);
-                if (!value) { fprintf(stderr, "password environment variable is not set\n"); result = 2; goto cleanup; }
-                environment_password = (char *)malloc(strlen(value) + 1);
-                if (environment_password) strcpy(environment_password, value);
-#endif
-                if (!environment_password) { fprintf(stderr, "cannot allocate password\n"); result = 2; goto cleanup; }
-                request.password = environment_password;
-            }
-
-        } else if (!literal_files && (!strcmp(argv[i], "--handle") || !strncmp(argv[i], "--handle=", 9))) {
-            const char *name = argv[i][8] == '=' ? argv[i] + 9 : (++i < argc ? argv[i] : NULL);
-            if (request.command == XFU_COMMAND_ADD || handle_specified || request.reader_name ||
-                !parse_unpack_handle(name, &request.handle_type)) {
-                fprintf(stderr, "--handle: select one supported unpack handle for l, t, p or x; cannot combine with --reader\n");
-                result = 2; goto cleanup;
-            }
-            handle_specified = true;
-        } else if (request.command != XFU_COMMAND_ADD &&
-                   (!strcmp(argv[i], "--options") || !strncmp(argv[i], "--options=", 10))) {
-            const char *value = argv[i][9] == '=' ? argv[i] + 10 : (++i < argc ? argv[i] : NULL);
-            if (request.archive_options || !value || !*value || value[0] == '-') {
-                fprintf(stderr, "--options: specify one value\n"); result = 2; goto cleanup;
-            }
-            request.archive_options = value;
+        if (!literal_files && strncmp(argv[i], "-p", 2) == 0) {
+            ok = option_set(&options, OPTION_PASSWORD, "-p", argv[i] + 2, false);
+        } else if (!literal_files && strncmp(argv[i], "--password-env=", 15) == 0) {
+            ok = option_set(&options, OPTION_PASSWORD_ENV, "--password-env", argv[i] + 15, false);
+        } else if (!literal_files && long_option(argv, argc, &i, "--handle", &value)) {
+            if (request.command == XFU_COMMAND_ADD) {
+                fprintf(stderr, "--handle: select one supported unpack handle for l, t, p or x\n");
+                ok = false;
+            } else ok = option_set(&options, OPTION_HANDLE, "--handle", value, false);
+        } else if (!literal_files && long_option(argv, argc, &i, "--options", &value)) {
+            if (!value || !*value || *value == '-') {
+                fprintf(stderr, "--options: specify key=value pairs separated by ';' (see --defaultoptions)\n");
+                ok = false;
+            } else ok = options_apply(&options, value);
         } else if (request.command == XFU_COMMAND_ADD) {
-            static const struct { const char *name; size_t length; } selectors[] = {
-                { "--format", 8 }, { "--filter", 8 }, { "--options", 9 }
-            };
-            size_t option;
-            bool consumed = false;
-            if (!literal_files) for (option = 0; option < sizeof(selectors) / sizeof(selectors[0]); ++option) {
-                const char *name = selectors[option].name;
-                size_t length = selectors[option].length;
-                const char **target = option == 0 ? &request.archive_format :
-                                      option == 1 ? &request.archive_filter : &request.archive_options;
-                const char *value;
-                if (strncmp(argv[i], name, length) || (argv[i][length] && argv[i][length] != '=')) continue;
-                value = argv[i][length] == '=' ? argv[i] + length + 1 : (++i < argc ? argv[i] : NULL);
-                if (*target || !value || !*value || value[0] == '-') {
-                    fprintf(stderr, "%s: specify one value\n", name); result = 2; goto cleanup;
-                }
-                *target = value;
-                consumed = true;
-                break;
-            }
-            if (consumed) continue;
-            if (!literal_files && (!strcmp(argv[i], "--volume-size") || !strncmp(argv[i], "--volume-size=", 14))) {
-                const char *value = argv[i][13] == '=' ? argv[i] + 14 : (++i < argc ? argv[i] : NULL);
-                if (request.volume_size || !parse_volume_size(value, &request.volume_size)) {
-                    fprintf(stderr, "--volume-size: specify one positive size in bytes, K, M or G\n");
-                    result = 2; goto cleanup;
-                }
-                continue;
-            }
-            if (!literal_files && (!strcmp(argv[i], "--compression") || !strncmp(argv[i], "--compression=", 14))) {
-                const char *value = argv[i][13] == '=' ? argv[i] + 14 : (++i < argc ? argv[i] : NULL);
-                if (request.compression_method || !value || !*value || value[0] == '-') {
-                    fprintf(stderr, "--compression: specify one method\n"); result = 2; goto cleanup;
-                }
-                request.compression_method = value; continue;
-            }
-            if (!literal_files && (!strcmp(argv[i], "--compression-level") || !strncmp(argv[i], "--compression-level=", 20))) {
-                const char *value = argv[i][19] == '=' ? argv[i] + 20 : (++i < argc ? argv[i] : NULL);
-                char *end = NULL;
-                long level;
-                if (request.compression_level_set || !value || !*value ||
-                    (value[0] != '-' && (value[0] < '0' || value[0] > '9')) ||
-                    (value[0] == '-' && (value[1] < '0' || value[1] > '9'))) {
-                    fprintf(stderr, "--compression-level: specify one integer\n"); result = 2; goto cleanup;
-                }
-                errno = 0;
-                level = strtol(value, &end, 10);
-                if (errno == ERANGE || !end || *end || level < INT_MIN || level > INT_MAX) {
-                    fprintf(stderr, "--compression-level: invalid integer\n"); result = 2; goto cleanup;
-                }
-                request.compression_level = (int)level; request.compression_level_set = true; continue;
-            }
-            if (!literal_files && strcmp(argv[i], "--") == 0) {
+            if (!literal_files && long_option(argv, argc, &i, "--format", &value))
+                ok = option_set(&options, OPTION_FORMAT, "--format", value, false);
+            else if (!literal_files && long_option(argv, argc, &i, "--filter", &value))
+                ok = option_set(&options, OPTION_FILTER, "--filter", value, false);
+            else if (!literal_files && long_option(argv, argc, &i, "--compression", &value))
+                ok = option_set(&options, OPTION_COMPRESSION, "--compression", value, false);
+            else if (!literal_files && long_option(argv, argc, &i, "--compression-level", &value))
+                ok = option_set(&options, OPTION_LEVEL, "--compression-level", value, false);
+            else if (!literal_files && long_option(argv, argc, &i, "--volume-size", &value))
+                ok = option_set(&options, OPTION_VOLUME_SIZE, "--volume-size", value, false);
+            else if (!literal_files && strcmp(argv[i], "--") == 0)
                 literal_files = true;
-                continue;
-            }
-            if (!literal_files && argv[i][0] == '-') {
+            else if (!literal_files && argv[i][0] == '-') {
                 console_error_argument("unknown option: ", argv[i], "");
-                result = 2;
-                goto cleanup;
-            }
-            files[request.file_count++] = argv[i];
+                ok = false;
+            } else files[request.file_count++] = argv[i];
         } else if (request.command == XFU_COMMAND_TEST &&
                    (!strcmp(argv[i], "--verbose") || !strcmp(argv[i], "-v"))) {
             if (verbose_test) {
                 fprintf(stderr, "verbose testing specified more than once\n");
-                result = 2;
-                goto cleanup;
+                ok = false;
             }
             verbose_test = true;
-        } else if (!strcmp(argv[i], "--reader") || !strncmp(argv[i], "--reader=", 9)) {
-            const char *name = argv[i][8] == '=' ? argv[i] + 9 : (++i < argc ? argv[i] : NULL);
-            if (request.reader_name || handle_specified || !name || !name[0] || name[0] == '-') {
-                fprintf(stderr, "--reader: specify one reader name; cannot combine with --handle\n"); result = 2; goto cleanup;
-            }
-            request.reader_name = name;
+        } else if (long_option(argv, argc, &i, "--reader", &value)) {
+            ok = option_set(&options, OPTION_READER, "--reader", value, false);
         } else if (!strcmp(argv[i], "--get-password")) {
             if (request.command != XFU_COMMAND_LIST || get_password || advanced_listing) {
                 fprintf(stderr, "%s\n", request.command != XFU_COMMAND_LIST ?
                         "--get-password requires l or p" : get_password ?
                         "password retrieval specified more than once" :
                         "--get-password cannot be combined with --advanced or -slt");
-                result = 2;
-                goto cleanup;
+                ok = false;
             }
             get_password = true;
         } else if (request.command == XFU_COMMAND_LIST &&
                    (!strcmp(argv[i], "--advanced") || !strcmp(argv[i], "-slt"))) {
             if (get_password) {
                 fprintf(stderr, "--get-password cannot be combined with --advanced or -slt\n");
-                result = 2;
-                goto cleanup;
-            }
-            if (advanced_listing) {
+                ok = false;
+            } else if (advanced_listing) {
                 fprintf(stderr, "advanced listing specified more than once\n");
-                result = 2;
-                goto cleanup;
+                ok = false;
             }
             advanced_listing = true;
         } else if (request.command == XFU_COMMAND_EXTRACT &&
                    strncmp(argv[i], "-o", 2) == 0) {
-            if (!argv[i][2]) {
-                fprintf(stderr, "-o: name an output directory\n");
-                result = 2;
-                goto cleanup;
-            }
-            if (request.output_dir) {
-                fprintf(stderr, "-o: output directory specified more than once\n");
-                result = 2;
-                goto cleanup;
-            }
-            request.output_dir = argv[i] + 2;
+            ok = option_set(&options, OPTION_OUTPUT, "-o", argv[i] + 2, false);
         } else {
             console_error_argument(argv[i][0] == '-' ? "unknown option: " : "unexpected argument: ", argv[i], "");
-            result = 2;
-            goto cleanup;
+            ok = false;
         }
+        if (!ok) { result = 2; goto cleanup; }
     }
+    if (options.passthrough) request.archive_options = options.passthrough;
     if (output != OUTPUT_TEXT && request.command == XFU_COMMAND_ADD &&
         console_names_stdout(request.archive_path)) {
         fprintf(stderr, "--json and --xml cannot be used when the archive is written to standard output\n");
@@ -1800,12 +2004,7 @@ static int run_cli_arguments(const xx_archive_console_config *config,
     else if (encryption.output_failed || retrieval.encryption.output_failed) result = 2;
 cleanup:
     retrieval_cleanup(&retrieval);
-    if (environment_password) {
-        volatile char *wipe = environment_password;
-        size_t size = strlen(environment_password);
-        while (size--) *wipe++ = 0;
-        free(environment_password);
-    }
+    options_release(&options);
     free(files);
     return result;
 }

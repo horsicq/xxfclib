@@ -210,5 +210,5 @@ static Abstractformat *sqze_open(xx_io_device *device)
     return xx_sqze_create(device, 0);
 }
 static const xx_file_type_t sqze_types[] = {XX_FILE_TYPE_SQZE};
-static const xx_format_search_desc sqze_descriptor = {sqze_types, 1, NULL, 0, sqze_open, xx_sqze_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sqze, sqze_descriptor)
+const xx_format_search_desc xx_sqze_search_desc = {sqze_types, 1, NULL, 0, sqze_open, xx_sqze_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sqze, xx_sqze_search_desc)

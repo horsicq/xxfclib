@@ -20,7 +20,8 @@
  *     read);
  *   - the marker at the logical end of the file: EOF, or the start of a
  *     well-formed certificate table that ends at EOF, each allowing up to
- *     seven zero bytes of alignment after the marker;
+ *     fifteen zero bytes of alignment after the marker (the footer's own
+ *     trailing u16 plus 8-byte alignment: eight on Hex Workshop 6.7);
  *   - mode 0/1, version 100, 1..4096 files, metadata_end equal to the
  *     footer's own offset, 32 hex digits, data_offset <= info_offset <
  *     footer, data_offset behind the PE headers;
@@ -60,7 +61,7 @@
 #define AIB_MARKER_SIZE XX_ADVANCED_INSTALLER_BOOTSTRAPPER_MARKER_SIZE
 #define AIB_FOOTER_SIZE XX_ADVANCED_INSTALLER_BOOTSTRAPPER_FOOTER_SIZE
 #define AIB_TRAILER_SIZE (AIB_FOOTER_SIZE + AIB_MARKER_SIZE)
-#define AIB_PAD_MAX 7U
+#define AIB_PAD_MAX 15U /* the footer's trailing u16 and 8-byte alignment before the signature: 8 zero bytes on Hex Workshop 6.7 */
 #define AIB_TAIL_READ (AIB_TRAILER_SIZE + AIB_PAD_MAX)
 #define AIB_VERSION XX_ADVANCED_INSTALLER_BOOTSTRAPPER_VERSION
 #define AIB_RECORD_SIZE XX_ADVANCED_INSTALLER_BOOTSTRAPPER_RECORD_SIZE
@@ -230,8 +231,8 @@ static bool aib_parse_pe(xx_io_device *device, int64_t base, int64_t avail, aib_
     return true;
 }
 
-/* The marker immediately before `end` (relative), allowing up to seven zero
- * bytes behind it.  Returns the marker's relative offset, or -1. */
+/* The marker immediately before `end` (relative), allowing up to AIB_PAD_MAX
+ * zero bytes behind it.  Returns the marker's relative offset, or -1. */
 static int64_t aib_find_marker(xx_io_device *device, int64_t base, int64_t end)
 {
     uint8_t tail[AIB_TAIL_READ];

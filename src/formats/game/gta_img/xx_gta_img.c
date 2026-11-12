@@ -77,5 +77,5 @@ static Abstractformat *gta_img_open(xx_io_device *d)
     return xx_gta_img_create(d, 0);
 }
 static const xx_file_type_t gta_img_types[] = {XX_FILE_TYPE_GTA_IMG};
-static const xx_format_search_desc gta_img_desc = {gta_img_types, 1, NULL, 0, gta_img_open, xx_gta_img_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(gta_img, gta_img_desc)
+const xx_format_search_desc xx_gta_img_search_desc = {gta_img_types, 1, NULL, 0, gta_img_open, xx_gta_img_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(gta_img, xx_gta_img_search_desc)

@@ -75,5 +75,5 @@ static Abstractformat *birdies_open(xx_io_device *d)
     return xx_birdies_create(d, 0);
 }
 static const xx_file_type_t birdies_types[] = {XX_FILE_TYPE_BIRDIES};
-static const xx_format_search_desc birdies_desc = {birdies_types, 1, NULL, 0, birdies_open, xx_birdies_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(birdies, birdies_desc)
+const xx_format_search_desc xx_birdies_search_desc = {birdies_types, 1, NULL, 0, birdies_open, xx_birdies_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(birdies, xx_birdies_search_desc)

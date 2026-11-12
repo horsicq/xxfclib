@@ -81,8 +81,13 @@ done:
 
 static Abstractformat *zip_psc_open(xx_io_device *device)
 {
+    /* A PSC file is proven by its complemented end-of-central-directory
+     * record past the 12672-byte boundary; without that gate a plain ZIP
+     * shorter than the boundary is identical to its own PSC view and the
+     * family tool would claim it. */
+    if (xx_zip_psc_detect(device, 0) != XX_FILE_TYPE_ZIP_PSC) return NULL;
     return xx_zip_psc_create(device, 0);
 }
 static const xx_file_type_t zip_psc_types[] = {XX_FILE_TYPE_ZIP_PSC};
-static const xx_format_search_desc zip_psc_descriptor = {zip_psc_types, 1, NULL, 0, zip_psc_open, xx_zip_psc_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zip_psc, zip_psc_descriptor)
+const xx_format_search_desc xx_zip_psc_search_desc = {zip_psc_types, 1, NULL, 0, zip_psc_open, xx_zip_psc_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zip_psc, xx_zip_psc_search_desc)

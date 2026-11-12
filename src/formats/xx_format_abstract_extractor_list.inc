@@ -1324,6 +1324,159 @@ extern Abstractextractor *xx_ztc_get_abstract_extractor(void);
 extern Abstractextractor *xx_zxzip_get_abstract_extractor(void);
 extern Abstractextractor *xx_zz_get_abstract_extractor(void);
 extern Abstractextractor *xx_zzz_get_abstract_extractor(void);
+extern Abstractextractor *xx_larc_pfx_get_abstract_extractor(void);
+extern Abstractextractor *xx_bzip1_get_abstract_extractor(void);
+extern Abstractextractor *xx_freeze_get_abstract_extractor(void);
+extern Abstractextractor *xx_lpak_get_abstract_extractor(void);
+extern Abstractextractor *xx_is_stored_get_abstract_extractor(void);
+extern Abstractextractor *xx_he_tlkb_get_abstract_extractor(void);
+extern Abstractextractor *xx_apridisk_get_abstract_extractor(void);
+extern Abstractextractor *xx_pce_anadisk_get_abstract_extractor(void);
+extern Abstractextractor *xx_pklite_get_abstract_extractor(void);
+extern Abstractextractor *xx_pe_rawfile_get_abstract_extractor(void);
+extern Abstractextractor *xx_fury_dat_get_abstract_extractor(void);
+extern Abstractextractor *xx_executable_overlay_get_abstract_extractor(void);
+extern Abstractextractor *xx_mas_pack_get_abstract_extractor(void);
+extern Abstractextractor *xx_demonstar_glb_get_abstract_extractor(void);
+extern Abstractextractor *xx_carman_get_abstract_extractor(void);
+extern Abstractextractor *xx_cbm_ark_get_abstract_extractor(void);
+extern Abstractextractor *xx_arc_cbm_get_abstract_extractor(void);
+extern Abstractextractor *xx_cwc_get_abstract_extractor(void);
+extern Abstractextractor *xx_cork_get_abstract_extractor(void);
+extern Abstractextractor *xx_cvrb_get_abstract_extractor(void);
+extern Abstractextractor *xx_cpz_get_abstract_extractor(void);
+extern Abstractextractor *xx_apple_diags_get_abstract_extractor(void);
+extern Abstractextractor *xx_eid_get_abstract_extractor(void);
+extern Abstractextractor *xx_natata_ebook_get_abstract_extractor(void);
+extern Abstractextractor *xx_stor_resource_get_abstract_extractor(void);
+extern Abstractextractor *xx_installshield_obl_get_abstract_extractor(void);
+extern Abstractextractor *xx_pftw_pkg_get_abstract_extractor(void);
+extern Abstractextractor *xx_sod_installer_get_abstract_extractor(void);
+extern Abstractextractor *xx_starforce_ovl_get_abstract_extractor(void);
+extern Abstractextractor *xx_self_unstuffer_get_abstract_extractor(void);
+extern Abstractextractor *xx_secura_get_abstract_extractor(void);
+extern Abstractextractor *xx_patchwise_get_abstract_extractor(void);
+extern Abstractextractor *xx_installjammer_get_abstract_extractor(void);
+extern Abstractextractor *xx_zxml_get_abstract_extractor(void);
+extern Abstractextractor *xx_zisofs_get_abstract_extractor(void);
+extern Abstractextractor *xx_nvp_get_abstract_extractor(void);
+extern Abstractextractor *xx_sqze_get_abstract_extractor(void);
+extern Abstractextractor *xx_zip_psc_get_abstract_extractor(void);
+extern Abstractextractor *xx_dcs_get_abstract_extractor(void);
+extern Abstractextractor *xx_mskn1_get_abstract_extractor(void);
+extern Abstractextractor *xx_mskn2_get_abstract_extractor(void);
+extern Abstractextractor *xx_mskn3_get_abstract_extractor(void);
+extern Abstractextractor *xx_csq_get_abstract_extractor(void);
+extern Abstractextractor *xx_zoot1_get_abstract_extractor(void);
+extern Abstractextractor *xx_rdfz_get_abstract_extractor(void);
+extern Abstractextractor *xx_zbeos_get_abstract_extractor(void);
+extern Abstractextractor *xx_solarispkg_zip_get_abstract_extractor(void);
+extern Abstractextractor *xx_gta_img_get_abstract_extractor(void);
+extern Abstractextractor *xx_pbo_get_abstract_extractor(void);
+extern Abstractextractor *xx_pam_pak_get_abstract_extractor(void);
+extern Abstractextractor *xx_pfpk_get_abstract_extractor(void);
+extern Abstractextractor *xx_birdies_get_abstract_extractor(void);
+extern Abstractextractor *xx_xuiz_get_abstract_extractor(void);
+extern Abstractextractor *xx_titan_quest_get_abstract_extractor(void);
+extern Abstractextractor *xx_sbpak_get_abstract_extractor(void);
+extern Abstractextractor *xx_cgjp_get_abstract_extractor(void);
+extern Abstractextractor *xx_pirs_get_abstract_extractor(void);
+extern Abstractextractor *xx_px_get_abstract_extractor(void);
+extern Abstractextractor *xx_binsh_starkit_get_abstract_extractor(void);
+extern Abstractextractor *xx_evd_get_abstract_extractor(void);
+extern Abstractextractor *xx_desksoft_get_abstract_extractor(void);
+extern Abstractextractor *xx_metaproducts_get_abstract_extractor(void);
+extern Abstractextractor *xx_visualware_get_abstract_extractor(void);
+extern Abstractextractor *xx_lyme_sfx_get_abstract_extractor(void);
+extern Abstractextractor *xx_audials_get_abstract_extractor(void);
+extern Abstractextractor *xx_psa_disk_get_abstract_extractor(void);
+extern Abstractextractor *xx_webexe_get_abstract_extractor(void);
+extern Abstractextractor *xx_asd_get_abstract_extractor(void);
+extern Abstractextractor *xx_cfd_get_abstract_extractor(void);
+extern Abstractextractor *xx_rdc_get_abstract_extractor(void);
+extern Abstractextractor *xx_fox_sqz_get_abstract_extractor(void);
+extern Abstractextractor *xx_skf_get_abstract_extractor(void);
+extern Abstractextractor *xx_osl2000_get_abstract_extractor(void);
+extern Abstractextractor *xx_lds_get_abstract_extractor(void);
+extern Abstractextractor *xx_dcp_disk_get_abstract_extractor(void);
+extern Abstractextractor *xx_sony_image_get_abstract_extractor(void);
+extern Abstractextractor *xx_dh_get_abstract_extractor(void);
+extern Abstractextractor *xx_djcomp_get_abstract_extractor(void);
+extern Abstractextractor *xx_dpc_get_abstract_extractor(void);
+extern Abstractextractor *xx_dwc_get_abstract_extractor(void);
+extern Abstractextractor *xx_dfsee_imz_get_abstract_extractor(void);
+extern Abstractextractor *xx_dsl1_get_abstract_extractor(void);
+extern Abstractextractor *xx_scummvm_dxa_get_abstract_extractor(void);
+extern Abstractextractor *xx_sfx_inftool_get_abstract_extractor(void);
+extern Abstractextractor *xx_cadc_get_abstract_extractor(void);
+extern Abstractextractor *xx_cfbf_get_abstract_extractor(void);
+extern Abstractextractor *xx_nsis_get_abstract_extractor(void);
+extern Abstractextractor *xx_squirrel_get_abstract_extractor(void);
+extern Abstractextractor *xx_dotnet_bundle_get_abstract_extractor(void);
+extern Abstractextractor *xx_installshield_script_setup_get_abstract_extractor(void);
+extern Abstractextractor *xx_msi_resource_get_abstract_extractor(void);
+extern Abstractextractor *xx_node_pkg_get_abstract_extractor(void);
+extern Abstractextractor *xx_chromium_mini_installer_get_abstract_extractor(void);
+extern Abstractextractor *xx_msmpi_bootstrapper_get_abstract_extractor(void);
+extern Abstractextractor *xx_splashtop_unpackc_get_abstract_extractor(void);
+extern Abstractextractor *xx_autohotkey_compiled_get_abstract_extractor(void);
+extern Abstractextractor *xx_omaha_meta_installer_get_abstract_extractor(void);
+extern Abstractextractor *xx_dotnet_resources_archive_get_abstract_extractor(void);
+extern Abstractextractor *xx_install4j_get_abstract_extractor(void);
+extern Abstractextractor *xx_sumatra_lzsa_get_abstract_extractor(void);
+extern Abstractextractor *xx_calibre_portable_get_abstract_extractor(void);
+extern Abstractextractor *xx_palminput_360_get_abstract_extractor(void);
+extern Abstractextractor *xx_sdi_get_abstract_extractor(void);
+extern Abstractextractor *xx_superdat_get_abstract_extractor(void);
+extern Abstractextractor *xx_excelsior_get_abstract_extractor(void);
+extern Abstractextractor *xx_smart_install_maker_get_abstract_extractor(void);
+extern Abstractextractor *xx_cpoint_get_abstract_extractor(void);
+extern Abstractextractor *xx_ziso_get_abstract_extractor(void);
+extern Abstractextractor *xx_dax_get_abstract_extractor(void);
+extern Abstractextractor *xx_ciso2_get_abstract_extractor(void);
+extern Abstractextractor *xx_windows_help_get_abstract_extractor(void);
+extern Abstractextractor *xx_qt_qm_get_abstract_extractor(void);
+extern Abstractextractor *xx_mime_message_get_abstract_extractor(void);
+extern Abstractextractor *xx_gnu_gettext_mo_get_abstract_extractor(void);
+extern Abstractextractor *xx_ycg_image_get_abstract_extractor(void);
+extern Abstractextractor *xx_utage_media_get_abstract_extractor(void);
+extern Abstractextractor *xx_unreal_pak_get_abstract_extractor(void);
+extern Abstractextractor *xx_smile_game_pack_get_abstract_extractor(void);
+extern Abstractextractor *xx_rpg_maker_mv_get_abstract_extractor(void);
+extern Abstractextractor *xx_live_maker_gal_get_abstract_extractor(void);
+extern Abstractextractor *xx_fallout_dat_get_abstract_extractor(void);
+extern Abstractextractor *xx_bruns_media_get_abstract_extractor(void);
+extern Abstractextractor *xx_windows_thumbnail_cache_get_abstract_extractor(void);
+extern Abstractextractor *xx_molebox_get_abstract_extractor(void);
+extern Abstractextractor *xx_enigma_virtual_box_get_abstract_extractor(void);
+extern Abstractextractor *xx_outlook_express_dbx_mailbox_get_abstract_extractor(void);
+extern Abstractextractor *xx_microsoft_lit_get_abstract_extractor(void);
+extern Abstractextractor *xx_ypf_get_abstract_extractor(void);
+extern Abstractextractor *xx_telltale_ttarch_get_abstract_extractor(void);
+extern Abstractextractor *xx_rpg_maker_rgssad_get_abstract_extractor(void);
+extern Abstractextractor *xx_livemaker_get_abstract_extractor(void);
+extern Abstractextractor *xx_sfark_compressed_soundfont_get_abstract_extractor(void);
+extern Abstractextractor *xx_fmod_sample_bank_get_abstract_extractor(void);
+extern Abstractextractor *xx_vmdk_sesparse_get_abstract_extractor(void);
+extern Abstractextractor *xx_vmdk_cowd_sparse_get_abstract_extractor(void);
+extern Abstractextractor *xx_mds_get_abstract_extractor(void);
+extern Abstractextractor *xx_uif_get_abstract_extractor(void);
+extern Abstractextractor *xx_htc_nbh_rom_image_get_abstract_extractor(void);
+extern Abstractextractor *xx_gbi_get_abstract_extractor(void);
+extern Abstractextractor *xx_ecm_get_abstract_extractor(void);
+extern Abstractextractor *xx_gdi_get_abstract_extractor(void);
+extern Abstractextractor *xx_ccd_get_abstract_extractor(void);
+extern Abstractextractor *xx_amiga_old_ext_adf_get_abstract_extractor(void);
+extern Abstractextractor *xx_amiga_ext_adf_get_abstract_extractor(void);
+extern Abstractextractor *xx_sis_get_abstract_extractor(void);
+extern Abstractextractor *xx_fead_get_abstract_extractor(void);
+extern Abstractextractor *xx_bitrock_get_abstract_extractor(void);
+extern Abstractextractor *xx_upx_engine_get_abstract_extractor(void);
+extern Abstractextractor *xx_stuffitx_get_abstract_extractor(void);
+extern Abstractextractor *xx_kgb_archiver_get_abstract_extractor(void);
+extern Abstractextractor *xx_dgca_get_abstract_extractor(void);
+extern Abstractextractor *xx_chromium_pak_get_abstract_extractor(void);
+extern Abstractextractor *xx_bga_get_abstract_extractor(void);
 extern Abstractdetector *xx_mozilla_mar_get_abstract_detector(void);
 extern Abstractdetector *xx_ckp_get_abstract_detector(void);
 extern Abstractdetector *xx_edp_get_abstract_detector(void);
@@ -2642,6 +2795,159 @@ extern Abstractdetector *xx_ztc_get_abstract_detector(void);
 extern Abstractdetector *xx_zxzip_get_abstract_detector(void);
 extern Abstractdetector *xx_zz_get_abstract_detector(void);
 extern Abstractdetector *xx_zzz_get_abstract_detector(void);
+extern Abstractdetector *xx_larc_pfx_get_abstract_detector(void);
+extern Abstractdetector *xx_bzip1_get_abstract_detector(void);
+extern Abstractdetector *xx_freeze_get_abstract_detector(void);
+extern Abstractdetector *xx_lpak_get_abstract_detector(void);
+extern Abstractdetector *xx_is_stored_get_abstract_detector(void);
+extern Abstractdetector *xx_he_tlkb_get_abstract_detector(void);
+extern Abstractdetector *xx_apridisk_get_abstract_detector(void);
+extern Abstractdetector *xx_pce_anadisk_get_abstract_detector(void);
+extern Abstractdetector *xx_pklite_get_abstract_detector(void);
+extern Abstractdetector *xx_pe_rawfile_get_abstract_detector(void);
+extern Abstractdetector *xx_fury_dat_get_abstract_detector(void);
+extern Abstractdetector *xx_executable_overlay_get_abstract_detector(void);
+extern Abstractdetector *xx_mas_pack_get_abstract_detector(void);
+extern Abstractdetector *xx_demonstar_glb_get_abstract_detector(void);
+extern Abstractdetector *xx_carman_get_abstract_detector(void);
+extern Abstractdetector *xx_cbm_ark_get_abstract_detector(void);
+extern Abstractdetector *xx_arc_cbm_get_abstract_detector(void);
+extern Abstractdetector *xx_cwc_get_abstract_detector(void);
+extern Abstractdetector *xx_cork_get_abstract_detector(void);
+extern Abstractdetector *xx_cvrb_get_abstract_detector(void);
+extern Abstractdetector *xx_cpz_get_abstract_detector(void);
+extern Abstractdetector *xx_apple_diags_get_abstract_detector(void);
+extern Abstractdetector *xx_eid_get_abstract_detector(void);
+extern Abstractdetector *xx_natata_ebook_get_abstract_detector(void);
+extern Abstractdetector *xx_stor_resource_get_abstract_detector(void);
+extern Abstractdetector *xx_installshield_obl_get_abstract_detector(void);
+extern Abstractdetector *xx_pftw_pkg_get_abstract_detector(void);
+extern Abstractdetector *xx_sod_installer_get_abstract_detector(void);
+extern Abstractdetector *xx_starforce_ovl_get_abstract_detector(void);
+extern Abstractdetector *xx_self_unstuffer_get_abstract_detector(void);
+extern Abstractdetector *xx_secura_get_abstract_detector(void);
+extern Abstractdetector *xx_patchwise_get_abstract_detector(void);
+extern Abstractdetector *xx_installjammer_get_abstract_detector(void);
+extern Abstractdetector *xx_zxml_get_abstract_detector(void);
+extern Abstractdetector *xx_zisofs_get_abstract_detector(void);
+extern Abstractdetector *xx_nvp_get_abstract_detector(void);
+extern Abstractdetector *xx_sqze_get_abstract_detector(void);
+extern Abstractdetector *xx_zip_psc_get_abstract_detector(void);
+extern Abstractdetector *xx_dcs_get_abstract_detector(void);
+extern Abstractdetector *xx_mskn1_get_abstract_detector(void);
+extern Abstractdetector *xx_mskn2_get_abstract_detector(void);
+extern Abstractdetector *xx_mskn3_get_abstract_detector(void);
+extern Abstractdetector *xx_csq_get_abstract_detector(void);
+extern Abstractdetector *xx_zoot1_get_abstract_detector(void);
+extern Abstractdetector *xx_rdfz_get_abstract_detector(void);
+extern Abstractdetector *xx_zbeos_get_abstract_detector(void);
+extern Abstractdetector *xx_solarispkg_zip_get_abstract_detector(void);
+extern Abstractdetector *xx_gta_img_get_abstract_detector(void);
+extern Abstractdetector *xx_pbo_get_abstract_detector(void);
+extern Abstractdetector *xx_pam_pak_get_abstract_detector(void);
+extern Abstractdetector *xx_pfpk_get_abstract_detector(void);
+extern Abstractdetector *xx_birdies_get_abstract_detector(void);
+extern Abstractdetector *xx_xuiz_get_abstract_detector(void);
+extern Abstractdetector *xx_titan_quest_get_abstract_detector(void);
+extern Abstractdetector *xx_sbpak_get_abstract_detector(void);
+extern Abstractdetector *xx_cgjp_get_abstract_detector(void);
+extern Abstractdetector *xx_pirs_get_abstract_detector(void);
+extern Abstractdetector *xx_px_get_abstract_detector(void);
+extern Abstractdetector *xx_binsh_starkit_get_abstract_detector(void);
+extern Abstractdetector *xx_evd_get_abstract_detector(void);
+extern Abstractdetector *xx_desksoft_get_abstract_detector(void);
+extern Abstractdetector *xx_metaproducts_get_abstract_detector(void);
+extern Abstractdetector *xx_visualware_get_abstract_detector(void);
+extern Abstractdetector *xx_lyme_sfx_get_abstract_detector(void);
+extern Abstractdetector *xx_audials_get_abstract_detector(void);
+extern Abstractdetector *xx_psa_disk_get_abstract_detector(void);
+extern Abstractdetector *xx_webexe_get_abstract_detector(void);
+extern Abstractdetector *xx_asd_get_abstract_detector(void);
+extern Abstractdetector *xx_cfd_get_abstract_detector(void);
+extern Abstractdetector *xx_rdc_get_abstract_detector(void);
+extern Abstractdetector *xx_fox_sqz_get_abstract_detector(void);
+extern Abstractdetector *xx_skf_get_abstract_detector(void);
+extern Abstractdetector *xx_osl2000_get_abstract_detector(void);
+extern Abstractdetector *xx_lds_get_abstract_detector(void);
+extern Abstractdetector *xx_dcp_disk_get_abstract_detector(void);
+extern Abstractdetector *xx_sony_image_get_abstract_detector(void);
+extern Abstractdetector *xx_dh_get_abstract_detector(void);
+extern Abstractdetector *xx_djcomp_get_abstract_detector(void);
+extern Abstractdetector *xx_dpc_get_abstract_detector(void);
+extern Abstractdetector *xx_dwc_get_abstract_detector(void);
+extern Abstractdetector *xx_dfsee_imz_get_abstract_detector(void);
+extern Abstractdetector *xx_dsl1_get_abstract_detector(void);
+extern Abstractdetector *xx_scummvm_dxa_get_abstract_detector(void);
+extern Abstractdetector *xx_sfx_inftool_get_abstract_detector(void);
+extern Abstractdetector *xx_cadc_get_abstract_detector(void);
+extern Abstractdetector *xx_cfbf_get_abstract_detector(void);
+extern Abstractdetector *xx_nsis_get_abstract_detector(void);
+extern Abstractdetector *xx_squirrel_get_abstract_detector(void);
+extern Abstractdetector *xx_dotnet_bundle_get_abstract_detector(void);
+extern Abstractdetector *xx_installshield_script_setup_get_abstract_detector(void);
+extern Abstractdetector *xx_msi_resource_get_abstract_detector(void);
+extern Abstractdetector *xx_node_pkg_get_abstract_detector(void);
+extern Abstractdetector *xx_chromium_mini_installer_get_abstract_detector(void);
+extern Abstractdetector *xx_msmpi_bootstrapper_get_abstract_detector(void);
+extern Abstractdetector *xx_splashtop_unpackc_get_abstract_detector(void);
+extern Abstractdetector *xx_autohotkey_compiled_get_abstract_detector(void);
+extern Abstractdetector *xx_omaha_meta_installer_get_abstract_detector(void);
+extern Abstractdetector *xx_dotnet_resources_archive_get_abstract_detector(void);
+extern Abstractdetector *xx_install4j_get_abstract_detector(void);
+extern Abstractdetector *xx_sumatra_lzsa_get_abstract_detector(void);
+extern Abstractdetector *xx_calibre_portable_get_abstract_detector(void);
+extern Abstractdetector *xx_palminput_360_get_abstract_detector(void);
+extern Abstractdetector *xx_sdi_get_abstract_detector(void);
+extern Abstractdetector *xx_superdat_get_abstract_detector(void);
+extern Abstractdetector *xx_excelsior_get_abstract_detector(void);
+extern Abstractdetector *xx_smart_install_maker_get_abstract_detector(void);
+extern Abstractdetector *xx_cpoint_get_abstract_detector(void);
+extern Abstractdetector *xx_ziso_get_abstract_detector(void);
+extern Abstractdetector *xx_dax_get_abstract_detector(void);
+extern Abstractdetector *xx_ciso2_get_abstract_detector(void);
+extern Abstractdetector *xx_windows_help_get_abstract_detector(void);
+extern Abstractdetector *xx_qt_qm_get_abstract_detector(void);
+extern Abstractdetector *xx_mime_message_get_abstract_detector(void);
+extern Abstractdetector *xx_gnu_gettext_mo_get_abstract_detector(void);
+extern Abstractdetector *xx_ycg_image_get_abstract_detector(void);
+extern Abstractdetector *xx_utage_media_get_abstract_detector(void);
+extern Abstractdetector *xx_unreal_pak_get_abstract_detector(void);
+extern Abstractdetector *xx_smile_game_pack_get_abstract_detector(void);
+extern Abstractdetector *xx_rpg_maker_mv_get_abstract_detector(void);
+extern Abstractdetector *xx_live_maker_gal_get_abstract_detector(void);
+extern Abstractdetector *xx_fallout_dat_get_abstract_detector(void);
+extern Abstractdetector *xx_bruns_media_get_abstract_detector(void);
+extern Abstractdetector *xx_windows_thumbnail_cache_get_abstract_detector(void);
+extern Abstractdetector *xx_molebox_get_abstract_detector(void);
+extern Abstractdetector *xx_enigma_virtual_box_get_abstract_detector(void);
+extern Abstractdetector *xx_outlook_express_dbx_mailbox_get_abstract_detector(void);
+extern Abstractdetector *xx_microsoft_lit_get_abstract_detector(void);
+extern Abstractdetector *xx_ypf_get_abstract_detector(void);
+extern Abstractdetector *xx_telltale_ttarch_get_abstract_detector(void);
+extern Abstractdetector *xx_rpg_maker_rgssad_get_abstract_detector(void);
+extern Abstractdetector *xx_livemaker_get_abstract_detector(void);
+extern Abstractdetector *xx_sfark_compressed_soundfont_get_abstract_detector(void);
+extern Abstractdetector *xx_fmod_sample_bank_get_abstract_detector(void);
+extern Abstractdetector *xx_vmdk_sesparse_get_abstract_detector(void);
+extern Abstractdetector *xx_vmdk_cowd_sparse_get_abstract_detector(void);
+extern Abstractdetector *xx_mds_get_abstract_detector(void);
+extern Abstractdetector *xx_uif_get_abstract_detector(void);
+extern Abstractdetector *xx_htc_nbh_rom_image_get_abstract_detector(void);
+extern Abstractdetector *xx_gbi_get_abstract_detector(void);
+extern Abstractdetector *xx_ecm_get_abstract_detector(void);
+extern Abstractdetector *xx_gdi_get_abstract_detector(void);
+extern Abstractdetector *xx_ccd_get_abstract_detector(void);
+extern Abstractdetector *xx_amiga_old_ext_adf_get_abstract_detector(void);
+extern Abstractdetector *xx_amiga_ext_adf_get_abstract_detector(void);
+extern Abstractdetector *xx_sis_get_abstract_detector(void);
+extern Abstractdetector *xx_fead_get_abstract_detector(void);
+extern Abstractdetector *xx_bitrock_get_abstract_detector(void);
+extern Abstractdetector *xx_upx_engine_get_abstract_detector(void);
+extern Abstractdetector *xx_stuffitx_get_abstract_detector(void);
+extern Abstractdetector *xx_kgb_archiver_get_abstract_detector(void);
+extern Abstractdetector *xx_dgca_get_abstract_detector(void);
+extern Abstractdetector *xx_chromium_pak_get_abstract_detector(void);
+extern Abstractdetector *xx_bga_get_abstract_detector(void);
 #ifndef XXFC_FORMATS_ONLY
 extern Abstractextractor *xx_die_music_shiru_1tracker_get_abstract_extractor(void);
 extern Abstractextractor *xx_die_music_subz3ro_adlibtracker2_a2m_get_abstract_extractor(void);
@@ -4784,6 +5090,159 @@ static const struct {
     { &xx_zxzip_extractor, xx_zxzip_get_abstract_extractor, xx_zxzip_get_abstract_detector },
     { &xx_zz_extractor, xx_zz_get_abstract_extractor, xx_zz_get_abstract_detector },
     { &xx_zzz_extractor, xx_zzz_get_abstract_extractor, xx_zzz_get_abstract_detector },
+    { &xx_larc_pfx_extractor, xx_larc_pfx_get_abstract_extractor, xx_larc_pfx_get_abstract_detector },
+    { &xx_bzip1_extractor, xx_bzip1_get_abstract_extractor, xx_bzip1_get_abstract_detector },
+    { &xx_freeze_extractor, xx_freeze_get_abstract_extractor, xx_freeze_get_abstract_detector },
+    { &xx_lpak_extractor, xx_lpak_get_abstract_extractor, xx_lpak_get_abstract_detector },
+    { &xx_is_stored_extractor, xx_is_stored_get_abstract_extractor, xx_is_stored_get_abstract_detector },
+    { &xx_he_tlkb_extractor, xx_he_tlkb_get_abstract_extractor, xx_he_tlkb_get_abstract_detector },
+    { &xx_apridisk_extractor, xx_apridisk_get_abstract_extractor, xx_apridisk_get_abstract_detector },
+    { &xx_pce_anadisk_extractor, xx_pce_anadisk_get_abstract_extractor, xx_pce_anadisk_get_abstract_detector },
+    { &xx_pklite_extractor, xx_pklite_get_abstract_extractor, xx_pklite_get_abstract_detector },
+    { &xx_pe_rawfile_extractor, xx_pe_rawfile_get_abstract_extractor, xx_pe_rawfile_get_abstract_detector },
+    { &xx_fury_dat_extractor, xx_fury_dat_get_abstract_extractor, xx_fury_dat_get_abstract_detector },
+    { &xx_executable_overlay_extractor, xx_executable_overlay_get_abstract_extractor, xx_executable_overlay_get_abstract_detector },
+    { &xx_mas_pack_extractor, xx_mas_pack_get_abstract_extractor, xx_mas_pack_get_abstract_detector },
+    { &xx_demonstar_glb_extractor, xx_demonstar_glb_get_abstract_extractor, xx_demonstar_glb_get_abstract_detector },
+    { &xx_carman_extractor, xx_carman_get_abstract_extractor, xx_carman_get_abstract_detector },
+    { &xx_cbm_ark_extractor, xx_cbm_ark_get_abstract_extractor, xx_cbm_ark_get_abstract_detector },
+    { &xx_arc_cbm_extractor, xx_arc_cbm_get_abstract_extractor, xx_arc_cbm_get_abstract_detector },
+    { &xx_cwc_extractor, xx_cwc_get_abstract_extractor, xx_cwc_get_abstract_detector },
+    { &xx_cork_extractor, xx_cork_get_abstract_extractor, xx_cork_get_abstract_detector },
+    { &xx_cvrb_extractor, xx_cvrb_get_abstract_extractor, xx_cvrb_get_abstract_detector },
+    { &xx_cpz_extractor, xx_cpz_get_abstract_extractor, xx_cpz_get_abstract_detector },
+    { &xx_apple_diags_extractor, xx_apple_diags_get_abstract_extractor, xx_apple_diags_get_abstract_detector },
+    { &xx_eid_extractor, xx_eid_get_abstract_extractor, xx_eid_get_abstract_detector },
+    { &xx_natata_ebook_extractor, xx_natata_ebook_get_abstract_extractor, xx_natata_ebook_get_abstract_detector },
+    { &xx_stor_resource_extractor, xx_stor_resource_get_abstract_extractor, xx_stor_resource_get_abstract_detector },
+    { &xx_installshield_obl_extractor, xx_installshield_obl_get_abstract_extractor, xx_installshield_obl_get_abstract_detector },
+    { &xx_pftw_pkg_extractor, xx_pftw_pkg_get_abstract_extractor, xx_pftw_pkg_get_abstract_detector },
+    { &xx_sod_installer_extractor, xx_sod_installer_get_abstract_extractor, xx_sod_installer_get_abstract_detector },
+    { &xx_starforce_ovl_extractor, xx_starforce_ovl_get_abstract_extractor, xx_starforce_ovl_get_abstract_detector },
+    { &xx_self_unstuffer_extractor, xx_self_unstuffer_get_abstract_extractor, xx_self_unstuffer_get_abstract_detector },
+    { &xx_secura_extractor, xx_secura_get_abstract_extractor, xx_secura_get_abstract_detector },
+    { &xx_patchwise_extractor, xx_patchwise_get_abstract_extractor, xx_patchwise_get_abstract_detector },
+    { &xx_installjammer_extractor, xx_installjammer_get_abstract_extractor, xx_installjammer_get_abstract_detector },
+    { &xx_zxml_extractor, xx_zxml_get_abstract_extractor, xx_zxml_get_abstract_detector },
+    { &xx_zisofs_extractor, xx_zisofs_get_abstract_extractor, xx_zisofs_get_abstract_detector },
+    { &xx_nvp_extractor, xx_nvp_get_abstract_extractor, xx_nvp_get_abstract_detector },
+    { &xx_sqze_extractor, xx_sqze_get_abstract_extractor, xx_sqze_get_abstract_detector },
+    { &xx_zip_psc_extractor, xx_zip_psc_get_abstract_extractor, xx_zip_psc_get_abstract_detector },
+    { &xx_dcs_extractor, xx_dcs_get_abstract_extractor, xx_dcs_get_abstract_detector },
+    { &xx_mskn1_extractor, xx_mskn1_get_abstract_extractor, xx_mskn1_get_abstract_detector },
+    { &xx_mskn2_extractor, xx_mskn2_get_abstract_extractor, xx_mskn2_get_abstract_detector },
+    { &xx_mskn3_extractor, xx_mskn3_get_abstract_extractor, xx_mskn3_get_abstract_detector },
+    { &xx_csq_extractor, xx_csq_get_abstract_extractor, xx_csq_get_abstract_detector },
+    { &xx_zoot1_extractor, xx_zoot1_get_abstract_extractor, xx_zoot1_get_abstract_detector },
+    { &xx_rdfz_extractor, xx_rdfz_get_abstract_extractor, xx_rdfz_get_abstract_detector },
+    { &xx_zbeos_extractor, xx_zbeos_get_abstract_extractor, xx_zbeos_get_abstract_detector },
+    { &xx_solarispkg_zip_extractor, xx_solarispkg_zip_get_abstract_extractor, xx_solarispkg_zip_get_abstract_detector },
+    { &xx_gta_img_extractor, xx_gta_img_get_abstract_extractor, xx_gta_img_get_abstract_detector },
+    { &xx_pbo_extractor, xx_pbo_get_abstract_extractor, xx_pbo_get_abstract_detector },
+    { &xx_pam_pak_extractor, xx_pam_pak_get_abstract_extractor, xx_pam_pak_get_abstract_detector },
+    { &xx_pfpk_extractor, xx_pfpk_get_abstract_extractor, xx_pfpk_get_abstract_detector },
+    { &xx_birdies_extractor, xx_birdies_get_abstract_extractor, xx_birdies_get_abstract_detector },
+    { &xx_xuiz_extractor, xx_xuiz_get_abstract_extractor, xx_xuiz_get_abstract_detector },
+    { &xx_titan_quest_extractor, xx_titan_quest_get_abstract_extractor, xx_titan_quest_get_abstract_detector },
+    { &xx_sbpak_extractor, xx_sbpak_get_abstract_extractor, xx_sbpak_get_abstract_detector },
+    { &xx_cgjp_extractor, xx_cgjp_get_abstract_extractor, xx_cgjp_get_abstract_detector },
+    { &xx_pirs_extractor, xx_pirs_get_abstract_extractor, xx_pirs_get_abstract_detector },
+    { &xx_px_extractor, xx_px_get_abstract_extractor, xx_px_get_abstract_detector },
+    { &xx_binsh_starkit_extractor, xx_binsh_starkit_get_abstract_extractor, xx_binsh_starkit_get_abstract_detector },
+    { &xx_evd_extractor, xx_evd_get_abstract_extractor, xx_evd_get_abstract_detector },
+    { &xx_desksoft_extractor, xx_desksoft_get_abstract_extractor, xx_desksoft_get_abstract_detector },
+    { &xx_metaproducts_extractor, xx_metaproducts_get_abstract_extractor, xx_metaproducts_get_abstract_detector },
+    { &xx_visualware_extractor, xx_visualware_get_abstract_extractor, xx_visualware_get_abstract_detector },
+    { &xx_lyme_sfx_extractor, xx_lyme_sfx_get_abstract_extractor, xx_lyme_sfx_get_abstract_detector },
+    { &xx_audials_extractor, xx_audials_get_abstract_extractor, xx_audials_get_abstract_detector },
+    { &xx_psa_disk_extractor, xx_psa_disk_get_abstract_extractor, xx_psa_disk_get_abstract_detector },
+    { &xx_webexe_extractor, xx_webexe_get_abstract_extractor, xx_webexe_get_abstract_detector },
+    { &xx_asd_extractor, xx_asd_get_abstract_extractor, xx_asd_get_abstract_detector },
+    { &xx_cfd_extractor, xx_cfd_get_abstract_extractor, xx_cfd_get_abstract_detector },
+    { &xx_rdc_extractor, xx_rdc_get_abstract_extractor, xx_rdc_get_abstract_detector },
+    { &xx_fox_sqz_extractor, xx_fox_sqz_get_abstract_extractor, xx_fox_sqz_get_abstract_detector },
+    { &xx_skf_extractor, xx_skf_get_abstract_extractor, xx_skf_get_abstract_detector },
+    { &xx_osl2000_extractor, xx_osl2000_get_abstract_extractor, xx_osl2000_get_abstract_detector },
+    { &xx_lds_extractor, xx_lds_get_abstract_extractor, xx_lds_get_abstract_detector },
+    { &xx_dcp_disk_extractor, xx_dcp_disk_get_abstract_extractor, xx_dcp_disk_get_abstract_detector },
+    { &xx_sony_image_extractor, xx_sony_image_get_abstract_extractor, xx_sony_image_get_abstract_detector },
+    { &xx_dh_extractor, xx_dh_get_abstract_extractor, xx_dh_get_abstract_detector },
+    { &xx_djcomp_extractor, xx_djcomp_get_abstract_extractor, xx_djcomp_get_abstract_detector },
+    { &xx_dpc_extractor, xx_dpc_get_abstract_extractor, xx_dpc_get_abstract_detector },
+    { &xx_dwc_extractor, xx_dwc_get_abstract_extractor, xx_dwc_get_abstract_detector },
+    { &xx_dfsee_imz_extractor, xx_dfsee_imz_get_abstract_extractor, xx_dfsee_imz_get_abstract_detector },
+    { &xx_dsl1_extractor, xx_dsl1_get_abstract_extractor, xx_dsl1_get_abstract_detector },
+    { &xx_scummvm_dxa_extractor, xx_scummvm_dxa_get_abstract_extractor, xx_scummvm_dxa_get_abstract_detector },
+    { &xx_sfx_inftool_extractor, xx_sfx_inftool_get_abstract_extractor, xx_sfx_inftool_get_abstract_detector },
+    { &xx_cadc_extractor, xx_cadc_get_abstract_extractor, xx_cadc_get_abstract_detector },
+    { &xx_cfbf_extractor, xx_cfbf_get_abstract_extractor, xx_cfbf_get_abstract_detector },
+    { &xx_nsis_extractor, xx_nsis_get_abstract_extractor, xx_nsis_get_abstract_detector },
+    { &xx_squirrel_extractor, xx_squirrel_get_abstract_extractor, xx_squirrel_get_abstract_detector },
+    { &xx_dotnet_bundle_extractor, xx_dotnet_bundle_get_abstract_extractor, xx_dotnet_bundle_get_abstract_detector },
+    { &xx_installshield_script_setup_extractor, xx_installshield_script_setup_get_abstract_extractor, xx_installshield_script_setup_get_abstract_detector },
+    { &xx_msi_resource_extractor, xx_msi_resource_get_abstract_extractor, xx_msi_resource_get_abstract_detector },
+    { &xx_node_pkg_extractor, xx_node_pkg_get_abstract_extractor, xx_node_pkg_get_abstract_detector },
+    { &xx_chromium_mini_installer_extractor, xx_chromium_mini_installer_get_abstract_extractor, xx_chromium_mini_installer_get_abstract_detector },
+    { &xx_msmpi_bootstrapper_extractor, xx_msmpi_bootstrapper_get_abstract_extractor, xx_msmpi_bootstrapper_get_abstract_detector },
+    { &xx_splashtop_unpackc_extractor, xx_splashtop_unpackc_get_abstract_extractor, xx_splashtop_unpackc_get_abstract_detector },
+    { &xx_autohotkey_compiled_extractor, xx_autohotkey_compiled_get_abstract_extractor, xx_autohotkey_compiled_get_abstract_detector },
+    { &xx_omaha_meta_installer_extractor, xx_omaha_meta_installer_get_abstract_extractor, xx_omaha_meta_installer_get_abstract_detector },
+    { &xx_dotnet_resources_archive_extractor, xx_dotnet_resources_archive_get_abstract_extractor, xx_dotnet_resources_archive_get_abstract_detector },
+    { &xx_install4j_extractor, xx_install4j_get_abstract_extractor, xx_install4j_get_abstract_detector },
+    { &xx_sumatra_lzsa_extractor, xx_sumatra_lzsa_get_abstract_extractor, xx_sumatra_lzsa_get_abstract_detector },
+    { &xx_calibre_portable_extractor, xx_calibre_portable_get_abstract_extractor, xx_calibre_portable_get_abstract_detector },
+    { &xx_palminput_360_extractor, xx_palminput_360_get_abstract_extractor, xx_palminput_360_get_abstract_detector },
+    { &xx_sdi_extractor, xx_sdi_get_abstract_extractor, xx_sdi_get_abstract_detector },
+    { &xx_superdat_extractor, xx_superdat_get_abstract_extractor, xx_superdat_get_abstract_detector },
+    { &xx_excelsior_extractor, xx_excelsior_get_abstract_extractor, xx_excelsior_get_abstract_detector },
+    { &xx_smart_install_maker_extractor, xx_smart_install_maker_get_abstract_extractor, xx_smart_install_maker_get_abstract_detector },
+    { &xx_cpoint_extractor, xx_cpoint_get_abstract_extractor, xx_cpoint_get_abstract_detector },
+    { &xx_ziso_extractor, xx_ziso_get_abstract_extractor, xx_ziso_get_abstract_detector },
+    { &xx_dax_extractor, xx_dax_get_abstract_extractor, xx_dax_get_abstract_detector },
+    { &xx_ciso2_extractor, xx_ciso2_get_abstract_extractor, xx_ciso2_get_abstract_detector },
+    { &xx_windows_help_extractor, xx_windows_help_get_abstract_extractor, xx_windows_help_get_abstract_detector },
+    { &xx_qt_qm_extractor, xx_qt_qm_get_abstract_extractor, xx_qt_qm_get_abstract_detector },
+    { &xx_mime_message_extractor, xx_mime_message_get_abstract_extractor, xx_mime_message_get_abstract_detector },
+    { &xx_gnu_gettext_mo_extractor, xx_gnu_gettext_mo_get_abstract_extractor, xx_gnu_gettext_mo_get_abstract_detector },
+    { &xx_ycg_image_extractor, xx_ycg_image_get_abstract_extractor, xx_ycg_image_get_abstract_detector },
+    { &xx_utage_media_extractor, xx_utage_media_get_abstract_extractor, xx_utage_media_get_abstract_detector },
+    { &xx_unreal_pak_extractor, xx_unreal_pak_get_abstract_extractor, xx_unreal_pak_get_abstract_detector },
+    { &xx_smile_game_pack_extractor, xx_smile_game_pack_get_abstract_extractor, xx_smile_game_pack_get_abstract_detector },
+    { &xx_rpg_maker_mv_extractor, xx_rpg_maker_mv_get_abstract_extractor, xx_rpg_maker_mv_get_abstract_detector },
+    { &xx_live_maker_gal_extractor, xx_live_maker_gal_get_abstract_extractor, xx_live_maker_gal_get_abstract_detector },
+    { &xx_fallout_dat_extractor, xx_fallout_dat_get_abstract_extractor, xx_fallout_dat_get_abstract_detector },
+    { &xx_bruns_media_extractor, xx_bruns_media_get_abstract_extractor, xx_bruns_media_get_abstract_detector },
+    { &xx_windows_thumbnail_cache_extractor, xx_windows_thumbnail_cache_get_abstract_extractor, xx_windows_thumbnail_cache_get_abstract_detector },
+    { &xx_molebox_extractor, xx_molebox_get_abstract_extractor, xx_molebox_get_abstract_detector },
+    { &xx_enigma_virtual_box_extractor, xx_enigma_virtual_box_get_abstract_extractor, xx_enigma_virtual_box_get_abstract_detector },
+    { &xx_outlook_express_dbx_mailbox_extractor, xx_outlook_express_dbx_mailbox_get_abstract_extractor, xx_outlook_express_dbx_mailbox_get_abstract_detector },
+    { &xx_microsoft_lit_extractor, xx_microsoft_lit_get_abstract_extractor, xx_microsoft_lit_get_abstract_detector },
+    { &xx_ypf_extractor, xx_ypf_get_abstract_extractor, xx_ypf_get_abstract_detector },
+    { &xx_telltale_ttarch_extractor, xx_telltale_ttarch_get_abstract_extractor, xx_telltale_ttarch_get_abstract_detector },
+    { &xx_rpg_maker_rgssad_extractor, xx_rpg_maker_rgssad_get_abstract_extractor, xx_rpg_maker_rgssad_get_abstract_detector },
+    { &xx_livemaker_extractor, xx_livemaker_get_abstract_extractor, xx_livemaker_get_abstract_detector },
+    { &xx_sfark_compressed_soundfont_extractor, xx_sfark_compressed_soundfont_get_abstract_extractor, xx_sfark_compressed_soundfont_get_abstract_detector },
+    { &xx_fmod_sample_bank_extractor, xx_fmod_sample_bank_get_abstract_extractor, xx_fmod_sample_bank_get_abstract_detector },
+    { &xx_vmdk_sesparse_extractor, xx_vmdk_sesparse_get_abstract_extractor, xx_vmdk_sesparse_get_abstract_detector },
+    { &xx_vmdk_cowd_sparse_extractor, xx_vmdk_cowd_sparse_get_abstract_extractor, xx_vmdk_cowd_sparse_get_abstract_detector },
+    { &xx_mds_extractor, xx_mds_get_abstract_extractor, xx_mds_get_abstract_detector },
+    { &xx_uif_extractor, xx_uif_get_abstract_extractor, xx_uif_get_abstract_detector },
+    { &xx_htc_nbh_rom_image_extractor, xx_htc_nbh_rom_image_get_abstract_extractor, xx_htc_nbh_rom_image_get_abstract_detector },
+    { &xx_gbi_extractor, xx_gbi_get_abstract_extractor, xx_gbi_get_abstract_detector },
+    { &xx_ecm_extractor, xx_ecm_get_abstract_extractor, xx_ecm_get_abstract_detector },
+    { &xx_gdi_extractor, xx_gdi_get_abstract_extractor, xx_gdi_get_abstract_detector },
+    { &xx_ccd_extractor, xx_ccd_get_abstract_extractor, xx_ccd_get_abstract_detector },
+    { &xx_amiga_old_ext_adf_extractor, xx_amiga_old_ext_adf_get_abstract_extractor, xx_amiga_old_ext_adf_get_abstract_detector },
+    { &xx_amiga_ext_adf_extractor, xx_amiga_ext_adf_get_abstract_extractor, xx_amiga_ext_adf_get_abstract_detector },
+    { &xx_sis_extractor, xx_sis_get_abstract_extractor, xx_sis_get_abstract_detector },
+    { &xx_fead_extractor, xx_fead_get_abstract_extractor, xx_fead_get_abstract_detector },
+    { &xx_bitrock_extractor, xx_bitrock_get_abstract_extractor, xx_bitrock_get_abstract_detector },
+    { &xx_upx_engine_extractor, xx_upx_engine_get_abstract_extractor, xx_upx_engine_get_abstract_detector },
+    { &xx_stuffitx_extractor, xx_stuffitx_get_abstract_extractor, xx_stuffitx_get_abstract_detector },
+    { &xx_kgb_archiver_extractor, xx_kgb_archiver_get_abstract_extractor, xx_kgb_archiver_get_abstract_detector },
+    { &xx_dgca_extractor, xx_dgca_get_abstract_extractor, xx_dgca_get_abstract_detector },
+    { &xx_chromium_pak_extractor, xx_chromium_pak_get_abstract_extractor, xx_chromium_pak_get_abstract_detector },
+    { &xx_bga_extractor, xx_bga_get_abstract_extractor, xx_bga_get_abstract_detector },
 #ifndef XXFC_FORMATS_ONLY
     { &xx_die_music_shiru_1tracker_extractor, xx_die_music_shiru_1tracker_get_abstract_extractor, xx_die_music_shiru_1tracker_get_abstract_detector },
     { &xx_die_music_subz3ro_adlibtracker2_a2m_extractor, xx_die_music_subz3ro_adlibtracker2_a2m_get_abstract_extractor, xx_die_music_subz3ro_adlibtracker2_a2m_get_abstract_detector },

@@ -67,7 +67,7 @@ bool xx_arcv4_recover_split_prefix(Abstractformat *source,int64_t at,uint32_t pa
 {
     arcv4_recovery s;const char *path,*p,*value;char *directory=NULL,*extra=NULL;size_t prefix=0;
     int64_t saved;bool ok=false;
-    if(!source||!source->device||at<0||packed<32768U||packed>ARCV4_RECOVERY_LIMIT||!raw||raw>ARCV4_RECOVERY_LIMIT||
+    if(!source||!source->device||at<0||packed>ARCV4_RECOVERY_LIMIT||!raw||raw>ARCV4_RECOVERY_LIMIT||
        (method!=0U&&method!=2U)||!name||!plain||!size||xx_pd_is_stopped(pd))return false;
     saved=xx_io_tell(source->device);if(saved<0)return false;
     xx_mem_zero(&s,sizeof(s));s.source=source;s.at=at;s.packed=packed;s.raw=raw;s.method=method;s.name=name;s.pd=pd;

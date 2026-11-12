@@ -291,47 +291,49 @@ static bool xlas_set_record(xx_archive_record *record, const xlas_member *member
  * groups LSB first, set bit = literal, clear bit = {pos_low, pos_high|len}. */
 static bool xlas_lzss_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
 {
-    uint8_t *window;
+    uint8_t window[XLAS_WINDOW_SIZE];
     size_t read = 0U, written = 0U;
     uint32_t cursor = XLAS_WINDOW_SIZE - XLAS_LOOKAHEAD;
     if ((!input && input_size != 0U) || (!output && output_size != 0U)) return false;
-    window = (uint8_t *)xx_mem_alloc(XLAS_WINDOW_SIZE);
-    if (!window) return false;
-    xx_mem_zero(window, XLAS_WINDOW_SIZE);
+    xx_mem_zero(window, sizeof(window));
     while (written < output_size) {
         uint8_t flags;
         unsigned bit;
-        if (read >= input_size) goto fail;
+        if (read >= input_size) return false;
         flags = input[read++];
         for (bit = 0U; bit < 8U && written < output_size; ++bit) {
             if ((flags >> bit) & 1U) {
                 uint8_t value;
-                if (read >= input_size) goto fail;
+                if (read >= input_size) return false;
                 value = input[read++];
                 output[written++] = value;
                 window[cursor] = value;
                 cursor = (cursor + 1U) & (XLAS_WINDOW_SIZE - 1U);
             } else {
                 uint32_t position, length, step;
-                if (input_size - read < 2U) goto fail;
+                if (input_size - read < 2U) return false;
                 position = (uint32_t)input[read] | (((uint32_t)input[read + 1U] & 0xf0U) << 4U);
                 length = ((uint32_t)input[read + 1U] & 0x0fU) + XLAS_THRESHOLD + 1U;
                 read += 2U;
-                if ((uint64_t)length > (uint64_t)(output_size - written)) goto fail;
-                for (step = 0U; step < length; ++step) {
-                    uint8_t value = window[(position + step) & (XLAS_WINDOW_SIZE - 1U)];
-                    output[written++] = value;
-                    window[cursor] = value;
-                    cursor = (cursor + 1U) & (XLAS_WINDOW_SIZE - 1U);
+                if ((size_t)length > output_size - written) return false;
+                if (position + length <= XLAS_WINDOW_SIZE && cursor + length <= XLAS_WINDOW_SIZE && (cursor + length <= position || cursor >= position + length)) {
+                    xx_mem_copy(output + written, window + position, length);
+                    xx_mem_copy(window + cursor, window + position, length);
+                    written += length;
+                    cursor = (cursor + length) & (XLAS_WINDOW_SIZE - 1U);
+                } else {
+                    for (step = 0U; step < length; ++step) {
+                        uint8_t value = window[position];
+                        output[written++] = value;
+                        window[cursor] = value;
+                        position = (position + 1U) & (XLAS_WINDOW_SIZE - 1U);
+                        cursor = (cursor + 1U) & (XLAS_WINDOW_SIZE - 1U);
+                    }
                 }
             }
         }
     }
-    xx_mem_free(window);
     return written == output_size;
-fail:
-    xx_mem_free(window);
-    return false;
 }
 
 static bool xlas_decode_member(Abstractformat *format, const xlas_member *member, uint8_t **plain, size_t *plain_size)

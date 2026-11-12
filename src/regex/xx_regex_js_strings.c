@@ -23,6 +23,27 @@
  * interpreter coercion, captures and replacement behavior in this adapter. */
 #include "xx_regex_js_strings.h"
 
+/* The engine's contract for a catastrophic pattern is that it terminates
+ * and reports no match (the test suite pins that), so a spent budget stays
+ * an ordinary miss; a memory failure or an overlong subject is raised as a
+ * RangeError instead of masquerading as "no match". */
+int js_regex_exec_checked(JSCtx *pCtx, const xx_regex *pRegExp, const char *pText, size_t nSize, size_t nStart, int32_t *pCaps)
+{
+    xx_regex_exec_status status = xx_regex_exec_ex(pRegExp, pText, nSize, nStart, pCaps, NULL, NULL);
+
+    if (status == XX_REGEX_EXEC_MATCH) {
+        return 1;
+    }
+
+    if (status == XX_REGEX_EXEC_NO_MEMORY) {
+        js_throw(pCtx, "RangeError: regular expression allocation failed");
+    } else if ((status == XX_REGEX_EXEC_INVALID) && (nSize > (size_t)INT32_MAX)) {
+        js_throw(pCtx, "RangeError: string too long for regular expression");
+    }
+
+    return 0;
+}
+
 #define ARG(i) (((i) < nArgc) ? pArgv[i] : js_undefined())
 
 JSVal js_regex_string_split(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, void *pUser)
@@ -48,7 +69,7 @@ JSVal js_regex_string_split(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
         int nGroups = xx_regex_ngroups(pRegExp);
         int32_t *pCaps = (int32_t *)xx_js_malloc((size_t)(nGroups + 1) * 2 * sizeof(int32_t));
         if (nSize == 0) {
-            if (!xx_regex_exec(pRegExp, pData, nSize, 0, pCaps)) js_set_index(pCtx, result, 0, js_dup(text));
+            if (!js_regex_exec_checked(pCtx, pRegExp, pData, nSize, 0, pCaps)) js_set_index(pCtx, result, 0, js_dup(text));
             xx_js_free(pCaps);
             goto done;
         }
@@ -57,7 +78,7 @@ JSVal js_regex_string_split(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
          * deliberately uses byte offsets rather than UTF-16 code units. */
         while (nPos < nSize && nCount < nLimit) {
             int g;
-            if (!xx_regex_exec(pRegExp, pData, nSize, nPos, pCaps) || (size_t)pCaps[0] == nSize) break;
+            if (!js_regex_exec_checked(pCtx, pRegExp, pData, nSize, nPos, pCaps) || (size_t)pCaps[0] == nSize) break;
             if ((size_t)pCaps[1] == nLast) {
                 nPos++;
                 continue;
@@ -177,7 +198,7 @@ JSVal js_regex_string_match(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
         result = js_new_array(pCtx);
         js_set(pCtx, ARG(0), "lastIndex", js_num(0));
 
-        while ((nPos <= nSize) && xx_regex_exec(pRegExp, pData, nSize, nPos, pCaps)) {
+        while ((nPos <= nSize) && js_regex_exec_checked(pCtx, pRegExp, pData, nSize, nPos, pCaps)) {
             js_set_index(pCtx, result, nCount++, js_strn(pCtx, pData + pCaps[0], (size_t)(pCaps[1] - pCaps[0])));
             nPos = (pCaps[1] > pCaps[0]) ? (size_t)pCaps[1] : (size_t)(pCaps[1] + 1);
         }
@@ -187,7 +208,7 @@ JSVal js_regex_string_match(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
             js_release(pCtx, result);
             result = js_null();
         }
-    } else if (xx_regex_exec(pRegExp, pData, nSize, 0, pCaps)) {
+    } else if (js_regex_exec_checked(pCtx, pRegExp, pData, nSize, 0, pCaps)) {
         result = build_match_array(pCtx, pRegExp, pData, pCaps, text);
     }
 
@@ -212,7 +233,7 @@ JSVal js_regex_string_search(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv
     if (pRegExp) {
         pCaps = (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
 
-        if (xx_regex_exec(pRegExp, js_str_data(text), js_str_len(text), 0, pCaps)) {
+        if (js_regex_exec_checked(pCtx, pRegExp, js_str_data(text), js_str_len(text), 0, pCaps)) {
             result = js_num((double)pCaps[0]);
         }
 
@@ -315,7 +336,7 @@ JSVal js_regex_string_replace(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArg
         pCaps = (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
         if (bGlobal) js_set(pCtx, pattern, "lastIndex", js_num(0));
 
-        while ((nPos <= nSize) && xx_regex_exec(pRegExp, pData, nSize, nPos, pCaps)) {
+        while ((nPos <= nSize) && js_regex_exec_checked(pCtx, pRegExp, pData, nSize, nPos, pCaps)) {
             xx_buf_append(&buf, pData + nLast, (size_t)pCaps[0] - nLast);
 
             if (bCallable) {

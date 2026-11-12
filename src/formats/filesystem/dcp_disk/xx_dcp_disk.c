@@ -184,5 +184,5 @@ static Abstractformat *xx_dcp_disk_open(xx_io_device *d)
     return xx_dcp_disk_create(d, 0);
 }
 static const xx_file_type_t xx_dcp_disk_types[] = {XX_FILE_TYPE_DCP_DISK};
-static const xx_format_search_desc xx_dcp_disk_desc = {xx_dcp_disk_types, 1, NULL, 0, xx_dcp_disk_open, xx_dcp_disk_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(dcp_disk, xx_dcp_disk_desc)
+const xx_format_search_desc xx_dcp_disk_search_desc = {xx_dcp_disk_types, 1, NULL, 0, xx_dcp_disk_open, xx_dcp_disk_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(dcp_disk, xx_dcp_disk_search_desc)

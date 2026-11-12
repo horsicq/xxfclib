@@ -241,5 +241,5 @@ static Abstractformat *xx_desksoft_open(xx_io_device *d)
     return xx_desksoft_create(d, 0);
 }
 static const xx_file_type_t xx_desksoft_types[] = {XX_FILE_TYPE_DESKSOFT};
-static const xx_format_search_desc xx_desksoft_desc = {xx_desksoft_types, 1, NULL, 0, xx_desksoft_open, xx_desksoft_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(desksoft, xx_desksoft_desc)
+const xx_format_search_desc xx_desksoft_search_desc = {xx_desksoft_types, 1, NULL, 0, xx_desksoft_open, xx_desksoft_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(desksoft, xx_desksoft_search_desc)

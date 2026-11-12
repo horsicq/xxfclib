@@ -28,6 +28,9 @@
 
 /* General String primitives shared with the non-regex builtin methods. */
 JSVal js_builtin_string_value(JSCtx *pCtx, JSVal thisVal);
+/* xx_regex_exec with a memory failure or an overlong subject raised as a
+ * RangeError; a spent backtracking budget stays "no match". */
+int js_regex_exec_checked(JSCtx *pCtx, const xx_regex *pRegExp, const char *pText, size_t nSize, size_t nStart, int32_t *pCaps);
 int64_t js_builtin_find_substring(JSCtx *pCtx, const char *pText, size_t nTextSize, const char *pNeedle,
                                   size_t nNeedleSize, size_t nStart);
 

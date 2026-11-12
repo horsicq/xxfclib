@@ -162,5 +162,5 @@ static Abstractformat *xx_binsh_starkit_open(xx_io_device *d)
     return xx_binsh_starkit_create(d, 0);
 }
 static const xx_file_type_t xx_binsh_starkit_types[] = {XX_FILE_TYPE_BINSH_STARKIT};
-static const xx_format_search_desc xx_binsh_starkit_desc = {xx_binsh_starkit_types, 1, NULL, 0, xx_binsh_starkit_open, xx_binsh_starkit_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(binsh_starkit, xx_binsh_starkit_desc)
+const xx_format_search_desc xx_binsh_starkit_search_desc = {xx_binsh_starkit_types, 1, NULL, 0, xx_binsh_starkit_open, xx_binsh_starkit_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(binsh_starkit, xx_binsh_starkit_search_desc)

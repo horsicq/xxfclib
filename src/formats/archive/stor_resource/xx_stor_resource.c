@@ -161,5 +161,5 @@ static Abstractformat *stor_open(xx_io_device *d) { return xx_stor_resource_crea
 static const xx_file_type_t stor_types[]={XX_FILE_TYPE_STOR_RESOURCE};
 static const uint8_t stor_magic[]={'S','T','O','R'};
 static const xx_format_search_anchor stor_anchors[]={{stor_magic,4U,0U}};
-static const xx_format_search_desc stor_desc={stor_types,1U,stor_anchors,1U,stor_open,xx_stor_resource_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(stor_resource,stor_desc)
+const xx_format_search_desc xx_stor_resource_search_desc={stor_types,1U,stor_anchors,1U,stor_open,xx_stor_resource_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(stor_resource,xx_stor_resource_search_desc)

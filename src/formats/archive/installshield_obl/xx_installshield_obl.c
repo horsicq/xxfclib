@@ -106,5 +106,5 @@ static Abstractformat *obl_open(xx_io_device *d) { return xx_installshield_obl_c
 static const xx_file_type_t obl_types[]={XX_FILE_TYPE_INSTALLSHIELD_OBL};
 static const uint8_t obl_magic[]={'p','O','d','A'};
 static const xx_format_search_anchor obl_anchors[]={{obl_magic,4U,0U}};
-static const xx_format_search_desc obl_desc={obl_types,1U,obl_anchors,1U,obl_open,xx_installshield_obl_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(installshield_obl,obl_desc)
+const xx_format_search_desc xx_installshield_obl_search_desc={obl_types,1U,obl_anchors,1U,obl_open,xx_installshield_obl_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(installshield_obl,xx_installshield_obl_search_desc)

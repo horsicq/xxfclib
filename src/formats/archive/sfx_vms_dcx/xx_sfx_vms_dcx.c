@@ -7,6 +7,7 @@
  */
 #include "xxfclib/formats/archive/sfx_vms_dcx/xx_sfx_vms_dcx.h"
 #include "../../common/xx_carrier_helpers.h"
+#include "xxfclib/data/xx_data.h"
 
 #define VD_SCAN_MAX (1024U * 1024U)
 #define VD_INPUT_MAX (128U * 1024U * 1024U)
@@ -17,8 +18,21 @@
 #define VD_MAP_OFFSET 0x240U
 #define VD_MAX_FRAMES 65536U
 
+#define VD_LUT_BITS 10U
+#define VD_LUT_SIZE (1U << VD_LUT_BITS)
+#define VD_LUT_MASK (VD_LUT_SIZE - 1U)
+
+typedef struct vd_lut_entry {
+    uint8_t bits;
+    uint8_t is_leaf;
+    uint8_t is_term;
+    uint8_t symbol;
+    uint16_t next_state;
+} vd_lut_entry;
+
 typedef struct vd_table {
     uint8_t *slots;
+    vd_lut_entry *lut;
     uint16_t contexts;
     int64_t end;
 } vd_table;
@@ -79,12 +93,54 @@ static bool vd_table_open(Abstractformat *f, int64_t at, vd_table *table, xx_pd_
             if (xx_data_get_u16(slot + VD_MAP_OFFSET + symbol * 2U, 2, 0, false) >= count) goto done;
         }
     }
+    table->lut = (vd_lut_entry *)xx_mem_alloc((size_t)count * VD_LUT_SIZE * sizeof(vd_lut_entry));
+    if (!table->lut) goto done;
+    for (i = 0U; i < count; ++i) {
+        const uint8_t *slot = table->slots + i * VD_SLOT_SIZE;
+        vd_lut_entry *ctx_lut = table->lut + i * VD_LUT_SIZE;
+        for (unsigned b = 0U; b < VD_LUT_SIZE; ++b) {
+            unsigned node = 0U;
+            unsigned bits_consumed = 0U;
+            bool is_leaf = false;
+            bool is_term = false;
+            uint8_t symbol = 0U;
+            uint16_t next_state = 0U;
+            unsigned acc = b;
+            for (unsigned step = 0U; step < VD_LUT_BITS; ++step) {
+                if (acc & 1U) ++node;
+                acc >>= 1U;
+                ++bits_consumed;
+                if (slot[node >> 3U] & (1U << (node & 7U))) {
+                    is_leaf = true;
+                    symbol = slot[VD_NODE_OFFSET + node];
+                    next_state = xx_data_get_le16(slot + VD_MAP_OFFSET + (size_t)symbol * 2U);
+                    break;
+                } else {
+                    unsigned child = slot[VD_NODE_OFFSET + node];
+                    if (!child) {
+                        is_term = true;
+                        break;
+                    }
+                    node = child * 2U;
+                }
+            }
+            if (!is_leaf && !is_term) {
+                next_state = (uint16_t)node;
+            }
+            ctx_lut[b].bits = (uint8_t)bits_consumed;
+            ctx_lut[b].is_leaf = is_leaf ? 1U : 0U;
+            ctx_lut[b].is_term = is_term ? 1U : 0U;
+            ctx_lut[b].symbol = symbol;
+            ctx_lut[b].next_state = next_state;
+        }
+    }
     table->contexts = count;
     table->end = at + size;
     okay = true;
 done:
     xx_mem_free(data);
     if (!okay) {
+        if (table->lut) xx_mem_free(table->lut);
         xx_mem_free(table->slots);
         xx_mem_zero(table, sizeof(*table));
     }
@@ -95,33 +151,99 @@ done:
  * both exact lengths rejects a valid-looking prefix with unrelated data. */
 static bool vd_decode(const vd_table *table, const uint8_t *packed, size_t packed_size, uint8_t *plain, size_t raw_size, xx_pd_struct *pd)
 {
+    unsigned ctx_idx = 0U;
     const uint8_t *context = table->slots;
+    const vd_lut_entry *ctx_lut = table->lut;
     size_t in = 0U, out = 0U;
-    unsigned node = 0U, bits = 0U, accumulator = 0U;
+    uint64_t bitbuf = 0U;
+    unsigned bits = 0U;
+    size_t next_pd_check = 4096U;
+
     while (true) {
-        unsigned symbol, next;
-        if ((in & 4095U) == 0U && carrier_stop(pd)) return false;
-        if (!bits) {
-            if (in >= packed_size) return false;
-            accumulator = packed[in++];
-            bits = 8U;
+        while (bits <= 54U && in < packed_size) {
+            bitbuf |= (uint64_t)packed[in++] << bits;
+            bits += 8U;
         }
-        if (accumulator & 1U) ++node;
-        accumulator >>= 1U;
-        --bits;
-        if (node >= 512U) return false;
-        if (context[node >> 3] & (1U << (node & 7U))) {
-            if (out >= raw_size) return false;
-            symbol = context[VD_NODE_OFFSET + node];
-            plain[out++] = (uint8_t)symbol;
-            next = xx_data_get_u16(context + VD_MAP_OFFSET + symbol * 2U, 2, 0, false);
-            if (next >= table->contexts) return false;
-            context = table->slots + (size_t)next * VD_SLOT_SIZE;
-            node = 0U;
+        if (in >= next_pd_check) {
+            if (carrier_stop(pd)) return false;
+            next_pd_check = in + 4096U;
+        }
+        if (!bits) return false;
+
+        if (bits >= VD_LUT_BITS) {
+            unsigned peek = (unsigned)(bitbuf & VD_LUT_MASK);
+            const vd_lut_entry *e = &ctx_lut[peek];
+            if (e->is_leaf) {
+                if (out >= raw_size) return false;
+                plain[out++] = e->symbol;
+                bitbuf >>= e->bits;
+                bits -= e->bits;
+                ctx_idx = (unsigned)e->next_state;
+                if (ctx_idx >= table->contexts) return false;
+                ctx_lut = table->lut + (size_t)ctx_idx * VD_LUT_SIZE;
+                context = table->slots + (size_t)ctx_idx * VD_SLOT_SIZE;
+                continue;
+            } else if (e->is_term) {
+                bitbuf >>= e->bits;
+                bits -= e->bits;
+                return out == raw_size && in == packed_size && bits < 8U;
+            } else {
+                bitbuf >>= VD_LUT_BITS;
+                bits -= VD_LUT_BITS;
+                unsigned node = e->next_state;
+                while (true) {
+                    if (!bits) {
+                        if (in >= packed_size) return false;
+                        bitbuf |= (uint64_t)packed[in++] << bits;
+                        bits += 8U;
+                    }
+                    node += (unsigned)(bitbuf & 1U);
+                    bitbuf >>= 1U;
+                    --bits;
+                    if (node >= 512U) return false;
+                    if (context[node >> 3U] & (1U << (node & 7U))) {
+                        if (out >= raw_size) return false;
+                        uint8_t symbol = context[VD_NODE_OFFSET + node];
+                        plain[out++] = symbol;
+                        ctx_idx = (unsigned)xx_data_get_le16(context + VD_MAP_OFFSET + (size_t)symbol * 2U);
+                        if (ctx_idx >= table->contexts) return false;
+                        ctx_lut = table->lut + (size_t)ctx_idx * VD_LUT_SIZE;
+                        context = table->slots + (size_t)ctx_idx * VD_SLOT_SIZE;
+                        break;
+                    } else {
+                        unsigned child = context[VD_NODE_OFFSET + node];
+                        if (!child) return out == raw_size && in == packed_size && bits < 8U;
+                        node = child * 2U;
+                    }
+                }
+            }
         } else {
-            unsigned child = context[VD_NODE_OFFSET + node];
-            if (!child) return out == raw_size && in == packed_size;
-            node = child * 2U;
+            unsigned node = 0U;
+            while (true) {
+                if (!bits) {
+                    if (in >= packed_size) return false;
+                    bitbuf |= (uint64_t)packed[in++] << bits;
+                    bits += 8U;
+                }
+                node += (unsigned)(bitbuf & 1U);
+                bitbuf >>= 1U;
+                --bits;
+                if (node >= 512U) return false;
+                if (context[node >> 3U] & (1U << (node & 7U))) {
+                    if (out >= raw_size) return false;
+                    uint8_t symbol = context[VD_NODE_OFFSET + node];
+                    plain[out++] = symbol;
+                    ctx_idx = (unsigned)xx_data_get_le16(context + VD_MAP_OFFSET + (size_t)symbol * 2U);
+                    if (ctx_idx >= table->contexts) return false;
+                    ctx_lut = table->lut + (size_t)ctx_idx * VD_LUT_SIZE;
+                    context = table->slots + (size_t)ctx_idx * VD_SLOT_SIZE;
+                    break;
+                } else {
+                    unsigned child = context[VD_NODE_OFFSET + node];
+                    if (!child) return out == raw_size && in == packed_size && bits < 8U;
+                    node = child * 2U;
+                }
+            }
         }
     }
 }
@@ -212,7 +334,9 @@ done:
     xx_mem_free(fdl);
     xx_mem_free(sav);
     xx_mem_free(first.slots);
+    if (first.lut) xx_mem_free(first.lut);
     xx_mem_free(second.slots);
+    if (second.lut) xx_mem_free(second.lut);
     return okay;
 }
 

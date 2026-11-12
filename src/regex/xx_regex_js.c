@@ -22,6 +22,7 @@
 /* JavaScript RegExp object adapter for the shared regex engine. */
 #include "../js/xx_js_internal.h"
 #include "xx_regex_internal.h"
+#include "xx_regex_js_strings.h"
 
 /* Keep the interpreter's emergency reserve, sticky OOM flag and non-NULL
  * allocation contract while the shared core remains independent of JS. */
@@ -116,7 +117,7 @@ static JSVal fn_regexp_test(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
      * Keep the common case off the heap; larger patterns retain full captures. */
     pCaps = xx_regex_ngroups(pRegExp) < 16 ? sCaps :
         (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
-    bResult = xx_regex_exec(pRegExp, js_str_data(text), js_str_len(text), nStart, pCaps);
+    bResult = js_regex_exec_checked(pCtx, pRegExp, js_str_data(text), js_str_len(text), nStart, pCaps);
     if (xx_regex_global(pRegExp)) js_set(pCtx, thisVal, "lastIndex", js_num(bResult ? (double)pCaps[1] : 0));
     if (pCaps != sCaps) xx_js_free(pCaps);
     js_release(pCtx, text);
@@ -165,7 +166,7 @@ static JSVal fn_regexp_exec(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
     pCaps = xx_regex_ngroups(pRegExp) < 16 ? sCaps :
         (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
 
-    if ((nStart <= js_str_len(text)) && xx_regex_exec(pRegExp, js_str_data(text), js_str_len(text), nStart, pCaps)) {
+    if ((nStart <= js_str_len(text)) && js_regex_exec_checked(pCtx, pRegExp, js_str_data(text), js_str_len(text), nStart, pCaps)) {
         int g = 0;
 
         result = js_new_array(pCtx);

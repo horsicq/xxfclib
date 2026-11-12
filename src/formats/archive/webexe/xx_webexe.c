@@ -363,5 +363,5 @@ static Abstractformat *xx_webexe_open(xx_io_device *d)
     return xx_webexe_create(d, 0);
 }
 static const xx_file_type_t xx_webexe_types[] = {XX_FILE_TYPE_WEBEXE};
-static const xx_format_search_desc xx_webexe_desc = {xx_webexe_types, 1, NULL, 0, xx_webexe_open, xx_webexe_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(webexe, xx_webexe_desc)
+const xx_format_search_desc xx_webexe_search_desc = {xx_webexe_types, 1, NULL, 0, xx_webexe_open, xx_webexe_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(webexe, xx_webexe_search_desc)

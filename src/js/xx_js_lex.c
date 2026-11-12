@@ -499,6 +499,12 @@ int js_lex_run(JSLexer *pLexer, const char *pSource, char **ppError)
             token.type = T_STRING;
             token.nTextSize = buf.size;
             token.pText = xx_buf_detach(&buf, NULL);
+            if (!token.pText) {
+                /* The buffer's own allocation failed: no token without text. */
+                lex_error(ppError, "out of memory", nStartLine);
+
+                return 0;
+            }
             tok_push(pLexer, token);
             continue;
         }

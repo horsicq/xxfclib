@@ -2821,7 +2821,6 @@ set(XXFCLIB_SOURCES
     src/formats/installer/sfx_ad01/xx_sfx_ad01_extractor.c
     src/formats/archive/sfx_nss/xx_sfx_nss.c
     src/formats/archive/sfx_nss/xx_sfx_nss_extractor.c
-    src/formats/xx_corpus_extra_extractors.c
     src/formats/installer/solitaire_deluxe/xx_solitaire_deluxe.c
     src/formats/installer/solitaire_deluxe/xx_solitaire_deluxe_extractor.c
     src/formats/document/thebat_msb/xx_thebat_msb.c
@@ -4063,7 +4062,6 @@ set(XXFCLIB_SOURCES
     src/formats/archive/patchwise/xx_patchwise.c
     src/formats/archive/installjammer/xx_installjammer.c
     src/formats/video/scummvm_dxa/xx_scummvm_dxa.c
-    src/formats/video/scummvm_dxa/xx_scummvm_dxa_reader_adapters.c
     src/formats/video/interplay_mve/xx_interplay_mve.c
     src/formats/video/interplay_mve/xx_interplay_mve_extractor.c
     src/formats/video/westwood_vqa/xx_westwood_vqa.c
@@ -4761,17 +4759,11 @@ set(XXFCLIB_SOURCES
     src/formats/archive/uue/xx_uue_extractor.c
     src/formats/filesystem/vdi/xx_vdi.c
     src/formats/filesystem/dfsee_imz/xx_dfsee_imz.c
-    src/formats/filesystem/dfsee_imz/xx_dfsee_imz_reader_adapters.c
     src/formats/archive/dh/xx_dh.c
-    src/formats/archive/dh/xx_dh_reader_adapters.c
     src/formats/archive/djcomp/xx_djcomp.c
-    src/formats/archive/djcomp/xx_djcomp_reader_adapters.c
     src/formats/archive/dpc/xx_dpc.c
-    src/formats/archive/dpc/xx_dpc_reader_adapters.c
     src/formats/installer/dsl1/xx_dsl1.c
-    src/formats/installer/dsl1/xx_dsl1_reader_adapters.c
     src/formats/archive/dwc/xx_dwc.c
-    src/formats/archive/dwc/xx_dwc_reader_adapters.c
     src/formats/filesystem/vdi/xx_vdi_extractor.c
     src/formats/image/bmp/xx_bmp.c
     src/formats/image/bmp/xx_bmp_make.c

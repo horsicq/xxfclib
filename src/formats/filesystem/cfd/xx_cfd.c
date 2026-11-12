@@ -178,5 +178,5 @@ static Abstractformat *xx_cfd_open(xx_io_device *d)
     return xx_cfd_create(d, 0);
 }
 static const xx_file_type_t xx_cfd_types[] = {XX_FILE_TYPE_CFD};
-static const xx_format_search_desc xx_cfd_desc = {xx_cfd_types, 1, NULL, 0, xx_cfd_open, xx_cfd_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(cfd, xx_cfd_desc)
+const xx_format_search_desc xx_cfd_search_desc = {xx_cfd_types, 1, NULL, 0, xx_cfd_open, xx_cfd_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(cfd, xx_cfd_search_desc)

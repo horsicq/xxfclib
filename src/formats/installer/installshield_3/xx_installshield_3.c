@@ -63,6 +63,14 @@
 
 static const uint8_t g_is3_magic[8] = {0x94, 0x01, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00};
 static const uint8_t g_is3_key[8] = {0xCA, 0xDA, 0x7A, 0x5B, 0x4A, 0x76, 0x3E, 0xA0};
+/* The 16-bit (NE) self-extractors of InstallShield 3 carry a shorter version 4
+ * descriptor in their MYRESOURCE resource: size 0x110, version 4, the overlay
+ * offset at +0x08 and the record count at +0x0C, no string fields, and the
+ * records run to the end of the file.  Their paths use another key: byte i is
+ * XORed with key[7 - i % 8], rotated right by 7 - i % 8, XORed with key[i % 8]. */
+#define IS3_DESC_V4_SIZE 0x110U
+static const uint8_t g_is3_v4_magic[8] = {0x10, 0x01, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00};
+static const uint8_t g_is3_v4_key[8] = {0xB3, 0xF2, 0xEA, 0x1F, 0xAA, 0x27, 0x66, 0x13};
 
 /* The descriptor's obfuscated string fields: offset and size. */
 static const uint16_t g_is3_fields[4][2] = {{0x01C, 40}, {0x044, 128}, {0x0C4, 80}, {0x114, 128}};
@@ -74,6 +82,7 @@ typedef struct is3_layout_s {
     int64_t archive_size;
     uint32_t count;
     bool is_ne;
+    bool is_v4; /* the NE version 4 descriptor: no string fields, records to EOF */
     uint8_t source_dir[128];
     size_t source_dir_length;
 } is3_layout;
@@ -128,6 +137,18 @@ void xx_installshield_3_decode(uint8_t *data, size_t size)
         unsigned shift = (unsigned)((index + 1U) & 7U);
         if (shift) value = ((value << shift) | (value >> (8U - shift))) & 0xFFU;
         data[index] = (uint8_t)value;
+    }
+}
+
+static void is3_decode_v4(uint8_t *data, size_t size)
+{
+    size_t index;
+    if (!data) return;
+    for (index = 0U; index < size; ++index) {
+        unsigned rotate = (unsigned)(7U - (index & 7U));
+        unsigned value = (unsigned)(data[index] ^ g_is3_v4_key[rotate]);
+        if (rotate) value = ((value >> rotate) | (value << (8U - rotate))) & 0xFFU;
+        data[index] = (uint8_t)(value ^ g_is3_v4_key[index & 7U]);
     }
 }
 
@@ -504,7 +525,8 @@ static bool is3_walk(xx_io_device *device, int64_t base, const is3_layout *layou
         xx_rt_memcpy(buffer, view, (size_t)length + 8U);
         name_bytes += length;
         if (name_bytes > IS3_MAX_NAME_BYTES) goto done;
-        xx_installshield_3_decode(buffer, length);
+        if (layout->is_v4) is3_decode_v4(buffer, length);
+        else xx_installshield_3_decode(buffer, length);
         for (k = 0U; k < length; ++k)
             if (!is3_char_ok(buffer[k])) goto done;
         size = xx_data_get_u32(buffer + length + 4U, 4, 0, false);
@@ -541,20 +563,24 @@ static bool is3_check_descriptor(xx_io_device *device, int64_t base, int64_t ava
     uint8_t decoded[128];
     is3_layout candidate;
     unsigned field;
-    if (!is3_range_within(available, offset, IS3_DESC_SIZE) || !is3_read_at(device, base + offset, descriptor, sizeof(descriptor)) ||
-        xx_rt_memcmp(descriptor, g_is3_magic, sizeof(g_is3_magic)) != 0)
+    bool is_v4;
+    if (!is3_range_within(available, offset, IS3_DESC_V4_SIZE) || !is3_read_at(device, base + offset, descriptor, IS3_DESC_V4_SIZE)) return false;
+    is_v4 = is_ne && xx_rt_memcmp(descriptor, g_is3_v4_magic, sizeof(g_is3_v4_magic)) == 0;
+    if (!is_v4 && (xx_rt_memcmp(descriptor, g_is3_magic, sizeof(g_is3_magic)) != 0 || !is3_range_within(available, offset, IS3_DESC_SIZE) ||
+                   !is3_read_at(device, base + offset, descriptor, sizeof(descriptor))))
         return false;
     xx_mem_zero(&candidate, sizeof(candidate));
     candidate.descriptor_offset = offset;
     candidate.data_offset = (int64_t)xx_data_get_u32(descriptor + 0x08, 4, 0, false);
     candidate.count = xx_data_get_u32(descriptor + 0x0C, 4, 0, false);
-    candidate.archive_size = (int64_t)xx_data_get_u32(descriptor + 0x10, 4, 0, false);
+    candidate.archive_size = is_v4 ? available : (int64_t)xx_data_get_u32(descriptor + 0x10, 4, 0, false);
     candidate.is_ne = is_ne;
-    if ((data_exact >= 0 && candidate.data_offset != data_exact) || candidate.data_offset < data_min || candidate.count == 0U || candidate.count > IS3_MAX_RECORDS ||
+    candidate.is_v4 = is_v4;
+    if ((data_exact >= 0 && candidate.data_offset != data_exact) || candidate.data_offset < (is_v4 ? offset + (int64_t)IS3_DESC_V4_SIZE : data_min) || candidate.count == 0U || candidate.count > IS3_MAX_RECORDS ||
         candidate.archive_size > available || candidate.archive_size <= candidate.data_offset ||
         (uint64_t)(candidate.archive_size - candidate.data_offset) / IS3_MIN_RECORD < candidate.count)
         return false;
-    for (field = 0U; field < 4U; ++field) {
+    for (field = 0U; field < 4U && !is_v4; ++field) {
         size_t length = 0U;
         if (!is3_field_ok(descriptor, field, decoded, &length)) return false;
         if (field == IS3_FIELD_SOURCE_DIR) {
@@ -692,7 +718,7 @@ static bool is3_locate_ne(xx_io_device *device, int64_t base, int64_t available,
             const uint8_t *entry = table + position + (size_t)k * 12U;
             int64_t offset = (int64_t)xx_data_get_u16(entry, 2, 0, false) << shift;
             int64_t length = (int64_t)xx_data_get_u16(entry + 2U, 2, 0, false) << shift;
-            if (type != IS3_NE_RESOURCE_TYPE || length < IS3_DESC_SIZE) continue;
+            if (type != IS3_NE_RESOURCE_TYPE || length < (int64_t)IS3_DESC_V4_SIZE) continue;
             if (++tried > IS3_MAX_CANDIDATES) break;
             found = is3_check_descriptor(device, base, available, offset, offset + IS3_DESC_SIZE, -1, true, layout, &walks, pd);
         }

@@ -29,9 +29,10 @@
  *   0x128  unused to the end of the header
  *   0x15a  member data, compressed_size bytes
  *
- * There is no compression-method field.  A member is stored when its two
- * sizes are equal and a zlib (RFC 1950) stream otherwise, which is the only
- * thing the writer ever emits.
+ * The u32 at 0x124 is the method switch (2 stored, 3 LHA -lh5-, 4 zlib);
+ * older writers left it at other values, for which equal sizes mean stored
+ * and anything else a zlib stream.  Matrox PowerDesk volumes use 0x158-byte
+ * headers and may put an "mfvl" volume header in front of a member's stream.
  *
  * The stored paths are absolute build-machine paths such as
  * "C:\Build Win95 drv\input\m_qdesk.dll"; members are reported by base name
@@ -52,6 +53,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
+#include "xxfclib/algo/lzh/xx_lzh.h"
 
 #include <stdio.h>
 #include "xxfclib/data/xx_data.h"
@@ -158,6 +160,17 @@ static bool xx_mva_add(xx_mva_stream *stream, const xx_mva_member *member)
 #define XX_MVA_MAX_MEMBER_SIZE 0x40000000
 #define XX_MVA_METHOD_STORE 0U
 #define XX_MVA_METHOD_ZLIB 8U
+/* The u32 at +0x124 of the member header is the writer's method switch
+ * (recovered 2026-11-08 from the Matrox setup.exe that reads these files):
+ * 2 = stored, 3 = LHA -lh5- (8 KiB window, dynamic Huffman), 4 = zlib.  The
+ * record value 5 is published for -lh5- members, as the LHA family does. */
+#define XX_MVA_METHOD_LH5 5U
+#define XX_MVA_FIELD_STORE 2U
+#define XX_MVA_FIELD_LH5 3U
+#define XX_MVA_FIELD_ZLIB 4U
+/* A continuation volume may begin a member's payload with an "mfvl" volume
+ * header whose u16 at +6 is its own size; the stream follows it. */
+#define XX_MVA_VOLUME_TAG_SIZE 8U
 #define XX_MVA_MAX_DECODED (256 * 1024 * 1024)
 
 /* Forward declarations: the parse and the decode
@@ -295,11 +308,12 @@ static xx_mva_stream *xx_mva_parse_single(Abstractformat *self, xx_pd_struct *pd
             break;
         }
         if (xx_data_get_u16(header + 4, 2, 0, false) != XX_MVA_MEMBER_VERSION) break;
-        /* The header describes its own length, and every writer emits 0x15a.
-         * Requiring the exact value is what makes the four-byte member tag
-         * meaningful. */
-        if ((int64_t)xx_data_get_u16(header + 6, 2, 0, false) != XX_MVA_MEMBER_HEADER_SIZE) {
-            break;
+        /* Validate the writer's header length before trusting member fields. */
+        {
+            /* Two writer generations: 0x15a, and 0x158 in the Matrox
+             * PowerDesk volumes; the fields sit at the same offsets. */
+            int64_t described = (int64_t)xx_data_get_u16(header + 6, 2, 0, false);
+            if (described != XX_MVA_MEMBER_HEADER_SIZE && described != XX_MVA_MEMBER_HEADER_SIZE - 2) break;
         }
 
         /* Both sizes are signed in the container; a negative one is a
@@ -318,18 +332,38 @@ static xx_mva_stream *xx_mva_parse_single(Abstractformat *self, xx_pd_struct *pd
          * the chain there too. */
         if (!name) break;
 
-        data_offset = offset + XX_MVA_MEMBER_HEADER_SIZE;
+        data_offset = offset + (int64_t)xx_data_get_u16(header + 6, 2, 0, false);
+        {
+            /* A continuation volume's "mfvl" header may sit between the member
+             * header and the stream; its u16 at +6 is its own size and the
+             * packed size does not count it. */
+            uint8_t tag[XX_MVA_VOLUME_TAG_SIZE];
+            if (xx_mva_range_within(span, data_offset, (int64_t)XX_MVA_VOLUME_TAG_SIZE) &&
+                xx_mva_read_at(self, self->base_address + data_offset, tag, sizeof(tag)) &&
+                tag[0] == 'm' && tag[1] == 'f' && tag[2] == 'v' && tag[3] == 'l') {
+                int64_t skip = (int64_t)xx_data_get_u16(tag + 6, 2, 0, false);
+                if (skip < (int64_t)XX_MVA_VOLUME_TAG_SIZE) skip = (int64_t)XX_MVA_VOLUME_TAG_SIZE;
+                data_offset += skip;
+            }
+        }
         xx_mem_zero(&member, sizeof(member));
         member.name = name;
         member.header_offset = self->base_address + offset;
-        member.header_size = XX_MVA_MEMBER_HEADER_SIZE;
+        member.header_size = data_offset - offset;
         member.data_offset = self->base_address + data_offset;
         member.compressed_size = compressed;
         member.uncompressed_size = uncompressed;
         member.timestamp = (uint64_t)xx_data_get_u32(header + 8, 4, 0, false);
-        /* No method field exists: equal sizes mean the writer stored the
-         * member verbatim, anything else is a zlib stream. */
-        member.method = (compressed == uncompressed) ? XX_MVA_METHOD_STORE : XX_MVA_METHOD_ZLIB;
+        /* The method switch at +0x124 (2 stored, 3 -lh5-, 4 zlib); writers
+         * that left it at another value are read by the older rule: equal
+         * sizes mean stored, anything else a zlib stream. */
+        {
+            uint32_t method_field = xx_data_get_u32(header + XX_MVA_SIZES_OFFSET + 16U, 4, 0, false);
+            if (method_field == XX_MVA_FIELD_LH5) member.method = XX_MVA_METHOD_LH5;
+            else if (method_field == XX_MVA_FIELD_STORE && compressed == uncompressed) member.method = XX_MVA_METHOD_STORE;
+            else if (method_field == XX_MVA_FIELD_ZLIB) member.method = XX_MVA_METHOD_ZLIB;
+            else member.method = (compressed == uncompressed) ? XX_MVA_METHOD_STORE : XX_MVA_METHOD_ZLIB;
+        }
 
         if (!xx_mva_range_within(span, data_offset, compressed)) {
             /* The last member of a volume that spills into a .MVB is
@@ -412,10 +446,8 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member, uin
         return true;
     }
 
-    /* Anything that is not the one compressed method this format defines is
-     * a refusal: treating it as stored would hand the caller packed bytes
-     * that look like data. */
-    if (member->method != XX_MVA_METHOD_ZLIB) return false;
+    /* Refuse unsupported methods instead of returning compressed bytes. */
+    if (member->method != XX_MVA_METHOD_ZLIB && member->method != XX_MVA_METHOD_LH5) return false;
     /* A zlib stream is never empty, and it never decodes to nothing here: a
      * member with either size zero would have been stored. */
     if (packed_size == 0U || plain_size == 0U) return false;
@@ -434,6 +466,34 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member, uin
      * its compressed size clamped to the end of this volume; the header check
      * still passes there, but the decode below stops short and the size
      * comparison rejects it rather than reporting a partial file. */
+    /* A continuation volume's "mfvl" header in front of the stream. */
+    if (packed_size >= XX_MVA_VOLUME_TAG_SIZE && packed[0] == 'm' && packed[1] == 'f' && packed[2] == 'v' && packed[3] == 'l') {
+        size_t skip = xx_data_get_u16(packed + 6, 2, 0, false);
+        size_t move;
+        if (skip < XX_MVA_VOLUME_TAG_SIZE) skip = XX_MVA_VOLUME_TAG_SIZE;
+        if (skip >= packed_size) {
+            xx_mem_free(packed);
+            return false;
+        }
+        for (move = 0U; move < packed_size - skip; ++move) packed[move] = packed[move + skip];
+        packed_size -= skip;
+    }
+    if (member->method == XX_MVA_METHOD_LH5) {
+        plain = (uint8_t *)xx_mem_alloc(plain_size);
+        if (!plain) {
+            xx_mem_free(packed);
+            return false;
+        }
+        if (!xx_lzh5_decode_memory(packed, packed_size, plain, plain_size, 5, &written) || written != plain_size) {
+            xx_mem_free(plain);
+            xx_mem_free(packed);
+            return false;
+        }
+        xx_mem_free(packed);
+        *out = plain;
+        *out_size = plain_size;
+        return true;
+    }
     if (!xx_zlib_stream_header_is_valid(packed, packed_size)) {
         xx_mem_free(packed);
         return false;

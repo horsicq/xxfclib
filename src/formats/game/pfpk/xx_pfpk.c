@@ -80,5 +80,5 @@ static Abstractformat *pfpk_open(xx_io_device *d)
     return xx_pfpk_create(d, 0);
 }
 static const xx_file_type_t pfpk_types[] = {XX_FILE_TYPE_PFPK};
-static const xx_format_search_desc pfpk_desc = {pfpk_types, 1, NULL, 0, pfpk_open, xx_pfpk_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pfpk, pfpk_desc)
+const xx_format_search_desc xx_pfpk_search_desc = {pfpk_types, 1, NULL, 0, pfpk_open, xx_pfpk_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pfpk, xx_pfpk_search_desc)

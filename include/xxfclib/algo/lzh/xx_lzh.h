@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 XXFC_API bool xx_lzh1_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
+XXFC_API bool xx_lzh1_decode_memory_ext(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, size_t *consumed_bytes);
 
 /** Decode exactly one bounded LH1 stream without retaining its payload.
  * Devices are borrowed and used at their current positions. Short transfers

@@ -91,6 +91,13 @@ typedef struct xx_sqx_member {
 XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, const xx_sqx_member *members, size_t member_count, size_t target_index, uint8_t *output,
                                    size_t output_size, size_t *written);
 
+typedef struct xx_sqx_decoder_s xx_sqx_decoder;
+
+XXFC_API xx_sqx_decoder *xx_sqx_decoder_create(void);
+XXFC_API void xx_sqx_decoder_free(xx_sqx_decoder *dec);
+XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, size_t input_size,
+                                    const xx_sqx_member *member, uint8_t *output, size_t output_size, size_t *written);
+
 #ifdef __cplusplus
 }
 #endif

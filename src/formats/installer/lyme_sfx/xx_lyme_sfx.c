@@ -306,5 +306,5 @@ static Abstractformat *xx_lyme_sfx_open(xx_io_device *d)
     return xx_lyme_sfx_create(d, 0);
 }
 static const xx_file_type_t xx_lyme_sfx_types[] = {XX_FILE_TYPE_LYME_SFX};
-static const xx_format_search_desc xx_lyme_sfx_desc = {xx_lyme_sfx_types, 1, NULL, 0, xx_lyme_sfx_open, xx_lyme_sfx_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(lyme_sfx, xx_lyme_sfx_desc)
+const xx_format_search_desc xx_lyme_sfx_search_desc = {xx_lyme_sfx_types, 1, NULL, 0, xx_lyme_sfx_open, xx_lyme_sfx_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(lyme_sfx, xx_lyme_sfx_search_desc)

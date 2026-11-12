@@ -619,15 +619,16 @@ JSVal js_call_function(JSCtx *pCtx, JSObj *pFn, JSVal thisVal, int nArgc, JSVal 
             scope_declare(pCtx, pScope, "arguments", arguments);
         }
 
+        /* Named function expressions can refer to themselves; a parameter
+         * of the same name shadows that binding, so it is declared first. */
+        if (pFn->pFnName && pFn->pFnName[0] && (pFn->pFnNode->nNum != 0)) {
+            scope_declare(pCtx, pScope, pFn->pFnName, jsval_obj(jsobj_ref(pFn)));
+        }
+
         for (i = 0; i < pParams->nList; i++) {
             JSVal value = ((int)i < nArgc) ? js_dup(pArgv[i]) : js_undefined();
 
             scope_declare(pCtx, pScope, pParams->ppList[i]->pStr, value);
-        }
-
-        /* Named function expressions can refer to themselves. */
-        if (pFn->pFnName && pFn->pFnName[0] && (pFn->pFnNode->nNum != 0)) {
-            scope_declare(pCtx, pScope, pFn->pFnName, jsval_obj(jsobj_ref(pFn)));
         }
 
         if (pFn->pFnNode->bNeedsHoist) {
@@ -639,6 +640,9 @@ JSVal js_call_function(JSCtx *pCtx, JSObj *pFn, JSVal thisVal, int nArgc, JSVal 
         if (completion.type == CT_RETURN) {
             result = completion.value;
         } else {
+            if (completion.type != CT_NORMAL && !pCtx->bException) {
+                js_throw(pCtx, "SyntaxError: illegal %s statement", (completion.type == CT_BREAK) ? "break" : "continue");
+            }
             js_release(pCtx, completion.value);
             result = js_undefined();
         }
@@ -837,10 +841,17 @@ static double js_mod(double a, double b)
 static int compare_values(JSCtx *pCtx, JSVal left, JSVal right, JSOp op, int *pbUndefined)
 {
     JSVal primLeft = js_to_primitive(pCtx, left, 0);
-    JSVal primRight = js_to_primitive(pCtx, right, 0);
+    JSVal primRight;
     int bResult = 0;
 
     *pbUndefined = 0;
+    if (pCtx->bException) {
+        /* The right operand's valueOf must not run once the left one threw. */
+        js_release(pCtx, primLeft);
+        *pbUndefined = 1;
+        return 0;
+    }
+    primRight = js_to_primitive(pCtx, right, 0);
 
     if ((primLeft.tag == JT_STR) && (primRight.tag == JT_STR)) {
         size_t nSizeA = primLeft.u.s->nSize;
@@ -887,8 +898,15 @@ static JSVal apply_binary(JSCtx *pCtx, JSOp op, JSVal left, JSVal right)
     switch (op) {
         case OP_ADD: {
             JSVal primLeft = js_to_primitive(pCtx, left, 0);
-            JSVal primRight = js_to_primitive(pCtx, right, 0);
+            JSVal primRight;
             JSVal result;
+
+            /* The right operand's valueOf must not run once the left one threw. */
+            if (pCtx->bException) {
+                js_release(pCtx, primLeft);
+                return js_undefined();
+            }
+            primRight = js_to_primitive(pCtx, right, 0);
 
             if ((primLeft.tag == JT_STR) || (primRight.tag == JT_STR)) {
                 result = js_concat_str(pCtx, primLeft, primRight);
@@ -1592,7 +1610,8 @@ static JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
                     return js_undefined();
                 }
 
-                jsobj_put(pCtx, object.u.o, pProp->pStr, xx_rt_strlen(pProp->pStr), value);
+                /* The parser stores the key's byte count in nNum, as N_STR does. */
+                jsobj_put(pCtx, object.u.o, pProp->pStr, (size_t)pProp->nNum, value);
             }
 
             return object;
@@ -2087,6 +2106,19 @@ static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, 
                     JSVal base = eval_expr(pCtx, pTarget->a, pFrame);
                     set_property(pCtx, base, pTarget->pStr, xx_rt_strlen(pTarget->pStr), js_dup(key));
                     js_release(pCtx, base);
+                } else if (pTarget && pTarget->type == N_INDEX) {
+                    /* for (a[i] in o): the computed target is re-evaluated per key. */
+                    JSVal base = eval_expr(pCtx, pTarget->a, pFrame);
+                    JSVal index = eval_expr(pCtx, pTarget->b, pFrame);
+                    if (!pCtx->bException) {
+                        char sScratch[KEY_SCRATCH_SIZE];
+                        size_t nKeySize = 0;
+                        char *pKey = key_from_value(pCtx, index, &nKeySize, sScratch);
+                        set_property(pCtx, base, pKey, nKeySize, js_dup(key));
+                        key_release(pKey, sScratch, index);
+                    }
+                    js_release(pCtx, index);
+                    js_release(pCtx, base);
                 }
                 js_release(pCtx, key);
                 body = exec_stmt(pCtx, pNode->d, pFrame);
@@ -2342,14 +2374,23 @@ JSVal js_run_program(JSCtx *pCtx, JSNode *pProgram, JSScope *pScope, JSVal thisV
 
     if (pCtx->bException || pCtx->bDebugAborted) {
         pCtx->pDebugFrame = debug.pPrevious;
+        js_release(pCtx, thisVal);
         return js_undefined();
     }
 
     completion = exec_stmt(pCtx, pProgram, &frame);
     pCtx->pDebugFrame = debug.pPrevious;
+    /* The caller hands over one reference to thisVal; nothing kept it. */
+    js_release(pCtx, thisVal);
 
     if (completion.type == CT_RETURN) {
         return completion.value;
+    }
+
+    if (completion.type != CT_NORMAL && !pCtx->bException) {
+        /* A break or continue outside any loop is a syntax error in the
+         * reference engine; silently ending the program hid script typos. */
+        js_throw(pCtx, "SyntaxError: illegal %s statement", (completion.type == CT_BREAK) ? "break" : "continue");
     }
 
     js_release(pCtx, completion.value);

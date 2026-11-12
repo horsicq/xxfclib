@@ -148,8 +148,3 @@ Abstractformat *xx_fury_dat_create(xx_io_device *d,int64_t base)
     if(f) {pm_init(f,d,base,XX_FILE_TYPE_FURY_DAT,"dat");f->get_current_archive_record=fu_current;}return f;
 }
 void xx_fury_dat_free(Abstractformat *f) {if(f) {xx_format_destroy(f);xx_mem_free(f);}}
-#include "../../xx_format_abstract_extractor_adapter.h"
-static const xx_file_type_t fu_types[]={XX_FILE_TYPE_FURY_DAT};
-static Abstractformat *fu_open(xx_io_device *d) {return xx_fury_dat_create(d,0);}
-static const xx_format_search_desc fu_desc={fu_types,1U,NULL,0U,fu_open,xx_fury_dat_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(fury_dat,fu_desc)

@@ -138,7 +138,9 @@ typedef struct xfu_request {
      * NULL selects the destination extension/defaults. Borrowed strings. */
     const char *archive_format;
     const char *archive_filter;
-    const char *archive_options; /* Format-specific writer options. */
+    /* Format-specific reader or writer options: key=value pairs separated
+     * by ';', such as "cpio:hdrcharset=CP437". */
+    const char *archive_options;
     /* ADD: WIM accepts stored level 0 in this build; other writers validate
      * their method and range. */
     const char *compression_method;
@@ -155,5 +157,11 @@ xfu_command xfu_parse_command(const char *text);
 /* 0: success, 1: partial failure/cancellation, 2: usage/open/format failure.
  * The core never prints; diagnostics only go to the attached log callback. */
 int xfu_run(const xfu_request *request);
+
+/* archive_options helpers: whether `pair` is one of its pairs, and the first
+ * pair outside `known` (its length in *length), or NULL. */
+bool xfu_option_listed(const char *options, const char *pair);
+const char *xfu_option_unknown(const char *options, const char *const *known,
+                               size_t count, size_t *length);
 
 #endif

@@ -5,6 +5,9 @@
  * the project's MIT XArchive/installers/xnsis.cpp. No scripts execute.
  * Modified BZip2 decoding retains its own bzip2 license in this directory. */
 #include "xxfclib/formats/installer/nsis/xx_nsis.h"
+/* Installers of a hundred megabytes are ordinary: the whole-file blob may
+ * grow to the default memory budget. Decoded payloads live outside it. */
+#define AC_MAX_BYTES (256U * 1024U * 1024U)
 #include "../../xx_legacy_archive.h"
 #include "xxfclib/algo/deflate/xx_deflate.h"
 #include "xxfclib/algo/lzma/xx_lzma.h"
@@ -81,7 +84,7 @@ static bool ns_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *o
             ++in;
             --packed;
         }
-        if (packed < 5U || xx_data_get_u32(in + 1U, 4, 0, false) > 16U * 1024U * 1024U ||
+        if (packed < 5U || b->used >= b->limit ||
             (uint64_t)xx_data_get_u32(in + 1U, 4, 0, false) + 1024U * 1024U > b->limit - b->used)
             return false;
     }
@@ -107,6 +110,70 @@ static unsigned ns_method(const uint8_t *p, uint32_t n)
     }
     return 1U;
 }
+/* ns_decode into a device: for the solid stream and for compressed members,
+ * whose decoded size is not framed, so that no fixed buffer bounds them. A
+ * temporary device is RAM-backed under a memory-only scope and spills to
+ * disk otherwise; the decoded bytes enter the memory budget only when they
+ * are copied out as members. */
+static bool ns_decode_device(ac_blob *b, const uint8_t *in, uint32_t packed, xx_io_device *dst, unsigned method, uint64_t *total)
+{
+    bool ok = false;
+    int64_t size, start_size = xx_io_total_size(dst);
+    *total = 0;
+    if (start_size < 0 || xx_io_seek64(dst, 0, SEEK_END) != 0 || !ac_poll(b)) return false;
+    if (!method) {
+        if (xx_io_write(dst, in, packed) != (ssize_t)packed) return false;
+        *total = packed;
+        return true;
+    }
+    if (method == 3U) {
+        nsis_bzstream z;
+        int status = BZ_OK;
+        uint8_t chunk[4096];
+        xx_mem_zero(&z, sizeof(z));
+        z.bzalloc = ns_allocate;
+        z.bzfree = ns_free;
+        z.opaque = b;
+        if (nsis_BZ2_bzDecompressInit(&z, 0, 0) != BZ_OK) return false;
+        z.next_in = (unsigned char *)in;
+        z.avail_in = packed;
+        while (status == BZ_OK) {
+            unsigned before = z.avail_in, produced;
+            if (!ac_poll(b)) break;
+            z.next_out = chunk;
+            z.avail_out = (unsigned)sizeof(chunk);
+            status = nsis_BZ2_bzDecompress(&z);
+            produced = (unsigned)sizeof(chunk) - z.avail_out;
+            if (produced && xx_io_write(dst, chunk, produced) != (ssize_t)produced) {
+                nsis_BZ2_bzDecompressEnd(&z);
+                return false;
+            }
+            *total += produced;
+            if (status == BZ_OK && before == z.avail_in && !produced) break;
+        }
+        ok = status == BZ_STREAM_END && ac_poll(b);
+        nsis_BZ2_bzDecompressEnd(&z);
+        return ok;
+    }
+    if (method == 2U) {
+        if (packed >= 8U && in[0] <= 1U && ns_lzma(in + 1U, packed - 1U)) {
+            if (in[0]) return ac_error(b, "NSIS BCJ filter is unsupported");
+            ++in;
+            --packed;
+        }
+        if (packed < 5U || b->used >= b->limit ||
+            (uint64_t)xx_data_get_u32(in + 1U, 4, 0, false) + 1024U * 1024U > b->limit - b->used)
+            return false;
+        ok = xx_lzma_unpack_memory_to_device(in + 5, packed - 5U, in, 5, -1, dst, b->pd);
+    } else {
+        ok = xx_deflate_unpack_memory_to_device(in, packed, dst, false, b->pd);
+    }
+    if (!ok || !ac_poll(b)) return false;
+    size = xx_io_total_size(dst);
+    if (size < start_size) return false;
+    *total = (uint64_t)(size - start_size);
+    return true;
+}
 static bool ns_name(char name[96], const uint8_t *header, uint32_t strings, uint32_t end, uint32_t offset, bool unicode)
 {
     uint32_t at;
@@ -119,21 +186,97 @@ static bool ns_name(char name[96], const uint8_t *header, uint32_t strings, uint
         uint32_t value = unicode ? (at + 1U < end ? xx_data_get_u16(header + at, 2, 0, false) : UINT32_MAX) : header[at];
         at += unicode ? 2U : 1U;
         if (!value) {
-            if (!n) return false;
+            /* An empty name (a command whose target is one variable
+             * instruction): a placeholder, since the member's ordinal prefix
+             * keeps it distinct. */
+            if (!n) xx_rt_memcpy(name, "unnamed", 8U);
+            else name[n] = 0;
+            return true;
+        }
+        if (n >= 90U) {
+            /* Long installer paths are cut; names are single output leaves. */
             name[n] = 0;
             return true;
         }
-        if (n >= 90U) return false;
         /* Variable-expansion instructions are retained as safe placeholders;
          * output paths never execute or resolve installer variables. */
         name[n++] = (char)(value >= 32U && value <= 126U ? value : '_');
     }
     return false;
 }
+/* Decoded payloads are read lazily from one temporary device per parse (the
+ * solid stream, or the members decoded one after another), shared by the
+ * members through a counted handle; nothing decoded enters the memory budget. */
+typedef struct ns_store {
+    xx_io_device *device;
+    uint32_t refs;
+} ns_store;
+typedef struct ns_view {
+    ns_store *store;
+    uint64_t base;
+} ns_view;
+static ns_store *ns_store_open(void)
+{
+    ns_store *store = (ns_store *)xx_mem_calloc(1U, sizeof(*store));
+    if (!store) return NULL;
+    store->device = xx_io_temp_open();
+    if (!store->device) {
+        xx_mem_free(store);
+        return NULL;
+    }
+    store->refs = 1U; /* the parser's own reference */
+    return store;
+}
+static void ns_store_release(ns_store *store)
+{
+    if (store && --store->refs == 0U) {
+        xx_io_close(store->device);
+        xx_mem_free(store);
+    }
+}
+static void ns_view_free(void *p)
+{
+    ns_view *v = (ns_view *)p;
+    if (v) {
+        ns_store_release(v->store);
+        xx_mem_free(v);
+    }
+}
+static bool ns_view_read(Abstractformat *f, pm_member *m, uint64_t position, void *buffer, size_t n, xx_pd_struct *pd)
+{
+    ns_view *v = (ns_view *)m->context;
+    (void)f;
+    if (!v || (pd && xx_pd_is_stopped(pd)) || position > (uint64_t)m->size || n > (uint64_t)m->size - position) return false;
+    return n == 0U || xx_io_read_at(v->store->device, (int64_t)(v->base + position), buffer, n);
+}
+/* A member that is a window of the store. */
+static bool ns_emit_view(Abstractformat *f, pm_stream *s, ac_blob *b, const char *name, ns_store *store, uint64_t base, uint64_t size, uint32_t packed, uint16_t method)
+{
+    const xx_var *v = ac_option(f, XX_META_ID_OPT_MAX_MEMBER_SIZE);
+    ns_view *view;
+    pm_member *m;
+    if ((v && size > xx_var_get_u64(v)) || size > (uint64_t)INT64_MAX || !ac_emit(f, s, b, name, 0, 0)) return false;
+    view = (ns_view *)xx_mem_calloc(1U, sizeof(*view));
+    if (!view) return false;
+    view->store = store;
+    view->base = base;
+    ++store->refs;
+    m = &s->items[s->count - 1U];
+    m->size = (int64_t)size;
+    m->packed_size = packed;
+    m->offset = -1;
+    m->compression_method = method;
+    m->read_range = ns_view_read;
+    m->context = view;
+    m->free_context = ns_view_free;
+    return true;
+}
 static bool ns_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
 {
-    uint32_t start = 0, flags, size, header_size, data_size, pos, header_packed, header_n = 0, cap, solid_capacity = 0, solid_n = 0, entries, count, strings, lang, i, scratch_cap = 0;
-    uint8_t *header = NULL, *solid = NULL, *scratch = NULL;
+    uint32_t start = 0, flags, size, header_size, data_size, pos, header_packed, header_n = 0, entries, count, strings, lang, i;
+    uint64_t solid_total = 0;
+    ns_store *store = NULL;
+    uint8_t *header = NULL;
     bool non_solid, unicode;
     unsigned stride = 8U, method;
     const uint8_t *data;
@@ -182,17 +325,20 @@ static bool ns_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
             goto fail;
         pos = 4U + header_packed;
     } else {
-        cap = 32U * 1024U * 1024U;
-        if (b->used >= b->limit) return false;
-        if (cap > b->limit - b->used) cap = (uint32_t)(b->limit - b->used);
-        solid_capacity = cap;
-        solid = ac_alloc(b, cap);
-        if (!solid) return false;
-        if (!ns_decode(b, data, data_size, solid, cap, &solid_n, method) || solid_n < 4U + header_size || xx_data_get_u32(solid, 4, 0, false) != header_size) {
+        /* Solid: one stream carries the header and every payload. Decoded to
+         * a temporary device, its size is bounded by that device rather than
+         * by a fixed buffer (installers of hundreds of megabytes are common);
+         * payloads are copied out within the memory budget one at a time. */
+        uint8_t declared[4];
+        store = ns_store_open();
+        if (!store) return false;
+        if (!ns_decode_device(b, data, data_size, store->device, method, &solid_total) || solid_total < 4U + (uint64_t)header_size ||
+            solid_total > UINT32_MAX || !xx_io_read_at(store->device, 0, declared, 4U) || xx_data_get_u32(declared, 4, 0, false) != header_size) {
             failure = "NSIS solid stream decode failed";
             goto fail;
         }
-        header = solid + 4U;
+        header = ac_alloc(b, header_size);
+        if (!header || !xx_io_read_at(store->device, 4, header, header_size)) goto fail;
         header_n = header_size;
         pos = 4U + header_size;
     }
@@ -215,7 +361,6 @@ static bool ns_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
         const uint8_t *command = header + entries + i * 28U;
         char name[96];
         uint32_t offset, packed, n, at;
-        uint8_t *out;
         failure = "NSIS extract-file command/name/payload invalid";
         if (!ac_poll(b)) goto fail;
         if (xx_data_get_u32(command, 4, 0, false) != 20U) continue;
@@ -233,53 +378,36 @@ static bool ns_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
                 if (!ac_emit(f, s, b, name, start + 28U + at + 4U, n)) goto fail;
                 continue;
             }
-            if (!scratch) {
-                cap = 16U * 1024U * 1024U;
-                {
-                    const xx_var *v = ac_option(f, XX_META_ID_OPT_MAX_MEMBER_SIZE);
-                    if (v && xx_var_get_u64(v) < cap) cap = (uint32_t)xx_var_get_u64(v);
-                }
-                scratch_cap = cap;
-                scratch = (uint8_t *)xx_mem_alloc(scratch_cap);
-                if (!scratch) goto fail;
+            {
+                /* The decoded size is known only after decoding: the payload
+                 * is appended to the store and listed as a window of it. */
+                uint64_t total = 0, base;
+                if (!store && !(store = ns_store_open())) goto fail;
+                base = (uint64_t)xx_io_total_size(store->device);
+                if (!ns_decode_device(b, data + at + 4U, n, store->device, ns_method(data + at + 4U, n), &total)) goto fail;
+                if (!ns_emit_view(f, s, b, name, store, base, total, n, (uint16_t)method)) goto fail;
             }
-            if (b->used >= b->limit) {
-                goto fail;
-            }
-            if (!ns_decode(b, data + at + 4U, n, scratch, scratch_cap, &packed, ns_method(data + at + 4U, n))) {
-                goto fail;
-            }
-            if ((uint64_t)packed > b->limit - b->used) {
-                goto fail;
-            }
-            out = ac_alloc(b, packed);
-            if (!out) goto fail;
-            xx_rt_memcpy(out, scratch, packed);
-            if (!ac_memory(f, s, b, name, out, packed, n, (uint16_t)method)) goto fail;
         } else {
-            if (offset > solid_n - pos || solid_n - pos - offset < 4U) {
+            uint8_t declared[4];
+            if ((uint64_t)offset > solid_total - pos || solid_total - pos - offset < 4U) {
                 goto fail;
             }
             at = pos + offset;
-            n = xx_data_get_u32(solid + at, 4, 0, false);
-            if (n > solid_n - at - 4U) {
+            if (!xx_io_read_at(store->device, (int64_t)at, declared, 4U)) goto fail;
+            n = xx_data_get_u32(declared, 4, 0, false);
+            if ((uint64_t)n > solid_total - at - 4U) {
                 goto fail;
             }
-            out = ac_alloc(b, n);
-            if (!out) goto fail;
-            xx_rt_memcpy(out, solid + at + 4U, n);
-            if (!ac_memory(f, s, b, name, out, n, 0, (uint16_t)method)) goto fail;
+            if (!ns_emit_view(f, s, b, name, store, (uint64_t)at + 4U, n, 0U, (uint16_t)method)) goto fail;
         }
     }
     ((xx_nsis *)f)->note = "NSIS2/3 standard extract-file commands; decoded payloads, no installer execution; names use safe unresolved-variable placeholders";
-    if (scratch) xx_mem_free(scratch);
-    if (solid) ac_release(b, solid, solid_capacity);
-    else ac_release(b, header, header_size);
+    ns_store_release(store);
+    ac_release(b, header, header_size);
     return s->count != 0;
 fail:
-    if (scratch) xx_mem_free(scratch);
-    if (solid) ac_release(b, solid, solid_capacity);
-    else if (header) ac_release(b, header, header_size);
+    ns_store_release(store);
+    if (header) ac_release(b, header, header_size);
     return ac_error(b, failure);
 }
 AC_PARSE(ns_parse)

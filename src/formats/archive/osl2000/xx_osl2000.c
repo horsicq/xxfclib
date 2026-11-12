@@ -184,5 +184,5 @@ static Abstractformat *xx_osl2000_open(xx_io_device *d)
     return xx_osl2000_create(d, 0);
 }
 static const xx_file_type_t xx_osl2000_types[] = {XX_FILE_TYPE_OSL2000};
-static const xx_format_search_desc xx_osl2000_desc = {xx_osl2000_types, 1, NULL, 0, xx_osl2000_open, xx_osl2000_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(osl2000, xx_osl2000_desc)
+const xx_format_search_desc xx_osl2000_search_desc = {xx_osl2000_types, 1, NULL, 0, xx_osl2000_open, xx_osl2000_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(osl2000, xx_osl2000_search_desc)

@@ -266,5 +266,5 @@ static Abstractformat *natata_open(xx_io_device *d) { return xx_natata_ebook_cre
 static const xx_file_type_t natata_types[] = {XX_FILE_TYPE_NATATA_EBOOK};
 static const uint8_t natata_pe_magic[] = {'M','Z'}, natata_record_magic[] = {'#','1','!','#'};
 static const xx_format_search_anchor natata_anchors[] = {{natata_pe_magic,2U,0U},{natata_record_magic,4U,0U}};
-static const xx_format_search_desc natata_desc = {natata_types,1U,natata_anchors,2U,natata_open,xx_natata_ebook_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(natata_ebook,natata_desc)
+const xx_format_search_desc xx_natata_ebook_search_desc = {natata_types,1U,natata_anchors,2U,natata_open,xx_natata_ebook_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(natata_ebook,xx_natata_ebook_search_desc)

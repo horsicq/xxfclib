@@ -2953,12 +2953,15 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
         return 2;
     }
     if (request->archive_options && request->archive_options[0]) {
-        cp437_names = format == NATIVE_CPIO &&
-            !strcmp(request->archive_options, "cpio:hdrcharset=CP437");
-        if (!cp437_names) {
-            native_log(request, true, "unsupported writer option: %s", request->archive_options);
+        static const char *const known[] = {"cpio:hdrcharset=CP437"};
+        size_t length = 0;
+        const char *unknown = xfu_option_unknown(request->archive_options, known,
+                                                 format == NATIVE_CPIO ? 1U : 0U, &length);
+        if (unknown) {
+            native_log(request, true, "unsupported writer option: %.*s", (int)length, unknown);
             return 2;
         }
+        cp437_names = xfu_option_listed(request->archive_options, "cpio:hdrcharset=CP437");
     }
     if (request->file_count > XFU_NATIVE_RECORD_LIMIT || (request->file_count && !request->files)) {
         native_log(request, true, "%s: the archive member limit is %u", request->archive_path,

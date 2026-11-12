@@ -187,5 +187,5 @@ void xx_starforce_ovl_free(Abstractformat *f) { if(f) { xx_format_destroy(f);xx_
 #include "../../xx_format_abstract_extractor_adapter.h"
 static Abstractformat *fo_open(xx_io_device *d) { return xx_starforce_ovl_create(d,0); }
 static const xx_file_type_t fo_types[]={XX_FILE_TYPE_STARFORCE_OVL};
-static const xx_format_search_desc fo_desc={fo_types,1U,NULL,0U,fo_open,xx_starforce_ovl_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(starforce_ovl,fo_desc)
+const xx_format_search_desc xx_starforce_ovl_search_desc={fo_types,1U,NULL,0U,fo_open,xx_starforce_ovl_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(starforce_ovl,xx_starforce_ovl_search_desc)

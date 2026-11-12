@@ -64,5 +64,5 @@ static Abstractformat *zbeos_open(xx_io_device *device)
     return xx_zbeos_create(device, 0);
 }
 static const xx_file_type_t zbeos_types[] = {XX_FILE_TYPE_ZBEOS};
-static const xx_format_search_desc zbeos_descriptor = {zbeos_types, 1, NULL, 0, zbeos_open, xx_zbeos_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zbeos, zbeos_descriptor)
+const xx_format_search_desc xx_zbeos_search_desc = {zbeos_types, 1, NULL, 0, zbeos_open, xx_zbeos_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zbeos, xx_zbeos_search_desc)

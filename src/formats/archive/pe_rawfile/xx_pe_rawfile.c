@@ -195,11 +195,3 @@ void xx_pe_rawfile_destroy(xx_pe_rawfile *reader) {if(reader)pf_destroy(&reader-
 xx_pe_rawfile *xx_pe_rawfile_create(xx_io_device *device,int64_t base)
 { xx_pe_rawfile *r=(xx_pe_rawfile *)xx_mem_alloc(sizeof(*r));if(r)xx_pe_rawfile_init(r,device,base);return r; }
 void xx_pe_rawfile_free(xx_pe_rawfile *reader) {if(reader){xx_pe_rawfile_destroy(reader);xx_mem_free(reader);}}
-#include "../../xx_format_abstract_extractor_adapter.h"
-static const uint8_t pf_mz[]={'M','Z'};
-static const xx_format_search_anchor pf_anchors[]={{pf_mz,sizeof(pf_mz),0U}};
-static const xx_file_type_t pf_types[]={XX_FILE_TYPE_PE_RAWFILE};
-static Abstractformat *pf_open(xx_io_device *d) {xx_pe_rawfile *r=xx_pe_rawfile_create(d,0);return r?&r->format:NULL;}
-static void pf_close(Abstractformat *f) {xx_pe_rawfile_free((xx_pe_rawfile *)f);}
-static const xx_format_search_desc pf_desc={pf_types,1U,pf_anchors,1U,pf_open,pf_close,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pe_rawfile,pf_desc)

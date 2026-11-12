@@ -34,7 +34,7 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd
         uint8_t field[4];
         uint8_t *packed = NULL, *plain = NULL;
         uint32_t raw;
-        size_t remaining, low, high, written = 0U;
+        size_t remaining, low, written = 0U;
         char name[32];
         pm_member *member;
         if ((pd && xx_pd_is_stopped(pd)) || stream->count >= INSA_MAX_RECORDS || span - pos < 4 || !pm_read(format, pos, field, sizeof(field))) return false;
@@ -58,27 +58,9 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd
             if (plain) xx_mem_free(plain);
             return false;
         }
-        /* Output count is monotonic in the available input prefix, even
-         * though the decoder returns false for a prefix with extra bytes.
-         * Binary search locates the first prefix that fills the output. */
-        (void)xx_lzh1_decode_memory(packed, remaining, plain, raw, &written);
-        if (written != raw) {
-            xx_mem_free(packed);
-            xx_mem_free(plain);
-            return false;
-        }
-        low = 1U;
-        high = remaining;
-        while (low < high) {
-            size_t middle = low + (high - low) / 2U;
-            if (pd && xx_pd_is_stopped(pd)) break;
-            written = 0U;
-            (void)xx_lzh1_decode_memory(packed, middle, plain, raw, &written);
-            if (written == raw) high = middle;
-            else low = middle + 1U;
-        }
-        written = 0U;
-        if ((pd && xx_pd_is_stopped(pd)) || !xx_lzh1_decode_memory(packed, low, plain, raw, &written) || written != raw) {
+        /* Directly decode and obtain exact consumed bytes without binary searching */
+        low = 0U;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_lzh1_decode_memory_ext(packed, remaining, plain, raw, &written, &low) || written != raw || low == 0U) {
             xx_mem_free(packed);
             xx_mem_free(plain);
             return false;

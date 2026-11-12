@@ -4,6 +4,7 @@
  * Wire-format facts: libxad AMPK.c ArcCBM and CBM decoder descriptions. */
 #include "xxfclib/formats/archive/arc_cbm/xx_arc_cbm.h"
 #include "../../xx_legacy_archive.h"
+#define CBM_TAIL (8U * 254U)
 typedef struct cbm_sink {
     uint8_t *p, marker, last, count, state;
     uint32_t n, at;
@@ -155,7 +156,16 @@ static bool cbm_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
         unsigned ver, method;
         uint8_t *out;
         char name[96];
-        if (!ac_poll(b) || !ac_span(b, at, 11U)) return false;
+        bool valid;
+        if (!ac_poll(b)) return false;
+        /* Archives copied off disk images carry up to a few blocks of
+         * padding or a stray sector after the last record: once members
+         * exist, a short or invalid tail of at most eight blocks ends the
+         * archive instead of refusing it. */
+        if (!ac_span(b, at, 11U)) {
+            if (s->count && b->n - at <= CBM_TAIL) break;
+            return false;
+        }
         ver = b->p[at];
         method = b->p[at + 1];
         expected = xx_data_get_u16(b->p + at + 2, 2, 0, false);
@@ -163,12 +173,15 @@ static bool cbm_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
         blocks = xx_data_get_u16(b->p + at + 7, 2, 0, false);
         name_n = b->p[at + 10];
         header = 11U + name_n + (ver == 2U ? 3U : 0U);
-        if ((ver != 1U && ver != 2U) || method > (ver == 1U ? 2U : 5U) || !name_n || name_n > 16U || !blocks ||
-            (b->p[at + 9] != 'P' && b->p[at + 9] != 'S' && b->p[at + 9] != 'U' && !(ver == 2U && b->p[at + 9] == 'R')) || !ac_span(b, at, header) ||
-            !ac_name(name, sizeof(name), b->p + at + 11, name_n))
-            return false;
+        valid = (ver == 1U || ver == 2U) && method <= (ver == 1U ? 2U : 5U) && name_n && name_n <= 16U && blocks &&
+            (b->p[at + 9] == 'P' || b->p[at + 9] == 'S' || b->p[at + 9] == 'U' || (ver == 2U && b->p[at + 9] == 'R')) && ac_span(b, at, header) &&
+            ac_name(name, sizeof(name), b->p + at + 11, name_n);
         record = blocks * 254U;
-        if (record < header || !ac_span(b, at, record)) return false;
+        if (valid && (record < header || !ac_span(b, at, record))) valid = false;
+        if (!valid) {
+            if (s->count && b->n - at <= CBM_TAIL) break;
+            return false;
+        }
         if (!method && (n > record - header || (n + 253U) / 254U != blocks)) return false;
         out = ac_alloc(b, n);
         if (!out) return false;
@@ -184,7 +197,7 @@ static bool cbm_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
         if (!ac_memory(f, s, b, name, out, n, method ? record - header : n, (uint16_t)method)) return false;
         at += record;
     }
-    return at == b->n && s->count;
+    return s->count && (at == b->n || b->n - at <= CBM_TAIL);
 }
 AC_PARSE(cbm_parse)
 AC_DEFINE(arc_cbm, XX_FILE_TYPE_ARC_CBM, "arc")

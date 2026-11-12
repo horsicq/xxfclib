@@ -408,6 +408,13 @@ static bool refpack_read_command(const uint8_t *input, size_t input_size, size_t
  * is a length comparison.  RefPack has no pre-filled window, which is exactly
  * what makes the grammar a usable probe.
  */
+/* Some writers (the LANG*.POG language packs of one game: 67 files of the
+ * 2026 corpus) compress a buffer a few bytes longer than the size they
+ * declare, so the stream legitimately runs past the declared length by that
+ * much. Up to this many surplus bytes are accepted and discarded; the output
+ * is always exactly the declared size. */
+#define REFPACK_SURPLUS 8U
+
 static bool refpack_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced, size_t *consumed)
 {
     refpack_header header;
@@ -433,13 +440,15 @@ static bool refpack_run(const uint8_t *input, size_t input_size, uint8_t *output
         at += command.command_size;
 
         if ((input_size - at) < (size_t)command.literals) return false;
-        if (((size_t)command.literals + (size_t)command.copy) > (header.unpacked_size - out_at)) {
+        if (((size_t)command.literals + (size_t)command.copy) > (header.unpacked_size + REFPACK_SURPLUS - out_at)) {
             return false;
         }
 
         if (command.literals > 0U) {
-            if (output) {
-                xx_rt_memcpy(output + out_at, input + at, command.literals);
+            if (output && out_at < header.unpacked_size) {
+                size_t keep = command.literals;
+                if (keep > header.unpacked_size - out_at) keep = header.unpacked_size - out_at;
+                xx_rt_memcpy(output + out_at, input + at, keep);
             }
             at += command.literals;
             out_at += command.literals;
@@ -457,7 +466,9 @@ static bool refpack_run(const uint8_t *input, size_t input_size, uint8_t *output
                  * the encoder expresses runs, so a block move would be wrong
                  * here. */
                 for (i = 0U; i < command.copy; ++i) {
-                    output[out_at] = output[out_at - command.distance];
+                    /* Bytes past the declared size are surplus: counted, not
+                     * stored; nothing stored can depend on them. */
+                    if (out_at < header.unpacked_size) output[out_at] = output[out_at - command.distance];
                     ++out_at;
                 }
             } else {
@@ -472,9 +483,9 @@ static bool refpack_run(const uint8_t *input, size_t input_size, uint8_t *output
     }
 
     if (!terminated) return false;
-    if (out_at != header.unpacked_size) return false;
+    if (out_at < header.unpacked_size || out_at - header.unpacked_size > REFPACK_SURPLUS) return false;
 
-    if (produced) *produced = out_at;
+    if (produced) *produced = header.unpacked_size;
     if (consumed) *consumed = at;
 
     return true;

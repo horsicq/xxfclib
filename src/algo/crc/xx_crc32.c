@@ -21,6 +21,7 @@
 
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "xxfclib/global/xx_global.h"
+#include "xxfclib/data/xx_data.h"
 #include "xx_crc_internal.h"
 #include "xx_crc32_slice8.h"
 #include "platforms/xx_crc64_platform.h"
@@ -149,7 +150,7 @@ uint32_t xx_crc32_calc(uint32_t crc, const void *data, size_t size)
     crc = ~crc;
 #ifdef XX_CRC64_X86
     /* Slice-by-8 wins on short IEEE buffers; PCLMUL takes over on bulk data. */
-    if (xx_crc32_use_pclmul(size, 1280U)) {
+    if (xx_crc32_use_pclmul(size, 256U)) {
         size_t bulk = size & ~(size_t)15U;
         crc = xx_crc_small_pclmul(crc, p, bulk, &_CRC32_ISO_SIMD);
         p += bulk;
@@ -158,8 +159,8 @@ uint32_t xx_crc32_calc(uint32_t crc, const void *data, size_t size)
 #endif
     while (size >= 8U) {
         /* Explicit little-endian loads also work on big-endian targets. */
-        uint32_t first = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-        uint32_t second = (uint32_t)p[4] | ((uint32_t)p[5] << 8) | ((uint32_t)p[6] << 16) | ((uint32_t)p[7] << 24);
+        uint32_t first = xx_data_get_le32(p);
+        uint32_t second = xx_data_get_le32(p + 4);
         first ^= crc;
         crc = xx_crc32_slices[6][first & 255U] ^ xx_crc32_slices[5][(first >> 8) & 255U] ^ xx_crc32_slices[4][(first >> 16) & 255U] ^ xx_crc32_slices[3][first >> 24] ^
               xx_crc32_slices[2][second & 255U] ^ xx_crc32_slices[1][(second >> 8) & 255U] ^ xx_crc32_slices[0][(second >> 16) & 255U] ^ _TABLE_CRC32_ISO[second >> 24];

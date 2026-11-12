@@ -22,10 +22,16 @@
  * validation, because a stream that does not walk cleanly to end-of-file is
  * not this format.
  *
- * "ECM\0" also opens Neill Corlett's unrelated ECM (CD-image) files. Those
- * cannot carry the run of twenty zero bytes at 0x10, because their token
- * stream treats 0x00 as the end-of-stream marker, so the reserved-run check
- * is what separates the two.
+ * "ECM\0" also opens Neill Corlett's unrelated ECM (CD-image) files. The
+ * twenty zero bytes at 0x10 do NOT separate the two: an ECM mode-1 record
+ * stores 3 address bytes and then the raw 2048-byte user data, and the first
+ * sixteen sectors of an ISO image (the system area) are all zero, so an ECM
+ * image of an ISO carries that run (mode1_iso.bin.ecm: "ECM\0" c5 28, then
+ * 00 02 00 and zeros). The LZSS walk accepts almost any byte stream, so it
+ * cannot separate them either. What does is the ECM record chain: varint
+ * record headers whose stored sizes lead exactly to the end marker (count
+ * 0xFFFFFFFF) four bytes before end-of-file, where the EDC sits. A file that
+ * walks that way is an ECM image and is refused here.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -253,6 +259,57 @@ done:
     return result;
 }
 
+/* True when the bytes from offset 4 form a complete Neill Corlett ECM record
+ * chain: each record header is a little-endian base-128 value (type in bits
+ * 0-1, count-1 in the remaining bits), followed by count * {1, 2051, 2052,
+ * 2328} stored bytes; the chain ends with the header value 0xFFFFFFFF, and
+ * then exactly the 4-byte EDC remains. Mirrors ecm_scan in
+ * filesystem/ecm/xx_ecm.c without linking that reader into this family.
+ * A damaged or truncated image never reaches the end marker, so a first
+ * record that is a sector run (type 1-3) of at least 16 sectors lying wholly
+ * inside the file also counts: an ECM image of a CD starts that way (16 is
+ * an ISO system area), while an EmmaSetup header byte at offset 4 (version
+ * low byte 0x13 or 0x00, no continuation bit) can only encode a first run
+ * of at most 32 entries, and in the 172 known members every such run
+ * overruns the file within a few records (PIPERMAK.BIN.ecm: 32,724 mode-1
+ * sectors, then 155 mode-2 sectors, then a damaged record). */
+#define XX_ECMPACKED_ECM_MIN_LEADING_SECTORS 16U
+#define XX_ECMPACKED_ECM_MAX_RECORDS 1000000U
+static bool xx_ecmpacked_is_corlett_ecm(Abstractformat *self, int64_t span)
+{
+    static const uint32_t stored_sizes[4] = {1U, 2051U, 2052U, 2328U};
+    int64_t at = 4;
+    uint32_t records = 0U;
+
+    if (span < 13) return false;
+    for (;;) {
+        uint8_t b;
+        unsigned bits = 5U;
+        uint64_t value;
+        uint64_t input;
+        unsigned type;
+
+        if (at >= span - 4 || !xx_ecmpacked_read_at(self, self->base_address + at, &b, 1U)) return false;
+        ++at;
+        type = b & 3U;
+        value = (uint64_t)((b & 0x7cU) >> 2);
+        while (b & 0x80U) {
+            if (bits > 33U || at >= span - 4 || !xx_ecmpacked_read_at(self, self->base_address + at, &b, 1U)) return false;
+            ++at;
+            value |= (uint64_t)(b & 0x7fU) << bits;
+            bits += 7U;
+        }
+        if (value > UINT32_MAX) return false;
+        if (value == UINT32_MAX) break;
+        if (value >= UINT64_C(0x7fffffff) || ++records > XX_ECMPACKED_ECM_MAX_RECORDS) return false;
+        input = (value + 1U) * stored_sizes[type];
+        if (input > (uint64_t)(span - 4 - at)) return false;
+        if (records == 1U && type != 0U && value + 1U >= XX_ECMPACKED_ECM_MIN_LEADING_SECTORS) return true;
+        at += (int64_t)input;
+    }
+    return records != 0U && at == span - 4;
+}
+
 static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self, xx_pd_struct *pd)
 {
     static const uint8_t signature[4] = {(uint8_t)'E', (uint8_t)'C', (uint8_t)'M', 0U};
@@ -280,12 +337,15 @@ static xx_ecmpacked_stream *xx_ecmpacked_parse(Abstractformat *self, xx_pd_struc
     if (xx_rt_memcmp(header, signature, sizeof(signature)) != 0) return NULL;
 
     /* Twenty zero bytes at 0x10. Four bytes of signature are far too weak on
-     * their own, and this run is what separates the container from Neill
-     * Corlett's unrelated "ECM\0" files, whose token stream cannot produce
-     * such a run. Loosening this check makes the format match those. */
+     * their own; the run rejects most of Neill Corlett's "ECM\0" files, and
+     * the record-chain walk below rejects the rest (ISO images). */
     for (index = (size_t)XX_ECMPACKED_RESERVED_OFFSET; index < (size_t)XX_ECMPACKED_RESERVED_END; ++index) {
         if (header[index] != 0U) return NULL;
     }
+
+    /* An ECM CD image of an ISO also has the zero run (see the file comment);
+     * its record chain is what gives it away. */
+    if (xx_ecmpacked_is_corlett_ecm(self, span)) return NULL;
 
     /* The version word at 0x04 is recorded but not constrained: the corpus
      * carries several values and no rule relating them to the layout. */

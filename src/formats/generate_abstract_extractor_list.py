@@ -31,13 +31,13 @@ def detector_getter(name: str) -> str:
 
 def main() -> None:
     legacy = HERE / "xx_format_extractor_list.inc"
-    music_decls = HERE / "die_music" / "xx_die_music_extractor_decls.inc"
+    music_decls = HERE / "audio" / "die_music" / "xx_die_music_extractor_decls.inc"
     base = symbols(legacy)
     music = symbols(music_decls)
     if set(base) & set(music):
         raise ValueError("duplicate base and die_music extractor declarations")
     legacy_rows = set(ROW.findall(legacy.read_text(errors="replace")))
-    music_rows = set(ROW.findall((HERE / "die_music" / "xx_die_music_extractor_rows.inc")
+    music_rows = set(ROW.findall((HERE / "audio" / "die_music" / "xx_die_music_extractor_rows.inc")
                               .read_text(errors="replace")))
     if set(base) != legacy_rows or set(music) != music_rows:
         raise ValueError("extractor declarations and registry rows differ")

@@ -128,5 +128,5 @@ void xx_sod_installer_free(Abstractformat *f) { if(f) { xx_format_destroy(f);xx_
 #include "../../xx_format_abstract_extractor_adapter.h"
 static const xx_file_type_t si_types[]={XX_FILE_TYPE_SOD_INSTALLER};
 static Abstractformat *si_open(xx_io_device *d) { return xx_sod_installer_create(d,0); }
-static const xx_format_search_desc si_desc={si_types,1U,NULL,0U,si_open,xx_sod_installer_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sod_installer,si_desc)
+const xx_format_search_desc xx_sod_installer_search_desc={si_types,1U,NULL,0U,si_open,xx_sod_installer_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(sod_installer,xx_sod_installer_search_desc)

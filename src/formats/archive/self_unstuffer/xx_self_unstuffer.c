@@ -80,5 +80,5 @@ void xx_self_unstuffer_free(Abstractformat *f) { if(f) { xx_format_destroy(f);xx
 #include "../../xx_format_abstract_extractor_adapter.h"
 static Abstractformat *su_open(xx_io_device *d) { return xx_self_unstuffer_create(d,0); }
 static const xx_file_type_t su_types[]={XX_FILE_TYPE_SELF_UNSTUFFER};
-static const xx_format_search_desc su_desc={su_types,1U,NULL,0U,su_open,xx_self_unstuffer_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(self_unstuffer,su_desc)
+const xx_format_search_desc xx_self_unstuffer_search_desc={su_types,1U,NULL,0U,su_open,xx_self_unstuffer_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(self_unstuffer,xx_self_unstuffer_search_desc)

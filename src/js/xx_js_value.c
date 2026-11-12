@@ -1084,8 +1084,16 @@ double js_string_to_number(const char *pData, size_t nSize)
 
     pCopy = xx_js_strndup(pData + nStart, nEnd - nStart);
 
-    if ((xx_rt_strncmp(pCopy, "0x", 2) == 0) || (xx_rt_strncmp(pCopy, "0X", 2) == 0)) {
+    if (((xx_rt_strncmp(pCopy, "0x", 2) == 0) || (xx_rt_strncmp(pCopy, "0X", 2) == 0)) &&
+        (((pCopy[2] >= '0') && (pCopy[2] <= '9')) || ((pCopy[2] >= 'a') && (pCopy[2] <= 'f')) || ((pCopy[2] >= 'A') && (pCopy[2] <= 'F')))) {
+        /* A hex digit must follow: strtoull would otherwise skip white space
+         * and accept a sign ("0x -1"), and a bare "0x" falls to strtod -> NaN. */
         nResult = (double)xx_rt_strtoull(pCopy + 2, &pEndPtr, 16);
+        /* "0x" with no digits is NaN, not strtoull's empty conversion. */
+        if (pEndPtr == pCopy + 2) {
+            xx_js_free(pCopy);
+            return xx_rt_nan();
+        }
     } else if (xx_rt_strcmp(pCopy, "Infinity") == 0 || xx_rt_strcmp(pCopy, "+Infinity") == 0) {
         xx_js_free(pCopy);
         return xx_rt_inf();
@@ -1433,6 +1441,12 @@ JSVal js_concat_str(JSCtx *pCtx, JSVal left, JSVal right)
     JSVal b = js_to_string(pCtx, right);
     size_t nSizeA = js_str_len(a);
     size_t nSizeB = js_str_len(b);
+    /* Two strings whose sizes do not fit size_t together cannot be joined. */
+    if (nSizeB > SIZE_MAX - nSizeA - 1) {
+        js_release(pCtx, a);
+        js_release(pCtx, b);
+        return js_throw(pCtx, "RangeError: string too long");
+    }
     JSStr *pStr = jsstr_new(pCtx, NULL, nSizeA + nSizeB);
 
     xx_rt_memcpy(pStr->pData, js_str_data(a), nSizeA);

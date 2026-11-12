@@ -14,6 +14,15 @@
 #include "xxfclib/formats/archive/pftw_pkg/xx_pftw_pkg.h"
 #include "xxfclib/formats/archive/sod_installer/xx_sod_installer.h"
 #include "xxfclib/formats/game/fury_dat/xx_fury_dat.h"
+#include "xxfclib/formats/game/mas_pack/xx_mas_pack.h"
+#include "xxfclib/formats/game/demonstar_glb/xx_demonstar_glb.h"
+#include "xxfclib/formats/archive/carman/xx_carman.h"
+#include "xxfclib/formats/archive/cbm_ark/xx_cbm_ark.h"
+#include "xxfclib/formats/archive/cwc/xx_cwc.h"
+#include "xxfclib/formats/archive/cork/xx_cork.h"
+#include "xxfclib/formats/archive/cvrb/xx_cvrb.h"
+#include "xxfclib/formats/archive/cpz/xx_cpz.h"
+#include "xxfclib/formats/archive/cadc/xx_cadc.h"
 #include "xxfclib/formats/archive/starforce_ovl/xx_starforce_ovl.h"
 #include "xxfclib/formats/archive/stuffit5/xx_stuffit5.h"
 #include "xxfclib/formats/archive/self_unstuffer/xx_self_unstuffer.h"
@@ -244,6 +253,48 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
     if (prefix_size >= 24U && (prefix[0] || prefix[1]) && prefix[2]>=0x21U && prefix[2]<=0x7eU &&
         prefix[23]<=1U && xx_fury_dat_fast_detect(device, 0, false)) {
         result = XX_FILE_TYPE_FURY_DAT; goto done;
+    }
+    if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "GLB2.0\0\0", 8U) && xx_demonstar_glb_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_DEMONSTAR_GLB; goto done;
+    }
+    /* A MAS pack opens with its entry count (below 65536) and has no magic:
+     * the reader validates the whole table. */
+    if (prefix_size >= 40U && prefix[0] && !prefix[2] && !prefix[3] && xx_mas_pack_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_MAS_PACK; goto done;
+    }
+    /* CARMAN opens with a printable member name; its two CRC-32s per member
+     * authenticate the whole archive. */
+    if (prefix_size >= 19U && prefix[0] >= 0x20U && prefix[0] != 0x7fU && xx_carman_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CARMAN; goto done;
+    }
+    /* A C64 ARK opens with its entry count and a CBM file-type byte. */
+    if (prefix_size >= 30U && prefix[0] && (prefix[1] & 0x80U) && !(prefix[1] & 0x38U) && (prefix[1] & 7U) <= 4U &&
+        xx_cbm_ark_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CBM_ARK; goto done;
+    }
+    /* CauseWay Compressor data: "CWC", the position width, both sizes. */
+    if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "CWC", 3U) && prefix[3] >= 9U && prefix[3] <= 16U && xx_cwc_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CWC; goto done;
+    }
+    /* CORK installer member: "CORK" and version 1. */
+    if (prefix_size >= 33U && !xx_rt_memcmp(prefix, "CORK\x01\x00", 6U) && xx_cork_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CORK; goto done;
+    }
+    /* CVRB installer member: "CVRB", method 0 at +18; the plaintext CRC is
+     * verified by the reader. */
+    if (prefix_size >= 19U && !xx_rt_memcmp(prefix, "CVRB", 4U) && prefix[18] == 0U && xx_cvrb_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CVRB; goto done;
+    }
+    /* Central Point CPZ has no magic: a member count below 65536 and the
+     * directory CRC-32 plus every member's packed CRC-32, checked by the
+     * reader, identify it. */
+    if (prefix_size >= 40U && (prefix[0] || prefix[1]) && !prefix[2] && !prefix[3] && xx_cpz_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CPZ; goto done;
+    }
+    /* CADC .CAR: a 03 01 record tag and a printable name; every member's
+     * CRC-32 is verified by the reader. */
+    if (prefix_size >= 24U && prefix[0] == 0x03U && prefix[1] == 0x01U && prefix[2] >= 0x20U && prefix[2] != 0x7FU && xx_cadc_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CADC; goto done;
     }
     if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "pOdA", 4U) && xx_installshield_obl_fast_detect(device, 0, false)) {
         result = XX_FILE_TYPE_INSTALLSHIELD_OBL; goto done;

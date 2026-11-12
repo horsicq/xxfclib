@@ -20,13 +20,32 @@
 #endif
 
 #include "xxfc_readers.h"
-#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB)
+/* The readers whose member names the engine maps before the path guard
+ * (mapped_extract_name below): the complete library has them all, a family
+ * tool the ones of its own readers. Without the mapping a rooted TARX or
+ * SHAR name, or an ARQ name with a DOS-reserved character, is refused as
+ * unsafe, which the complete library does not do. */
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB) || defined(XFU_SUPPORT_FORMAT_SFX_CAB) || \
+    defined(XFU_SUPPORT_FORMAT_RESOURCEFORK) || defined(XFU_SUPPORT_FORMAT_ARQ) || \
+    defined(XFU_SUPPORT_FORMAT_SFX_ARQ) || defined(XFU_SUPPORT_FORMAT_TARX1) || \
+    defined(XFU_SUPPORT_FORMAT_TARX2) || defined(XFU_SUPPORT_FORMAT_CLAYLZ) || \
+    defined(XFU_SUPPORT_FORMAT_LHA) || defined(XFU_SUPPORT_FORMAT_SFX_LHA) || \
+    defined(XFU_SUPPORT_FORMAT_IS3) || defined(XFU_SUPPORT_FORMAT_NOTETAB) || \
+    defined(XFU_SUPPORT_FORMAT_AMIGALZX) || defined(XFU_SUPPORT_FORMAT_SFX_LZX) || \
+    defined(XFU_SUPPORT_FORMAT_SHAR) || defined(XFU_SUPPORT_FORMAT_BEOSPKG) || \
+    defined(XFU_SUPPORT_FORMAT_IBMPACK) || defined(XFU_SUPPORT_FORMAT_QUANTUM)
+#define XFU_MAPPED_NAMES 1
+#else
+#define XFU_MAPPED_NAMES 0
+#endif
+#if XFU_MAPPED_NAMES
 #include "../formats/xx_archive_output_name.h"
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_RESOURCEFORK)
+#include "../formats/executable/resourcefork/xx_resourcefork_output_name.h"
 #endif
 #if XFU_FORMAT_SUPPORT_FULL
 #include "xxfclib/formats/installer/rtpatch_setup_data/xx_rtpatch_setup_data.h"
-#include "../formats/executable/resourcefork/xx_resourcefork_output_name.h"
-
 #endif
 
 #include <errno.h>
@@ -66,6 +85,39 @@
 #endif
 
 #define RECORD_LIMIT 1000000
+
+/* The next pair of a ';'-separated option list, trimmed, or NULL. */
+static const char *option_next(const char *at, size_t *length) {
+    const char *end;
+    while (*at == ';' || *at == ' ' || *at == '\t') ++at;
+    if (!*at) return NULL;
+    end = strchr(at, ';');
+    *length = end ? (size_t)(end - at) : strlen(at);
+    while (*length && (at[*length - 1] == ' ' || at[*length - 1] == '\t')) --*length;
+    return at;
+}
+
+bool xfu_option_listed(const char *options, const char *pair) {
+    size_t length, wanted = strlen(pair);
+    const char *at;
+    if (!options) return false;
+    for (at = option_next(options, &length); at; at = option_next(at + length, &length))
+        if (length == wanted && !memcmp(at, pair, wanted)) return true;
+    return false;
+}
+
+const char *xfu_option_unknown(const char *options, const char *const *known,
+                               size_t count, size_t *length) {
+    const char *at;
+    size_t i, current;
+    if (!options) return NULL;
+    for (at = option_next(options, &current); at; at = option_next(at + current, &current)) {
+        for (i = 0; i < count; ++i)
+            if (strlen(known[i]) == current && !memcmp(at, known[i], current)) break;
+        if (i == count) { *length = current; return at; }
+    }
+    return NULL;
+}
 
 static void emit(const xfu_request *request, bool error, const char *format, ...) {
     va_list args, copy;
@@ -438,21 +490,36 @@ static bool safe_extract_name(const char *name) {
     return true;
 }
 
+/* A directory member that is the output folder itself ("/", "./", "."):
+ * nothing to create below the output folder, and no escape from it. */
+static bool names_output_folder(const char *name) {
+    const char *part, *cursor;
+    if (!name || !name[0]) return false;
+    part = name;
+    for (cursor = name;; ++cursor) {
+        char ch = *cursor;
+        if (ch == '/' || ch == '\\' || ch == '\0') {
+            size_t length = (size_t)(cursor - part);
+            if (length != 0 && !(length == 1 && part[0] == '.')) return false;
+            if (!ch) return true;
+            part = cursor + 1;
+        }
+    }
+}
+
 /* Match the selected reader's filesystem mapping before the generic guard.
  * This is deliberately a small allowlist: a ZIP with a rooted path, a drive
  * escape or traversal still has exactly the strict policy above. */
 static char *mapped_extract_name(xx_file_type_t type, const char *name, size_t ordinal) {
-#if !XFU_FORMAT_SUPPORT_FULL
-    (void)type; (void)ordinal;
-#ifdef XFU_SUPPORT_FORMAT_CAB
-    if (type == XX_FILE_TYPE_CAB)
-        return xx_archive_output_name(name, 0, XX_ARCHIVE_NAME_ROOTED);
-#endif
-    return xx_str_dup(name);
-#else
+    (void)ordinal;
+    /* Each reader's case is compiled for the complete library and for that
+     * reader's own family tool, so both map a member name the same way. */
     switch (type) {
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_RESOURCEFORK)
     case XX_FILE_TYPE_RESOURCEFORK:
         return rsrc_output_name(name, ordinal);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_ARQ) || defined(XFU_SUPPORT_FORMAT_SFX_ARQ)
     case XX_FILE_TYPE_ARQ: case XX_FILE_TYPE_SFX_ARQ: {
         char *mapped;
         if (!name || name[0] == '/' || name[0] == '\\') return NULL;
@@ -464,29 +531,46 @@ static char *mapped_extract_name(xx_file_type_t type, const char *name, size_t o
         }
         return mapped;
     }
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_TARX1) || defined(XFU_SUPPORT_FORMAT_TARX2)
     case XX_FILE_TYPE_TARX1: case XX_FILE_TYPE_TARX2:
         return xx_archive_output_name(name, 0, XX_ARCHIVE_NAME_ROOTED | XX_ARCHIVE_NAME_DRIVE | XX_ARCHIVE_NAME_NATIVE_TAR);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB) || defined(XFU_SUPPORT_FORMAT_SFX_CAB)
     case XX_FILE_TYPE_CAB: case XX_FILE_TYPE_SFX_CAB:
         return xx_archive_output_name(name, 0, XX_ARCHIVE_NAME_ROOTED);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CLAYLZ) || defined(XFU_SUPPORT_FORMAT_LHA) || \
+    defined(XFU_SUPPORT_FORMAT_SFX_LHA)
     case XX_FILE_TYPE_CLAYLZ: case XX_FILE_TYPE_LHA: case XX_FILE_TYPE_SFX_LHA:
         return xx_archive_output_name(name, 437, 0);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_IS3) || defined(XFU_SUPPORT_FORMAT_NOTETAB)
     case XX_FILE_TYPE_IS3: case XX_FILE_TYPE_NOTETAB:
         return xx_archive_output_name(name, 1252, 0);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_AMIGALZX) || defined(XFU_SUPPORT_FORMAT_SFX_LZX)
     case XX_FILE_TYPE_AMIGALZX: case XX_FILE_TYPE_SFX_LZX:
         return xx_archive_output_name(name, 28591, 0);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_SHAR)
     case XX_FILE_TYPE_SHAR:
         return xx_archive_output_name(name, 0, 0);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_BEOSPKG)
     case XX_FILE_TYPE_BEOSPKG:
         return xx_archive_output_name(name, 65001, 0);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_IBMPACK)
     case XX_FILE_TYPE_IBMPACK:
         return xx_archive_output_name(name, 0, 0);
+#endif
     default:
         return xx_str_dup(name);
     }
-#endif
 }
 
-#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB)
+#if XFU_MAPPED_NAMES
 static bool mapped_name_can_suffix(xx_file_type_t type) {
     return type == XX_FILE_TYPE_CAB || type == XX_FILE_TYPE_SFX_CAB ||
         type == XX_FILE_TYPE_CLAYLZ || type == XX_FILE_TYPE_LHA || type == XX_FILE_TYPE_SFX_LHA || type == XX_FILE_TYPE_IS3 ||
@@ -1394,16 +1478,16 @@ static int walk_device(const xfu_request *request, const char *unpack_to,
         resolved_request.file_type = stream_type;
     }
     if (request->archive_options && request->archive_options[0]) {
-        if (!strcmp(request->archive_options, "cpio:hdrcharset=CP437"))
-            cpio_cp437 = true;
-        else if (!strcmp(request->archive_options, "cpio:pwb=1"))
-            cpio_pwb = true;
-        else {
-            emit(request, true, "unsupported native read option: %s",
-                 request->archive_options);
+        static const char *const known[] = {"cpio:hdrcharset=CP437", "cpio:pwb=1"};
+        size_t length = 0;
+        const char *unknown = xfu_option_unknown(request->archive_options, known, 2, &length);
+        if (unknown) {
+            emit(request, true, "unsupported native read option: %.*s", (int)length, unknown);
             if (preopened) xx_io_close(preopened);
             return 2;
         }
+        cpio_cp437 = xfu_option_listed(request->archive_options, "cpio:hdrcharset=CP437");
+        cpio_pwb = xfu_option_listed(request->archive_options, "cpio:pwb=1");
     }
     if (resolved_reader && !strcmp(resolved_reader, "empty")) {
         if (cpio_cp437 || cpio_pwb) {
@@ -2277,7 +2361,7 @@ reader_opened:
         progress(request, total, known_total, entry.name);
         ++total;
         if (unpack_to || testing) {
-            bool success, cut, unsafe, itself, password_failure = false;
+            bool success, cut, unsafe, itself, root_folder, password_failure = false;
             bool encrypted = entry.is_encrypted;
             char *destination = NULL;
             char *output_name = unpack_to ? mapped_extract_name(opened.type, entry.name, (size_t)visited) : NULL;
@@ -2300,7 +2384,9 @@ reader_opened:
                     monitor.busy_before[level] = pd->records[level].is_busy;
                 monitor.active = true;
             }
-            unsafe = unpack_to && !safe_extract_name(output_name);
+            /* ZIPs written with a root entry: the output folder itself. */
+            root_folder = output_name && names_output_folder(output_name) && (entry.is_directory || entry.unpacked_size == 0);
+            unsafe = unpack_to && !root_folder && !safe_extract_name(output_name);
             success = !unpack_to || !unsafe;
             itself = false;
             if (success && unpack_to) {
@@ -2318,7 +2404,7 @@ reader_opened:
                     itself = other && is_archive_file(other, request->archive_path);
                     free(other);
                 }
-#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_CAB)
+#if XFU_MAPPED_NAMES
                 /* A name collision may give the reader a stable record
                  * suffix. Protect that possible destination as well. */
                 if (!itself && output_name && mapped_name_can_suffix(opened.type)) {
@@ -2336,7 +2422,7 @@ reader_opened:
                 xx_io_extract_clear();
             }
             refusals = xx_io_memory_only_refusals();
-            if (success)
+            if (success && !root_folder)
                 success = xx_format_unpack_current_archive_record(opened.format, state, pd);
             monitor.active = false;
             if (testing && cancelled(request, pd)) success = false;

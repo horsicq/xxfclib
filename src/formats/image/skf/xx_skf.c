@@ -204,5 +204,5 @@ static Abstractformat *xx_skf_open(xx_io_device *d)
     return xx_skf_create(d, 0);
 }
 static const xx_file_type_t xx_skf_types[] = {XX_FILE_TYPE_SKF};
-static const xx_format_search_desc xx_skf_desc = {xx_skf_types, 1, NULL, 0, xx_skf_open, xx_skf_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(skf, xx_skf_desc)
+const xx_format_search_desc xx_skf_search_desc = {xx_skf_types, 1, NULL, 0, xx_skf_open, xx_skf_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(skf, xx_skf_search_desc)

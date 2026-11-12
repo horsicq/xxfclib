@@ -1755,7 +1755,7 @@ static bool wise_unpack_member(xx_io_device *device, int64_t base, const wise_me
         return ok && sink.crc32 == member->crc32;
     }
     if (member->packed_size <= 0) return false;
-    if (member->packed_size <= 2 * 1024 * 1024) {
+    if (member->packed_size <= 256 * 1024 * 1024) {
         uint8_t *packed = (uint8_t *)xx_mem_alloc((size_t)member->packed_size);
         if (packed) {
             bool ok = false, exhausted = false;

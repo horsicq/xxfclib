@@ -130,5 +130,5 @@ static Abstractformat *xx_lds_open(xx_io_device *d)
     return xx_lds_create(d, 0);
 }
 static const xx_file_type_t xx_lds_types[] = {XX_FILE_TYPE_LDS};
-static const xx_format_search_desc xx_lds_desc = {xx_lds_types, 1, NULL, 0, xx_lds_open, xx_lds_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(lds, xx_lds_desc)
+const xx_format_search_desc xx_lds_search_desc = {xx_lds_types, 1, NULL, 0, xx_lds_open, xx_lds_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(lds, xx_lds_search_desc)

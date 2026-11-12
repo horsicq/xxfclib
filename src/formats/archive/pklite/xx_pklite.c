@@ -294,11 +294,3 @@ void xx_pklite_destroy(xx_pklite *reader) {if(reader)pk_destroy(&reader->format)
 xx_pklite *xx_pklite_create(xx_io_device *device,int64_t base)
 { xx_pklite *r=(xx_pklite *)xx_mem_alloc(sizeof(*r));if(r)xx_pklite_init(r,device,base);return r; }
 void xx_pklite_free(xx_pklite *reader) {if(reader){xx_pklite_destroy(reader);xx_mem_free(reader);}}
-#include "../../xx_format_abstract_extractor_adapter.h"
-static const uint8_t pk_mz[]={'M','Z'};
-static const xx_format_search_anchor pk_anchors[]={{pk_mz,sizeof(pk_mz),0U}};
-static const xx_file_type_t pk_types[]={XX_FILE_TYPE_PKLITE};
-static Abstractformat *pk_open(xx_io_device *d) {xx_pklite *r=xx_pklite_create(d,0);return r?&r->format:NULL;}
-static void pk_close(Abstractformat *f) {xx_pklite_free((xx_pklite *)f);}
-static const xx_format_search_desc pk_desc={pk_types,1U,pk_anchors,1U,pk_open,pk_close,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(pklite,pk_desc)

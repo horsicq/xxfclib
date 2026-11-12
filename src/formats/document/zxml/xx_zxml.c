@@ -81,5 +81,5 @@ static Abstractformat *zxml_open(xx_io_device *device)
     return xx_zxml_create(device, 0);
 }
 static const xx_file_type_t zxml_types[] = {XX_FILE_TYPE_ZXML};
-static const xx_format_search_desc zxml_descriptor = {zxml_types, 1, NULL, 0, zxml_open, xx_zxml_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zxml, zxml_descriptor)
+const xx_format_search_desc xx_zxml_search_desc = {zxml_types, 1, NULL, 0, zxml_open, xx_zxml_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zxml, xx_zxml_search_desc)

@@ -117,5 +117,5 @@ static Abstractformat *xuiz_open(xx_io_device *d)
     return xx_xuiz_create(d, 0);
 }
 static const xx_file_type_t xuiz_types[] = {XX_FILE_TYPE_XUIZ};
-static const xx_format_search_desc xuiz_desc = {xuiz_types, 1, NULL, 0, xuiz_open, xx_xuiz_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(xuiz, xuiz_desc)
+const xx_format_search_desc xx_xuiz_search_desc = {xuiz_types, 1, NULL, 0, xuiz_open, xx_xuiz_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(xuiz, xx_xuiz_search_desc)

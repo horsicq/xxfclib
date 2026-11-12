@@ -99,5 +99,5 @@ static Abstractformat *zisofs_open(xx_io_device *device)
     return xx_zisofs_create(device, 0);
 }
 static const xx_file_type_t zisofs_types[] = {XX_FILE_TYPE_ZISOFS};
-static const xx_format_search_desc zisofs_descriptor = {zisofs_types, 1, NULL, 0, zisofs_open, xx_zisofs_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zisofs, zisofs_descriptor)
+const xx_format_search_desc xx_zisofs_search_desc = {zisofs_types, 1, NULL, 0, zisofs_open, xx_zisofs_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(zisofs, xx_zisofs_search_desc)

@@ -163,5 +163,5 @@ void xx_installjammer_free(Abstractformat *f) { if(f) { xx_format_destroy(f);xx_
 #include "../../xx_format_abstract_extractor_adapter.h"
 static Abstractformat *ij_open(xx_io_device *d) { return xx_installjammer_create(d,0); }
 static const xx_file_type_t ij_types[]={XX_FILE_TYPE_INSTALLJAMMER};
-static const xx_format_search_desc ij_desc={ij_types,1U,NULL,0U,ij_open,xx_installjammer_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(installjammer,ij_desc)
+const xx_format_search_desc xx_installjammer_search_desc={ij_types,1U,NULL,0U,ij_open,xx_installjammer_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(installjammer,xx_installjammer_search_desc)

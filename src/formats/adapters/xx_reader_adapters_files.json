@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "include/xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc",
-      "sha256": "e466d473fbe768c3254ad6c21305fe8450c13d6826895533fa9fdc9b3b46abbe"
+      "sha256": "f873abcba22142ad048d4d724bde13f567a164d0d530208ee52e123415b480e2"
     },
     {
       "path": "src/formats/adapters/xx_format_detector_adapters.c",
@@ -11,7 +11,7 @@
     },
     {
       "path": "src/formats/adapters/xx_reader_adapters_sources.cmake",
-      "sha256": "f7e91ba2645dc11299325a4c040e6a742f992998e6f8a554859e254ac4667a4b"
+      "sha256": "63e752014899d1da4d2301bfd847ee00fcf218996414eae585ae6d55bb50ecc6"
     },
     {
       "path": "src/formats/archive/amplus/xx_amplus_reader_adapters.c",
@@ -22,16 +22,8 @@
       "sha256": "224903e19932a0640e9a88f08aef4810f7d43d588af51596450b3fc80cb278cb"
     },
     {
-      "path": "src/formats/archive/arc_cbm/xx_arc_cbm_reader_adapters.c",
-      "sha256": "3045db2042fb1ce6e3b9a1e7e00c3f1f734fc3cc9f45ef6e818d6c1d1bed904b"
-    },
-    {
       "path": "src/formats/archive/balz/xx_balz_reader_adapters.c",
       "sha256": "fb1bd6bab6adf28098157ef3d0d37ad5e5bfab12f7f51495d1b4af825b5ec629"
-    },
-    {
-      "path": "src/formats/archive/bga/xx_bga_reader_adapters.c",
-      "sha256": "cba9d0d6177c6823695098ba3c97b327b1d3f94fa6a4dae43fce2956ebe6892c"
     },
     {
       "path": "src/formats/archive/binscii/xx_binscii_reader_adapters.c",
@@ -40,14 +32,6 @@
     {
       "path": "src/formats/archive/bytekiller/xx_bytekiller_reader_adapters.c",
       "sha256": "3fae27b2cb33112cff796119a4204fed158a5efed54369acb50659e735fd05ac"
-    },
-    {
-      "path": "src/formats/archive/bzip1/xx_bzip1_reader_adapters.c",
-      "sha256": "d72a909f82820de46b63ff6cb4db1523bc8f51194e7c4d43aee6d92b76491f24"
-    },
-    {
-      "path": "src/formats/archive/chromium_pak/xx_chromium_pak_reader_adapters.c",
-      "sha256": "9aaf9b361b7625bdee4b4cf348cf9313239738e60b626ab814c02f7fc21fb4e8"
     },
     {
       "path": "src/formats/archive/chz/xx_chz_reader_adapters.c",
@@ -62,32 +46,12 @@
       "sha256": "25d1de6c73472e536ac97bc834695664d69da9fb70449e4c9107560bd2a75e26"
     },
     {
-      "path": "src/formats/archive/dgca/xx_dgca_reader_adapters.c",
-      "sha256": "da84a3d2291e593706b052f8390c40297f2d83c4c7f421649d59cd3c492ec6b8"
-    },
-    {
       "path": "src/formats/archive/diet_compression/xx_diet_compression_reader_adapters.c",
       "sha256": "8dd8717806ada745fc3f2fe8232b1edaf7baf5259ee3d5fc3861b3f8cf81bfdf"
     },
     {
-      "path": "src/formats/archive/freeze/xx_freeze_reader_adapters.c",
-      "sha256": "7c8c316441c9e91d6f571c19fdf400968a49296b6337ec81e7986fa3257c459b"
-    },
-    {
       "path": "src/formats/archive/grzip/xx_grzip_reader_adapters.c",
       "sha256": "f271285492cb65616965194f4d14c7e18d8e6d5214b84e4bba3699be7f60a1fe"
-    },
-    {
-      "path": "src/formats/archive/is_stored/xx_is_stored_reader_adapters.c",
-      "sha256": "95a2015ad1a0c5e612181eec84e2381d4268c4dcf6cdb7c4dc73195237e436b5"
-    },
-    {
-      "path": "src/formats/archive/kgb_archiver/xx_kgb_archiver_reader_adapters.c",
-      "sha256": "a4c6b82f5e4a5174a3067e6be071536095c9d227711d8c01c9be8861127688e6"
-    },
-    {
-      "path": "src/formats/archive/larc_pfx/xx_larc_pfx_reader_adapters.c",
-      "sha256": "948a942805592c1709e8a695f9448713f084559fcf4aed519eb1f0ab038c5146"
     },
     {
       "path": "src/formats/archive/lhf/xx_lhf_reader_adapters.c",
@@ -100,10 +64,6 @@
     {
       "path": "src/formats/archive/lhsfx/xx_lhsfx_reader_adapters.c",
       "sha256": "89362f3c0c956007e03fb29e90a0c33ab2eb6d935033a9d72779345869dcde44"
-    },
-    {
-      "path": "src/formats/archive/lpak/xx_lpak_reader_adapters.c",
-      "sha256": "b855ac8d764a59fc804d257830b1caf200659c42547b89722f31978ff14dc1bf"
     },
     {
       "path": "src/formats/archive/lpaq1/xx_lpaq1_reader_adapters.c",
@@ -178,10 +138,6 @@
       "sha256": "cfa72d261d6bc9d1439313477a0665e6d1286cb9a40657a100e54d5e3b896264"
     },
     {
-      "path": "src/formats/archive/stuffitx/xx_stuffitx_reader_adapters.c",
-      "sha256": "2df9318f038403d9da2e82291efc059e31f6e09c8bae9618741ee61f428c43f6"
-    },
-    {
       "path": "src/formats/archive/xpk_compressed_file/xx_xpk_compressed_file_reader_adapters.c",
       "sha256": "8d5c81ca31cd35ee7966da60afaa94f412179343f574572cd17873f85086e7d1"
     },
@@ -200,10 +156,6 @@
     {
       "path": "src/formats/audio/emulatorii_eii/xx_emulatorii_eii_reader_adapters.c",
       "sha256": "f2b0dfa990a4f9ec9a84268a0875bd998945acf31a181d4513cf2c17a1a1cff1"
-    },
-    {
-      "path": "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_reader_adapters.c",
-      "sha256": "70fbf38b1c2d1fbf0e0f806d8b033c0688faf067b2ecdc1ffb6d3c82453ae56f"
     },
     {
       "path": "src/formats/audio/mdh/xx_mdh_reader_adapters.c",
@@ -230,36 +182,16 @@
       "sha256": "eaa973360ec5f8879438ba3e579f5b596c6c73f10be7ec5823f202b4f2ff4603"
     },
     {
-      "path": "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_reader_adapters.c",
-      "sha256": "203cad62e6706aaa1eda82c505fce6aa11de9955bcdc8035b22d05ccd7bb8abc"
-    },
-    {
       "path": "src/formats/audio/sm8/xx_sm8_reader_adapters.c",
       "sha256": "e2bbc75312da563f2fdea8e285c441c9481d0e29d814c8c132c1ca3b9f7a3095"
-    },
-    {
-      "path": "src/formats/document/cfbf/xx_cfbf_reader_adapters.c",
-      "sha256": "0de0877db597a6ef182f5c535d8e294ecdd95ee0a4c7fffb8b0cfe7d53a261d0"
     },
     {
       "path": "src/formats/document/hxs/xx_hxs_reader_adapters.c",
       "sha256": "9bafd70193d8ceece776cc11cb35e184c3eb103b46a1f2bd989466c38a8e34f9"
     },
     {
-      "path": "src/formats/document/microsoft_lit/xx_microsoft_lit_reader_adapters.c",
-      "sha256": "3349eaa80b91e5cac57fb6ca48bb22de9f7b74e0035c3e96b0464511e138c20f"
-    },
-    {
-      "path": "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_reader_adapters.c",
-      "sha256": "1ba7dbeee74786815f19c50a967ea4898f7741537ed6bd42288bcc643db41e2a"
-    },
-    {
       "path": "src/formats/document/text/xx_text_reader_adapters.c",
       "sha256": "bfe001c4ec336e1949816dd6161db8a9b776b20fab2dbdec9720f7170c91e647"
-    },
-    {
-      "path": "src/formats/document/ue2_documents/xx_ue2_documents_reader_adapters.c",
-      "sha256": "3637a56a286a0227f83089374e92d8714b8f23a9c75020ce3a691dead0fbd7e6"
     },
     {
       "path": "src/formats/executable/bflt/xx_bflt_reader_adapters.c",
@@ -274,10 +206,6 @@
       "sha256": "cd56504f7624e05bbc33314924416c13646880c5d1a318db860c726b4dbe4bbb"
     },
     {
-      "path": "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_reader_adapters.c",
-      "sha256": "9c478a69d5bafee4cc1c7843faf842424c8402d8b3fea42b81c647cd2c4119e0"
-    },
-    {
       "path": "src/formats/executable/hp_som/xx_hp_som_reader_adapters.c",
       "sha256": "6a66ba91b5563b93d98525385124bfbea9df380048fa089d57f269e35d46fadc"
     },
@@ -288,10 +216,6 @@
     {
       "path": "src/formats/executable/menuet/xx_menuet_reader_adapters.c",
       "sha256": "f43326c9c96bc5a00083aed19ae5bb8b86d5f873fa3dc5749c3da12aa655eaec"
-    },
-    {
-      "path": "src/formats/executable/molebox/xx_molebox_reader_adapters.c",
-      "sha256": "729395ea9788e4a514340ec2297a2045fd0e57a232eb1203fd8dc3c36073a669"
     },
     {
       "path": "src/formats/executable/mub/xx_mub_reader_adapters.c",
@@ -328,10 +252,6 @@
     {
       "path": "src/formats/executable/te_executable/xx_te_executable_reader_adapters.c",
       "sha256": "0987be6a6db98c4b8f7e073bcf55e8a2520b4bfeead127706105216b0963a0e2"
-    },
-    {
-      "path": "src/formats/executable/upx_engine/xx_upx_engine_reader_adapters.c",
-      "sha256": "633beb4b9cae3b4f90babe3b233c38dc38a85b22c1f8e2c06e83d5a66db7c2d2"
     },
     {
       "path": "src/formats/executable/windows_dmp64/xx_windows_dmp64_reader_adapters.c",
@@ -372,14 +292,6 @@
     {
       "path": "src/formats/filesystem/amdos/xx_amdos_reader_adapters.c",
       "sha256": "170a322faa92c284ae9cecd0bf17325d243de3e981edc0561dd04866e78eee04"
-    },
-    {
-      "path": "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_reader_adapters.c",
-      "sha256": "c2e4c248449a31fdc29be1bd66e2d7a68af62736d1366326699a1913348f3fa9"
-    },
-    {
-      "path": "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_reader_adapters.c",
-      "sha256": "28b4357b58a1e2386f567fc4eee7fe00ed4a29d9f79e27389dca0e677c3ffc4f"
     },
     {
       "path": "src/formats/filesystem/amiga_pfs/xx_amiga_pfs_reader_adapters.c",
@@ -432,10 +344,6 @@
     {
       "path": "src/formats/filesystem/apricot_partitions/xx_apricot_partitions_reader_adapters.c",
       "sha256": "cc3c9d82e8545c03c83af913b14c69879bfa4a46df21a3b7f5cc93e5b4edfda8"
-    },
-    {
-      "path": "src/formats/filesystem/apridisk/xx_apridisk_reader_adapters.c",
-      "sha256": "9be19e4111c65a0bbd2ea295fe5846e8045653ba6891f2ee4caade7a45defb66"
     },
     {
       "path": "src/formats/filesystem/atari_ahdi/xx_atari_ahdi_reader_adapters.c",
@@ -514,10 +422,6 @@
       "sha256": "6aef8ec4de8d24424ac704c8ec1173fa936954264b070a3e3b9071f314482f66"
     },
     {
-      "path": "src/formats/filesystem/ccd/xx_ccd_reader_adapters.c",
-      "sha256": "5bb80c8f2b17a8946116a2fa51fc53078b01a4526dbf6129226f57c4519c45fc"
-    },
-    {
       "path": "src/formats/filesystem/cdi_fs/xx_cdi_fs_reader_adapters.c",
       "sha256": "53fad4bc2f33ed0372872413e4e5f9770e9453af8fdd2eff338031bdaf2a4aca"
     },
@@ -532,10 +436,6 @@
     {
       "path": "src/formats/filesystem/ciscopy/xx_ciscopy_reader_adapters.c",
       "sha256": "9f040895a4380a1d0111483378623f4d9bd62a8b2901775e6145a8ac18abd0b8"
-    },
-    {
-      "path": "src/formats/filesystem/ciso/xx_ciso_reader_adapters.c",
-      "sha256": "b93aa20410e767cab9baf806113417949746ee5247f6dfa313f38b48857f7a45"
     },
     {
       "path": "src/formats/filesystem/cmd_fd/xx_cmd_fd_reader_adapters.c",
@@ -602,10 +502,6 @@
       "sha256": "af370d5c5d88cd8474e12a66a3476449be5c3d218aaf745211ce33f48f991450"
     },
     {
-      "path": "src/formats/filesystem/ecm/xx_ecm_reader_adapters.c",
-      "sha256": "faa75f2a301ad4e96fd6e022289cdf3ebf6fd86068e972857198b11ae41e96d0"
-    },
-    {
       "path": "src/formats/filesystem/ecma67_fs/xx_ecma67_fs_reader_adapters.c",
       "sha256": "103fb87933ad7c9f48c33bd7abb1c344c502aa801f2889fc7e7af5ee7fe75125"
     },
@@ -660,10 +556,6 @@
     {
       "path": "src/formats/filesystem/fossil_fs/xx_fossil_fs_reader_adapters.c",
       "sha256": "1f5ad46250a7f94572aebfc07639dce2d4448d666f26c948093f4f5a00e651d4"
-    },
-    {
-      "path": "src/formats/filesystem/gbi/xx_gbi_reader_adapters.c",
-      "sha256": "06b2633ca7e4f49fcde7119a0f4b0e0a64cacbfd1bbaaf01f8376315fdada448"
     },
     {
       "path": "src/formats/filesystem/gfs2/xx_gfs2_reader_adapters.c",
@@ -810,10 +702,6 @@
       "sha256": "c42fd189b1a52cf8dadd9aaed984c74ff8be3d42b551d4b8093a5df99f5c11a3"
     },
     {
-      "path": "src/formats/filesystem/mds/xx_mds_reader_adapters.c",
-      "sha256": "0d5160957fc7317d1d8a19680de83ff4fdfa4f014eb27e47012fffa1956f07dc"
-    },
-    {
       "path": "src/formats/filesystem/mfs/xx_mfs_reader_adapters.c",
       "sha256": "19ce59e8368c54e64ca4b738475deac04354a40ac82dc626242c103e023b5c1e"
     },
@@ -898,10 +786,6 @@
       "sha256": "6bc7b1c9ee7eba31ee5ce231d8526a85f14631f31c4d22bfa0c2a2517df2012a"
     },
     {
-      "path": "src/formats/filesystem/pce_anadisk/xx_pce_anadisk_reader_adapters.c",
-      "sha256": "c95943389f2d4708725c32bf5b863a0bb66e0dd21335c1dbf4b07f34013558cb"
-    },
-    {
       "path": "src/formats/filesystem/pce_pbi/xx_pce_pbi_reader_adapters.c",
       "sha256": "6a6274f608bcfada6993b1121d561f8cf214b1305ff9f6124d88bd2dc5bb6a2b"
     },
@@ -968,10 +852,6 @@
     {
       "path": "src/formats/filesystem/savage/xx_savage_reader_adapters.c",
       "sha256": "d3cb058d72532523be8dafde0f4420edf47cb7d1e954663112d0eb6802f43512"
-    },
-    {
-      "path": "src/formats/filesystem/sdi/xx_sdi_reader_adapters.c",
-      "sha256": "cdd0f9d75fe6c06e7e72283bf5ecd7f4ddae9d8a59dcbecb20871bb480911742"
     },
     {
       "path": "src/formats/filesystem/sdu/xx_sdu_reader_adapters.c",
@@ -1058,10 +938,6 @@
       "sha256": "6853c4071e3c14eeca57cc05332599a37365a85916719b132faf1d61a39a1082"
     },
     {
-      "path": "src/formats/filesystem/uif/xx_uif_reader_adapters.c",
-      "sha256": "e304be5b63d30f99d5b06419821c238f6537932ff81e0a1ca4c35639d15e5234"
-    },
-    {
       "path": "src/formats/filesystem/unicos_fs/xx_unicos_fs_reader_adapters.c",
       "sha256": "74c163a897836bd58c4810fa47dc05bb51f5afbc98eceaaaf561be8ff3b109b0"
     },
@@ -1080,14 +956,6 @@
     {
       "path": "src/formats/filesystem/virtual98/xx_virtual98_reader_adapters.c",
       "sha256": "64e42f261a1b987bedfcebd2d918f59db72c60063985bde83ab17834f28f6ee7"
-    },
-    {
-      "path": "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_reader_adapters.c",
-      "sha256": "f01ed2c8bb22fb1420dc80aeb4b7798047f864038c0cf617947cc46e2aeaabf7"
-    },
-    {
-      "path": "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_reader_adapters.c",
-      "sha256": "f0f9ff7c859659845f731edaab518b604aa0d6713891a0b874e3b670801e3912"
     },
     {
       "path": "src/formats/filesystem/vmfs/xx_vmfs_reader_adapters.c",
@@ -1162,10 +1030,6 @@
       "sha256": "56d263dce41d360a9c0a8c98b2f017e5b4600355e996afd6683cbc19e0e2720c"
     },
     {
-      "path": "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_reader_adapters.c",
-      "sha256": "5e90730d95bd4743f272ca2526ac3f90fb052015f6d1e2ca00a2279ea7623d1e"
-    },
-    {
       "path": "src/formats/firmware/xiaomi_hdr1/xx_xiaomi_hdr1_reader_adapters.c",
       "sha256": "49127c7b39ed7c2c1665bdb7f1f1da78230c5448b9ec9fbf5eb012247bbf350e"
     },
@@ -1198,20 +1062,8 @@
       "sha256": "d262f06e7b312e45699387c5af9306c856da39723dc55fe90236f9b5926dc940"
     },
     {
-      "path": "src/formats/game/gdi/xx_gdi_reader_adapters.c",
-      "sha256": "d5a9e0f78d2fbfc29085fe1ff7caf226886c33e17c98f46ddfacd5ec0afc81e5"
-    },
-    {
       "path": "src/formats/game/goldsrc_bsp/xx_goldsrc_bsp_reader_adapters.c",
       "sha256": "32597d7c3b4a30d9bc2b8b42287791d5e6c369708b6d54c713ab69b92a70c7c0"
-    },
-    {
-      "path": "src/formats/game/he_tlkb/xx_he_tlkb_reader_adapters.c",
-      "sha256": "85abd469dba6ad30b31d6ddb7c2f8401ed16658d156531ed26589bca8e99b50f"
-    },
-    {
-      "path": "src/formats/game/livemaker/xx_livemaker_reader_adapters.c",
-      "sha256": "180d6f7c46f1f565fbc3019b52187188d0766226d3729570c066cb8ba7feb7d8"
     },
     {
       "path": "src/formats/game/majiro/xx_majiro_reader_adapters.c",
@@ -1250,10 +1102,6 @@
       "sha256": "c63eea334e1faf69ceebdd3db5c978274fbb51cef803ca10580e0cba377d872c"
     },
     {
-      "path": "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_reader_adapters.c",
-      "sha256": "6183dd5cf550b7f066bb7f8fc1a20e4915d5d6dcc0b596f671fac9bfc3fef448"
-    },
-    {
       "path": "src/formats/game/sega_sms_rom/xx_sega_sms_rom_reader_adapters.c",
       "sha256": "ad441842a3be422d734b9307a7340c5e36e613276c0af14f50d795284c4e9a9d"
     },
@@ -1262,16 +1110,8 @@
       "sha256": "0fbb5ca7d3deeeed0548aca09d9b37e4dde2d378d57455ef97703230e4fe1634"
     },
     {
-      "path": "src/formats/game/telltale_ttarch/xx_telltale_ttarch_reader_adapters.c",
-      "sha256": "5e8afd7fd803d109b1c4e4ee0357431de7f9e5c607d8ca80924f484f9eda6f97"
-    },
-    {
       "path": "src/formats/game/tic80/xx_tic80_reader_adapters.c",
       "sha256": "67c4d71c0200689bf1c7c697630004393a11bd9ce67a8fd0652f2ac73bea80a0"
-    },
-    {
-      "path": "src/formats/game/ue2_games/xx_ue2_games_reader_adapters.c",
-      "sha256": "97fa75401519da9a381ece501afa30cf889003a752f9ce92090efd1511f336f5"
     },
     {
       "path": "src/formats/game/valve_gcf_cache/xx_valve_gcf_cache_reader_adapters.c",
@@ -1290,20 +1130,12 @@
       "sha256": "8f58497402abef2a7b4120c6e1a62dd3329435d071f1a37ef6cda32141f78788"
     },
     {
-      "path": "src/formats/game/ypf/xx_ypf_reader_adapters.c",
-      "sha256": "c017c206d0470ea789f71fc87c471dfbb1ab29f09cc5f65707fbf19bf560cd8d"
-    },
-    {
       "path": "src/formats/image/ea_fsh/xx_ea_fsh_reader_adapters.c",
       "sha256": "b571109a3718cb99f9bcba9a5e2d6f4ac18985dc2e6c0fbfcaca66e1ba0381f8"
     },
     {
       "path": "src/formats/image/risc_os_sprite/xx_risc_os_sprite_reader_adapters.c",
       "sha256": "a823ec75be4d5cec50eb179ea55e349f8bf1855a48c1c9aafbfc7db6bac16222"
-    },
-    {
-      "path": "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_reader_adapters.c",
-      "sha256": "4716a315ec4ffe13da64a90776fbb10a9b38dba243ac8da00030004884ae136a"
     },
     {
       "path": "src/formats/installer/apks/xx_apks_reader_adapters.c",
@@ -1314,40 +1146,8 @@
       "sha256": "bb2ba7993cf30e4c8f8e0b300a7561c2bddfba1ceb24f2f6314a03f3ef598793"
     },
     {
-      "path": "src/formats/installer/bitrock/xx_bitrock_reader_adapters.c",
-      "sha256": "9d2daa01910f03e0d5265c27c1171101b3f5020ef13da64b2e390691937a202a"
-    },
-    {
-      "path": "src/formats/installer/cpoint/xx_cpoint_reader_adapters.c",
-      "sha256": "2f53bc8f8329e1c145fd7d793f0779a98d758c19430c9b151ebe23a8c946758b"
-    },
-    {
-      "path": "src/formats/installer/excelsior/xx_excelsior_reader_adapters.c",
-      "sha256": "72de7d708476d960919fae63d1a7843a102e31f93ad78d4140e49cbca269c935"
-    },
-    {
-      "path": "src/formats/installer/fead/xx_fead_reader_adapters.c",
-      "sha256": "04ed372e3e139025762222a5fe923aa9f8aa0bd28a65f19f0d02a0ea4c0bdafe"
-    },
-    {
       "path": "src/formats/installer/instalit_data/xx_instalit_data_reader_adapters.c",
       "sha256": "837b8f2dd48a9187da1d2ae9e8aee096f5d7894a47ebd85ec2393eaa630e4751"
-    },
-    {
-      "path": "src/formats/installer/nsis/xx_nsis_reader_adapters.c",
-      "sha256": "a42cb45017d15b1a85975e93efa24116710011fe85f127b2c98bf54484c29e09"
-    },
-    {
-      "path": "src/formats/installer/sis/xx_sis_reader_adapters.c",
-      "sha256": "d4bdd5046a7e034f2baa963c5e22e18514119829407d7e808c754a470ba8a935"
-    },
-    {
-      "path": "src/formats/installer/smart_install_maker/xx_smart_install_maker_reader_adapters.c",
-      "sha256": "ec0aa38146e2b76a2faafe4e9ce70d3303e8335e43fa5006071e6df58a62b4d3"
-    },
-    {
-      "path": "src/formats/installer/superdat/xx_superdat_reader_adapters.c",
-      "sha256": "1119820ae4dbe1b8ca55ec4f93b2f1b12d67d0c95aedda5505d10b20f63c77c1"
     },
     {
       "path": "src/formats/other/der/xx_der_reader_adapters.c",
@@ -1355,11 +1155,11 @@
     },
     {
       "path": "src/formats/xx_format_reader_only_decls.inc",
-      "sha256": "04876a2eb5651a7c9b5f73f0b4a3dec2d67c47eec1c3acd1de992bbd264561b5"
+      "sha256": "164c3e98c005e0fd8556f21a85c29232bf41b88bf4f0eab5779a30d14ab9dc39"
     },
     {
       "path": "src/formats/xx_format_reader_only_rows.inc",
-      "sha256": "fd72a978fc21da6b774d437dc9e30be033dccdda9a85562ef7b896ca7ae561b4"
+      "sha256": "202843c84722f650f426074d8feac81b55b296ae8385e1fb32d5857dc7f5c603"
     }
   ]
 }

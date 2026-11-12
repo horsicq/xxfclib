@@ -128,6 +128,7 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result, xx_pd_struct 
     int64_t total, size, table_size, end;
     uint16_t count, index;
     bool valid = false;
+    bool require_tiling = false;
 
     if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
@@ -135,8 +136,31 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result, xx_pd_struct 
     size = total - format->base_address;
     if (size < (int64_t)(GXL_HEADER_SIZE + GXL_RECORD_SIZE) || !gxl_read_at(format->device, format->base_address, header, sizeof(header))) return false;
 
-    /* Signature: 0x01 0xCA, the Genus copyright banner, version 100. */
-    if (header[0] != 0x01U || header[1] != 0xcaU || xx_rt_memcmp(header + 2, "Copyri", 6U) != 0 || xx_data_get_u16(header + 52, 2, 0, false) != GXL_VERSION) return false;
+    /* Signature: 0x01 0xCA, then one of two gates.
+     * Genus libraries carry version 100 at +52 and the Genus copyright
+     * banner, or all spaces where a tool left it blank (BARS.EGA, CARDS.EGA).
+     * Other writers used the same layout with their own banner text ("(c)
+     * Copyright 1993 VORCO Technologies.", ALIVE Software's) and version
+     * words 4, 6 or a blank one, so for them the banner only has to be
+     * printable ASCII up to a NUL terminator (ALIVE Software's 47-character
+     * text is followed by a NUL and uninitialised bytes) and the record
+     * table itself is the proof: the first member's absolute data offset
+     * must equal the end of the table. */
+    if (header[0] != 0x01U || header[1] != 0xcaU) return false;
+    if (xx_data_get_u16(header + 52, 2, 0, false) == GXL_VERSION && xx_rt_memcmp(header + 2, "Copyri", 6U) == 0) {
+        require_tiling = false;
+    } else {
+        size_t at;
+        require_tiling = true;
+        for (at = 2U; at < 52U && header[at] != 0U; ++at)
+            if (header[at] < 0x20U || header[at] > 0x7eU) return false;
+        if (at < 10U) return false;
+        if (xx_data_get_u16(header + 52, 2, 0, false) == GXL_VERSION) {
+            /* Blank banner with the Genus version word: the old gate. */
+            for (at = 2U; at < 52U && header[at] == ' '; ++at) {}
+            if (at == 52U) require_tiling = false;
+        }
+    }
 
     count = xx_data_get_u16(header + 94, 2, 0, false);
     if (count == 0U) return false;
@@ -170,6 +194,8 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result, xx_pd_struct 
 
         /* Both halves of the extent must lie inside the real file. */
         if ((int64_t)data_offset < (int64_t)GXL_HEADER_SIZE + table_size || (int64_t)data_offset > size || (int64_t)data_size > size - (int64_t)data_offset) goto done;
+        /* The non-Genus gate: the first payload starts right after the table. */
+        if (require_tiling && index == 0U && (int64_t)data_offset != (int64_t)GXL_HEADER_SIZE + table_size) goto done;
 
         member->record_offset = format->base_address + record_offset;
         member->data_offset = format->base_address + (int64_t)data_offset;

@@ -200,5 +200,5 @@ static Abstractformat *titan_quest_open(xx_io_device *d)
     return xx_titan_quest_create(d, 0);
 }
 static const xx_file_type_t titan_quest_types[] = {XX_FILE_TYPE_TITAN_QUEST};
-static const xx_format_search_desc titan_quest_desc = {titan_quest_types, 1, NULL, 0, titan_quest_open, xx_titan_quest_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(titan_quest, titan_quest_desc)
+const xx_format_search_desc xx_titan_quest_search_desc = {titan_quest_types, 1, NULL, 0, titan_quest_open, xx_titan_quest_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(titan_quest, xx_titan_quest_search_desc)

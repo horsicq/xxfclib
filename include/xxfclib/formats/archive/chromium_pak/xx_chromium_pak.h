@@ -21,4 +21,17 @@ XXFC_API void xx_chromium_pak_free(xx_chromium_pak *);
 #ifdef __cplusplus
 }
 #endif
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_chromium_pak_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_chromium_pak_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_chromium_pak_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_chromium_pak_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_chromium_pak_get_abstract_detector(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

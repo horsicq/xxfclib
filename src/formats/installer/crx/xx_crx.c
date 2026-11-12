@@ -92,8 +92,8 @@ static bool crx_proto(const uint8_t *p, size_t n, unsigned mode, xx_pd_struct *p
 }
 static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
 {
-    uint8_t h[12], *header = NULL;
-    uint32_t size;
+    uint8_t h[16], *header = NULL;
+    uint32_t size, version, key_size = 0, signature_size = 0;
     int64_t at, length;
     bool ok = false;
     xx_io_device *view = NULL;
@@ -101,12 +101,25 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     xx_io_volume volume;
     xx_archive_record_state *records = NULL;
     const xx_var *budget = xx_format_resolve_extra_parameter(f, NULL, XX_META_ID_OPT_MEMORY_LIMIT);
-    if (!pm_read(f, 0, h, 12) || xx_rt_memcmp(h, "Cr24", 4) || xx_data_get_u32(h + 4, 4, 0, false) != 3) return false;
-    size = xx_data_get_u32(h + 8, 4, 0, false);
-    at = 12 + (int64_t)size;
-    if (!size || size > 1024U * 1024U || at > pm_available(f) || (budget && size > xx_var_get_u64(budget))) return false;
-    header = (uint8_t *)xx_mem_alloc(size);
-    if (!header || !pm_read(f, 12, header, size) || !crx_proto(header, size, 0, pd)) goto done;
+    if (!pm_read(f, 0, h, 16) || xx_rt_memcmp(h, "Cr24", 4)) return false;
+    version = xx_data_get_u32(h + 4, 4, 0, false);
+    if (version == 2U) {
+        /* CRX2: a 16-byte header with the lengths of the RSA public key and
+         * of the signature that precede the ZIP (Chrome before version 64). */
+        key_size = xx_data_get_u32(h + 8, 4, 0, false);
+        signature_size = xx_data_get_u32(h + 12, 4, 0, false);
+        if (!key_size || key_size > 65536U || !signature_size || signature_size > 65536U) return false;
+        size = key_size + signature_size;
+        at = 16 + (int64_t)size;
+        if (at > pm_available(f)) return false;
+    } else {
+        if (version != 3U) return false;
+        size = xx_data_get_u32(h + 8, 4, 0, false);
+        at = 12 + (int64_t)size;
+        if (!size || size > 1024U * 1024U || at > pm_available(f) || (budget && size > xx_var_get_u64(budget))) return false;
+        header = (uint8_t *)xx_mem_alloc(size);
+        if (!header || !pm_read(f, 12, header, size) || !crx_proto(header, size, 0, pd)) goto done;
+    }
     if (!pm_read(f, at, h, 4) || xx_rt_memcmp(h, "PK\3\4", 4)) goto done;
     if (!crx_zip_origin(f, at, pm_available(f), pd) || !carrier_zip(f, at, pm_available(f), pd)) goto done;
     volume.device = f->device;
@@ -130,7 +143,11 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         }
         if (count != zip->number_of_records) goto done;
     }
-    if (!pm_add(f, s, "crx-header.protobuf", 12, size) || !pm_add(f, s, "extension.zip", at, length)) goto done;
+    if (version == 2U) {
+        if (!pm_add(f, s, "crx-public-key.der", 16, key_size) ||
+            !pm_add(f, s, "crx-signature.bin", 16 + (int64_t)key_size, signature_size)) goto done;
+    } else if (!pm_add(f, s, "crx-header.protobuf", 12, size)) goto done;
+    if (!pm_add(f, s, "extension.zip", at, length)) goto done;
     s->size = at + length;
     ok = true;
 done:

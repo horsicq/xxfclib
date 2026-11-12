@@ -30,6 +30,10 @@
 #define JS_BC_MAGIC_2 'I'
 #define JS_BC_MAGIC_3 'E'
 #define JS_BC_VERSION 3
+/* Serialized trees feed the same recursive evaluator as parsed source, so
+ * their nesting must fit below the depth that evaluator is capped at; the
+ * serializer and the reader both stop there instead of exhausting the stack. */
+#define JS_BC_MAX_DEPTH 8000
 
 #define BC_FLAG_STR 0x0001
 #define BC_FLAG_STR2 0x0002
@@ -91,7 +95,9 @@ static void serialize_scalar(uint8_t *pDest, const void *pValue, size_t nSize)
     }
 }
 
-static void serialize_node(xx_buf_t *pBuf, const JSNode *pNode)
+static void serialize_node(xx_buf_t *pBuf, const JSNode *pNode);
+
+static void serialize_node_impl(xx_buf_t *pBuf, const JSNode *pNode, int nDepth)
 {
     uint8_t type = 0;
     uint8_t op = 0;
@@ -101,6 +107,13 @@ static void serialize_node(xx_buf_t *pBuf, const JSNode *pNode)
     uint8_t *pPrefix;
 
     if (!pNode || pBuf->failed) {
+        return;
+    }
+    if (nDepth >= JS_BC_MAX_DEPTH) {
+        /* A left-leaning operator chain nests in ->a as deep as it is long;
+         * the parser folds those iteratively, so without a ceiling a large
+         * source overflows the native stack instead of failing cleanly. */
+        pBuf->failed = true;
         return;
     }
 
@@ -153,10 +166,10 @@ static void serialize_node(xx_buf_t *pBuf, const JSNode *pNode)
         xx_buf_append(pBuf, &len, sizeof(len));
         xx_buf_append(pBuf, pNode->pStr2, len);
     }
-    if (flags & BC_FLAG_NODE_A) serialize_node(pBuf, pNode->a);
-    if (flags & BC_FLAG_NODE_B) serialize_node(pBuf, pNode->b);
-    if (flags & BC_FLAG_NODE_C) serialize_node(pBuf, pNode->c);
-    if (flags & BC_FLAG_NODE_D) serialize_node(pBuf, pNode->d);
+    if (flags & BC_FLAG_NODE_A) serialize_node_impl(pBuf, pNode->a, nDepth + 1);
+    if (flags & BC_FLAG_NODE_B) serialize_node_impl(pBuf, pNode->b, nDepth + 1);
+    if (flags & BC_FLAG_NODE_C) serialize_node_impl(pBuf, pNode->c, nDepth + 1);
+    if (flags & BC_FLAG_NODE_D) serialize_node_impl(pBuf, pNode->d, nDepth + 1);
     if (pBuf->failed) {
         return;
     }
@@ -170,7 +183,7 @@ static void serialize_node(xx_buf_t *pBuf, const JSNode *pNode)
                 xx_buf_append_char(pBuf, 0);
             } else {
                 xx_buf_append_char(pBuf, 1);
-                serialize_node(pBuf, pNode->ppList[i]);
+                serialize_node_impl(pBuf, pNode->ppList[i], nDepth + 1);
             }
             if (pBuf->failed) {
                 return;
@@ -242,12 +255,19 @@ typedef struct {
     size_t nSize;
     size_t nPos;
     int bError;
+    int nDepth;
     uint16_t nVersion;
 } BcReader;
 
+static void serialize_node(xx_buf_t *pBuf, const JSNode *pNode)
+{
+    serialize_node_impl(pBuf, pNode, 0);
+}
+
 static bool bc_read(BcReader *r, void *dest, size_t len)
 {
-    if (r->bError || (r->nPos + len > r->nSize)) {
+    /* Compare against the remaining bytes: nPos + len can wrap. */
+    if (r->bError || (len > r->nSize - r->nPos)) {
         r->bError = 1;
         return false;
     }
@@ -256,23 +276,27 @@ static bool bc_read(BcReader *r, void *dest, size_t len)
     return true;
 }
 
-static char *bc_read_str(BcReader *r)
+static char *bc_read_str(BcReader *r, size_t *pnSize)
 {
     uint32_t len = 0;
     char *s = NULL;
 
+    if (pnSize) *pnSize = 0;
     if (!bc_read(r, &len, sizeof(len))) {
         return NULL;
     }
-    if (r->nPos + len > r->nSize) {
+    /* Compare against the remaining bytes: nPos + len can wrap on a 32-bit
+     * size_t. */
+    if (len > r->nSize - r->nPos) {
         r->bError = 1;
         return NULL;
     }
 
-    s = (char *)xx_js_malloc(len + 1);
+    s = (char *)xx_js_malloc((size_t)len + 1);
     xx_rt_memcpy(s, r->pData + r->nPos, len);
     s[len] = '\0';
     r->nPos += len;
+    if (pnSize) *pnSize = len;
     return s;
 }
 
@@ -286,8 +310,16 @@ static JSNode *deserialize_node(BcReader *r)
     JSNode *pNode = NULL;
 
     if (r->bError || (r->nPos >= r->nSize)) {
+        /* A child flag with no payload behind it used to leave a silently
+         * NULL pointer in the tree for the evaluator to dereference. */
+        r->bError = 1;
         return NULL;
     }
+    if (r->nDepth >= JS_BC_MAX_DEPTH) {
+        r->bError = 1;
+        return NULL;
+    }
+    r->nDepth++;
 
     if (!bc_read(r, &type, 1) || !bc_read(r, &op, 1) || !bc_read(r, &line, sizeof(line))) {
         return NULL;
@@ -315,9 +347,17 @@ static JSNode *deserialize_node(BcReader *r)
         }
     }
 
-    if (r->nVersion >= 3 && (flags & BC_FLAG_SOURCE)) pNode->pSourceName = bc_read_str(r);
-    if (flags & BC_FLAG_STR) pNode->pStr = bc_read_str(r);
-    if (flags & BC_FLAG_STR2) pNode->pStr2 = bc_read_str(r);
+    if (r->nVersion >= 3 && (flags & BC_FLAG_SOURCE)) pNode->pSourceName = bc_read_str(r, NULL);
+    if (flags & BC_FLAG_STR) {
+        size_t nStrSize = 0;
+        pNode->pStr = bc_read_str(r, &nStrSize);
+        /* The payload length is the byte count the serializer wrote from nNum;
+         * the stream's own nNum is never trusted for a string. */
+        if (pNode->type == N_STR || pNode->type == N_PROP) pNode->nNum = (double)nStrSize;
+    } else if (pNode->type == N_STR || pNode->type == N_PROP) {
+        pNode->nNum = 0;
+    }
+    if (flags & BC_FLAG_STR2) pNode->pStr2 = bc_read_str(r, NULL);
     if (flags & BC_FLAG_NODE_A) pNode->a = deserialize_node(r);
     if (flags & BC_FLAG_NODE_B) pNode->b = deserialize_node(r);
     if (flags & BC_FLAG_NODE_C) pNode->c = deserialize_node(r);
@@ -327,6 +367,14 @@ static JSNode *deserialize_node(BcReader *r)
         uint32_t count = 0;
         if (bc_read(r, &count, sizeof(count)) && count > 0) {
             uint32_t i = 0;
+            /* Every entry costs at least one marker byte; a count beyond the
+             * remaining input is a corrupt stream and would otherwise drive an
+             * enormous allocation. */
+            if (count > r->nSize - r->nPos) {
+                r->bError = 1;
+                js_free_node(pNode);
+                return NULL;
+            }
             pNode->ppList = (JSNode **)xx_js_calloc(count, sizeof(JSNode *));
             pNode->nList = count;
             pNode->nListCapacity = count;
@@ -349,10 +397,16 @@ static JSNode *deserialize_node(BcReader *r)
         uint32_t count = 0;
         if (bc_read(r, &count, sizeof(count)) && count > 0) {
             uint32_t i = 0;
+            /* Each name is at least its 4-byte length prefix. */
+            if (count > (r->nSize - r->nPos) / sizeof(uint32_t)) {
+                r->bError = 1;
+                js_free_node(pNode);
+                return NULL;
+            }
             pNode->ppVarNames = (char **)xx_js_calloc(count, sizeof(char *));
             pNode->nVarNames = count;
             for (i = 0; i < count; i++) {
-                pNode->ppVarNames[i] = bc_read_str(r);
+                pNode->ppVarNames[i] = bc_read_str(r, NULL);
             }
         }
     }
@@ -362,7 +416,57 @@ static JSNode *deserialize_node(BcReader *r)
         return NULL;
     }
 
+    r->nDepth--;
     return pNode;
+}
+
+/* The interpreter dereferences these children and names without checks;
+ * the parser guarantees them, so a decoded tree is held to the same shape
+ * before it is published. The depth bound also keeps this walk, the
+ * prepare/hoist walkers and js_free_node off a hostile stack depth. */
+static int bc_valid_tree(const JSNode *pNode, int nDepth)
+{
+    size_t i;
+    JSNodeType listType = N_PROGRAM; /* N_PROGRAM: any entry, NULL allowed */
+
+    if (!pNode) return 1;
+    if (nDepth > JS_BC_MAX_DEPTH) return 0;
+
+    switch (pNode->type) {
+        case N_IDENT: case N_VARDECL: case N_MEMBER: case N_PROP: case N_LABELED:
+            if (!pNode->pStr) return 0;
+            break;
+        case N_FUNCTION:
+            if (!pNode->a || pNode->a->type != N_BLOCK || !pNode->b) return 0;
+            for (i = 0; i < pNode->a->nList; i++) {
+                const JSNode *pParam = pNode->a->ppList[i];
+                if (!pParam || pParam->type != N_IDENT || !pParam->pStr) return 0;
+            }
+            break;
+        case N_CALL: case N_UNARY: case N_UPDATE: case N_BINARY:
+            if (!pNode->a) return 0;
+            break;
+        case N_ASSIGN:
+            if (!pNode->a || !pNode->b) return 0;
+            break;
+        case N_VAR:
+            if (!pNode->nList) return 0;
+            listType = N_VARDECL;
+            break;
+        case N_OBJECT: listType = N_PROP; break;
+        case N_SWITCH: listType = N_CASE; break;
+        case N_FORIN:
+            if (!pNode->a || (pNode->a->type != N_VAR && (pNode->a->type != N_EXPRSTMT || !pNode->a->a))) return 0;
+            break;
+        default: break;
+    }
+    for (i = 0; i < pNode->nList; i++) {
+        const JSNode *pChild = pNode->ppList[i];
+        if (listType != N_PROGRAM && (!pChild || pChild->type != listType)) return 0;
+        if (!bc_valid_tree(pChild, nDepth + 1)) return 0;
+    }
+    return bc_valid_tree(pNode->a, nDepth + 1) && bc_valid_tree(pNode->b, nDepth + 1) &&
+           bc_valid_tree(pNode->c, nDepth + 1) && bc_valid_tree(pNode->d, nDepth + 1);
 }
 
 /* Decode without retaining any context state; the caller owns the AST. */
@@ -375,10 +479,11 @@ JSNode *js_parse_bytecode(const void *pBytecode, size_t nSize)
     r.nSize = nSize;
     r.nPos = 8;
     r.bError = 0;
+    r.nDepth = 0;
     xx_rt_memcpy(&r.nVersion, r.pData + 4, sizeof(r.nVersion));
     if (r.nVersion < 1 || r.nVersion > JS_BC_VERSION) return NULL;
     pProgram = deserialize_node(&r);
-    if (!pProgram || r.bError) {
+    if (!pProgram || r.bError || pProgram->type != N_PROGRAM || !bc_valid_tree(pProgram, 0)) {
         js_free_node(pProgram);
         return NULL;
     }
@@ -429,12 +534,15 @@ static const char *bc_op_str(JSOp op)
     }
 }
 
-static void bc_print_escaped_str(xx_buf_t *buf, const char *str)
+/* Strings are byte strings: the literal's byte count comes from the node, so
+ * an embedded NUL is printed as an escape instead of ending the text. */
+static void bc_print_escaped_str(xx_buf_t *buf, const char *str, size_t len)
 {
     xx_buf_append_str(buf, "\"");
     if (str) {
         const char *p = str;
-        while (*p) {
+        const char *end = str + len;
+        while (p < end) {
             switch (*p) {
                 case '\"': xx_buf_append_str(buf, "\\\""); break;
                 case '\\': xx_buf_append_str(buf, "\\\\"); break;
@@ -503,16 +611,16 @@ static void bc_decompile_node(xx_buf_t *buf, const JSNode *node)
         }
         case N_NUM: {
             char num_str[64];
-            if (node->nNum == (double)(int64_t)node->nNum) {
-                xx_rt_snprintf(num_str, sizeof(num_str), "%lld", (long long)node->nNum);
-            } else {
-                xx_rt_snprintf(num_str, sizeof(num_str), "%.14g", node->nNum);
+            /* The engine's own formatter refuses out-of-range values before
+             * casting and prints the shortest round-tripping form otherwise. */
+            if (!js_int_to_buf(num_str, node->nNum)) {
+                xx_rt_dtoa_shortest(node->nNum, num_str, sizeof(num_str));
             }
             xx_buf_append_str(buf, num_str);
             break;
         }
         case N_STR: {
-            bc_print_escaped_str(buf, node->pStr);
+            bc_print_escaped_str(buf, node->pStr, (node->nNum > 0.0) ? (size_t)node->nNum : (node->pStr ? xx_rt_strlen(node->pStr) : 0));
             break;
         }
         case N_REGEXP: {
@@ -836,11 +944,12 @@ char *js_decompile_bytecode(const void *pBytecode, size_t nSize)
     r.nSize = nSize;
     r.nPos = 8;
     r.bError = 0;
+    r.nDepth = 0;
     xx_rt_memcpy(&r.nVersion, r.pData + 4, sizeof(r.nVersion));
     if (r.nVersion < 1 || r.nVersion > JS_BC_VERSION) return NULL;
 
     pProgram = deserialize_node(&r);
-    if (!pProgram || r.bError) {
+    if (!pProgram || r.bError || pProgram->type != N_PROGRAM || !bc_valid_tree(pProgram, 0)) {
         if (pProgram) {
             js_free_node(pProgram);
         }

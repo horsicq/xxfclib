@@ -169,5 +169,5 @@ void xx_secura_free(Abstractformat *f) { if(f) { xx_format_destroy(f);xx_mem_fre
 #include "../../xx_format_abstract_extractor_adapter.h"
 static Abstractformat *sa_open(xx_io_device *d) { return xx_secura_create(d,0); }
 static const xx_file_type_t sa_types[]={XX_FILE_TYPE_SECURA};
-static const xx_format_search_desc sa_desc={sa_types,1U,NULL,0U,sa_open,xx_secura_free,true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(secura,sa_desc)
+const xx_format_search_desc xx_secura_search_desc={sa_types,1U,NULL,0U,sa_open,xx_secura_free,true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(secura,xx_secura_search_desc)

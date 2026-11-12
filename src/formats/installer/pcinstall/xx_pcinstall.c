@@ -9,7 +9,7 @@
  * in the reference corpus are this much smaller sibling, whose layout was
  * derived from the corpus and validated by exact chain tiling on every sample.
  *
- * Volume header (0x38 bytes, little endian):
+ * Volume header (0x38 bytes, little endian), the compact layout:
  *   +0x00  13 zero bytes
  *   +0x0d  uint8  0x74          record tag, repeated at +0x10
  *   +0x0e  uint16 count         number of members in the chain
@@ -23,6 +23,26 @@
  *   +0x1a  uint16 dos_time
  *   +0x1c  0x14 zero bytes
  *   +0x30  payload              raw PKWARE DCL implode stream
+ *
+ * The wide layout of the later builder (every *.000/*.010 disk volume and
+ * *.SHR of the 2026 corpus, 389 files, long file names):
+ *   +0x00  14 zero bytes
+ *   +0x0e  uint8  0x74, uint8 0
+ *   +0x10  uint16 count
+ *   +0x12  uint16 0x74
+ *   +0x14  uint16 5 (0 in some volumes)
+ *   +0x16  0x24 zero bytes       (header 0x3a bytes)
+ * Records of 0xa8 bytes:
+ *   +0x00  char   name[0x80]    NUL terminated, long names allowed
+ *   +0x80  uint32 attributes    DOS attribute bits (0x20 archive)
+ *   +0x84  uint32 0
+ *   +0x88  uint32 packed_size
+ *   +0x8c  uint16 dos_date, uint16 0
+ *   +0x90  uint16 dos_time, uint16 0
+ *   +0x94  8 bytes, zero or small builder values
+ *   +0x9c  uint32 unpacked_size  (0 when the builder did not record it)
+ *   +0xa0  8 zero bytes
+ *   +0xa8  payload              raw PKWARE DCL implode stream
  *
  * There is no index, no trailer and no per-record link field: the chain is
  * required to tile the file exactly from 0x38 to end of file and to hold
@@ -62,6 +82,17 @@
 #define PCI_SIZE_OFFSET 0x14
 #define PCI_DATE_OFFSET 0x18
 #define PCI_TIME_OFFSET 0x1a
+/* The wide layout. */
+#define PCI_WIDE_VOLUME_HEADER_SIZE 0x3a
+#define PCI_WIDE_RECORD_SIZE 0xa8
+#define PCI_WIDE_NAME_FIELD_SIZE 0x80
+#define PCI_WIDE_TAG_OFFSET 0x0e
+#define PCI_WIDE_COUNT_OFFSET 0x10
+#define PCI_WIDE_ATTRIBUTES_OFFSET 0x80
+#define PCI_WIDE_SIZE_OFFSET 0x88
+#define PCI_WIDE_DATE_OFFSET 0x8c
+#define PCI_WIDE_TIME_OFFSET 0x90
+#define PCI_WIDE_UNPACKED_OFFSET 0x9c
 /* The count is a uint16, so it cannot exceed this; the constant is spelled
  * out anyway so the bound survives a future widening of the field. */
 #define PCI_MAX_RECORDS 65535U
@@ -72,6 +103,7 @@
 typedef struct pci_member_s {
     char *name;
     int64_t header_offset;
+    int64_t header_size;
     int64_t data_offset;
     int64_t packed_size;
     int64_t unpacked_size; /**< -1 while unresolved. */
@@ -203,62 +235,119 @@ static bool pci_decode_member(Abstractformat *format, const pci_member *member, 
     return result;
 }
 
+/* Which of the two volume layouts a header has: 0 for neither. */
+static unsigned pci_layout(const uint8_t *header, size_t size)
+{
+    size_t index;
+    if (size >= PCI_VOLUME_HEADER_SIZE && header[PCI_TAG_OFFSET] == PCI_TAG) {
+        for (index = 0U; index < PCI_TAG_OFFSET; ++index)
+            if (header[index] != 0U) return 0U;
+        if (xx_data_get_u32(header + 0x10, 4, 0, false) != (uint32_t)PCI_TAG) return 0U;
+        for (index = 0x14U; index < PCI_VOLUME_HEADER_SIZE; ++index)
+            if (header[index] != 0U) return 0U;
+        return 1U;
+    }
+    if (size >= PCI_WIDE_VOLUME_HEADER_SIZE && header[PCI_WIDE_TAG_OFFSET] == PCI_TAG) {
+        for (index = 0U; index < PCI_WIDE_TAG_OFFSET; ++index)
+            if (header[index] != 0U) return 0U;
+        if (header[PCI_WIDE_TAG_OFFSET + 1U] != 0U) return 0U;
+        /* +0x14 is 5 in most volumes and 0 in some; a small version word. */
+        if (xx_data_get_u16(header + 0x12, 2, 0, false) != (uint32_t)PCI_TAG || xx_data_get_u16(header + 0x14, 2, 0, false) > 0xffU) return 0U;
+        for (index = 0x16U; index < PCI_WIDE_VOLUME_HEADER_SIZE; ++index)
+            if (header[index] != 0U) return 0U;
+        return 2U;
+    }
+    return 0U;
+}
+
 static bool pci_parse(Abstractformat *format, pci_stream **result, bool resolve_sizes)
 {
-    uint8_t header[PCI_VOLUME_HEADER_SIZE];
-    uint8_t record[PCI_RECORD_SIZE];
+    uint8_t header[PCI_WIDE_VOLUME_HEADER_SIZE];
+    uint8_t record[PCI_WIDE_RECORD_SIZE];
     pci_stream *stream = NULL;
-    int64_t total, available, cursor, base;
+    int64_t total, available, cursor, base, header_size, record_size;
     uint32_t declared;
-    size_t index;
+    size_t index, read_size, name_size, size_offset, date_offset, time_offset;
+    unsigned layout;
     if (!format || !format->device || !result || format->base_address < 0) return false;
     base = format->base_address;
     total = xx_io_total_size(format->device);
     if (total < base) return false;
     available = total - base;
     if (available < PCI_VOLUME_HEADER_SIZE + PCI_RECORD_SIZE) return false;
-    if (!pci_read_at(format->device, base, header, sizeof(header))) return false;
+    read_size = available < (int64_t)sizeof(header) ? (size_t)available : sizeof(header);
+    if (!pci_read_at(format->device, base, header, read_size)) return false;
     /* The header has no magic; what it has is a very particular shape. */
-    for (index = 0U; index < PCI_TAG_OFFSET; ++index)
-        if (header[index] != 0U) return false;
-    if (header[PCI_TAG_OFFSET] != PCI_TAG) return false;
-    if (xx_data_get_u32(header + 0x10, 4, 0, false) != (uint32_t)PCI_TAG) return false;
-    for (index = 0x14U; index < PCI_VOLUME_HEADER_SIZE; ++index)
-        if (header[index] != 0U) return false;
-    declared = xx_data_get_u16(header + PCI_COUNT_OFFSET, 2, 0, false);
+    layout = pci_layout(header, read_size);
+    if (!layout) return false;
+    if (layout == 1U) {
+        header_size = PCI_VOLUME_HEADER_SIZE;
+        record_size = PCI_RECORD_SIZE;
+        name_size = PCI_NAME_FIELD_SIZE;
+        size_offset = PCI_SIZE_OFFSET;
+        date_offset = PCI_DATE_OFFSET;
+        time_offset = PCI_TIME_OFFSET;
+        declared = xx_data_get_u16(header + PCI_COUNT_OFFSET, 2, 0, false);
+    } else {
+        header_size = PCI_WIDE_VOLUME_HEADER_SIZE;
+        record_size = PCI_WIDE_RECORD_SIZE;
+        name_size = PCI_WIDE_NAME_FIELD_SIZE;
+        size_offset = PCI_WIDE_SIZE_OFFSET;
+        date_offset = PCI_WIDE_DATE_OFFSET;
+        time_offset = PCI_WIDE_TIME_OFFSET;
+        declared = xx_data_get_u16(header + PCI_WIDE_COUNT_OFFSET, 2, 0, false);
+    }
     if (declared == 0U || declared > PCI_MAX_RECORDS) return false;
     /* Each member costs at least its descriptor, so a count that could not
      * fit is rejected before a single allocation happens. */
-    if ((int64_t)declared > (available - PCI_VOLUME_HEADER_SIZE) / PCI_RECORD_SIZE) return false;
+    if (available < header_size + record_size || (int64_t)declared > (available - header_size) / record_size) return false;
 
     stream = (pci_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return false;
     stream->declared_count = (uint16_t)declared;
 
-    cursor = PCI_VOLUME_HEADER_SIZE;
+    cursor = header_size;
     for (index = 0U; index < declared; ++index) {
         pci_member member;
         int64_t packed_size;
         size_t zero;
-        if (!pci_range_within(available, cursor, PCI_RECORD_SIZE) || !pci_read_at(format->device, base + cursor, record, sizeof(record))) goto fail;
-        for (zero = 0x1cU; zero < PCI_RECORD_SIZE; ++zero)
-            if (record[zero] != 0U) goto fail;
-        packed_size = (int64_t)xx_data_get_u32(record + PCI_SIZE_OFFSET, 4, 0, false);
-        if (!pci_range_within(available, cursor + PCI_RECORD_SIZE, packed_size)) goto fail;
+        if (!pci_range_within(available, cursor, record_size) || !pci_read_at(format->device, base + cursor, record, (size_t)record_size)) goto fail;
+        if (layout == 1U) {
+            for (zero = 0x1cU; zero < PCI_RECORD_SIZE; ++zero)
+                if (record[zero] != 0U) goto fail;
+        } else {
+            /* Attribute byte (0x20 archive, 0x80 in some volumes), the
+             * reserved word after it, the date/time high halves and the last
+             * eight bytes are the invariant parts; +0x94..+0x9b carries
+             * small builder values in a few volumes. The chain tiling is
+             * the real validation. */
+            if (xx_data_get_u32(record + PCI_WIDE_ATTRIBUTES_OFFSET, 4, 0, false) > 0xffU) goto fail;
+            if (xx_data_get_u32(record + 0x84, 4, 0, false) != 0U) goto fail;
+            if (record[0x8e] || record[0x8f] || record[0x92] || record[0x93]) goto fail;
+            for (zero = PCI_WIDE_UNPACKED_OFFSET + 4U; zero < PCI_WIDE_RECORD_SIZE; ++zero)
+                if (record[zero] != 0U) goto fail;
+        }
+        packed_size = (int64_t)xx_data_get_u32(record + size_offset, 4, 0, false);
+        if (!pci_range_within(available, cursor + record_size, packed_size)) goto fail;
         xx_mem_zero(&member, sizeof(member));
-        member.name = pci_fixed_name(record, PCI_NAME_FIELD_SIZE);
+        member.name = pci_fixed_name(record, name_size);
         if (!member.name) goto fail;
         member.header_offset = base + cursor;
-        member.data_offset = base + cursor + PCI_RECORD_SIZE;
+        member.header_size = record_size;
+        member.data_offset = base + cursor + record_size;
         member.packed_size = packed_size;
         member.unpacked_size = -1;
-        member.dos_date = xx_data_get_u16(record + PCI_DATE_OFFSET, 2, 0, false);
-        member.dos_time = xx_data_get_u16(record + PCI_TIME_OFFSET, 2, 0, false);
+        if (layout == 2U) {
+            uint32_t unpacked = xx_data_get_u32(record + PCI_WIDE_UNPACKED_OFFSET, 4, 0, false);
+            if (unpacked != 0U && unpacked <= (uint32_t)PCI_MAX_RAW_SIZE) member.unpacked_size = (int64_t)unpacked;
+        }
+        member.dos_date = xx_data_get_u16(record + date_offset, 2, 0, false);
+        member.dos_time = xx_data_get_u16(record + time_offset, 2, 0, false);
         if (!pci_add_member(stream, &member)) {
             xx_mem_free(member.name);
             goto fail;
         }
-        cursor += PCI_RECORD_SIZE + packed_size;
+        cursor += record_size + packed_size;
     }
 
     /* The chain must tile the volume exactly.  Without this the format would
@@ -269,6 +358,7 @@ static bool pci_parse(Abstractformat *format, pci_stream **result, bool resolve_
     if (resolve_sizes) {
         for (index = 0U; index < stream->count; ++index) {
             size_t produced = 0U;
+            if (stream->items[index].unpacked_size >= 0) continue;
             if (pci_decode_member(format, &stream->items[index], NULL, &produced)) stream->items[index].unpacked_size = (int64_t)produced;
         }
     }
@@ -312,7 +402,7 @@ static bool pci_set_record(xx_archive_record *record, const pci_member *member)
     xx_archive_record_cleanup(record);
     xx_archive_record_init(record);
     record->header_offset = member->header_offset;
-    record->header_size = PCI_RECORD_SIZE;
+    record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->packed_size;
     if (!xx_archive_record_set_original_name(record, member->name) ||

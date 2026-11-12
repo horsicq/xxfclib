@@ -26,12 +26,19 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/archive/xorarchive/xx_xorarchive.h"
+#include "xxfclib/global/xx_global.h"
 
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
+
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+#define XX_XORARCHIVE_X86 1
+#include <immintrin.h>
+#endif
 
 /* Registration placeholder.  xxfc_defs.h is shared and is not edited from
  * here, so the file-type constant resolves to UNKNOWN until the enumerator
@@ -90,19 +97,87 @@ static void xx_xorarchive_build_table(uint8_t *table, uint8_t key, unsigned rota
 /* Unmasking I/O device                                                */
 /* ------------------------------------------------------------------ */
 
+#if defined(XX_XORARCHIVE_X86)
+#if defined(__GNUC__) || defined(__clang__)
+#define XX_XORARCHIVE_TARGET_AVX2 __attribute__((target("avx2"), noinline))
+#define XX_XORARCHIVE_TARGET_SSE2 __attribute__((target("sse2"), noinline))
+#elif defined(_MSC_VER)
+#define XX_XORARCHIVE_TARGET_AVX2 __declspec(noinline)
+#define XX_XORARCHIVE_TARGET_SSE2 __declspec(noinline)
+#else
+#define XX_XORARCHIVE_TARGET_AVX2
+#define XX_XORARCHIVE_TARGET_SSE2
+#endif
+static XX_XORARCHIVE_TARGET_AVX2 size_t xx_xorarchive_xor_avx2(uint8_t *bytes, size_t size, uint8_t key)
+{
+    size_t index = 0U;
+    __m256i k_vec = _mm256_set1_epi8((char)key);
+    for (; index + 32U <= size; index += 32U) {
+        __m256i v = _mm256_loadu_si256((const __m256i *)(const void *)(bytes + index));
+        _mm256_storeu_si256((__m256i *)(void *)(bytes + index), _mm256_xor_si256(v, k_vec));
+    }
+    _mm256_zeroupper();
+    return index;
+}
+static XX_XORARCHIVE_TARGET_SSE2 size_t xx_xorarchive_xor_sse2(uint8_t *bytes, size_t size, uint8_t key)
+{
+    size_t index = 0U;
+    __m128i k_vec = _mm_set1_epi8((char)key);
+    for (; index + 16U <= size; index += 16U) {
+        __m128i v = _mm_loadu_si128((const __m128i *)(const void *)(bytes + index));
+        _mm_storeu_si128((__m128i *)(void *)(bytes + index), _mm_xor_si128(v, k_vec));
+    }
+    return index;
+}
+#endif
+
 static ssize_t xx_xorarchive_view_read(xx_io_device *device, void *data, size_t size)
 {
     xx_xorarchive *archive = device ? (xx_xorarchive *)device->priv : NULL;
     uint8_t *bytes = (uint8_t *)data;
     ssize_t amount;
-    size_t index;
+    size_t index = 0U;
 
     if (!archive || !archive->source || (!data && size != 0U)) return -1;
     if (size == 0U) return 0;
     amount = xx_io_read(archive->source, data, size);
     if (amount <= 0) return amount;
     if ((size_t)amount > size) return -1;
-    for (index = 0U; index < (size_t)amount; ++index) bytes[index] = archive->table[bytes[index]];
+
+    if (archive->rotation == 0U) {
+        uint8_t key = archive->key;
+#if defined(XX_XORARCHIVE_X86)
+        if (xx_is_avx2_enabled() && ((size_t)amount >= 32U))
+            index = xx_xorarchive_xor_avx2(bytes, (size_t)amount, key);
+        if (xx_is_sse2_enabled() && (index + 16U <= (size_t)amount))
+            index += xx_xorarchive_xor_sse2(bytes + index, (size_t)amount - index, key);
+#endif
+        for (; index + 8U <= (size_t)amount; index += 8U) {
+            uint64_t val;
+            uint64_t k8 = ((uint64_t)key) * 0x0101010101010101ULL;
+            memcpy(&val, bytes + index, sizeof(uint64_t));
+            val ^= k8;
+            memcpy(bytes + index, &val, sizeof(uint64_t));
+        }
+        for (; index < (size_t)amount; ++index) {
+            bytes[index] ^= key;
+        }
+    } else {
+        const uint8_t *tbl = archive->table;
+        for (; index + 4U <= (size_t)amount; index += 4U) {
+            uint8_t b0 = tbl[bytes[index + 0U]];
+            uint8_t b1 = tbl[bytes[index + 1U]];
+            uint8_t b2 = tbl[bytes[index + 2U]];
+            uint8_t b3 = tbl[bytes[index + 3U]];
+            bytes[index + 0U] = b0;
+            bytes[index + 1U] = b1;
+            bytes[index + 2U] = b2;
+            bytes[index + 3U] = b3;
+        }
+        for (; index < (size_t)amount; ++index) {
+            bytes[index] = tbl[bytes[index]];
+        }
+    }
     return amount;
 }
 

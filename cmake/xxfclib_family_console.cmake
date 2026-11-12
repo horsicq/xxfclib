@@ -20,15 +20,19 @@
 #                               include/xxfclib/algo/<codec> and
 #                               src/algo/<codec> become include directories
 #       [SORT]                  the family reads with src/sort
+#       [CODEPAGES]             the family's readers look up codepages other
+#                               than CP437 and Unicode: link every table
 #       [ENGINE <file>...]      extra src/xfileunpacker sources
 #       [ENGINE_DEFINES <d>...] PRIVATE definitions of the unpacker core
 #       [INCLUDE_DIRS <dir>...] extra root-relative PRIVATE include directories)
 #
 # Exports xxfclib::<name>, xxfclib::xfileunpacker_<name>_core and
 # xxfclib::archive_console_<name>. The property XXFCLIB_FAMILY_SOURCE_LIST of
-# xxfclib::<name> lists every C source behind the library.
+# xxfclib::<name> lists every C source behind the library and
+# XXFCLIB_FAMILY_FORMATS its FORMATS (the first is the console profile).
+# One component per family lives in cmake/formats/xxfclib_<name>_console.cmake.
 include_guard(GLOBAL)
-include("${CMAKE_CURRENT_LIST_DIR}/xxfclib_zip.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/formats/xxfclib_zip.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/xxfclib_family_sources.cmake")
 if(MSVC)
     enable_language(ASM_MASM)
@@ -111,6 +115,64 @@ function(_xxfclib_family_runtime objects sources)
     set(${sources} "${_selected}" PARENT_SCOPE)
 endfunction()
 
+# The runtime with every codepage table, compiled once as
+# xxfclib_family_runtime_codepages, for the families whose readers look up a
+# page other than CP437 and the Unicode encodings (Mac Roman names in
+# BinHex and HFS, EBCDIC in VMARC, Windows and ISO pages in installers):
+# xx_codepage_by_number() returns NULL for a page that is not linked and
+# those readers then refuse the archive. The registry is compiled through a
+# wrapper so that the CP437-only source property of xx_codepage.c, set by
+# xxfclib_codepages.cmake for the plain runtime, does not apply to it. The
+# East Asian tables follow XXFC_CODEPAGE_JAPANESE, _CHINESE and _KOREAN.
+function(_xxfclib_family_runtime_codepages objects sources)
+    get_filename_component(_root "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/.." ABSOLUTE)
+    if(NOT TARGET xxfclib_family_runtime_codepages)
+        _xxfclib_family_runtime(_plain_objects _plain)
+        set(_selected)
+        foreach(_source IN LISTS _plain)
+            if(NOT _source MATCHES "/src/codepages/")
+                list(APPEND _selected "${_source}")
+            endif()
+        endforeach()
+        file(GLOB _tables "${_root}/src/codepages/xx_codepage_*.c")
+        set(_definitions)
+        foreach(_table IN LISTS _tables)
+            get_filename_component(_name "${_table}" NAME)
+            if(_name STREQUAL "xx_codepage_cp932.c")
+                if(NOT XXFC_CODEPAGE_JAPANESE)
+                    continue()
+                endif()
+                list(APPEND _definitions XXFC_CODEPAGE_JAPANESE)
+            elseif(_name MATCHES "^xx_codepage_cp9(36|50)\\.c$")
+                if(NOT XXFC_CODEPAGE_CHINESE)
+                    continue()
+                endif()
+                list(APPEND _definitions XXFC_CODEPAGE_CHINESE)
+            elseif(_name STREQUAL "xx_codepage_cp949.c")
+                if(NOT XXFC_CODEPAGE_KOREAN)
+                    continue()
+                endif()
+                list(APPEND _definitions XXFC_CODEPAGE_KOREAN)
+            endif()
+            list(APPEND _selected "${_table}")
+        endforeach()
+        list(REMOVE_DUPLICATES _definitions)
+        set(_registry "${CMAKE_CURRENT_BINARY_DIR}/xxfclib_family_codepages/xx_codepage_all.c")
+        file(WRITE "${_registry}"
+            "/* Generated: the codepage registry with every linked table. */\n"
+            "#include \"${_root}/src/codepages/xx_codepage.c\"\n")
+        set_source_files_properties("${_registry}" PROPERTIES COMPILE_DEFINITIONS "${_definitions}")
+        list(APPEND _selected "${_registry}")
+        add_library(xxfclib_family_runtime_codepages OBJECT EXCLUDE_FROM_ALL ${_selected})
+        _xxfclib_family_configure(xxfclib_family_runtime_codepages)
+        target_include_directories(xxfclib_family_runtime_codepages PRIVATE "${_root}/src/codepages")
+        set_property(TARGET xxfclib_family_runtime_codepages PROPERTY XXFCLIB_FAMILY_SOURCE_LIST "${_selected}")
+    endif()
+    get_target_property(_selected xxfclib_family_runtime_codepages XXFCLIB_FAMILY_SOURCE_LIST)
+    set(${objects} "$<TARGET_OBJECTS:xxfclib_family_runtime_codepages>" PARENT_SCOPE)
+    set(${sources} "${_selected}" PARENT_SCOPE)
+endfunction()
+
 # The object library of one source directory of the table, created on first
 # use. <objects> receives $<TARGET_OBJECTS:...>, empty when the directory is
 # not in the table; <sources> its absolute sources. Platform halves follow the
@@ -169,7 +231,7 @@ function(xxfclib_add_family_console name)
     if(TARGET "xxfclib_${name}")
         return()
     endif()
-    cmake_parse_arguments(_family "SORT" ""
+    cmake_parse_arguments(_family "SORT;CODEPAGES" ""
         "FORMATS;SOURCES;CODECS;ENGINE;ENGINE_DEFINES;INCLUDE_DIRS" ${ARGN})
     if(_family_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR "xxfclib_add_family_console(${name}): unknown arguments "
@@ -191,7 +253,10 @@ function(xxfclib_add_family_console name)
             list(APPEND _compiled "${_root}/${_flag}")
         endif()
     endforeach()
-    set(_directories)
+    # xx_store_prepare_source() in the shared store runtime computes CRC-32.
+    # Keep that runtime dependency available even for readers with no checksum
+    # codec of their own. The object directories are shared and deduplicated.
+    set(_directories src/algo/crc src/algo/crc/platforms)
     foreach(_source IN LISTS _family_SOURCES)
         if(NOT EXISTS "${_root}/${_source}")
             message(FATAL_ERROR "xxfclib_add_family_console(${name}): no source ${_source}")
@@ -211,8 +276,13 @@ function(xxfclib_add_family_console name)
     endif()
     list(REMOVE_DUPLICATES _directories)
 
-    # Linked once compiled: the runtime and the named directories.
-    _xxfclib_family_runtime(_objects _listed)
+    # Linked once compiled: the runtime (with every codepage table for a
+    # CODEPAGES family) and the named directories.
+    if(_family_CODEPAGES)
+        _xxfclib_family_runtime_codepages(_objects _listed)
+    else()
+        _xxfclib_family_runtime(_objects _listed)
+    endif()
     foreach(_directory IN LISTS _directories)
         _xxfclib_family_directory_objects("${_directory}" _directory_objects _directory_sources)
         if(_directory_objects)
@@ -264,6 +334,7 @@ function(xxfclib_add_family_console name)
         target_include_directories("${_library}" PRIVATE "${_root}/${_dir}")
     endforeach()
     set_property(TARGET "${_library}" PROPERTY XXFCLIB_FAMILY_SOURCE_LIST "${_listed};${_compiled}")
+    set_property(TARGET "${_library}" PROPERTY XXFCLIB_FAMILY_FORMATS "${_family_FORMATS}")
     xxfclib_configure_arm_accel_sources("${_root}")
 
     set(_engine "${_root}/src/xfileunpacker")

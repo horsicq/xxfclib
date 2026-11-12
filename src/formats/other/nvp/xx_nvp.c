@@ -148,5 +148,5 @@ static Abstractformat *nvp_open(xx_io_device *device)
     return xx_nvp_create(device, 0);
 }
 static const xx_file_type_t nvp_types[] = {XX_FILE_TYPE_NVP};
-static const xx_format_search_desc nvp_descriptor = {nvp_types, 1, NULL, 0, nvp_open, xx_nvp_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(nvp, nvp_descriptor)
+const xx_format_search_desc xx_nvp_search_desc = {nvp_types, 1, NULL, 0, nvp_open, xx_nvp_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(nvp, xx_nvp_search_desc)

@@ -232,5 +232,5 @@ static Abstractformat *xx_rdc_open(xx_io_device *d)
     return xx_rdc_create(d, 0);
 }
 static const xx_file_type_t xx_rdc_types[] = {XX_FILE_TYPE_RDC};
-static const xx_format_search_desc xx_rdc_desc = {xx_rdc_types, 1, NULL, 0, xx_rdc_open, xx_rdc_free, true};
-XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(rdc, xx_rdc_desc)
+const xx_format_search_desc xx_rdc_search_desc = {xx_rdc_types, 1, NULL, 0, xx_rdc_open, xx_rdc_free, true};
+XX_FORMAT_DEFINE_ABSTRACT_EXTRACTOR(rdc, xx_rdc_search_desc)

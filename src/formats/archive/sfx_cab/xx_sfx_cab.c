@@ -164,6 +164,98 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
 /* The generic CAB reader already validates the folder/file graph and knows
  * how to decode its compression methods. Locate a CAB within a validated PE
  * carrier and delegate the archive members instead of exposing payload.cab. */
+/* The CAB specification's CSUMCompute. */
+static uint32_t sfx_cab_csum(const uint8_t *p, size_t n, uint32_t seed)
+{
+    uint32_t csum = seed, tail = 0;
+    size_t i = 0;
+    for (; i + 4 <= n; i += 4) csum ^= xx_data_get_u32(p + i, 4, 0, false);
+    /* The leftover bytes, first byte highest, as the specification's
+     * fall-through switch shifts them. */
+    switch (n - i) {
+    case 3:
+        tail = ((uint32_t)p[i] << 16) | ((uint32_t)p[i + 1] << 8) | p[i + 2];
+        break;
+    case 2:
+        tail = ((uint32_t)p[i] << 8) | p[i + 1];
+        break;
+    case 1:
+        tail = p[i];
+        break;
+    default:
+        break;
+    }
+    return csum ^ tail;
+}
+
+/* Skip a NUL-terminated cabinet name (szCabinetPrev and friends), window by
+ * window up to the cabinet's end. */
+static bool sfx_cab_skip_string(Abstractformat *format, int64_t *at, int64_t limit)
+{
+    uint8_t b[256];
+    while (*at < limit) {
+        size_t n = limit - *at > (int64_t)sizeof(b) ? sizeof(b) : (size_t)(limit - *at), i;
+        if (!pm_read(format, *at, b, n)) return false;
+        for (i = 0; i < n; ++i) {
+            if (!b[i]) {
+                *at += (int64_t)i + 1;
+                return true;
+            }
+        }
+        *at += (int64_t)n;
+    }
+    return false;
+}
+
+/* A cabinet whose header survives inside foreign framing (7-Zip keeps an
+ * incompressible file as raw LZMA2 chunks that cut it every 64 KiB) parses
+ * but cannot be read. The first data blocks of the first folder, 128 KiB
+ * or four blocks, must carry correct checksums when they carry any. */
+static bool sfx_cab_blocks_ok(Abstractformat *format, int64_t at, const uint8_t *header, xx_pd_struct *pd)
+{
+    uint8_t folder[8], block[8 + 255], *data;
+    uint32_t cabinet = xx_data_get_u32(header + 8, 4, 0, false), start;
+    uint16_t flags = xx_data_get_u16(header + 30, 2, 0, false), count, i, data_reserve = 0;
+    int64_t limit = at + cabinet, folder_at = at + 36, p;
+    bool ok = true;
+    if (flags & 4U) {
+        uint8_t reserve[4];
+        if (folder_at > limit - 4 || !pm_read(format, folder_at, reserve, sizeof(reserve))) return false;
+        data_reserve = reserve[3];
+        folder_at += 4 + xx_data_get_u16(reserve, 2, 0, false);
+    }
+    if (folder_at > limit) return false;
+    if ((flags & 1U) && (!sfx_cab_skip_string(format, &folder_at, limit) || !sfx_cab_skip_string(format, &folder_at, limit))) return false;
+    if ((flags & 2U) && (!sfx_cab_skip_string(format, &folder_at, limit) || !sfx_cab_skip_string(format, &folder_at, limit))) return false;
+    if (folder_at > limit - 8 || !pm_read(format, folder_at, folder, sizeof(folder))) return false;
+    start = xx_data_get_u32(folder, 4, 0, false);
+    count = xx_data_get_u16(folder + 4, 2, 0, false);
+    if (!count || start < 36U || start >= cabinet) return false;
+    if (count > 4U) count = 4U;
+    data = (uint8_t *)xx_mem_alloc(65536U);
+    if (!data) return false;
+    p = at + start;
+    for (i = 0; ok && i < count; ++i) {
+        uint32_t csum;
+        uint16_t bytes;
+        if (carrier_stop(pd) || p > limit - (8 + data_reserve) || !pm_read(format, p, block, 8U + data_reserve)) {
+            ok = false;
+            break;
+        }
+        csum = xx_data_get_u32(block, 4, 0, false);
+        bytes = xx_data_get_u16(block + 4, 2, 0, false);
+        p += 8 + data_reserve;
+        if (!bytes || bytes > 65535U || p > limit - bytes || !pm_read(format, p, data, bytes)) {
+            ok = false;
+            break;
+        }
+        if (csum && sfx_cab_csum(block + 4, 4U + data_reserve, sfx_cab_csum(data, bytes, 0)) != csum) ok = false;
+        p += bytes;
+    }
+    xx_mem_free(data);
+    return ok;
+}
+
 static bool sfx_cab_probe_at(Abstractformat *format, pm_stream *unused, int64_t at, xx_pd_struct *pd)
 {
     xx_sfx_cab *archive = (xx_sfx_cab *)format;
@@ -178,6 +270,7 @@ static bool sfx_cab_probe_at(Abstractformat *format, pm_stream *unused, int64_t 
         (xx_data_get_u16(header + 30, 2, 0, false) & ~7U) != 0U || xx_data_get_u32(header + 8, 4, 0, false) < 36U ||
         xx_data_get_u32(header + 8, 4, 0, false) > (uint64_t)(total - at) || xx_data_get_u32(header + 16, 4, 0, false) >= xx_data_get_u32(header + 8, 4, 0, false))
         return false;
+    if (!sfx_cab_blocks_ok(format, at, header, pd)) return false;
     xx_cab_init(&candidate, format->device, format->base_address + at);
     valid = xx_cab_handle_base_info(&candidate.format, pd) && candidate.number_of_records != 0U && candidate.number_of_records <= 65535U &&
             candidate.format.format_size >= 36 && candidate.format.format_size <= total - at;
@@ -188,6 +281,17 @@ static bool sfx_cab_probe_at(Abstractformat *format, pm_stream *unused, int64_t 
 
 #include "xx_sfx_cab_legacy_bss.h"
 #include "xx_sfx_cab_resources.h"
+/* The candidate budget counts plausible cabinet headers, not every
+ * occurrence of the marker: stub code and strings embed "MSCF" bytes. */
+static bool sfx_cab_header_plausible(const uint8_t *data, size_t size, size_t index)
+{
+    const uint8_t *h = data + index;
+    return index + 36U <= size &&
+           xx_data_get_u32(h + 4, 4, 0, false) == 0U && xx_data_get_u32(h + 12, 4, 0, false) == 0U &&
+           xx_data_get_u32(h + 20, 4, 0, false) == 0U && h[24] == 3U && h[25] == 1U &&
+           xx_data_get_u16(h + 26, 2, 0, false) != 0U && xx_data_get_u16(h + 28, 2, 0, false) != 0U &&
+           (xx_data_get_u16(h + 30, 2, 0, false) & ~7U) == 0U;
+}
 static bool sfx_cab_find(xx_sfx_cab *archive, xx_pd_struct *pd)
 {
     int64_t low, total;
@@ -210,6 +314,7 @@ static bool sfx_cab_find(xx_sfx_cab *archive, xx_pd_struct *pd)
     for (index = 0U; index + 36U <= size; ++index) {
         if ((index & 65535U) == 0U && carrier_stop(pd)) break;
         if (data[index] != 'M' || data[index + 1U] != 'S' || data[index + 2U] != 'C' || data[index + 3U] != 'F') continue;
+        if (!sfx_cab_header_plausible(data, size, index)) continue;
         if (++candidates > 16U) break;
         if (sfx_cab_probe_at(&archive->format, NULL, low + (int64_t)index, pd)) {
             xx_mem_free(data);
