@@ -43,6 +43,11 @@ XXFC_API xx_regex *xx_regex_compile(const char *pattern, const char *flags, char
  * each of g, i, m at most once; unknown/duplicate flags are syntax errors. */
 XXFC_API xx_regex *xx_regex_compile_n(const char *pattern, size_t pattern_size, const char *flags,
                                      size_t flags_size, char **error);
+/* Optional byte-scanner dialect. Existing compile functions keep their JS
+ * byte/Latin-1 behavior. RAW_BYTES gives every subject byte its own position. */
+enum { XX_REGEX_RAW_BYTES = 1u, XX_REGEX_DOTALL = 2u };
+XXFC_API xx_regex *xx_regex_compile_n_options(const char *pattern, size_t pattern_size,
+    const char *flags, size_t flags_size, unsigned options, char **error);
 XXFC_API xx_regex *xx_regex_ref(xx_regex *regex);
 XXFC_API void xx_regex_free(xx_regex *regex);
 XXFC_API int xx_regex_ngroups(const xx_regex *regex);
@@ -76,6 +81,16 @@ typedef bool (*xx_regex_abort_fn)(void *user);
  * captures to -1. NULL callback retains the legacy native search fast paths. */
 XXFC_API xx_regex_exec_status xx_regex_exec_ex(const xx_regex *regex, const char *text, size_t text_size,
     size_t start, int32_t *caps, xx_regex_abort_fn should_abort, void *abort_user);
+enum {
+    XX_REGEX_ANCHORED = 1u, XX_REGEX_ENDANCHORED = 2u,
+    XX_REGEX_NOTBOL = 4u, XX_REGEX_NOTEOL = 8u
+};
+/* Path control returns 0 to continue, positive to reject the current path and
+ * backtrack, or negative to cancel the search. Captures retain byte offsets. */
+typedef int (*xx_regex_path_fn)(void *user, size_t start, size_t position);
+XXFC_API xx_regex_exec_status xx_regex_exec_controlled(const xx_regex *regex,
+    const char *text, size_t text_size, size_t start, int32_t *caps, unsigned options,
+    xx_regex_abort_fn should_abort, void *abort_user, xx_regex_path_fn path, void *path_user);
 #ifdef __cplusplus
 }
 #endif

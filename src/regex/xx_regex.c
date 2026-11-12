@@ -90,6 +90,7 @@ struct xx_regex {
     int bIgnoreCase;
     int bMultiline;
     int nGroups;
+    unsigned options;
     REAlt *pAlts;
     int nAltCount;
     int bAllAnchored;
@@ -515,14 +516,14 @@ static RENode *parse_class(REParser *pParser)
 
             if ((unsigned char)*pParser->p == 0xC2 || (unsigned char)*pParser->p == 0xC3) {
                 int nWidth;
-                nFrom = latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth);
+                nFrom = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
                 pParser->p += nWidth;
             } else {
                 nFrom = parse_escape_char(pParser);
             }
         } else {
             int nWidth;
-            nFrom = latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth);
+            nFrom = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
             pParser->p += nWidth;
         }
 
@@ -536,14 +537,14 @@ static RENode *parse_class(REParser *pParser)
                 pParser->p++;
                 if (pParser->p < pParser->pEnd && ((unsigned char)*pParser->p == 0xC2 || (unsigned char)*pParser->p == 0xC3)) {
                     int nWidth;
-                    nTo = latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth);
+                    nTo = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
                     pParser->p += nWidth;
                 } else {
                     nTo = parse_escape_char(pParser);
                 }
             } else {
                 int nWidth;
-                nTo = latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth);
+                nTo = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
                 pParser->p += nWidth;
             }
 
@@ -1094,8 +1095,24 @@ xx_regex *xx_regex_compile_with_allocator(const char *pPattern, const char *pFla
                                              pFlags, pFlags ? xx_rt_strlen(pFlags) : 0, ppError, pAllocator);
 }
 
+static xx_regex *regex_compile_options(const char *pPattern, size_t nPatternSize, const char *pFlags,
+    size_t nFlagsSize, char **ppError, const xx_regex_allocator *pAllocator, unsigned options);
+
+xx_regex *xx_regex_compile_n_options(const char *pattern, size_t pattern_size,
+    const char *flags, size_t flags_size, unsigned options, char **error)
+{
+    if (options & ~(XX_REGEX_RAW_BYTES | XX_REGEX_DOTALL)) return NULL;
+    return regex_compile_options(pattern, pattern_size, flags, flags_size, error, NULL, options);
+}
+
 xx_regex *xx_regex_compile_n_with_allocator(const char *pPattern, size_t nPatternSize, const char *pFlags,
                                            size_t nFlagsSize, char **ppError, const xx_regex_allocator *pAllocator)
+{
+    return regex_compile_options(pPattern, nPatternSize, pFlags, nFlagsSize, ppError, pAllocator, 0);
+}
+
+static xx_regex *regex_compile_options(const char *pPattern, size_t nPatternSize, const char *pFlags,
+    size_t nFlagsSize, char **ppError, const xx_regex_allocator *pAllocator, unsigned options)
 {
     xx_regex *pRegExp;
     REParser parser;
@@ -1123,6 +1140,7 @@ xx_regex *xx_regex_compile_n_with_allocator(const char *pPattern, size_t nPatter
         return NULL;
     }
     pRegExp->nRefs = 1;
+    pRegExp->options = options;
     pRegExp->nSourceSize = nPatternSize;
     pRegExp->nFlagsSize = nFlagsSize;
     pRegExp->pSource = regex_strndup(pPattern, nPatternSize, pAllocator);
@@ -1316,6 +1334,9 @@ typedef struct {
     xx_regex_abort_fn should_abort;
     void *abort_user;
     size_t poll_work;
+    unsigned options;
+    xx_regex_path_fn path;
+    void *path_user;
 } REMatcher;
 
 static int matcher_abort(REMatcher *matcher, xx_regex_exec_status status)
@@ -1443,10 +1464,10 @@ static int single_match(REMatcher *pMatcher, RENode *pNode, size_t nPos)
 
             return (nChar == pNode->nChar) ? 1 : 0;
 
-        case RE_ANY: nChar = latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth); return (nChar != '\n' && nChar != '\r') ? nWidth : 0;
+        case RE_ANY: nChar = (pMatcher->pRegExp->options & XX_REGEX_RAW_BYTES) ? (unsigned char)pMatcher->pText[nPos] : latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth); return ((pMatcher->pRegExp->options & XX_REGEX_DOTALL) || (nChar != '\n' && nChar != '\r')) ? nWidth : 0;
 
         case RE_CLASS:
-            nChar = latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth);
+            nChar = (pMatcher->pRegExp->options & XX_REGEX_RAW_BYTES) ? (unsigned char)pMatcher->pText[nPos] : latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth);
             if (class_get(pNode->pClass, nChar)) {
                 return nWidth;
             }
@@ -1595,7 +1616,7 @@ static int m_simple(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nP
             break;
         }
 
-        if ((pNode->type == RE_CLASS || pNode->type == RE_ANY) && nCurrent >= nPos + 2 &&
+        if (!(pMatcher->pRegExp->options & XX_REGEX_RAW_BYTES) && (pNode->type == RE_CLASS || pNode->type == RE_ANY) && nCurrent >= nPos + 2 &&
             ((unsigned char)pMatcher->pText[nCurrent - 2] == 0xC2 || (unsigned char)pMatcher->pText[nCurrent - 2] == 0xC3) &&
             (unsigned char)pMatcher->pText[nCurrent - 1] >= 0x80 && (unsigned char)pMatcher->pText[nCurrent - 1] <= 0xBF) {
             nCurrent -= 2;
@@ -1783,7 +1804,13 @@ static int m_cont(REMatcher *pMatcher, RECont *pCont, size_t nPos, size_t *pnEnd
     if (!matcher_work(pMatcher, 1)) return 0;
     if (pMatcher->nDepth >= RE_MAX_DEPTH) return matcher_abort(pMatcher, XX_REGEX_EXEC_BUDGET);
 
+    if (pMatcher->path) {
+        int control = pMatcher->path(pMatcher->path_user, pMatcher->nSearchStart, nPos);
+        if (control < 0) return matcher_abort(pMatcher, XX_REGEX_EXEC_CANCELLED);
+        if (control > 0) return 0;
+    }
     if (pCont == NULL) {
+        if ((pMatcher->options & XX_REGEX_ENDANCHORED) && nPos != pMatcher->nSize) return 0;
         *pnEnd = nPos;
 
         return 1;
@@ -1825,14 +1852,14 @@ static int m_node(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nPos
 
     switch (pNode->type) {
         case RE_BOL:
-            if ((nPos == 0) || (pMatcher->pRegExp->bMultiline && (pMatcher->pText[nPos - 1] == '\n' || pMatcher->pText[nPos - 1] == '\r'))) {
+            if ((nPos == 0 && !(pMatcher->options & XX_REGEX_NOTBOL)) || (pMatcher->pRegExp->bMultiline && (pMatcher->pText[nPos - 1] == '\n' || pMatcher->pText[nPos - 1] == '\r'))) {
                 return m_after(pMatcher, pNode, pCont, nPos, pnEnd);
             }
 
             return 0;
 
         case RE_EOL:
-            if ((nPos == pMatcher->nSize) || (pMatcher->pRegExp->bMultiline && (pMatcher->pText[nPos] == '\n' || pMatcher->pText[nPos] == '\r'))) {
+            if ((nPos == pMatcher->nSize && !(pMatcher->options & XX_REGEX_NOTEOL)) || (pMatcher->pRegExp->bMultiline && (pMatcher->pText[nPos] == '\n' || pMatcher->pText[nPos] == '\r'))) {
                 return m_after(pMatcher, pNode, pCont, nPos, pnEnd);
             }
 
@@ -1985,8 +2012,15 @@ static int m_node(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nPos
     }
 }
 
-xx_regex_exec_status xx_regex_exec_ex(const xx_regex *pRegExp, const char *pText, size_t nTextSize, size_t nStart,
-    int32_t *pnCaps, xx_regex_abort_fn should_abort, void *abort_user)
+xx_regex_exec_status xx_regex_exec_ex(const xx_regex *regex, const char *text, size_t size, size_t start,
+    int32_t *caps, xx_regex_abort_fn should_abort, void *abort_user)
+{
+    return xx_regex_exec_controlled(regex, text, size, start, caps, 0, should_abort, abort_user, NULL, NULL);
+}
+
+xx_regex_exec_status xx_regex_exec_controlled(const xx_regex *pRegExp, const char *pText, size_t nTextSize, size_t nStart,
+    int32_t *pnCaps, unsigned options, xx_regex_abort_fn should_abort, void *abort_user,
+    xx_regex_path_fn path, void *path_user)
 {
     REMatcher matcher;
     size_t nPos = 0;
@@ -2006,6 +2040,9 @@ xx_regex_exec_status xx_regex_exec_ex(const xx_regex *pRegExp, const char *pText
     matcher.should_abort = should_abort;
     matcher.abort_user = abort_user;
     matcher.poll_work = 0;
+    matcher.options = options;
+    matcher.path = path;
+    matcher.path_user = path_user;
     matcher.pSearchPrefix = NULL;
     if (pRegExp->nAltCount == 1 && pRegExp->pAlts[0].pFirst) {
         RENode *pFirst = pRegExp->pAlts[0].pFirst;
@@ -2028,6 +2065,7 @@ xx_regex_exec_status xx_regex_exec_ex(const xx_regex *pRegExp, const char *pText
     if (!matcher_poll(&matcher)) goto finished;
 
     for (nPos = nStart; nPos <= nTextSize; nPos++) {
+        if ((options & XX_REGEX_ANCHORED) && nPos != nStart) break;
         int i = 0;
 
         if (pRegExp->bAllAnchored && nPos != 0) {
@@ -2113,7 +2151,8 @@ xx_regex_exec_status xx_regex_exec_ex(const xx_regex *pRegExp, const char *pText
         }
         if (nPos < nTextSize) {
             int nWidth;
-            latin1_at(pText, nTextSize, nPos, &nWidth);
+            if (pRegExp->options & XX_REGEX_RAW_BYTES) nWidth = 1;
+            else latin1_at(pText, nTextSize, nPos, &nWidth);
             nPos += (size_t)nWidth - 1;
         }
     }
