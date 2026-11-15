@@ -381,10 +381,28 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/crc/xx_crc.h
     include/xxfclib/algo/md5/xx_md5.h
     include/xxfclib/algo/sha/xx_sha.h
+    include/xxfclib/algo/literal/xx_literal.h
+    include/xxfclib/algo/literal_nocase/xx_literal_nocase.h
+    include/xxfclib/algo/bignum/xx_bignum.h
+    include/xxfclib/algo/dsa/xx_dsa.h
+    include/xxfclib/algo/ec/xx_ec.h
+    include/xxfclib/algo/md2/xx_md2.h
+    include/xxfclib/algo/pki/xx_pki_verify.h
+    include/xxfclib/algo/rsa/xx_rsa.h
+    include/xxfclib/algo/sha512/xx_sha512.h
+    include/xxfclib/algo/asn1/xx_asn1.h
+    include/xxfclib/algo/pkcs7/xx_authenticode.h
+    include/xxfclib/algo/pkcs7/xx_pkcs7.h
+    include/xxfclib/algo/pkcs7/xx_tsp.h
+    include/xxfclib/algo/x509/xx_x509.h
     include/xxfclib/algo/adler32/xx_adler32.h
     include/xxfclib/algo/lzfse/xx_lzfse.h
     include/xxfclib/algo/blake2/xx_blake2.h
     include/xxfclib/algo/entropy/xx_entropy.h
+    include/xxfclib/algo/bytestats/xx_bytestats.h
+    include/xxfclib/algo/maskscan/xx_maskscan.h
+    include/xxfclib/algo/tlsh/xx_tlsh.h
+    include/xxfclib/algo/base64/xx_base64.h
     include/xxfclib/algo/kpa/xx_kpa.h
     include/xxfclib/algo/store/xx_store.h
     include/xxfclib/algo/deflate/xx_deflate.h
@@ -811,6 +829,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/executable/dotnet/xx_dotnet_reader.h
     include/xxfclib/formats/executable/pe/xx_pe.h
     include/xxfclib/formats/executable/pe/xx_pe_make.h
+    include/xxfclib/formats/executable/pe/xx_pe_yx.h
     include/xxfclib/formats/executable/elf/xx_elf_inspect.h
     include/xxfclib/formats/executable/elf/xx_elf.h
     include/xxfclib/formats/executable/elf/xx_elf_dwarf.h
@@ -1962,6 +1981,7 @@ set(XXFCLIB_SOURCES
     src/js/xx_js_builtins.c
     src/regex/xx_regex.c
     src/regex/xx_regex_search.c
+    src/regex/xx_regex_unicode.c
     src/regex/xx_regex_js.c
     src/regex/xx_regex_js_lex.c
     src/regex/xx_regex_js_strings.c
@@ -2014,6 +2034,7 @@ set(XXFCLIB_SOURCES
     src/die_engine/xx_die_engine_xdisasm.c
     src/formats/executable/pe/xx_pe_inspect.c
     src/formats/executable/pe/xx_pe_unwind_validate.c
+    src/formats/executable/pe/xx_pe_yx.c
     src/formats/executable/pe/xx_pe_import.c
     src/formats/executable/pe/xx_pe_export.c
     src/formats/executable/pe/xx_pe_metadata.c
@@ -2083,10 +2104,27 @@ set(XXFCLIB_SOURCES
     src/var/xx_var.c
     src/algo/crc/xx_crc.c
     src/algo/md5/xx_md5.c
+    src/algo/literal/xx_literal.c
+    src/algo/literal_nocase/xx_literal_nocase.c
+    src/algo/literal/xx_literal_ssse3.c
+    src/algo/literal/xx_literal_avx2.c
     src/algo/sha/xx_sha.c
     src/algo/sha/xx_sha_simd.c
     src/algo/sha/platforms/xx_sha_neon.c
     src/algo/sha/platforms/xx_sha_arm_crypto.c
+    src/algo/bignum/xx_bignum.c
+    src/algo/dsa/xx_dsa.c
+    src/algo/ec/xx_ec.c
+    src/algo/md2/xx_md2.c
+    src/algo/pki/xx_pki_der_internal.h
+    src/algo/pki/xx_pki_verify.c
+    src/algo/rsa/xx_rsa.c
+    src/algo/sha512/xx_sha512.c
+    src/algo/asn1/xx_asn1.c
+    src/algo/pkcs7/xx_authenticode.c
+    src/algo/pkcs7/xx_pkcs7.c
+    src/algo/pkcs7/xx_tsp.c
+    src/algo/x509/xx_x509.c
     src/algo/adler32/xx_adler32.c
     src/algo/adler32/xx_adler32_io.c
     src/algo/adler32/platforms/xx_adler32_sse2.c
@@ -2112,9 +2150,18 @@ set(XXFCLIB_SOURCES
     src/algo/crc/platforms/xx_crc64_vpclmul.c
     src/algo/blake2/xx_blake2.c
     src/algo/entropy/xx_entropy.c
+    src/algo/entropy/xx_entropy_log2.c
     src/algo/entropy/platforms/xx_entropy_sse2.c
     src/algo/entropy/platforms/xx_entropy_avx2.c
     src/algo/entropy/platforms/xx_entropy_neon.c
+    src/algo/bytestats/xx_bytestats.c
+    src/algo/bytestats/platforms/xx_bytestats_sse2.c
+    src/algo/bytestats/platforms/xx_bytestats_avx2.c
+    src/algo/maskscan/xx_maskscan.c
+    src/algo/maskscan/platforms/xx_maskscan_sse2.c
+    src/algo/maskscan/platforms/xx_maskscan_avx2.c
+    src/algo/tlsh/xx_tlsh.c
+    src/algo/base64/xx_base64.c
     src/algo/kpa/xx_kpa.c
     src/algo/store/xx_store.c
     src/algo/deflate/xx_deflate.c
@@ -5671,8 +5718,11 @@ endif()
 if(MSVC AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(X86|x86|x64|AMD64)$")
     set_source_files_properties(src/algo/adler32/platforms/xx_adler32_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/data/platforms/xx_data_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+    set_source_files_properties(src/algo/literal/xx_literal_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/memory/platforms/xx_memory_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/entropy/platforms/xx_entropy_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+    set_source_files_properties(src/algo/bytestats/platforms/xx_bytestats_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+    set_source_files_properties(src/algo/maskscan/platforms/xx_maskscan_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/lzma/platforms/xx_lzma_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/crc/platforms/xx_crc64_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/deflate/platforms/xx_deflate_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
@@ -5697,6 +5747,8 @@ foreach(_documented_native excelsior fead)
 endforeach()
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/docs/smart-install-maker-coverage.json"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/docs")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.UNICODE"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/licenses/unicode")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/bzip2/LICENSE.bzip2"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/xxfclib/licenses/bzip2")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/algo/wavpack/LICENSE"

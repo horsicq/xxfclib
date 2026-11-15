@@ -418,3 +418,168 @@ bool xx_deflate_compress_memory_with_options_ex(const void *src_buf, size_t src_
     xx_bw_free(&writer);
     return success;
 }
+
+
+/* =========================================================================
+ * Named packing settings (shared by every writer that exposes them)
+ * ========================================================================= */
+
+static const char *const xx_deflate_option_names[XX_DEFLATE_OPTION_COUNT] = {
+    "candidates", "lazy-match", "short-match-filter", "nice-match", "good-match"};
+
+const char *xx_deflate_pack_option_name(xx_deflate_pack_option_id id)
+{
+    return (unsigned)id < (unsigned)XX_DEFLATE_OPTION_COUNT ? xx_deflate_option_names[id] : NULL;
+}
+
+static int xx_deflate_option_lower(int c)
+{
+    return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+}
+
+static bool xx_deflate_option_equal(const char *key, size_t length, const char *name)
+{
+    size_t i;
+    for (i = 0; i < length; ++i)
+        if (!name[i] || xx_deflate_option_lower((unsigned char)key[i]) != name[i]) return false;
+    return name[length] == '\0';
+}
+
+xx_deflate_pack_option_id xx_deflate_pack_option_find(const char *key, size_t key_length)
+{
+    unsigned id;
+    if (!key) return XX_DEFLATE_OPTION_COUNT;
+    for (id = 0; id < (unsigned)XX_DEFLATE_OPTION_COUNT; ++id)
+        if (xx_deflate_option_equal(key, key_length, xx_deflate_option_names[id])) return (xx_deflate_pack_option_id)id;
+    return XX_DEFLATE_OPTION_COUNT;
+}
+
+bool xx_deflate_pack_option_set(xx_deflate_pack_options_ex *options, xx_deflate_pack_option_id id, uint64_t value)
+{
+    if (!options) return false;
+    if (id == XX_DEFLATE_OPTION_SHORT_MATCH_FILTER) {
+        if (value > 1U) return false;
+        options->short_match_filter = value != 0U;
+        return true;
+    }
+    if (value > (uint64_t)SIZE_MAX) return false;
+    switch (id) {
+        case XX_DEFLATE_OPTION_CANDIDATES: options->max_candidates = (size_t)value; return true;
+        case XX_DEFLATE_OPTION_LAZY_MATCH: options->lazy_match_limit = (size_t)value; return true;
+        case XX_DEFLATE_OPTION_NICE_MATCH: options->nice_match = (size_t)value; return true;
+        case XX_DEFLATE_OPTION_GOOD_MATCH: options->good_match = (size_t)value; return true;
+        default: return false;
+    }
+}
+
+bool xx_deflate_pack_option_get(const xx_deflate_pack_options_ex *options, xx_deflate_pack_option_id id, uint64_t *value)
+{
+    if (!options || !value) return false;
+    switch (id) {
+        case XX_DEFLATE_OPTION_CANDIDATES: *value = options->max_candidates; return true;
+        case XX_DEFLATE_OPTION_LAZY_MATCH: *value = options->lazy_match_limit; return true;
+        case XX_DEFLATE_OPTION_SHORT_MATCH_FILTER: *value = options->short_match_filter ? 1U : 0U; return true;
+        case XX_DEFLATE_OPTION_NICE_MATCH: *value = options->nice_match; return true;
+        case XX_DEFLATE_OPTION_GOOD_MATCH: *value = options->good_match; return true;
+        default: return false;
+    }
+}
+
+static bool xx_deflate_option_space(char c)
+{
+    return c == ' ' || c == '\t';
+}
+
+/* Decimal digits only, at most UINT64_MAX; "true"/"false" when allow_bool. */
+static bool xx_deflate_option_number(const char *text, size_t length, bool allow_bool, uint64_t *value)
+{
+    uint64_t result = 0U;
+    size_t i;
+    if (allow_bool && xx_deflate_option_equal(text, length, "true")) { *value = 1U; return true; }
+    if (allow_bool && xx_deflate_option_equal(text, length, "false")) { *value = 0U; return true; }
+    if (!length) return false;
+    for (i = 0; i < length; ++i) {
+        unsigned digit;
+        if (text[i] < '0' || text[i] > '9') return false;
+        digit = (unsigned)(text[i] - '0');
+        if (result > (UINT64_MAX - digit) / 10U) return false;
+        result = result * 10U + digit;
+    }
+    *value = result;
+    return true;
+}
+
+bool xx_deflate_pack_options_parse(xx_deflate_pack_options_ex *options, int *level, const char *text, const char **error_key)
+{
+    xx_deflate_pack_options_ex parsed;
+    int parsed_level;
+    const char *cursor = text;
+    if (error_key) *error_key = NULL;
+    if (!options || !text) return false;
+    parsed = *options;
+    parsed_level = level ? *level : 0;
+    while (*cursor) {
+        const char *pair, *key, *key_end, *value, *value_end, *end;
+        uint64_t number = 0U;
+        while (*cursor == ';' || *cursor == ',' || xx_deflate_option_space(*cursor)) ++cursor;
+        if (!*cursor) break;
+        pair = cursor;
+        end = cursor;
+        while (*end && *end != ';' && *end != ',') ++end;
+        key = pair;
+        key_end = key;
+        while (key_end < end && *key_end != '=') ++key_end;
+        if (key_end == end) goto bad;
+        value = key_end + 1;
+        while (key_end > key && xx_deflate_option_space(key_end[-1])) --key_end;
+        while (value < end && xx_deflate_option_space(*value)) ++value;
+        value_end = end;
+        while (value_end > value && xx_deflate_option_space(value_end[-1])) --value_end;
+        if (level && xx_deflate_option_equal(key, (size_t)(key_end - key), "level")) {
+            if (!xx_deflate_option_number(value, (size_t)(value_end - value), false, &number) || number > (uint64_t)XX_DEFLATE_LEVEL_BEST) goto bad;
+            parsed_level = (int)number;
+        } else {
+            xx_deflate_pack_option_id id = xx_deflate_pack_option_find(key, (size_t)(key_end - key));
+            if (id == XX_DEFLATE_OPTION_COUNT ||
+                !xx_deflate_option_number(value, (size_t)(value_end - value), id == XX_DEFLATE_OPTION_SHORT_MATCH_FILTER, &number) ||
+                !xx_deflate_pack_option_set(&parsed, id, number))
+                goto bad;
+        }
+        cursor = end;
+        continue;
+    bad:
+        if (error_key) *error_key = pair;
+        return false;
+    }
+    *options = parsed;
+    if (level) *level = parsed_level;
+    return true;
+}
+
+size_t xx_deflate_pack_options_format(const xx_deflate_pack_options_ex *options, char *buffer, size_t capacity)
+{
+    char text[XX_DEFLATE_OPTION_COUNT * 48];
+    size_t used = 0U;
+    unsigned id;
+    if (!options) return 0U;
+    for (id = 0; id < (unsigned)XX_DEFLATE_OPTION_COUNT; ++id) {
+        uint64_t value = 0U;
+        char digits[24];
+        size_t n = 0U;
+        const char *name = xx_deflate_option_names[id];
+        (void)xx_deflate_pack_option_get(options, (xx_deflate_pack_option_id)id, &value);
+        do { digits[n++] = (char)('0' + (int)(value % 10U)); value /= 10U; } while (value);
+        if (id) text[used++] = ';';
+        while (*name) text[used++] = *name++;
+        text[used++] = '=';
+        while (n) text[used++] = digits[--n];
+    }
+    text[used] = '\0';
+    if (buffer && capacity) {
+        size_t copy = used < capacity - 1U ? used : capacity - 1U;
+        size_t i;
+        for (i = 0; i < copy; ++i) buffer[i] = text[i];
+        buffer[copy] = '\0';
+    }
+    return used;
+}

@@ -78,3 +78,65 @@ xxfc_status_t xx_terminal_write_color(const xx_terminal_state *state,
     }
     return xx_terminal_write(state, text, size);
 }
+
+static size_t append_number(char *text, size_t offset, unsigned int value)
+{
+    if (value >= 100) text[offset++] = (char)('0' + value / 100);
+    if (value >= 10) text[offset++] = (char)('0' + (value / 10) % 10);
+    text[offset++] = (char)('0' + value % 10);
+    return offset;
+}
+
+/* The SGR parameters of one exact color: the palette's classic code for a
+ * palette color, otherwise 38;2;r;g;b (48;2;r;g;b for a background). */
+static size_t append_exact(char *text, size_t offset, uint32_t rgb, bool background)
+{
+    size_t i;
+    for (i = 0; i < sizeof(palette) / sizeof(palette[0]); ++i)
+        if (palette[i].rgb == rgb) return append_code(text, offset, palette[i].ansi + (background ? 10U : 0U));
+    text[offset++] = background ? '4' : '3';
+    text[offset++] = '8';
+    text[offset++] = ';';
+    text[offset++] = '2';
+    text[offset++] = ';';
+    offset = append_number(text, offset, (rgb >> 16) & 255);
+    text[offset++] = ';';
+    offset = append_number(text, offset, (rgb >> 8) & 255);
+    text[offset++] = ';';
+    return append_number(text, offset, rgb & 255);
+}
+
+xxfc_status_t xx_terminal_write_color_ex(const xx_terminal_state *state,
+    const char *text, size_t size, uint32_t foreground, uint32_t background, uint32_t flags)
+{
+    static const char reset[] = "\033[0m";
+    char span[512];
+    size_t length = 2, i;
+    xxfc_status_t status, restored;
+    if (!(flags & XX_TERMINAL_COLOR_EXACT) || !state || state->type != XX_TERMINAL_TYPE_ANSI)
+        return xx_terminal_write_color(state, text, size, foreground, background);
+    if (!text && size) return XXFC_ERR_NULL_PARAM;
+    if ((foreground != UINT32_MAX && foreground > 0xffffff) ||
+        (background != UINT32_MAX && background > 0xffffff)) return XXFC_ERR_INVALID_ARG;
+    if (!size || !state->valid || !xx_is_color_output_enabled() ||
+        (foreground == UINT32_MAX && background == UINT32_MAX))
+        return xx_terminal_write(state, text, size);
+    /* "\033[" + two parameter lists of at most 16 characters + 'm' */
+    span[0] = '\033';
+    span[1] = '[';
+    if (foreground != UINT32_MAX) length = append_exact(span, length, foreground, false);
+    if (background != UINT32_MAX) {
+        if (foreground != UINT32_MAX) span[length++] = ';';
+        length = append_exact(span, length, background, true);
+    }
+    span[length++] = 'm';
+    if (size <= sizeof(span) - length - (sizeof(reset) - 1)) {
+        for (i = 0; i < size; ++i) span[length + i] = text[i];
+        for (i = 0; i < sizeof(reset) - 1; ++i) span[length + size + i] = reset[i];
+        return xx_terminal_write(state, span, length + size + sizeof(reset) - 1);
+    }
+    status = xx_terminal_write(state, span, length);
+    if (status == XXFC_OK) status = xx_terminal_write(state, text, size);
+    restored = xx_terminal_write(state, reset, sizeof(reset) - 1);
+    return status != XXFC_OK ? status : restored;
+}

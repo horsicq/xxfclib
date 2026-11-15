@@ -149,6 +149,7 @@ static bool xx_bw_finish(xx_bit_writer *bw)
 static bool xx_bw_write_bytes(xx_bit_writer *bw, const uint8_t *data, size_t size)
 {
     if (bw->error || bw->bit_count != 0) return false;
+    if (size == 0U) return true; /* data may be NULL for an empty stored block */
     if (bw->dev) {
         while (size != 0U) {
             size_t available = bw->buffer_cap - bw->buffer_pos;
@@ -237,7 +238,36 @@ typedef struct {
     int16_t right;
 } xx_huff_node;
 
-#include "xx_sort_algo_deflate_heap.inc"
+/* Leaf indices ordered by (frequency, index): unique 64-bit keys, insertion
+ * sorted in runs of 16 and then merged bottom-up. */
+static void xx_huff_sort_leaves(const xx_huff_node *nodes, int count, int *out)
+{
+    uint64_t buffer_a[XX_DEFLATE_MAX_LIT_LEN_CODES], buffer_b[XX_DEFLATE_MAX_LIT_LEN_CODES];
+    uint64_t *from = buffer_a, *to = buffer_b;
+    for (int i = 0; i < count; ++i) {
+        uint64_t key = ((uint64_t)nodes[i].freq << 16) | (uint64_t)i;
+        int at = i;
+        while ((at & 15) != 0 && from[at - 1] > key) {
+            from[at] = from[at - 1];
+            --at;
+        }
+        from[at] = key;
+    }
+    for (int width = 16; width < count; width *= 2) {
+        for (int lo = 0; lo < count; lo += 2 * width) {
+            int mid = lo + width < count ? lo + width : count;
+            int hi = lo + 2 * width < count ? lo + 2 * width : count;
+            int a = lo, b = mid, o = lo;
+            while (a < mid && b < hi) to[o++] = from[a] < from[b] ? from[a++] : from[b++];
+            while (a < mid) to[o++] = from[a++];
+            while (b < hi) to[o++] = from[b++];
+        }
+        uint64_t *swap = from;
+        from = to;
+        to = swap;
+    }
+    for (int i = 0; i < count; ++i) out[i] = (int)(from[i] & 0xFFFFU);
+}
 
 void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8_t *out_lens, int max_bits)
 {
@@ -264,23 +294,29 @@ void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8
         return;
     }
 
-    /* Combine the two lightest nodes using a heap. Index ties preserve the
-     * previous scan's deterministic ordering without its quadratic work. */
-    int heap[600];
-    int active = 0;
+    /* Combine the two lightest nodes, ordered by (frequency, node index).
+     * Two queues give exactly the order of a priority queue on that key:
+     * the leaves sorted once, and the internal nodes, which are created with
+     * non-decreasing frequencies and increasing indices (all above the leaf
+     * indices, so a leaf wins a frequency tie, as it does in the heap). */
+    int sorted[XX_DEFLATE_MAX_LIT_LEN_CODES];
+    xx_huff_sort_leaves(nodes, num_nodes, sorted);
     int cur_nodes = num_nodes;
-    for (int i = 0; i < num_nodes; ++i) xx_huff_heap_push(nodes, heap, &active, i);
-
-    while (active > 1) {
-        int min1 = xx_huff_heap_pop(nodes, heap, &active);
-        int min2 = xx_huff_heap_pop(nodes, heap, &active);
+    int next_leaf = 0, next_inner = num_nodes;
+    for (int merge = 1; merge < num_nodes; ++merge) {
+        int pick[2];
+        for (int k = 0; k < 2; ++k) {
+            if (next_leaf < num_nodes && (next_inner >= cur_nodes || nodes[sorted[next_leaf]].freq <= nodes[next_inner].freq))
+                pick[k] = sorted[next_leaf++];
+            else
+                pick[k] = next_inner++;
+        }
+        int min1 = pick[0], min2 = pick[1];
 
         nodes[cur_nodes].freq = nodes[min1].freq + nodes[min2].freq;
         nodes[cur_nodes].symbol = 0xFFFF;
         nodes[cur_nodes].left = (int16_t)min1;
         nodes[cur_nodes].right = (int16_t)min2;
-
-        xx_huff_heap_push(nodes, heap, &active, cur_nodes);
         cur_nodes++;
     }
 
@@ -332,11 +368,10 @@ void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8
             --counts[max_bits];
             --used;
         }
-        active = 0;
-        for (int i = 0; i < num_nodes; ++i) xx_huff_heap_push(nodes, heap, &active, i);
+        int at = 0;
         for (int bits = max_bits; bits > 0; --bits)
             for (unsigned i = 0; i < counts[bits]; ++i) {
-                int leaf = xx_huff_heap_pop(nodes, heap, &active);
+                int leaf = sorted[at++];
                 out_lens[nodes[leaf].symbol] = (uint8_t)bits;
             }
     }
@@ -422,26 +457,71 @@ static uint64_t xx_final_block_cost(const xx_bit_writer *bw, uint64_t bits, bool
 
 static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
+/* Raw byte output for the staged token stream (pending bits are kept by the
+ * caller). Same destinations and accounting as xx_bw_put_byte. */
+static bool xx_bw_put_raw(xx_bit_writer *bw, const uint8_t *data, size_t size)
+{
+    if (bw->error) return false;
+    if (bw->dev) {
+        while (size != 0U) {
+            if (bw->buffer_pos >= bw->buffer_cap && !xx_bw_flush_buffer(bw)) return false;
+            size_t chunk = bw->buffer_cap - bw->buffer_pos;
+            if (chunk > size) chunk = size;
+            xx_rt_memcpy(bw->buffer + bw->buffer_pos, data, chunk);
+            bw->buffer_pos += chunk;
+            bw->total_written += (int64_t)chunk;
+            data += chunk;
+            size -= chunk;
+        }
+        return true;
+    }
+    if (bw->mem_dst) {
+        if (bw->mem_cap - bw->mem_written < size) {
+            bw->error = true;
+            return false;
+        }
+        xx_rt_memcpy(bw->mem_dst + bw->mem_written, data, size);
+        bw->mem_written += size;
+    }
+    bw->total_written += (int64_t)size;
+    return true;
+}
+
+#define XX_EMIT_STAGE_TOKENS 384U
+
+static inline void xx_stage_store64(uint8_t *p, uint64_t v)
+{
+#if defined(_M_IX86) || defined(_M_X64) || defined(_M_ARM64) || defined(__i386__) || defined(__x86_64__) || \
+    (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    memcpy(p, &v, sizeof(v));
+#else
+    for (unsigned i = 0; i < 8U; ++i) p[i] = (uint8_t)(v >> (8U * i));
+#endif
+}
+
 static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_tokens, const uint8_t *raw_data, size_t raw_size, bool is_deflate64, bool bfinal)
 {
     uint32_t lit_freq[XX_DEFLATE_MAX_LIT_LEN_CODES] = {0};
-    uint32_t dist_freq[XX_DEFLATE_MAX_DIST_CODES_64] = {0};
+    /* One spare counter absorbs literals in the branch-free count below. */
+    uint32_t dist_freq[XX_DEFLATE_MAX_DIST_CODES_64 + 1] = {0};
     uint64_t extra_bits = 0U;
 
     lit_freq[256] = 1; /* End-of-block */
 
+    /* Literal tokens leave the match fields unset; a mask selects them only
+     * for matches, so mixed literal/match streams cost no mispredictions. */
     for (size_t i = 0; i < num_tokens; ++i) {
-        lit_freq[tokens[i].symbol]++;
-        if (tokens[i].symbol >= 257U) {
-            dist_freq[tokens[i].distance_symbol]++;
-            extra_bits += tokens[i].length_bits + tokens[i].distance_bits;
-        }
+        unsigned symbol = tokens[i].symbol;
+        unsigned match = 0U - (unsigned)(symbol >= 257U);
+        lit_freq[symbol]++;
+        dist_freq[(tokens[i].distance_symbol & match) | (XX_DEFLATE_MAX_DIST_CODES_64 & ~match)]++;
+        extra_bits += (unsigned)(tokens[i].length_bits + tokens[i].distance_bits) & match;
     }
 
     uint8_t lit_lens[XX_DEFLATE_MAX_LIT_LEN_CODES];
-    uint8_t dist_lens[XX_DEFLATE_MAX_DIST_CODES_64];
+    uint8_t dist_lens[XX_DEFLATE_MAX_DIST_CODES_64] = {0};
     uint16_t lit_codes[XX_DEFLATE_MAX_LIT_LEN_CODES];
-    uint16_t dist_codes[XX_DEFLATE_MAX_DIST_CODES_64];
+    uint16_t dist_codes[XX_DEFLATE_MAX_DIST_CODES_64] = {0};
 
     xx_deflate_build_code_lengths(lit_freq, XX_DEFLATE_MAX_LIT_LEN_CODES, lit_lens, 15);
     int max_dists = is_deflate64 ? XX_DEFLATE_MAX_DIST_CODES_64 : XX_DEFLATE_MAX_DIST_CODES_STD;
@@ -624,15 +704,63 @@ static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_
     }
 
     /* Token codes were computed once during match finding. */
-    for (size_t i = 0; i < num_tokens; ++i) {
-        const xx_token *token = &tokens[i];
-        if (!xx_bw_write_bits(bw, lit_codes[token->symbol], lit_lens[token->symbol])) return false;
-        if (token->symbol >= 257U) {
-            if (!xx_bw_write_bits(bw, token->length_extra, token->length_bits) ||
-                !xx_bw_write_bits(bw, dist_codes[token->distance_symbol], dist_lens[token->distance_symbol]) ||
-                !xx_bw_write_bits(bw, token->distance_extra, token->distance_bits))
-                return false;
+    /* Register-cached accumulator: the same LSB-first bit sequence as
+     * xx_bw_write_bits, flushed 32 bits at a time. After a flush fewer than
+     * 32 bits are pending; a literal/length code plus its extra bits adds at
+     * most 15 + 16 and a distance code plus extra at most 15 + 14, so the
+     * 64-bit buffer never overflows between the two flush points. */
+    /* Branch-free variant: the bit stream is the same whatever the flush
+     * granularity, so whole bytes are stored unconditionally (8-byte store,
+     * advance by bits / 8) into a local staging buffer that is copied out per
+     * chunk. Fewer than 8 bits stay pending between the two flush points, so
+     * a literal/length code plus extra (<= 15 + 16) or a distance code plus
+     * extra (<= 15 + 14) never overflows 64 bits. Literal tokens leave the
+     * match fields unset; the mask zeroes their contribution. */
+    {
+        uint8_t stage[XX_EMIT_STAGE_TOKENS * 8U + 16U];
+        uint64_t acc = bw->bit_buf;
+        unsigned acc_bits = (unsigned)bw->bit_count;
+        uint8_t *out = stage;
+        while (acc_bits >= 8U) {
+            *out++ = (uint8_t)acc;
+            acc >>= 8;
+            acc_bits -= 8U;
         }
+        size_t i = 0;
+        while (i < num_tokens) {
+            size_t end = num_tokens - i > XX_EMIT_STAGE_TOKENS ? i + XX_EMIT_STAGE_TOKENS : num_tokens;
+            for (; i < end; ++i) {
+                const xx_token *token = &tokens[i];
+                unsigned symbol = token->symbol;
+                uint64_t match = (uint64_t)0 - (uint64_t)(symbol >= 257U);
+                unsigned n = lit_lens[symbol];
+                acc |= ((uint64_t)lit_codes[symbol] & ((UINT64_C(1) << n) - 1U)) << acc_bits;
+                acc_bits += n;
+                n = (unsigned)(token->length_bits & match);
+                acc |= ((uint64_t)token->length_extra & ((UINT64_C(1) << n) - 1U) & match) << acc_bits;
+                acc_bits += n;
+                xx_stage_store64(out, acc);
+                out += acc_bits >> 3;
+                acc = acc >> (acc_bits & ~7U);
+                acc_bits &= 7U;
+                unsigned dsym = token->distance_symbol & (XX_DEFLATE_MAX_DIST_CODES_64 - 1U);
+                n = (unsigned)(dist_lens[dsym] & match);
+                acc |= ((uint64_t)dist_codes[dsym] & ((UINT64_C(1) << n) - 1U) & match) << acc_bits;
+                acc_bits += n;
+                n = (unsigned)(token->distance_bits & match);
+                acc |= ((uint64_t)token->distance_extra & ((UINT64_C(1) << n) - 1U) & match) << acc_bits;
+                acc_bits += n;
+                xx_stage_store64(out, acc);
+                out += acc_bits >> 3;
+                acc = acc >> (acc_bits & ~7U);
+                acc_bits &= 7U;
+            }
+            if (!xx_bw_put_raw(bw, stage, (size_t)(out - stage))) return false;
+            out = stage;
+        }
+        if (out != stage && !xx_bw_put_raw(bw, stage, (size_t)(out - stage))) return false;
+        bw->bit_buf = acc;
+        bw->bit_count = (int)acc_bits;
     }
 
     /* End-of-block */
@@ -648,10 +776,656 @@ static bool xx_emit_block(xx_bit_writer *bw, const xx_token *tokens, size_t num_
 #define XX_HASH_BITS 15
 #define XX_HASH_SIZE (1 << XX_HASH_BITS)
 #define XX_HASH_MASK (XX_HASH_SIZE - 1)
+#define XX_HASH_EMPTY_AGE UINT32_C(0x80000000)
+#define XX_HASH_SWEEP_SPAN (UINT64_C(1) << 30)
+/* Level 1 does not insert the inside of matches longer than this, only
+ * their last XX_L1_TAIL positions (which start the likely next matches):
+ * runs and long repeats stop costing one hash insert per byte, at a ratio
+ * cost of about 0.1% on executables. */
+#define XX_L1_INSERT_MAX 32U
+#define XX_L1_TAIL 4U
 
 static inline uint32_t xx_calc_hash(const uint8_t *p)
 {
     return ((((uint32_t)p[0] << 10) ^ ((uint32_t)p[1] << 5) ^ (uint32_t)p[2]) & XX_HASH_MASK);
+}
+
+/* ------------------------------------------------------------------------- */
+/* Level 1 match finder (no chains, libdeflate/zlib-ng style). A
+ * multiplicative hash of the next four bytes selects a 32-bit bucket that
+ * holds the low 16 bits of the two most recent positions with that hash
+ * (newest in the low half). Each candidate is rejected with one 4-byte
+ * compare and extended with the shared 8-byte / SIMD compare. A small side
+ * table indexed by three bytes recovers near length-3 matches, which matter
+ * for executables. After a run of failed lookups the parser steps over
+ * several literals at once (not inserted), so incompressible data costs one
+ * lookup per few bytes; a match found afterwards grows backwards over the
+ * pending literals. A maximal match first retries its own distance (runs).
+ * Matches up to XX_L1F_INS_MAX insert every inner position, longer ones
+ * their last XX_L1F_TAIL. Blocks cover up to XX_L1_BLOCK input bytes.
+ * Distances are taken modulo 2^16: one that lands inside the window and the
+ * buffered history addresses real history bytes, so a stale entry only
+ * costs a failed compare and nothing needs aging. */
+#ifndef XX_L1_BITS
+#define XX_L1_BITS 15
+#endif
+#ifndef XX_L1_H3_BITS
+#define XX_L1_H3_BITS 12
+#endif
+#ifndef XX_L1_H3_DIST
+#define XX_L1_H3_DIST 4096U
+#endif
+#ifndef XX_L1_SKIP_SHIFT
+#define XX_L1_SKIP_SHIFT 5
+#endif
+#ifndef XX_L1_SKIP_MAX
+#define XX_L1_SKIP_MAX 32U
+#endif
+#ifndef XX_L1_BACK
+#define XX_L1_BACK 1
+#endif
+#ifndef XX_L1F_INS_MAX
+#define XX_L1F_INS_MAX 8U
+#endif
+#ifndef XX_L1_BLOCK
+#define XX_L1_BLOCK 65536U
+#endif
+#ifndef XX_L1F_TAIL
+#define XX_L1F_TAIL 4U
+#endif
+#ifndef XX_L1_PREFETCH
+#define XX_L1_PREFETCH 1
+#endif
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#define XX_L1_PREFETCH_T0(p) _mm_prefetch((const char *)(p), _MM_HINT_T0)
+#elif defined(__GNUC__) || defined(__clang__)
+#define XX_L1_PREFETCH_T0(p) __builtin_prefetch((p))
+#else
+#define XX_L1_PREFETCH_T0(p) ((void)(p))
+#endif
+#define XX_L1_BUCKETS ((size_t)1 << XX_L1_BITS)
+#if XX_L1_H3_BITS > 0
+#define XX_L1_H3_SIZE ((size_t)1 << XX_L1_H3_BITS)
+#else
+#define XX_L1_H3_SIZE ((size_t)0)
+#endif
+#define XX_L1_TABLE_BYTES (XX_L1_BUCKETS * sizeof(uint32_t) + XX_L1_H3_SIZE * sizeof(uint16_t))
+
+static XX_DEFLATE_INLINE uint32_t xx_l1_load32(const uint8_t *p)
+{
+#if defined(_M_IX86) || defined(_M_X64) || defined(_M_ARM64) || defined(__i386__) || defined(__x86_64__) || \
+    (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    uint32_t v;
+    memcpy(&v, p, sizeof(v));
+    return v;
+#else
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+#endif
+}
+
+static XX_DEFLATE_INLINE uint32_t xx_l1_hash4(uint32_t v)
+{
+    return (v * UINT32_C(0x9E3779B1)) >> (32 - XX_L1_BITS);
+}
+
+#if XX_L1_H3_BITS > 0
+static XX_DEFLATE_INLINE uint32_t xx_l1_hash3(uint32_t v)
+{
+    return ((v << 8) * UINT32_C(0x9E3779B1)) >> (32 - XX_L1_H3_BITS);
+}
+#endif
+
+/* Length of a match whose first four bytes are known equal. */
+static XX_DEFLATE_INLINE size_t xx_l1_extend(const uint8_t *cur, const uint8_t *cand, size_t limit, xx_deflate_match_function match_long)
+{
+    /* Most matches end within the inline 16-byte prefix. */
+    size_t left = limit - 4U, prefix = left < 16U ? left : 16U;
+    size_t length = xx_deflate_match_words(cur + 4U, cand + 4U, prefix);
+    if (length == prefix && length < left) {
+        left -= length;
+        length += match_long && left >= 32U ? match_long(cur + 4U + length, cand + 4U + length, left)
+                                            : xx_deflate_match_words(cur + 4U + length, cand + 4U + length, left);
+    }
+    return 4U + length;
+}
+
+/* Long match: only the last XX_L1F_TAIL positions are inserted. Runs hash
+ * them all to one bucket, so it is updated in a register. */
+static XX_DEFLATE_INLINE void xx_l1_insert_tail(uint32_t *tab, const uint8_t *win, uint64_t base, size_t head, size_t len, size_t tail)
+{
+    uint32_t *last = NULL, value = 0U;
+    for (size_t k = len - XX_L1F_TAIL; k < len && head + k + 4U <= tail; ++k) {
+        uint32_t *s = tab + xx_l1_hash4(xx_l1_load32(win + head + k));
+        if (s != last) {
+            if (last) *last = value;
+            last = s;
+            value = *s;
+        }
+        value = (value << 16) | ((uint32_t)(base + head + k) & 0xFFFFU);
+    }
+    if (last) *last = value;
+}
+
+/* Parse one block starting at *head_io; returns the token count. */
+static size_t xx_l1_parse(const uint8_t *win, size_t *head_io, size_t tail, uint64_t base, size_t win_size, uint32_t *tab, uint16_t *tab3,
+                          xx_token *tokens, xx_deflate_match_function match_long, bool short_filter, bool is_deflate64)
+{
+    size_t head = *head_io, start = head, n = 0U, misses = 0U, lits = 0U;
+    const size_t token_limit = XX_ENC_MAX_TOKENS - 4U - XX_L1_SKIP_MAX;
+    while (head < tail && n < token_limit) {
+        size_t avail = tail - head;
+        if (avail < 4U) {
+            tokens[n++].symbol = win[head++];
+            ++lits;
+            continue;
+        }
+        const uint8_t *cur = win + head;
+        const uint32_t v = xx_l1_load32(cur);
+        const uint32_t pos = (uint32_t)(base + head) & 0xFFFFU;
+        uint32_t *slot = tab + xx_l1_hash4(v);
+        const uint32_t bucket = *slot;
+        *slot = (bucket << 16) | pos;
+        /* Valid distances are 1..reach. */
+        const size_t reach = head < win_size ? head : win_size;
+        const size_t limit = avail < 258U ? avail : 258U;
+        /* Branch-free screening: an invalid distance is replaced by 0 (the
+         * current position, always readable) and masked out of the hit. */
+        const size_t d0 = (pos - bucket) & 0xFFFFU, d1 = (pos - (bucket >> 16)) & 0xFFFFU;
+        const size_t s0 = d0 - 1U < reach ? d0 : 0U, s1 = d1 - 1U < reach ? d1 : 0U;
+        const unsigned hit0 = (s0 != 0U) & (xx_l1_load32(cur - s0) == v);
+        const unsigned hit1 = (s1 != 0U) & (xx_l1_load32(cur - s1) == v);
+#if XX_L1_H3_BITS > 0
+        uint16_t *s3p = tab3 + xx_l1_hash3(v);
+        const size_t d3 = (pos - *s3p) & 0xFFFFU;
+        *s3p = (uint16_t)pos;
+        const size_t s3 = d3 - 1U < (reach < XX_L1_H3_DIST ? reach : XX_L1_H3_DIST) ? d3 : 0U;
+        const uint32_t x3 = xx_l1_load32(cur - s3) ^ v;
+        const unsigned hit3 = (s3 != 0U) & ((x3 & 0x00FFFFFFU) == 0U);
+#else
+        const unsigned hit3 = 0U, s3 = 0U, x3 = 0U;
+#endif
+        size_t best_len = 0U, best_dist = 0U;
+        if (hit0 | hit1 | hit3) {
+            if (hit0) {
+                best_len = xx_l1_extend(cur, cur - d0, limit, match_long);
+                best_dist = d0;
+            }
+            if (hit1 && best_len < limit && cur[best_len] == cur[best_len - d1]) {
+                size_t len = xx_l1_extend(cur, cur - d1, limit, match_long);
+                if (len > best_len) {
+                    best_len = len;
+                    best_dist = d1;
+                }
+            }
+            if (best_len == 0U) {
+                best_len = x3 == 0U ? xx_l1_extend(cur, cur - s3, limit, match_long) : 3U;
+                best_dist = s3;
+            }
+        }
+        if (best_len == 3U && short_filter && best_dist > 4096U) best_len = 0U;
+
+        if (best_len >= 3U) {
+#if XX_L1_BACK
+            /* Grow the match backwards over the pending literals of this
+             * block: recovers bytes stepped over and starts missed by the
+             * two-entry buckets. */
+            while (lits != 0U && best_len < 258U && head > best_dist && win[head - 1U] == win[head - 1U - best_dist]) {
+                --head;
+                --cur;
+                --lits;
+                --n;
+                ++best_len;
+            }
+#endif
+#if XX_L1_PREFETCH
+            if (head + best_len + 4U <= tail) XX_L1_PREFETCH_T0(tab + xx_l1_hash4(xx_l1_load32(cur + best_len)));
+#endif
+            xx_set_match_token(&tokens[n++], best_len, best_dist, is_deflate64);
+            if (best_len <= XX_L1F_INS_MAX) {
+                for (size_t k = 1U; k < best_len && head + k + 4U <= tail; ++k) {
+                    uint32_t *s = tab + xx_l1_hash4(xx_l1_load32(cur + k));
+                    *s = (*s << 16) | ((uint32_t)(base + head + k) & 0xFFFFU);
+                }
+            } else {
+                xx_l1_insert_tail(tab, win, base, head, best_len, tail);
+            }
+            head += best_len;
+            misses = 0U;
+            lits = 0U;
+            /* A maximal match continues a run or long repeat: try the same
+             * distance first and skip the lookups while it stays maximal. */
+            while (best_len == 258U && tail - head >= 258U && head - start < XX_L1_BLOCK && n < token_limit &&
+                   xx_l1_load32(win + head) == xx_l1_load32(win + head - best_dist) &&
+                   xx_l1_extend(win + head, win + head - best_dist, 258U, match_long) == 258U) {
+                xx_set_match_token(&tokens[n++], 258U, best_dist, is_deflate64);
+                xx_l1_insert_tail(tab, win, base, head, 258U, tail);
+                head += 258U;
+            }
+        } else {
+            size_t step = 1U;
+#if XX_L1_SKIP_SHIFT > 0
+            step += misses++ >> XX_L1_SKIP_SHIFT;
+            if (step > XX_L1_SKIP_MAX) step = XX_L1_SKIP_MAX;
+            if (step > avail) step = avail;
+#endif
+            for (size_t i = 0; i < step; ++i) tokens[n + i].symbol = cur[i];
+            n += step;
+            head += step;
+            lits += step;
+        }
+        if (head - start >= XX_L1_BLOCK) break;
+    }
+    *head_io = head;
+    return n;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Levels 4..9: hash-chain finder with zlib-style lazy evaluation
+ * (deflate_slow). A match found at position p is held back for one byte; the
+ * search at p + 1 only accepts strictly longer matches, starting from the
+ * held length as the bar (cheap rejects through the bytes at bar - 1 and
+ * bar). The held match is emitted unless the next one is longer, in which
+ * case p becomes a literal. Matches at least lazy long are emitted at once
+ * (zlib defers them too but then skips the next search: the same parse).
+ * Every position is inserted into the chains. Blocks end on a token budget
+ * or an input budget, or when the lookahead runs short and the window can be
+ * refilled; a held match is resolved before a block ends. */
+typedef struct {
+    size_t max_chain;   /* candidates per search */
+    size_t lazy;        /* defer matches shorter than this; 0 = greedy */
+    size_t nice;        /* stop a search at this length; 0 = off */
+    size_t good;        /* quarter the budget once this length is reached; 0 = off */
+    bool filter;        /* reject length-3 matches beyond distance 4096 */
+    size_t max_match;   /* 258, or 65535 for deflate64 */
+    size_t token_limit; /* tokens per block */
+    size_t input_limit; /* input bytes per block */
+    bool split;         /* end blocks where the symbol statistics change */
+} xx_lazy_params;
+
+/* Level defaults for levels 4..9 (index level - 4), used when no explicit
+ * option is set: chain, lazy, nice, good, filter, split, tokens per block. */
+typedef struct {
+    uint16_t chain, lazy, nice, good;
+    uint8_t filter, split;
+    uint16_t block_tokens;
+} xx_lazy_level;
+
+#ifndef XX_LAZY_LEVEL_TABLE
+#define XX_LAZY_LEVEL_TABLE                                                                                                                     \
+    {16, 4, 16, 4, 1, 1, 65000}, {32, 16, 32, 8, 1, 1, 65000}, {128, 16, 32, 8, 1, 1, 65000}, {256, 32, 128, 8, 1, 1, 65000},                  \
+        {512, 128, 258, 32, 1, 1, 65000}, {768, 258, 258, 32, 1, 1, 65000}
+#endif
+static const xx_lazy_level xx_lazy_levels[6] = {XX_LAZY_LEVEL_TABLE};
+
+#ifndef XX_LAZY_BUF_MIN
+#define XX_LAZY_BUF_MIN ((size_t)1 << 20)
+#endif
+#ifndef XX_SPLIT_SEGMENT
+#define XX_SPLIT_SEGMENT 512U
+#endif
+#ifndef XX_SPLIT_HDR_BASE
+#define XX_SPLIT_HDR_BASE 100U
+#endif
+#ifndef XX_SPLIT_HDR_SYM
+#define XX_SPLIT_HDR_SYM 4U
+#endif
+#define XX_LAZY_INPUT_LIMIT ((size_t)1 << 20)
+
+/* Chains hash four bytes, so a chain holds (nearly) only real 4-byte
+ * matches; length-3 matches come from a single-entry table of the newest
+ * position per 3-byte hash. Both tables share one allocation (hash_head,
+ * then hash3) and the aging sweep. */
+#ifndef XX_LAZY_HASH_BITS
+#define XX_LAZY_HASH_BITS 15
+#endif
+#ifndef XX_LAZY_H3_BITS
+#define XX_LAZY_H3_BITS 14
+#endif
+#ifndef XX_LAZY_SKIP_SHIFT
+#define XX_LAZY_SKIP_SHIFT 6
+#endif
+#ifndef XX_LAZY_SKIP_MAX
+#define XX_LAZY_SKIP_MAX 8U
+#endif
+#ifndef XX_LAZY_CHAIN_PREFETCH
+#define XX_LAZY_CHAIN_PREFETCH 0
+#endif
+#ifndef XX_LAZY_END4
+#define XX_LAZY_END4 1
+#endif
+#ifndef XX_LAZY_PREFETCH
+#define XX_LAZY_PREFETCH 1
+#endif
+#define XX_LAZY_HEAD_SIZE ((size_t)1 << XX_LAZY_HASH_BITS)
+#define XX_LAZY_H3_SIZE ((size_t)1 << XX_LAZY_H3_BITS)
+
+static XX_DEFLATE_INLINE uint32_t xx_lazy_hash4(const uint8_t *p)
+{
+    return (xx_l1_load32(p) * UINT32_C(0x1E35A7BD)) >> (32 - XX_LAZY_HASH_BITS);
+}
+
+static XX_DEFLATE_INLINE uint32_t xx_lazy_hash3(const uint8_t *p)
+{
+    uint32_t v = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
+    return (v * UINT32_C(0x9E3779B1)) >> (32 - XX_LAZY_H3_BITS);
+}
+
+/* Longest match at current that is longer than bar (returned unchanged when
+ * none is). match_entry is the chain head for this position, already
+ * replaced in hash_head; current has at least four readable bytes. */
+static XX_DEFLATE_INLINE size_t xx_lazy_search(const uint8_t *in_window, uint64_t window_base, size_t win_size, const uint32_t *hash_prev, uint32_t match_entry,
+                                               uint64_t position, const uint8_t *current, size_t bar, size_t max_test, const xx_lazy_params *p,
+                                               xx_deflate_match_function match_long, size_t *dist_out)
+{
+    size_t best_len = bar, chain_count = 0U;
+    size_t search_limit = p->max_chain;
+    if (best_len >= max_test) return best_len;
+    if (p->good && best_len >= p->good) {
+        search_limit = p->max_chain / 4U;
+        if (search_limit == 0U) search_limit = 1U;
+    }
+    const size_t nice = p->nice && p->nice < max_test ? p->nice : max_test;
+    const uint32_t first = xx_l1_load32(current);
+    while (chain_count++ < search_limit) {
+        size_t distance = (uint32_t)((uint32_t)position - match_entry);
+        if (distance == 0U || distance > win_size) break;
+        uint64_t match_position = position - distance;
+        if (match_position < window_base) break;
+        const uint8_t *candidate = in_window + (size_t)(match_position - window_base);
+        match_entry = hash_prev[match_position & (win_size - 1U)];
+#if XX_LAZY_CHAIN_PREFETCH
+        {
+            /* Start loading the next candidate's bytes around best_len. */
+            size_t next = (uint32_t)((uint32_t)position - match_entry);
+            if (next - 1U < win_size && position - next >= window_base) XX_L1_PREFETCH_T0(in_window + (size_t)(position - next - window_base) + best_len);
+        }
+#endif
+#if XX_LAZY_END4
+        /* best_len >= 3: the four bytes ending at best_len, then the first four. */
+        if (xx_l1_load32(candidate + best_len - 3U) == xx_l1_load32(current + best_len - 3U) && xx_l1_load32(candidate) == first) {
+#else
+        if (candidate[best_len] == current[best_len] && candidate[best_len - 1U] == current[best_len - 1U] && xx_l1_load32(candidate) == first) {
+#endif
+            size_t prefix = max_test < 16U ? max_test : 16U;
+            size_t length = 4U + xx_deflate_match_words(current + 4U, candidate + 4U, prefix - 4U);
+            if (length == prefix && length < max_test) {
+                size_t left = max_test - length;
+                length += match_long && left >= 32U ? match_long(current + length, candidate + length, left)
+                                                    : xx_deflate_match_words(current + length, candidate + length, left);
+            }
+            if (length > best_len) {
+                best_len = length;
+                *dist_out = distance;
+                if (best_len >= nice) break;
+                if (p->good && best_len >= p->good && search_limit == p->max_chain) {
+                    search_limit = p->max_chain / 4U;
+                    if (search_limit == 0U) search_limit = 1U;
+                }
+            }
+        }
+        if (distance == win_size) break;
+    }
+    return best_len;
+}
+
+/* Insert positions start + 1 .. start + len - 1 into both tables (those with
+ * four readable bytes). */
+static XX_DEFLATE_INLINE void xx_lazy_insert_match(const uint8_t *in_window, uint32_t *hash_head, uint32_t *hash_prev, size_t win_size, uint64_t window_base,
+                                                   size_t start, size_t len, size_t tail)
+{
+    uint32_t *hash3 = hash_head + XX_LAZY_HEAD_SIZE;
+    size_t end = start + len;
+    if (end + 3U > tail) end = tail - 3U;
+    for (size_t at = start + 1U; at < end; ++at) {
+        const uint8_t *q = in_window + at;
+        uint32_t h = xx_lazy_hash4(q), position = (uint32_t)(window_base + at);
+        hash_prev[position & (win_size - 1U)] = hash_head[h];
+        hash_head[h] = position;
+        hash3[xx_lazy_hash3(q)] = position;
+    }
+}
+
+/* Parse one block starting at *head_io; returns the token count. */
+static size_t xx_lazy_parse(const uint8_t *in_window, size_t *head_io, size_t tail, bool src_eof, uint64_t window_base, size_t win_size, uint32_t *hash_head,
+                            uint32_t *hash_prev, xx_token *tokens, const xx_lazy_params *p, xx_deflate_match_function match_long, bool is_deflate64,
+                            uint32_t *seg_tok, size_t *seg_pos, size_t *segs_out)
+{
+    uint32_t *hash3 = hash_head + XX_LAZY_HEAD_SIZE;
+    size_t head = *head_io, start = head, n = 0U;
+    size_t prev_len = 0U, prev_dist = 0U, misses = 0U;
+    bool pending = false; /* a match of prev_len at head - 1 is held */
+    const size_t min_lookahead = p->max_match + 4U;
+    const size_t token_limit = p->token_limit;
+    /* Segment boundaries for the block splitter: token index and the input
+     * position the tokens before it cover (a held match is not emitted). */
+    size_t segs = 0U;
+    if (seg_tok) {
+        seg_tok[0] = 0U;
+        seg_pos[0] = start;
+    }
+    while (head < tail && n < token_limit && head - start < p->input_limit) {
+        size_t available = tail - head;
+        /* Truncated lookahead: end the block so the window is refilled. */
+        if (!src_eof && available < min_lookahead && head > start + 1U) break;
+        if (seg_tok && n - seg_tok[segs] >= XX_SPLIT_SEGMENT) {
+            ++segs;
+            seg_tok[segs] = (uint32_t)n;
+            seg_pos[segs] = pending ? head - 1U : head;
+        }
+        size_t cur_len = 0U, cur_dist = 0U;
+        if (available >= 4U) {
+            const uint8_t *current = in_window + head;
+            uint32_t h = xx_lazy_hash4(current), h3 = xx_lazy_hash3(current);
+            uint64_t position = window_base + head;
+            uint32_t match_entry = hash_head[h], entry3 = hash3[h3];
+#if XX_LAZY_PREFETCH
+            /* The tables exceed L1: fetch the next position's slots early. */
+            if (available >= 5U) {
+                XX_L1_PREFETCH_T0(hash_head + xx_lazy_hash4(current + 1U));
+                XX_L1_PREFETCH_T0(hash3 + xx_lazy_hash3(current + 1U));
+            }
+#endif
+            hash_prev[position & (win_size - 1U)] = match_entry;
+            hash_head[h] = (uint32_t)position;
+            hash3[h3] = (uint32_t)position;
+            size_t max_test = available < p->max_match ? available : p->max_match;
+            size_t bar = pending ? prev_len : 3U;
+            cur_len = xx_lazy_search(in_window, window_base, win_size, hash_prev, match_entry, position, current, bar, max_test, p, match_long, &cur_dist);
+            if (cur_len <= bar) {
+                cur_len = 0U;
+                /* No 4-byte match: try the newest 3-byte candidate. */
+                if (!pending) {
+                    size_t d3 = (uint32_t)((uint32_t)position - entry3);
+                    if (d3 != 0U && d3 <= win_size && (!p->filter || d3 <= 4096U) && position - d3 >= window_base) {
+                        const uint8_t *c3 = current - d3;
+                        if (c3[0] == current[0] && c3[1] == current[1] && c3[2] == current[2]) {
+                            cur_len = 3U;
+                            cur_dist = d3;
+                        }
+                    }
+                }
+            }
+        }
+        if (pending) {
+            if (cur_len <= prev_len) {
+                /* Emit the held match; position head is already inserted. */
+                xx_set_match_token(&tokens[n++], prev_len, prev_dist, is_deflate64);
+                xx_lazy_insert_match(in_window, hash_head, hash_prev, win_size, window_base, head, prev_len - 1U, tail);
+                head += prev_len - 1U;
+                pending = false;
+                misses = 0U;
+                continue;
+            }
+            tokens[n++].symbol = in_window[head - 1U];
+        }
+        if (cur_len >= 3U) {
+#if XX_LAZY_SKIP_SHIFT > 0
+            if (misses >= ((size_t)1 << XX_LAZY_SKIP_SHIFT)) {
+                /* Leaving a skipped stretch (its last misses tokens are
+                 * literals, nothing is held): grow the match backwards over
+                 * them, staying inside the current split segment. */
+                const size_t orig = head, orig_len = cur_len, floor = seg_tok ? seg_tok[segs] : 0U;
+                size_t back = 0U;
+                while (back < misses && n - back > floor && cur_len < p->max_match && head > cur_dist && in_window[head - 1U] == in_window[head - 1U - cur_dist]) {
+                    --head;
+                    ++cur_len;
+                    ++back;
+                }
+                if (back) {
+                    n -= back;
+                    xx_set_match_token(&tokens[n++], cur_len, cur_dist, is_deflate64);
+                    xx_lazy_insert_match(in_window, hash_head, hash_prev, win_size, window_base, orig, orig_len, tail);
+                    head += cur_len;
+                    misses = 0U;
+                    continue;
+                }
+            }
+#endif
+            misses = 0U;
+            if (cur_len < p->lazy && cur_len < p->max_match) {
+                pending = true;
+                prev_len = cur_len;
+                prev_dist = cur_dist;
+                ++head;
+            } else {
+                xx_set_match_token(&tokens[n++], cur_len, cur_dist, is_deflate64);
+                xx_lazy_insert_match(in_window, hash_head, hash_prev, win_size, window_base, head, cur_len, tail);
+                head += cur_len;
+                pending = false;
+            }
+        } else {
+            /* No match here (and nothing held). After a long run of misses
+             * step over several literals without inserting them, so data
+             * without matches costs fewer lookups. */
+            size_t step = 1U;
+#if XX_LAZY_SKIP_SHIFT > 0
+            step += misses++ >> XX_LAZY_SKIP_SHIFT;
+            if (step > XX_LAZY_SKIP_MAX) step = XX_LAZY_SKIP_MAX;
+            if (step > available) step = available;
+            if (step > token_limit - n) step = token_limit - n;
+#endif
+            for (size_t i = 0; i < step; ++i) tokens[n + i].symbol = in_window[head + i];
+            n += step;
+            head += step;
+            pending = false;
+        }
+    }
+    if (pending) {
+        /* The loop stopped before inserting head. */
+        xx_set_match_token(&tokens[n++], prev_len, prev_dist, is_deflate64);
+        xx_lazy_insert_match(in_window, hash_head, hash_prev, win_size, window_base, head - 1U, prev_len, tail);
+        head += prev_len - 1U;
+    }
+    if (seg_tok) {
+        if (segs && seg_tok[segs] == n) --segs;
+        ++segs;
+        seg_tok[segs] = (uint32_t)n;
+        seg_pos[segs] = head;
+        *segs_out = segs;
+    }
+    *head_io = head;
+    return n;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Block splitter. The parse records a boundary every XX_SPLIT_SEGMENT
+ * tokens; adjacent pieces are merged greedily (best saving first) while the
+ * estimated cost of one block - entropy of its literal/length and distance
+ * symbols plus a header estimate - is below that of two. Extra bits do not
+ * depend on the split and are left out. Integer log2 keeps the result the
+ * same on every platform. */
+#define XX_SPLIT_HIST (XX_DEFLATE_MAX_LIT_LEN_CODES + XX_DEFLATE_MAX_DIST_CODES_64)
+#define XX_SPLIT_MAX_SEGS (XX_ENC_MAX_TOKENS / XX_SPLIT_SEGMENT + 2U)
+
+static const uint32_t xx_log2_frac[33] = {0,     2909,  5732,  8473,  11136, 13727, 16248, 18704, 21098, 23433, 25711, 27936, 30109, 32234, 34312, 36346, 38336,
+                                          40286, 42196, 44068, 45904, 47705, 49472, 51207, 52911, 54584, 56229, 57845, 59434, 60997, 62534, 64047, 65536};
+
+/* log2(x) in 16.16 fixed point, x >= 1. */
+static uint32_t xx_log2_q16(uint32_t x)
+{
+    unsigned e = 0U;
+    uint32_t v = x, m;
+    if (v >= (UINT32_C(1) << 16)) { v >>= 16; e += 16U; }
+    if (v >= (UINT32_C(1) << 8)) { v >>= 8; e += 8U; }
+    if (v >= (UINT32_C(1) << 4)) { v >>= 4; e += 4U; }
+    if (v >= (UINT32_C(1) << 2)) { v >>= 2; e += 2U; }
+    if (v >= (UINT32_C(1) << 1)) e += 1U;
+    m = (e >= 16U ? x >> (e - 16U) : x << (16U - e)) - 65536U;
+    return (e << 16) + xx_log2_frac[m >> 11] + (((xx_log2_frac[(m >> 11) + 1U] - xx_log2_frac[m >> 11]) * (m & 2047U)) >> 11);
+}
+
+#define XX_SPLIT_LOG_TABLE 1024U
+
+/* Estimated block cost (16.16 bits) of the histogram x + y (y may be NULL):
+ * entropy of the literal/length (plus one end-of-block) and distance
+ * symbols, plus the header estimate. lg holds log2 in 16.16 for small
+ * counts. */
+static uint64_t xx_split_cost(const uint32_t *x, const uint32_t *y, const uint32_t *lg)
+{
+    uint64_t cost = (uint64_t)XX_SPLIT_HDR_BASE << 16;
+    for (int part = 0; part < 2; ++part) {
+        const size_t from = part ? XX_DEFLATE_MAX_LIT_LEN_CODES : 0U, to = part ? XX_SPLIT_HIST : XX_DEFLATE_MAX_LIT_LEN_CODES;
+        uint64_t total = part ? 0U : 1U, sum = 0U; /* end-of-block: count 1, log2 0 */
+        unsigned used = part ? 0U : 1U;
+        for (size_t i = from; i < to; ++i) {
+            uint32_t f = x[i] + (y ? y[i] : 0U);
+            if (f) {
+                total += f;
+                sum += (uint64_t)f * (f < XX_SPLIT_LOG_TABLE ? lg[f] : xx_log2_q16(f));
+                ++used;
+            }
+        }
+        if (total) cost += total * xx_log2_q16((uint32_t)total) - sum + ((uint64_t)used * XX_SPLIT_HDR_SYM << 16);
+    }
+    return cost;
+}
+
+/* Merge segments [0, segs) into blocks; returns the block count and leaves
+ * each block's first segment index in first[] (first[count] = segs). hist
+ * holds segs histograms of XX_SPLIT_HIST counters. */
+static size_t xx_split_blocks(const xx_token *tokens, const uint32_t *seg_tok, size_t segs, uint32_t *hist, size_t *first)
+{
+    uint64_t cost[XX_SPLIT_MAX_SEGS];
+    int64_t gain[XX_SPLIT_MAX_SEGS]; /* saving of merging block b with block b + 1 */
+    uint32_t lg[XX_SPLIT_LOG_TABLE];
+    size_t blocks = segs;
+    lg[0] = 0U;
+    for (uint32_t f = 1U; f < XX_SPLIT_LOG_TABLE; ++f) lg[f] = xx_log2_q16(f);
+    xx_rt_memset(hist, 0, segs * XX_SPLIT_HIST * sizeof(uint32_t));
+    for (size_t b = 0; b < segs; ++b) {
+        uint32_t *h = hist + b * XX_SPLIT_HIST;
+        for (size_t i = seg_tok[b]; i < seg_tok[b + 1U]; ++i) {
+            unsigned symbol = tokens[i].symbol;
+            ++h[symbol];
+            if (symbol >= 257U) ++h[XX_DEFLATE_MAX_LIT_LEN_CODES + tokens[i].distance_symbol];
+        }
+        cost[b] = xx_split_cost(h, NULL, lg);
+        first[b] = b;
+    }
+    first[segs] = segs;
+    for (size_t b = 0; b + 1U < blocks; ++b)
+        gain[b] = (int64_t)(cost[b] + cost[b + 1U]) - (int64_t)xx_split_cost(hist + first[b] * XX_SPLIT_HIST, hist + first[b + 1U] * XX_SPLIT_HIST, lg);
+    while (blocks > 1U) {
+        size_t best = 0U;
+        for (size_t b = 1; b + 1U < blocks; ++b)
+            if (gain[b] > gain[best]) best = b;
+        if (gain[best] <= 0) break;
+        /* Merge best + 1 into best. */
+        uint32_t *x = hist + first[best] * XX_SPLIT_HIST;
+        const uint32_t *y = hist + first[best + 1U] * XX_SPLIT_HIST;
+        for (size_t i = 0; i < XX_SPLIT_HIST; ++i) x[i] += y[i];
+        cost[best] = cost[best] + cost[best + 1U] - (uint64_t)gain[best];
+        for (size_t b = best + 1U; b + 1U < blocks; ++b) {
+            first[b] = first[b + 1U];
+            cost[b] = cost[b + 1U];
+            gain[b - 1U] = gain[b];
+        }
+        first[blocks - 1U] = first[blocks];
+        --blocks;
+        for (size_t b = best ? best - 1U : 0U; b <= best && b + 1U < blocks; ++b)
+            gain[b] = (int64_t)(cost[b] + cost[b + 1U]) - (int64_t)xx_split_cost(hist + first[b] * XX_SPLIT_HIST, hist + first[b + 1U] * XX_SPLIT_HIST, lg);
+    }
+    return blocks;
 }
 
 bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
@@ -664,32 +1438,83 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
     size_t lazy_limit = options ? options->lazy_match_limit : 0U;
     if (requested_candidates != 0U || level < 0) level = XX_DEFLATE_LEVEL_DEFAULT;
     if (level > 9) level = XX_DEFLATE_LEVEL_BEST;
+    /* Levels 4..9 use the lazy parser. Without explicit options (NULL or an
+     * all-zero struct) every knob comes from xx_lazy_levels; once any option
+     * is set, all five keep their documented meaning (zero lazy = greedy,
+     * zero nice/good = off, the filter as given) and only a zero candidate
+     * count takes the level's chain. Levels 1..3 keep the old parser. */
+    const bool lazy_path = level >= 4;
+    const bool explicit_options = options && (options->max_candidates || options->lazy_match_limit || options->short_match_filter || options->nice_match ||
+                                              options->good_match);
+    xx_lazy_params lazy_params = {0};
+    if (lazy_path) {
+        const xx_lazy_level *lv = &xx_lazy_levels[level - 4];
+        lazy_params.max_chain = requested_candidates ? requested_candidates : lv->chain;
+        lazy_params.lazy = explicit_options ? lazy_limit : lv->lazy;
+        lazy_params.nice = explicit_options ? options->nice_match : lv->nice;
+        lazy_params.good = explicit_options ? options->good_match : lv->good;
+        lazy_params.filter = explicit_options ? options->short_match_filter : lv->filter != 0U;
+        lazy_params.max_match = is_deflate64 ? 65535U : 258U;
+        lazy_params.token_limit = lv->block_tokens;
+        lazy_params.input_limit = XX_LAZY_INPUT_LIMIT;
+        lazy_params.split = lv->split != 0U;
+    }
 
     size_t in_buf_cap = xx_get_file_buffer_size();
     if (in_buf_cap < win_size * 2) {
         in_buf_cap = win_size * 2;
     }
+    /* The lazy parser keeps max_match + 2 bytes of lookahead and ends a block
+     * when it runs short, so it reads in larger chunks. */
+    if (lazy_path && in_buf_cap < XX_LAZY_BUF_MIN) in_buf_cap = XX_LAZY_BUF_MIN;
+    if (lazy_path && in_buf_cap < win_size * 4) in_buf_cap = win_size * 4;
+    const size_t fill_target = lazy_path ? in_buf_cap : win_size;
 
     uint8_t *in_window = (uint8_t *)xx_mem_alloc(in_buf_cap + win_size);
     if (!in_window) {
         return false;
     }
 
-    uint64_t *hash_head = NULL;
-    uint64_t *hash_prev = NULL;
+    /* Hash tables keep the low 32 bits of absolute positions. A live entry is
+     * always less than 2^31 behind the current position (see the periodic
+     * sweep below), so the distance (uint32_t)position - entry is exact and
+     * the chain walk takes the same decisions as with 64-bit positions while
+     * the working set is halved. Empty slots hold an entry 2^31 behind. */
+    uint32_t *hash_head = NULL;
+    uint32_t *hash_prev = NULL;
+    uint32_t *l1_table = NULL;
     xx_token *tokens = NULL;
+    uint32_t *split_hist = NULL;
+    uint32_t split_tok[XX_SPLIT_MAX_SEGS + 1U];
+    size_t split_pos[XX_SPLIT_MAX_SEGS + 1U], split_first[XX_SPLIT_MAX_SEGS + 1U], split_segs = 0U;
+    /* Level 1 without lazy matching uses the chainless finder (xx_l1_parse)
+     * and its own 16-bit bucket table instead of hash_head/hash_prev. */
+    const bool l1_fast = level == 1 && lazy_limit == 0U;
+    /* The lazy parser's 4-byte chain heads are followed by its 3-byte table. */
+    const size_t head_entries = lazy_path ? XX_LAZY_HEAD_SIZE + XX_LAZY_H3_SIZE : (size_t)XX_HASH_SIZE;
     if (level != XX_DEFLATE_LEVEL_STORED) {
-        hash_head = (uint64_t *)xx_mem_alloc(XX_HASH_SIZE * sizeof(uint64_t));
-        hash_prev = (uint64_t *)xx_mem_alloc(win_size * sizeof(uint64_t));
+        if (l1_fast) {
+            l1_table = (uint32_t *)xx_mem_alloc(XX_L1_TABLE_BYTES);
+            if (l1_table) xx_rt_memset(l1_table, 0, XX_L1_TABLE_BYTES);
+        } else {
+            hash_head = (uint32_t *)xx_mem_alloc(head_entries * sizeof(uint32_t));
+            hash_prev = (uint32_t *)xx_mem_alloc(win_size * sizeof(uint32_t));
+        }
         tokens = (xx_token *)xx_mem_alloc(XX_ENC_MAX_TOKENS * sizeof(xx_token));
-        if (!hash_head || !hash_prev || !tokens) {
+        if (lazy_path && lazy_params.split) {
+            /* Splitter work area; without it blocks are just not split. */
+            split_hist = (uint32_t *)xx_mem_alloc(XX_SPLIT_MAX_SEGS * XX_SPLIT_HIST * sizeof(uint32_t));
+        }
+        if ((l1_fast ? !l1_table : (!hash_head || !hash_prev)) || !tokens) {
             xx_mem_free(in_window);
             if (hash_head) xx_mem_free(hash_head);
             if (hash_prev) xx_mem_free(hash_prev);
+            if (l1_table) xx_mem_free(l1_table);
             if (tokens) xx_mem_free(tokens);
             return false;
         }
-        for (int i = 0; i < XX_HASH_SIZE; ++i) hash_head[i] = UINT64_MAX;
+        if (hash_head)
+            for (size_t i = 0; i < head_entries; ++i) hash_head[i] = XX_HASH_EMPTY_AGE;
     }
 
     if (src_dev && src_offset >= 0) {
@@ -697,6 +1522,7 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
             xx_mem_free(in_window);
             if (hash_head) xx_mem_free(hash_head);
             if (hash_prev) xx_mem_free(hash_prev);
+            if (l1_table) xx_mem_free(l1_table);
             if (tokens) xx_mem_free(tokens);
             return false;
         }
@@ -709,6 +1535,9 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
 
     size_t max_chain = requested_candidates ? requested_candidates : (level <= 3 ? 4U : (level <= 6 ? 16U : 128U));
     size_t max_match_len = is_deflate64 ? 65535 : 258;
+    /* After the normalisation above, level 1 implies no requested candidate
+     * count; levels 2..9 keep their output unchanged. */
+    const bool fast1 = level == 1;
     if (max_match_len > 258 && level <= 3) {
         max_match_len = 258;
     }
@@ -719,6 +1548,7 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
     size_t win_tail = 0; /* Current valid data end in in_window */
     size_t mem_pos = 0;
     uint64_t window_base = 0;
+    uint64_t last_sweep = 0;
     xx_deflate_match_function match_long = NULL;
     if (xx_is_avx2_enabled()) match_long = xx_deflate_match_avx2;
     else if (xx_is_sse2_enabled()) match_long = xx_deflate_match_sse2;
@@ -747,7 +1577,7 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
         }
 
         /* Read more data into window */
-        while (!src_eof && (win_tail - win_head) < win_size && win_tail < in_buf_cap + win_size) {
+        while (!src_eof && (win_tail - win_head) < fill_target && win_tail < in_buf_cap + win_size) {
             size_t to_read = (in_buf_cap + win_size) - win_tail;
             if (remaining >= 0 && (int64_t)to_read > remaining) {
                 to_read = (size_t)remaining;
@@ -821,10 +1651,30 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
             continue;
         }
 
+        /* Keep every stored entry within 2^31 of the current position: an
+         * entry farther than one window is never usable, so it is replaced by
+         * the empty marker (exactly 2^31 behind). Between sweeps (2^30 input
+         * bytes) no entry can age past 2^31 + 2^30, so nothing wraps. */
+        if (hash_head && window_base + win_head - last_sweep >= XX_HASH_SWEEP_SPAN) {
+            uint32_t now = (uint32_t)(window_base + win_head);
+            last_sweep = window_base + win_head;
+            for (size_t i = 0; i < head_entries; ++i)
+                if ((uint32_t)(now - hash_head[i]) > win_size) hash_head[i] = now - XX_HASH_EMPTY_AGE;
+            for (size_t i = 0; i < win_size; ++i)
+                if ((uint32_t)(now - hash_prev[i]) > win_size) hash_prev[i] = now - XX_HASH_EMPTY_AGE;
+        }
+
         /* LZ77 Match Finding into Tokens */
         size_t num_tokens = 0;
         size_t block_start_pos = win_head;
 
+        if (l1_fast)
+            num_tokens = xx_l1_parse(in_window, &win_head, win_tail, window_base, win_size, l1_table, (uint16_t *)(l1_table + XX_L1_BUCKETS), tokens, match_long,
+                                     options && options->short_match_filter, is_deflate64);
+        else if (lazy_path)
+            num_tokens = xx_lazy_parse(in_window, &win_head, win_tail, src_eof, window_base, win_size, hash_head, hash_prev, tokens, &lazy_params, match_long,
+                                       is_deflate64, split_hist ? split_tok : NULL, split_pos, &split_segs);
+        else
         while (win_head < win_tail && num_tokens < XX_ENC_MAX_TOKENS - 4) {
             size_t available = win_tail - win_head;
             if (available < 3) {
@@ -836,9 +1686,10 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
 
             uint32_t h = xx_calc_hash(in_window + win_head);
             uint64_t position = window_base + win_head;
-            uint64_t match_position = hash_head[h];
-            hash_prev[position & (win_size - 1U)] = match_position;
-            hash_head[h] = position;
+            uint32_t match_entry = hash_head[h];
+            uint64_t match_position;
+            hash_prev[position & (win_size - 1U)] = match_entry;
+            hash_head[h] = (uint32_t)position;
 
             size_t best_len = 0, best_dist = 0, chain_count = 0;
             size_t search_limit = max_chain;
@@ -846,9 +1697,11 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
             size_t good_match = options ? options->good_match : 0U;
             size_t max_test = available < max_match_len ? available : max_match_len;
             const uint8_t *current = in_window + win_head;
-            while (match_position != UINT64_MAX && chain_count++ < search_limit) {
-                if (match_position >= position || match_position < window_base || position - match_position > win_size) break;
-                size_t distance = (size_t)(position - match_position);
+            while (chain_count++ < search_limit) {
+                size_t distance = (uint32_t)((uint32_t)position - match_entry);
+                if (distance == 0U || distance > win_size) break;
+                match_position = position - distance;
+                if (match_position < window_base) break;
                 const uint8_t *candidate = in_window + (size_t)(match_position - window_base);
                 if (candidate[best_len] == current[best_len] && candidate[0] == current[0]) {
                     size_t prefix = max_test < 16U ? max_test : 16U;
@@ -872,7 +1725,7 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
                 /* At exactly one window the ring slot belongs to the current
                  * position; all earlier candidates would be out of range. */
                 if (distance == win_size) break;
-                match_position = hash_prev[match_position & (win_size - 1U)];
+                match_entry = hash_prev[match_position & (win_size - 1U)];
             }
 
             /* Distant length-3 matches can cost more bits than literals. */
@@ -886,9 +1739,13 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
             if (best_len >= 3U && best_len < lazy_limit && best_len < max_match_len && available > best_len + 1U) {
                 size_t needed = best_len + 1U, searched = 0U;
                 uint64_t next_position = position + 1U;
-                uint64_t next_match = hash_head[xx_calc_hash(current + 1U)];
-                while (next_match != UINT64_MAX && searched++ < max_chain) {
-                    if (next_match >= next_position || next_match < window_base || next_position - next_match > win_size) break;
+                uint32_t next_entry = hash_head[xx_calc_hash(current + 1U)];
+                uint64_t next_match;
+                while (searched++ < max_chain) {
+                    size_t next_distance = (uint32_t)((uint32_t)next_position - next_entry);
+                    if (next_distance == 0U || next_distance > win_size) break;
+                    next_match = next_position - next_distance;
+                    if (next_match < window_base) break;
                     const uint8_t *candidate = in_window + (size_t)(next_match - window_base);
                     if (candidate[best_len] == current[1U + best_len] && candidate[0] == current[1]) {
                         size_t prefix = needed < 16U ? needed : 16U;
@@ -901,7 +1758,7 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
                         if (length == needed) { best_len = 0U; break; }
                     }
                     if (next_position - next_match == win_size) break;
-                    next_match = hash_prev[next_match & (win_size - 1U)];
+                    next_entry = hash_prev[next_match & (win_size - 1U)];
                 }
             }
 
@@ -910,11 +1767,13 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
                 num_tokens++;
 
                 /* Insert intermediate positions into hash table */
-                for (size_t k = 1; k < best_len && (win_head + k + 2) < win_tail; ++k) {
+                size_t k = 1;
+                if (fast1 && best_len > XX_L1_INSERT_MAX) k = best_len - XX_L1_TAIL;
+                for (; k < best_len && (win_head + k + 2) < win_tail; ++k) {
                     uint32_t kh = xx_calc_hash(in_window + win_head + k);
                     uint64_t inserted = position + k;
                     hash_prev[inserted & (win_size - 1U)] = hash_head[kh];
-                    hash_head[kh] = inserted;
+                    hash_head[kh] = (uint32_t)inserted;
                 }
                 win_head += best_len;
             } else {
@@ -929,7 +1788,16 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
         }
 
         bool is_last_block = (src_eof && win_head >= win_tail);
-        if (!xx_emit_block(writer, tokens, num_tokens, in_window + block_start_pos, win_head - block_start_pos, is_deflate64, is_last_block)) {
+        if (split_hist && lazy_path && split_segs > 1U) {
+            size_t blocks = xx_split_blocks(tokens, split_tok, split_segs, split_hist, split_first);
+            for (size_t b = 0; b < blocks && success; ++b) {
+                size_t s0 = split_first[b], s1 = split_first[b + 1U];
+                if (!xx_emit_block(writer, tokens + split_tok[s0], split_tok[s1] - split_tok[s0], in_window + split_pos[s0], split_pos[s1] - split_pos[s0],
+                                   is_deflate64, is_last_block && b + 1U == blocks))
+                    success = false;
+            }
+            if (!success) break;
+        } else if (!xx_emit_block(writer, tokens, num_tokens, in_window + block_start_pos, win_head - block_start_pos, is_deflate64, is_last_block)) {
             success = false;
             break;
         }
@@ -963,7 +1831,9 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
     xx_mem_free(in_window);
     if (hash_head) xx_mem_free(hash_head);
     if (hash_prev) xx_mem_free(hash_prev);
+    if (l1_table) xx_mem_free(l1_table);
     if (tokens) xx_mem_free(tokens);
+    if (split_hist) xx_mem_free(split_hist);
 
     return success;
 }

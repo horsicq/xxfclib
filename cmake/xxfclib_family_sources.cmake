@@ -3334,6 +3334,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pe
     src/formats/executable/pe/xx_pe_stream_common.c
     src/formats/executable/pe/xx_pe_symbols.c
     src/formats/executable/pe/xx_pe_unwind_validate.c
+    src/formats/executable/pe/xx_pe_yx.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pyinstaller_one_executable
     src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable.c

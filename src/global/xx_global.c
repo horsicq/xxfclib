@@ -113,13 +113,42 @@ static bool g_arm_crc32_enabled = false;
 static bool g_arm_crypto_enabled = false;
 static bool g_arm_dotprod_enabled = false;
 static bool g_arm_pmull_enabled = false;
-static bool g_features_initialized = false;
 static bool g_color_output_enabled = true;
 static xx_terminal_type_t g_terminal_type = XX_TERMINAL_TYPE_NONE;
 
+/* Feature detection runs once even when several threads ask at the same
+ * time (scanners run concurrently): 0 = not started, 1 = running, 2 = done.
+ * The release store of 2 publishes the flags written before it. */
+#if defined(_MSC_VER)
+#include <intrin.h>
+static volatile long g_features_state = 0;
+#define XX_FEATURES_LOAD() _InterlockedOr(&g_features_state, 0)
+#define XX_FEATURES_CLAIM() (_InterlockedCompareExchange(&g_features_state, 1, 0) == 0)
+#define XX_FEATURES_DONE() _InterlockedExchange(&g_features_state, 2)
+#elif defined(__GNUC__) || defined(__clang__)
+static int g_features_state = 0;
+#define XX_FEATURES_LOAD() __atomic_load_n(&g_features_state, __ATOMIC_ACQUIRE)
+#define XX_FEATURES_CLAIM() \
+    __extension__({ int expected_ = 0; __atomic_compare_exchange_n(&g_features_state, &expected_, 1, false, \
+                                                                    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE); })
+#define XX_FEATURES_DONE() __atomic_store_n(&g_features_state, 2, __ATOMIC_RELEASE)
+#else
+static int g_features_state = 0; /* no atomics: single-threaded first use */
+#define XX_FEATURES_LOAD() g_features_state
+#define XX_FEATURES_CLAIM() (g_features_state == 0 ? (g_features_state = 1, 1) : 0)
+#define XX_FEATURES_DONE() (g_features_state = 2)
+#endif
+
 static void xx_global_init_features_once(void)
 {
-    if (!g_features_initialized) {
+    if (XX_FEATURES_LOAD() == 2) return;
+    if (!XX_FEATURES_CLAIM()) {
+        /* Another thread is detecting; it takes microseconds. */
+        while (XX_FEATURES_LOAD() != 2) {
+        }
+        return;
+    }
+    {
         g_sse2_detected = xx_global_platform_has_sse2();
         g_sse42_detected = xx_global_platform_has_sse42();
         g_avx2_detected = xx_global_platform_has_avx2();
@@ -144,7 +173,7 @@ static void xx_global_init_features_once(void)
         g_arm_dotprod_enabled = g_arm_dotprod_detected;
         g_arm_pmull_enabled = g_arm_pmull_detected;
         g_terminal_type = xx_global_platform_detect_terminal_type(false);
-        g_features_initialized = true;
+        XX_FEATURES_DONE();
     }
 }
 

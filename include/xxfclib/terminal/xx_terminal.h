@@ -148,6 +148,21 @@ XXFC_API xxfc_status_t xx_terminal_print(const xx_terminal_state *state, const c
  * Color restoration is attempted even if writing the span fails. */
 XXFC_API xxfc_status_t xx_terminal_write_color(const xx_terminal_state *state,
     const char *text, size_t size, uint32_t foreground, uint32_t background);
+
+/** @brief xx_terminal_write_color() flag: on ANSI terminals, write the colors
+ * exactly instead of their 16-color approximation. A color equal to one of
+ * the 16 palette colors uses its classic code (0xffff00 is "33", 0x00ff00 is
+ * "32"), any other one a 24-bit "38;2;r;g;b" / "48;2;r;g;b" sequence, and a
+ * default color adds no code. Native Windows consoles keep the nearest
+ * console color. */
+#define XX_TERMINAL_COLOR_EXACT 0x1u
+
+/** @brief xx_terminal_write_color() with flags (XX_TERMINAL_COLOR_*). The
+ * escape sequence, the text and the reset are composed into one write when
+ * they fit in a small stack buffer, so a terminal never renders a span in
+ * pieces. */
+XXFC_API xxfc_status_t xx_terminal_write_color_ex(const xx_terminal_state *state,
+    const char *text, size_t size, uint32_t foreground, uint32_t background, uint32_t flags);
 XXFC_API xxfc_status_t xx_terminal_flush(const xx_terminal_state *state);
 
 /** @brief Read/write raw native Windows attributes. Color mapping is the caller's responsibility. */

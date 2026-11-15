@@ -73,6 +73,20 @@ XXFC_API xx_codepage_status xx_codepage_to_utf8(const xx_codepage *, const unsig
                                                 size_t *written);
 XXFC_API xx_codepage_status xx_codepage_decode(const xx_codepage *, const unsigned char *, size_t, size_t *, uint32_t *);
 XXFC_API xx_codepage_status xx_codepage_encode(const xx_codepage *, uint32_t, unsigned char *, size_t, size_t *);
+/* Decode a complete buffer with WHATWG replacement semantics, matching
+ * encoding_rs 0.8.42 decode_without_bom_handling. Labels use WHATWG aliases
+ * (case insensitive, surrounding ASCII whitespace ignored), plus CP932,
+ * CP936, CP949 and CP950. BOMs remain U+FEFF; malformed sequences emit U+FFFD
+ * and set optional had_errors. Stateful ISO-2022-JP and Big5 combining
+ * expansions are supported. No allocation, locale, or platform API is used.
+ * Pass NULL output and zero capacity to obtain the exact required byte count.
+ * written is required and receives the required count (saturating at SIZE_MAX
+ * if unrepresentable); a small buffer
+ * receives a complete UTF-8 prefix and returns BUFFER_TOO_SMALL. No terminator
+ * is added. Unsupported labels return UNMAPPABLE. Input/output must not overlap.
+ * Available when XXFC_CODEPAGE_ALL is enabled. */
+XXFC_API xx_codepage_status xx_codepage_decode_whatwg(const char *label, const unsigned char *input, size_t input_size,
+                                                    unsigned char *output, size_t capacity, size_t *written, int *had_errors);
 #ifdef __cplusplus
 }
 #endif

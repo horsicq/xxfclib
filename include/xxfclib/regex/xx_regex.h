@@ -45,7 +45,12 @@ XXFC_API xx_regex *xx_regex_compile_n(const char *pattern, size_t pattern_size, 
                                      size_t flags_size, char **error);
 /* Optional byte-scanner dialect. Existing compile functions keep their JS
  * byte/Latin-1 behavior. RAW_BYTES gives every subject byte its own position. */
-enum { XX_REGEX_RAW_BYTES = 1u, XX_REGEX_DOTALL = 2u };
+enum {
+    XX_REGEX_RAW_BYTES = 1u, XX_REGEX_DOTALL = 2u,
+    /* Adds scoped/bare inline i/m/s/x options and fixed byte-width lookbehind.
+     * Lookbehind requires RAW_BYTES; variable widths are rejected. */
+    XX_REGEX_SCANNER_DIALECT = 4u
+};
 XXFC_API xx_regex *xx_regex_compile_n_options(const char *pattern, size_t pattern_size,
     const char *flags, size_t flags_size, unsigned options, char **error);
 XXFC_API xx_regex *xx_regex_ref(xx_regex *regex);
@@ -59,6 +64,12 @@ XXFC_API const char *xx_regex_flags(const xx_regex *regex);
 XXFC_API size_t xx_regex_source_size(const xx_regex *regex);
 XXFC_API size_t xx_regex_flags_size(const xx_regex *regex);
 XXFC_API size_t xx_regex_memory_size(const xx_regex *regex);
+enum {
+    XX_REGEX_UNICODE_ALPHABETIC = 1,
+    XX_REGEX_UNICODE_NUMERIC = 2,
+    XX_REGEX_UNICODE_DECIMAL = 3
+};
+XXFC_API bool xx_regex_unicode_property(uint32_t codepoint, unsigned property);
 /* Search at/after start. caps must have 2*(ngroups+1) int32_t entries: full
  * match first, then groups; -1 for nonparticipating groups. Returns 1 for a
  * match, 0 for no match/invalid input/budget exhaustion. Text is counted and

@@ -86,3 +86,18 @@ literal tests, long repeated groups, concurrent reuse and calibrated
 compile/execution benchmarks. It complements the JS adapter regressions in
 `tests/js_performance`. Its README documents focused
 builds, repeatable timing comparisons, and the byte-model compatibility limits.
+
+## Scanner dialect
+
+`xx_regex_compile_n_options` can select `XX_REGEX_RAW_BYTES` and the opt-in
+`XX_REGEX_SCANNER_DIALECT`. Every byte then has its own position; scoped and
+bare `i/m/s/x` flags and fixed-width lookbehind are available. Existing JS
+entrypoints retain their original dialect. Variable-width lookbehind is
+rejected.
+
+`xx_regex_exec_controlled` adds anchored/end-anchored matching, explicit
+begin/end-of-line context, cancellation, and a path callback that can reject
+overlong candidates while allowing ordinary backtracking. Budget exhaustion
+and cancellation remain distinct from a miss. `xx_regex_unicode_property`
+provides pinned Unicode 17 Alphabetic, Numeric, and Decimal_Number properties
+from embedded UCD ranges; see `LICENSE.UNICODE`.

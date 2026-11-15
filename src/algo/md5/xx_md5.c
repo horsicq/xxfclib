@@ -29,8 +29,19 @@ static const uint32_t MD5_K[64] = {0xd76aa478U, 0xe8c7b756U, 0x242070dbU, 0xc1bd
                                    0xab9423a7U, 0xfc93a039U, 0x655b59c3U, 0x8f0ccc92U, 0xffeff47dU, 0x85845dd1U, 0x6fa87e4fU, 0xfe2ce6e0U, 0xa3014314U, 0x4e0811a1U,
                                    0xf7537e82U, 0xbd3af235U, 0x2ad7d2bbU, 0xeb86d391U};
 
-static const unsigned char MD5_S[64] = {7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20,
-                                        4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21};
+/* One MD5 step: a = b + rotl(a + f(b, c, d) + m + k, s). The steps are
+ * unrolled with constant message indices and shifts; G is written in its
+ * additive form (the two terms never share a set bit), which shortens the
+ * dependency chain through b. */
+#define MD5_STEP(f, a, b, c, d, m, k, s)     \
+    do {                                     \
+        (a) += f((b), (c), (d)) + (m) + (k); \
+        (a) = md5_rotl32((a), (s)) + (b);    \
+    } while (0)
+#define MD5_F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
+#define MD5_G(x, y, z) (((x) & (z)) + ((y) & ~(z)))
+#define MD5_H(x, y, z) ((x) ^ (y) ^ (z))
+#define MD5_I(x, y, z) ((y) ^ ((x) | ~(z)))
 
 static void md5_transform(uint32_t *state, const uint8_t *block)
 {
@@ -42,34 +53,85 @@ static void md5_transform(uint32_t *state, const uint8_t *block)
         m[i] = (uint32_t)block[i * 4U] | ((uint32_t)block[i * 4U + 1U] << 8) | ((uint32_t)block[i * 4U + 2U] << 16) | ((uint32_t)block[i * 4U + 3U] << 24);
     }
 
-    for (i = 0; i < 64U; ++i) {
-        uint32_t f;
-        unsigned g;
-        if (i < 16U) {
-            f = (b & c) | (~b & d);
-            g = i;
-        } else if (i < 32U) {
-            f = (d & b) | (~d & c);
-            g = (5U * i + 1U) & 15U;
-        } else if (i < 48U) {
-            f = b ^ c ^ d;
-            g = (3U * i + 5U) & 15U;
-        } else {
-            f = c ^ (b | ~d);
-            g = (7U * i) & 15U;
-        }
-        f += a + MD5_K[i] + m[g];
-        a = d;
-        d = c;
-        c = b;
-        b += md5_rotl32(f, MD5_S[i]);
-    }
+    MD5_STEP(MD5_F, a, b, c, d, m[0], MD5_K[0], 7);
+    MD5_STEP(MD5_F, d, a, b, c, m[1], MD5_K[1], 12);
+    MD5_STEP(MD5_F, c, d, a, b, m[2], MD5_K[2], 17);
+    MD5_STEP(MD5_F, b, c, d, a, m[3], MD5_K[3], 22);
+    MD5_STEP(MD5_F, a, b, c, d, m[4], MD5_K[4], 7);
+    MD5_STEP(MD5_F, d, a, b, c, m[5], MD5_K[5], 12);
+    MD5_STEP(MD5_F, c, d, a, b, m[6], MD5_K[6], 17);
+    MD5_STEP(MD5_F, b, c, d, a, m[7], MD5_K[7], 22);
+    MD5_STEP(MD5_F, a, b, c, d, m[8], MD5_K[8], 7);
+    MD5_STEP(MD5_F, d, a, b, c, m[9], MD5_K[9], 12);
+    MD5_STEP(MD5_F, c, d, a, b, m[10], MD5_K[10], 17);
+    MD5_STEP(MD5_F, b, c, d, a, m[11], MD5_K[11], 22);
+    MD5_STEP(MD5_F, a, b, c, d, m[12], MD5_K[12], 7);
+    MD5_STEP(MD5_F, d, a, b, c, m[13], MD5_K[13], 12);
+    MD5_STEP(MD5_F, c, d, a, b, m[14], MD5_K[14], 17);
+    MD5_STEP(MD5_F, b, c, d, a, m[15], MD5_K[15], 22);
+
+    MD5_STEP(MD5_G, a, b, c, d, m[1], MD5_K[16], 5);
+    MD5_STEP(MD5_G, d, a, b, c, m[6], MD5_K[17], 9);
+    MD5_STEP(MD5_G, c, d, a, b, m[11], MD5_K[18], 14);
+    MD5_STEP(MD5_G, b, c, d, a, m[0], MD5_K[19], 20);
+    MD5_STEP(MD5_G, a, b, c, d, m[5], MD5_K[20], 5);
+    MD5_STEP(MD5_G, d, a, b, c, m[10], MD5_K[21], 9);
+    MD5_STEP(MD5_G, c, d, a, b, m[15], MD5_K[22], 14);
+    MD5_STEP(MD5_G, b, c, d, a, m[4], MD5_K[23], 20);
+    MD5_STEP(MD5_G, a, b, c, d, m[9], MD5_K[24], 5);
+    MD5_STEP(MD5_G, d, a, b, c, m[14], MD5_K[25], 9);
+    MD5_STEP(MD5_G, c, d, a, b, m[3], MD5_K[26], 14);
+    MD5_STEP(MD5_G, b, c, d, a, m[8], MD5_K[27], 20);
+    MD5_STEP(MD5_G, a, b, c, d, m[13], MD5_K[28], 5);
+    MD5_STEP(MD5_G, d, a, b, c, m[2], MD5_K[29], 9);
+    MD5_STEP(MD5_G, c, d, a, b, m[7], MD5_K[30], 14);
+    MD5_STEP(MD5_G, b, c, d, a, m[12], MD5_K[31], 20);
+
+    MD5_STEP(MD5_H, a, b, c, d, m[5], MD5_K[32], 4);
+    MD5_STEP(MD5_H, d, a, b, c, m[8], MD5_K[33], 11);
+    MD5_STEP(MD5_H, c, d, a, b, m[11], MD5_K[34], 16);
+    MD5_STEP(MD5_H, b, c, d, a, m[14], MD5_K[35], 23);
+    MD5_STEP(MD5_H, a, b, c, d, m[1], MD5_K[36], 4);
+    MD5_STEP(MD5_H, d, a, b, c, m[4], MD5_K[37], 11);
+    MD5_STEP(MD5_H, c, d, a, b, m[7], MD5_K[38], 16);
+    MD5_STEP(MD5_H, b, c, d, a, m[10], MD5_K[39], 23);
+    MD5_STEP(MD5_H, a, b, c, d, m[13], MD5_K[40], 4);
+    MD5_STEP(MD5_H, d, a, b, c, m[0], MD5_K[41], 11);
+    MD5_STEP(MD5_H, c, d, a, b, m[3], MD5_K[42], 16);
+    MD5_STEP(MD5_H, b, c, d, a, m[6], MD5_K[43], 23);
+    MD5_STEP(MD5_H, a, b, c, d, m[9], MD5_K[44], 4);
+    MD5_STEP(MD5_H, d, a, b, c, m[12], MD5_K[45], 11);
+    MD5_STEP(MD5_H, c, d, a, b, m[15], MD5_K[46], 16);
+    MD5_STEP(MD5_H, b, c, d, a, m[2], MD5_K[47], 23);
+
+    MD5_STEP(MD5_I, a, b, c, d, m[0], MD5_K[48], 6);
+    MD5_STEP(MD5_I, d, a, b, c, m[7], MD5_K[49], 10);
+    MD5_STEP(MD5_I, c, d, a, b, m[14], MD5_K[50], 15);
+    MD5_STEP(MD5_I, b, c, d, a, m[5], MD5_K[51], 21);
+    MD5_STEP(MD5_I, a, b, c, d, m[12], MD5_K[52], 6);
+    MD5_STEP(MD5_I, d, a, b, c, m[3], MD5_K[53], 10);
+    MD5_STEP(MD5_I, c, d, a, b, m[10], MD5_K[54], 15);
+    MD5_STEP(MD5_I, b, c, d, a, m[1], MD5_K[55], 21);
+    MD5_STEP(MD5_I, a, b, c, d, m[8], MD5_K[56], 6);
+    MD5_STEP(MD5_I, d, a, b, c, m[15], MD5_K[57], 10);
+    MD5_STEP(MD5_I, c, d, a, b, m[6], MD5_K[58], 15);
+    MD5_STEP(MD5_I, b, c, d, a, m[13], MD5_K[59], 21);
+    MD5_STEP(MD5_I, a, b, c, d, m[4], MD5_K[60], 6);
+    MD5_STEP(MD5_I, d, a, b, c, m[11], MD5_K[61], 10);
+    MD5_STEP(MD5_I, c, d, a, b, m[2], MD5_K[62], 15);
+    MD5_STEP(MD5_I, b, c, d, a, m[9], MD5_K[63], 21);
 
     state[0] += a;
     state[1] += b;
     state[2] += c;
     state[3] += d;
 }
+
+#undef MD5_STEP
+#undef MD5_F
+#undef MD5_G
+#undef MD5_H
+#undef MD5_I
 
 static void md5_blocks(xx_md5_context *context, const uint8_t *blocks, size_t count)
 {

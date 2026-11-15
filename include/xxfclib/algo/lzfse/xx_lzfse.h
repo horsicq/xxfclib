@@ -92,6 +92,12 @@ XXFC_API size_t xx_lzfse_compress_bound(size_t source_size);
 /** Encode a complete LZFSE stream. out_written is reset to zero on failure.
  * NULL source is accepted only for empty input. Input/output must not overlap. */
 XXFC_API bool xx_lzfse_compress_memory(const void *source,size_t source_size,void *destination,size_t destination_capacity,size_t *out_written);
+/** Bound for a bare LZVN payload (no bvxn header); input <= INT32_MAX-1; zero on unsupported size. */
+XXFC_API size_t xx_lzvn_compress_bound(size_t source_size);
+/** Encode one bare LZVN payload ending with the end-of-stream opcode, the
+ * input of xx_lzvn_decompress_memory(). out_written is reset to zero on
+ * failure. NULL source is accepted only for empty input. */
+XXFC_API bool xx_lzvn_compress_memory(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written);
 /** Buffered device packing (up to INT32_MAX-1 input bytes). offset<0 reads at
  * current position; exact size required. Devices remain owned by the caller.
  * Cancellation is checked between I/O chunks and before/after encoding. */

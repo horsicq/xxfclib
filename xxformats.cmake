@@ -138,6 +138,7 @@ set_property(SOURCE ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_extractor.c
 if(MSVC AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(X86|x86|x64|AMD64)$")
     set_source_files_properties(
         ${CMAKE_CURRENT_LIST_DIR}/src/data/platforms/xx_data_avx2.c
+        ${CMAKE_CURRENT_LIST_DIR}/src/algo/literal/xx_literal_avx2.c
         ${CMAKE_CURRENT_LIST_DIR}/src/memory/platforms/xx_memory_avx2.c
         ${CMAKE_CURRENT_LIST_DIR}/src/algo/adler32/platforms/xx_adler32_avx2.c
         ${CMAKE_CURRENT_LIST_DIR}/src/algo/crc/platforms/xx_crc64_avx2.c

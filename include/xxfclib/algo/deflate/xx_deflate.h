@@ -195,6 +195,39 @@ XXFC_API bool xx_deflate_pack_source_with_options_ex(xx_io_device *src_dev, cons
 XXFC_API bool xx_deflate_compress_memory_with_options_ex(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
                                                          int level, bool is_deflate64, const xx_deflate_pack_options_ex *options);
 
+/** The named DEFLATE packing settings of xx_deflate_pack_options_ex. Every
+ * writer that offers them (ZIP per archive or per member, the raw codec tools
+ * by string) sets them through the functions below, so names, ranges and
+ * defaults live in one place. Zero, or false, is the default of each. */
+typedef enum xx_deflate_pack_option_id {
+    XX_DEFLATE_OPTION_CANDIDATES,         /**< "candidates": hash-chain candidates per position; positive overrides the level */
+    XX_DEFLATE_OPTION_LAZY_MATCH,         /**< "lazy-match": lazy match-length threshold; 0 is greedy */
+    XX_DEFLATE_OPTION_SHORT_MATCH_FILTER, /**< "short-match-filter": 0 or 1; skip length-3 matches beyond distance 4096 */
+    XX_DEFLATE_OPTION_NICE_MATCH,         /**< "nice-match": stop the search at this length; 0 disables */
+    XX_DEFLATE_OPTION_GOOD_MATCH,         /**< "good-match": quarter the candidate budget at this length; 0 disables */
+    XX_DEFLATE_OPTION_COUNT
+} xx_deflate_pack_option_id;
+
+/** The string key of a setting, or NULL for an unknown id. */
+XXFC_API const char *xx_deflate_pack_option_name(xx_deflate_pack_option_id id);
+/** Look a key up (case-insensitive); returns XX_DEFLATE_OPTION_COUNT when unknown. */
+XXFC_API xx_deflate_pack_option_id xx_deflate_pack_option_find(const char *key, size_t key_length);
+/** Validate and store one setting: size settings take 0..SIZE_MAX, the
+ * filter takes 0 or 1. Returns false, leaving options unchanged, otherwise. */
+XXFC_API bool xx_deflate_pack_option_set(xx_deflate_pack_options_ex *options, xx_deflate_pack_option_id id, uint64_t value);
+/** Read one setting back. */
+XXFC_API bool xx_deflate_pack_option_get(const xx_deflate_pack_options_ex *options, xx_deflate_pack_option_id id, uint64_t *value);
+/** Parse "key=value[;key=value...]" (',' also separates; spaces around keys
+ * and values are ignored). Keys are the setting names above, plus "level"
+ * (0..9) when level is not NULL. Values are decimal; the filter also accepts
+ * true/false. On failure returns false, points *error_key (when not NULL) at
+ * the offending pair and leaves options and level unchanged. */
+XXFC_API bool xx_deflate_pack_options_parse(xx_deflate_pack_options_ex *options, int *level, const char *text, const char **error_key);
+/** Write the settings as a string accepted by the parser (all five keys).
+ * Returns the length needed, excluding the terminator; writes at most
+ * capacity bytes including the terminator when buffer is not NULL. */
+XXFC_API size_t xx_deflate_pack_options_format(const xx_deflate_pack_options_ex *options, char *buffer, size_t capacity);
+
 /* ========================================================================= */
 /* --- zlib stream wrapper (RFC 1950)                                    --- */
 /* ========================================================================= */

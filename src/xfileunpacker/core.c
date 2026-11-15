@@ -740,6 +740,71 @@ static bool is_compressed_tar_type(xx_file_type_t type) {
     }
 }
 
+/* Detections that name only a carrier, not the payload's own format: a
+ * generic "archive appended to an executable" reader (the "sfx <archive>"
+ * family) or a bare compression stream. Any validated handle may refine them
+ * (a Node pkg bundle in a gzip SFX, a PyInstaller archive or a DMG that starts
+ * with a zlib stream). */
+static bool handle_generic_carrier(xx_file_type_t type)
+{
+    const char *name;
+    switch (type) {
+    case XX_FILE_TYPE_ZLIB: case XX_FILE_TYPE_GZ: case XX_FILE_TYPE_BZ2: case XX_FILE_TYPE_XZ:
+    case XX_FILE_TYPE_LZMA: case XX_FILE_TYPE_LZIP: case XX_FILE_TYPE_LZ4: case XX_FILE_TYPE_LZOP:
+    case XX_FILE_TYPE_ZSTD: case XX_FILE_TYPE_UNIX_COMPRESS:
+        return true;
+    default: break;
+    }
+    name = xx_format_file_type_to_string(type);
+    return name && (name[0] == 's' || name[0] == 'S') && (name[1] == 'f' || name[1] == 'F') &&
+           (name[2] == 'x' || name[2] == 'X') && name[3] == ' ';
+}
+
+/* May a validated unpack handle of type candidate replace the detected type?
+ * The handle pass exists to upgrade a stream to its compound archive and a
+ * generic or carrier detection (data, an executable hosting an installer, SFX
+ * or packed payload; a generic SFX or bare stream) to a specific reader. It
+ * must not replace a specific
+ * detection by an unrelated sibling that merely validates too: EmmaSetup's
+ * "ECM\0" reader once took Neill Corlett ECM images that way. A specific
+ * detection stands while its own reader accepts the file. The device cursor
+ * is preserved. */
+typedef struct handle_validation {
+    xx_file_type_t type; /* the type whose reader was validated, or UNKNOWN */
+    bool valid;
+} handle_validation;
+
+static bool handle_may_replace(xx_io_device *device, xx_file_type_t detected, xx_file_type_t candidate,
+                               handle_validation *cache)
+{
+    xx_file_type_t chain[XX_FILE_TYPE_CHAIN_MAX];
+    size_t count, i;
+    Abstractformat *format;
+    bool valid;
+    int64_t saved;
+    if (detected == XX_FILE_TYPE_UNKNOWN || detected == XX_FILE_TYPE_BINARY) return true;
+    if (handle_generic_carrier(detected)) return true;
+    count = xx_format_get_file_type_chain(detected, chain, XX_FILE_TYPE_CHAIN_MAX);
+    for (i = 0; i < count && i < XX_FILE_TYPE_CHAIN_MAX; ++i)
+        if (chain[i] == XX_FILE_TYPE_MSDOS || chain[i] == XX_FILE_TYPE_ELF || chain[i] == XX_FILE_TYPE_MACHO) return true;
+    /* A more specific interpretation of the detected type (GZ, then TAR.GZ). */
+    count = xx_format_get_file_type_chain(candidate, chain, XX_FILE_TYPE_CHAIN_MAX);
+    for (i = 0; i < count && i < XX_FILE_TYPE_CHAIN_MAX; ++i)
+        if (chain[i] == detected) return true;
+    /* One validation per detected type, however many candidates ask. */
+    if (cache && cache->type == detected) return !cache->valid;
+    saved = xx_io_tell(device);
+    format = xx_format_create_reader(detected, device, 0);
+    valid = format && xx_format_is_valid(format, NULL);
+    xx_format_free_reader(format);
+    if (saved >= 0) (void)xx_io_seek64(device, saved, SEEK_SET);
+    if (cache) {
+        cache->type = detected;
+        cache->valid = valid;
+    }
+    return !valid;
+}
+
 /* Readers that decode one compressed stream from the start of the file: how
  * far they have read is how far they are. */
 #if XFU_FORMAT_SUPPORT_FULL
@@ -1804,6 +1869,7 @@ layers:
     }
     {
         xx_list_t *handles = xx_format_get_unpack_handle_types_device(device, true);
+        handle_validation validation = {XX_FILE_TYPE_UNKNOWN, false};
         size_t i;
         /* The handle detector orders a stream before its compound archive,
          * and a generic reader before a more specific one. Reader selection
@@ -1822,7 +1888,9 @@ layers:
                      * later checksum is damaged. Keep that reader so it can
                      * diagnose the archive, rather than changing to its raw
                      * stream parent after full compound validation fails. */
-                    if (j == known_count || candidate == detected) detected = candidate;
+                    if (candidate == detected ||
+                        (j == known_count && handle_may_replace(device, detected, candidate, &validation)))
+                        detected = candidate;
                 }
             }
         if (request->handle_type != XX_HANDLE_TYPE_UNKNOWN)

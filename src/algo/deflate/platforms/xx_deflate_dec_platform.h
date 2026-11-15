@@ -23,6 +23,16 @@
 #define XX_DEFLATE_DEC_NOINLINE
 #endif
 
+/* The match copies are inlined into the target-specific block loops
+ * (platforms/xx_deflate_dec_fast.inc instances). */
+#if defined(_MSC_VER)
+#define XX_DEFLATE_DEC_INLINE __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define XX_DEFLATE_DEC_INLINE inline __attribute__((always_inline))
+#else
+#define XX_DEFLATE_DEC_INLINE inline
+#endif
+
 #if defined(XX_DEFLATE_DEC_X86) && (defined(__GNUC__) || defined(__clang__))
 #define XX_DEFLATE_DEC_TARGET_SSE2 __attribute__((target("sse2")))
 #define XX_DEFLATE_DEC_TARGET_AVX2 __attribute__((target("avx2")))

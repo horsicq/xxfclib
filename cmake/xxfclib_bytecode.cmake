@@ -23,6 +23,7 @@ set(XXFC_EMUL_FORMAT_SOURCES
     src/formats/executable/pe/xx_pe_unwind_validate.c
     src/formats/executable/pe/xx_pe_stream_common.c src/formats/executable/pe/xx_pe_export.c
     src/formats/executable/pe/xx_pe_metadata.c src/formats/executable/pe/xx_pe_import.c
+    src/formats/executable/pe/xx_pe_yx.c
     src/formats/executable/dotnet/xx_dotnet.c src/formats/executable/dotnet/xx_dotnet_datastructs.c
     src/formats/executable/dotnet/platforms/xx_dotnet_us_simd.h
     src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c

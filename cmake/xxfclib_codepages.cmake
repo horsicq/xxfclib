@@ -27,6 +27,7 @@ set(XXFC_CODEPAGE_SOURCES
 set(_xxfc_codepage_definitions "")
 if(XXFC_CODEPAGE_ALL)
     list(APPEND XXFC_CODEPAGE_SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/../src/codepages/xx_codepage_whatwg.c"
         "${CMAKE_CURRENT_LIST_DIR}/../src/codepages/xx_codepage_petscii_upper.c"
         "${CMAKE_CURRENT_LIST_DIR}/../src/codepages/xx_codepage_petscii_lower.c"
         "${CMAKE_CURRENT_LIST_DIR}/../src/codepages/xx_codepage_riscos.c"

@@ -3195,43 +3195,51 @@ static bool xx_zip_pack_xz_source(xx_io_device *source, const char *source_path,
     return success;
 }
 
-/* Per-record settings override writer settings, including an explicit zero. */
-static bool xx_zip_pack_size_option(Abstractformat *self, const xx_archive_write_state *state, const xx_archive_record *record,
-                                    uint32_t id, size_t *result, xx_pd_struct *pd)
+/* The ZIP meta IDs of the DEFLATE packing settings; names, ranges and
+ * defaults belong to the deflate code (xx_deflate_pack_option_set). A
+ * per-record value overrides the writer's, including an explicit zero. */
+static bool xx_zip_pack_deflate_options(Abstractformat *self, const xx_archive_write_state *state, const xx_archive_record *record,
+                                        xx_deflate_pack_options_ex *options, xx_pd_struct *pd)
 {
-    const xx_var *value = xx_archive_record_find_meta(record, id);
-    uint64_t number = 0U;
-    bool valid = true;
-    if (!value) value = xx_format_resolve_extra_parameter(self, &state->options, id);
-    if (value) {
+    static const struct {
+        uint32_t meta;
+        xx_deflate_pack_option_id id;
+    } map[] = {
+        {XX_META_ID_COMPRESSION_CANDIDATES, XX_DEFLATE_OPTION_CANDIDATES},
+        {XX_META_ID_COMPRESSION_LAZY_MATCH, XX_DEFLATE_OPTION_LAZY_MATCH},
+        {XX_META_ID_COMPRESSION_SHORT_MATCH_FILTER, XX_DEFLATE_OPTION_SHORT_MATCH_FILTER},
+        {XX_META_ID_COMPRESSION_NICE_MATCH, XX_DEFLATE_OPTION_NICE_MATCH},
+        {XX_META_ID_COMPRESSION_GOOD_MATCH, XX_DEFLATE_OPTION_GOOD_MATCH},
+    };
+    size_t i;
+    for (i = 0; i < sizeof(map) / sizeof(map[0]); ++i) {
+        const xx_var *value = xx_archive_record_find_meta(record, map[i].meta);
+        uint64_t number = 0U;
+        bool valid = true;
+        if (!value) value = xx_format_resolve_extra_parameter(self, &state->options, map[i].meta);
+        if (!value) continue;
         switch ((xx_var_type_t)value->type) {
+            case XX_VAR_TYPE_BOOL:
+                valid = map[i].id == XX_DEFLATE_OPTION_SHORT_MATCH_FILTER;
+                number = xx_var_get_bool(value) ? 1U : 0U;
+                break;
             case XX_VAR_TYPE_UINT8: case XX_VAR_TYPE_UINT16: case XX_VAR_TYPE_UINT32: case XX_VAR_TYPE_UINT64:
-                number = xx_var_get_u64(value); break;
+                valid = map[i].id != XX_DEFLATE_OPTION_SHORT_MATCH_FILTER;
+                number = xx_var_get_u64(value);
+                break;
             case XX_VAR_TYPE_INT8: case XX_VAR_TYPE_INT16: case XX_VAR_TYPE_INT32: case XX_VAR_TYPE_INT64:
-                valid = xx_var_get_i64(value) >= 0;
+                valid = map[i].id != XX_DEFLATE_OPTION_SHORT_MATCH_FILTER && xx_var_get_i64(value) >= 0;
                 if (valid) number = (uint64_t)xx_var_get_i64(value);
                 break;
             default: valid = false; break;
         }
+        if (!valid || !xx_deflate_pack_option_set(options, map[i].id, number)) {
+            xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
+                            map[i].id == XX_DEFLATE_OPTION_SHORT_MATCH_FILTER ? "DEFLATE short-match filter must be boolean"
+                                                                               : "DEFLATE packing settings must be nonnegative size_t integers");
+            return false;
+        }
     }
-    if (!valid || number > SIZE_MAX) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "DEFLATE packing settings must be nonnegative size_t integers");
-        return false;
-    }
-    *result = (size_t)number;
-    return true;
-}
-
-static bool xx_zip_pack_bool_option(Abstractformat *self, const xx_archive_write_state *state, const xx_archive_record *record,
-                                    uint32_t id, bool *result, xx_pd_struct *pd)
-{
-    const xx_var *value = xx_archive_record_find_meta(record, id);
-    if (!value) value = xx_format_resolve_extra_parameter(self, &state->options, id);
-    if (value && value->type != XX_VAR_TYPE_BOOL) {
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "DEFLATE short-match filter must be boolean");
-        return false;
-    }
-    *result = value ? xx_var_get_bool(value) : false;
     return true;
 }
 
@@ -3546,11 +3554,7 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
 
     xx_deflate_pack_options_ex deflate_options = {0};
     if (method == 8U || method == 9U) {
-        if (!xx_zip_pack_size_option(self, state, record, XX_META_ID_COMPRESSION_CANDIDATES, &deflate_options.max_candidates, pd) ||
-            !xx_zip_pack_size_option(self, state, record, XX_META_ID_COMPRESSION_LAZY_MATCH, &deflate_options.lazy_match_limit, pd) ||
-            !xx_zip_pack_bool_option(self, state, record, XX_META_ID_COMPRESSION_SHORT_MATCH_FILTER, &deflate_options.short_match_filter, pd) ||
-            !xx_zip_pack_size_option(self, state, record, XX_META_ID_COMPRESSION_NICE_MATCH, &deflate_options.nice_match, pd) ||
-            !xx_zip_pack_size_option(self, state, record, XX_META_ID_COMPRESSION_GOOD_MATCH, &deflate_options.good_match, pd)) {
+        if (!xx_zip_pack_deflate_options(self, state, record, &deflate_options, pd)) {
             xx_str_free(name_utf8);
             return false;
         }

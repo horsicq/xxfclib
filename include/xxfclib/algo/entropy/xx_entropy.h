@@ -38,6 +38,25 @@ XXFC_API double xx_entropy_calculate(const void *data, size_t size);
  */
 XXFC_API double xx_entropy(const void *data, size_t size);
 
+/**
+ * @brief YARA-X-form entropy from a byte histogram: -Σ p·log2(p).
+ *
+ * Sums -p·log2(p) over byte values 0..255 in ascending order, skipping zero
+ * counts, with p = counts[i] / total. This is the exact evaluation order of
+ * YARA-X's math::entropy (and of the classic -p·log2(p) definition), which
+ * xx_entropy_calculate's (ln N - Σ c·ln c / N)/ln 2 form is NOT bit-identical
+ * to. Returns 0.0 for total == 0.
+ */
+XXFC_API double xx_entropy_log2_counts(const uint64_t counts[256], uint64_t total);
+
+/**
+ * @brief YARA-X-form entropy of a buffer: -Σ p·log2(p).
+ *
+ * Builds the histogram with xx_bytestats_histogram and evaluates
+ * xx_entropy_log2_counts on it. data may be NULL when size is 0.
+ */
+XXFC_API double xx_entropy_log2(const void *data, size_t size);
+
 struct xx_io_device;
 
 /** Calculate Shannon entropy over a device range, in bits per byte.

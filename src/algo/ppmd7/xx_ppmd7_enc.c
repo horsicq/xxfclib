@@ -139,7 +139,7 @@ void Ppmd7_EncodeSymbol(CPpmd7 *p, ppmd7_range_enc *rc, int symbol)
         CPpmd_State *s = Ppmd7_GetStats(p, p->MinContext);
         uint32_t sum;
         unsigned i;
-        if (s->Symbol == (uint8_t)symbol) {
+        if ((int)s->Symbol == symbol) {
             re_encode(rc, 0, s->Freq, p->MinContext->SummFreq);
             p->FoundState = s;
             Ppmd7_Update1_0(p);
@@ -149,7 +149,7 @@ void Ppmd7_EncodeSymbol(CPpmd7 *p, ppmd7_range_enc *rc, int symbol)
         sum = s->Freq;
         i = p->MinContext->NumStats - 1;
         do {
-            if ((++s)->Symbol == (uint8_t)symbol) {
+            if ((int)(++s)->Symbol == symbol) {
                 re_encode(rc, sum, s->Freq, p->MinContext->SummFreq);
                 p->FoundState = s;
                 Ppmd7_Update1(p);
@@ -169,7 +169,7 @@ void Ppmd7_EncodeSymbol(CPpmd7 *p, ppmd7_range_enc *rc, int symbol)
     } else {
         uint16_t *prob = Ppmd7_GetBinSumm(p);
         CPpmd_State *s = Ppmd7Context_OneState(p->MinContext);
-        if (s->Symbol == (uint8_t)symbol) {
+        if ((int)s->Symbol == symbol) {
             re_encode_bit_0(rc, *prob);
             *prob = (uint16_t)PPMD_UPDATE_PROB_0(*prob);
             p->FoundState = s;
