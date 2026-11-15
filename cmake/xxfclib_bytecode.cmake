@@ -8,6 +8,9 @@
 set(XXFC_EMUL_DEFINITIONS XXFC_PROFILE_APK_EMUL XXFC_PROFILE_DOTNET_EMUL)
 set(XXFC_EMUL_FORMAT_SOURCES
     src/algo/store/xx_store.c
+    src/algo/md5/xx_md5.c
+    src/algo/tlsh/xx_tlsh.c
+    src/strings/xx_string_casefold.c
     src/algo/deflate/xx_deflate.c src/algo/deflate/xx_deflate_dec.c
     src/algo/deflate/xx_deflate_enc.c
     src/algo/deflate/platforms/xx_deflate_sse2.c
@@ -18,12 +21,13 @@ set(XXFC_EMUL_FORMAT_SOURCES
     src/formats/executable/dex/xx_dex.c src/formats/executable/dex/xx_dex_inspect.c
     src/formats/executable/elf/xx_elf.c src/formats/executable/elf/xx_elf_datastructs.c
     src/formats/executable/elf/xx_elf_inspect.c src/formats/executable/elf/xx_elf_symbols.c
+    src/formats/executable/elf/xx_elf_yx.c
     src/formats/executable/pe/xx_pe.c src/formats/executable/pe/xx_pe_datastructs.c
     src/formats/executable/pe/xx_pe_inspect.c
     src/formats/executable/pe/xx_pe_unwind_validate.c
     src/formats/executable/pe/xx_pe_stream_common.c src/formats/executable/pe/xx_pe_export.c
     src/formats/executable/pe/xx_pe_metadata.c src/formats/executable/pe/xx_pe_import.c
-    src/formats/executable/pe/xx_pe_yx.c
+    src/formats/executable/pe/xx_pe_yx.c    src/formats/executable/pe/xx_pe_yx_authenticode.c
     src/formats/executable/dotnet/xx_dotnet.c src/formats/executable/dotnet/xx_dotnet_datastructs.c
     src/formats/executable/dotnet/platforms/xx_dotnet_us_simd.h
     src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c

@@ -986,6 +986,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/document/binder
     src/formats/document/cfbf
     src/formats/document/chm
+    src/formats/document/vba
     src/formats/document/frontpagetheme
     src/formats/document/gnu_gettext_mo
     src/formats/document/ivt
@@ -1256,6 +1257,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/installer/lyme_sfx
     src/formats/installer/makeself
     src/formats/installer/metaproducts
+    src/formats/installer/msi
     src/formats/installer/msi_resource
     src/formats/installer/msmpi_bootstrapper
     src/formats/installer/mva
@@ -3082,6 +3084,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zie
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zip
     src/formats/archive/zip/xx_zip.c
+    src/formats/archive/zip/xx_zip_yx.c
     src/formats/archive/zip/xx_zip_datastructs.c
     src/formats/archive/zip/xx_zip_extractor.c
     src/formats/archive/zip/xx_zip_inspect.c
@@ -3170,6 +3173,13 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_binder
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_cfbf
     src/formats/document/cfbf/xx_cfbf.c
     src/formats/document/cfbf/xx_cfbf_extractor.c
+    src/formats/document/cfbf/xx_olecf_yx.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_vba
+    src/formats/document/vba/xx_vba_yx.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_msi
+    src/formats/installer/msi/xx_msi_yx.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_chm
     src/formats/document/chm/xx_chm.c
@@ -3283,6 +3293,8 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_dotnet
     src/formats/executable/dotnet/xx_dotnet_inspect.c
     src/formats/executable/dotnet/xx_dotnet_reader.c
     src/formats/executable/dotnet/xx_dotnet_resource_reader.c
+    src/formats/executable/dotnet/xx_dotnet_yx.c
+    src/formats/executable/dotnet/xx_dotnet_yx_method.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_dotnet_bundle
     src/formats/executable/dotnet_bundle/xx_dotnet_bundle.c
@@ -3335,6 +3347,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pe
     src/formats/executable/pe/xx_pe_symbols.c
     src/formats/executable/pe/xx_pe_unwind_validate.c
     src/formats/executable/pe/xx_pe_yx.c
+    src/formats/executable/pe/xx_pe_yx_authenticode.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pyinstaller_one_executable
     src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable.c
@@ -4096,6 +4109,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_createinstall_instcrin_extrac
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_crx
     src/formats/installer/crx/xx_crx.c
+    src/formats/installer/crx/xx_crx_yx.c
     src/formats/installer/crx/xx_crx_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_desksoft

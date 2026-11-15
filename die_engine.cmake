@@ -99,6 +99,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/amigahunk/xx_amigahunk.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/atarist/xx_atarist.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dex/xx_dex.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dex/xx_dex_yx.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dex/xx_dex_inspect.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dos16m/xx_dos16m.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_inspect.c
@@ -106,6 +107,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_symbols.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_resources.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_datastructs.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_yx.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/gz/xx_gz.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/bz2/xx_bz2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/lha/xx_lha.c
@@ -136,6 +138,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_datastructs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_yx.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_yx_authenticode.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_inspect.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_reader.c
@@ -144,6 +147,8 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_avx2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_datastructs.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_yx.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_yx_method.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/image/png/xx_png.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pyc/xx_pyc.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/rar/xx_rar.c
@@ -151,6 +156,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/tar_common/xx_tar_common.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/tar_gz/xx_tar_gz.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/zip/xx_zip.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/zip/xx_zip_yx.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/zip/xx_zip_inspect.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/zip/xx_zip_legacy_encoder.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/xz/xx_xz.c
@@ -208,6 +214,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/entropy/platforms/xx_entropy_avx2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/entropy/platforms/xx_entropy_neon.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/md5/xx_md5.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/algo/tlsh/xx_tlsh.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/implode/xx_implode.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/kpa/xx_kpa.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/lzma/xx_lzma.c
@@ -275,6 +282,13 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/memory/platforms/xx_memory_neon.c
     ${CMAKE_CURRENT_LIST_DIR}/src/strings/xx_string.c
     ${CMAKE_CURRENT_LIST_DIR}/src/strings/xx_strings_scan.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/strings/xx_string_casefold.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/strings/xx_string_casecmp.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/strings/xx_string_uppercase.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/strings/xx_string_width.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/strings/xx_string_escape_debug.c
+    # The ASCII literal search behind xx_string_casecmp.c.
+    ${CMAKE_CURRENT_LIST_DIR}/src/algo/literal_nocase/xx_literal_nocase.c
     # Extraction widget: curated native readers, without the global catalog.
     ${CMAKE_CURRENT_LIST_DIR}/src/extractor/xx_extractor.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/image/bmp/xx_bmp.c

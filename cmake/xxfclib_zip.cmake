@@ -83,6 +83,7 @@ set(_xxfc_zip_sources
     src/formats/archive/xz/xx_xz.c
     src/formats/archive/xz/xx_xz_writer.c
     src/formats/archive/zip/xx_zip.c
+    src/formats/archive/zip/xx_zip_yx.c
     src/formats/archive/zip/xx_zip_extractor.c
     src/formats/archive/zip/xx_zip_inspect.c
     src/formats/archive/zip/xx_zip_legacy_encoder.c

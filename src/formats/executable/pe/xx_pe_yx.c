@@ -6,76 +6,14 @@
  * used by xxyara; see the header for the contract. */
 
 #include "xxfclib/formats/executable/pe/xx_pe_yx.h"
+#include "xxfclib/algo/md5/xx_md5.h"
+#include "xxfclib/strings/xx_string_casefold.h"
+
+#include "xx_pe_yx_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* Mirrors the reference module's PE test: 'MZ', e_lfanew inside the buffer,
- * and the NT signature at e_lfanew. */
-static bool xx_pe_yx_is_pe(const uint8_t *data, size_t size)
-{
-    uint32_t pe_offset;
-    const uint8_t *pe;
-    if (!data || size < 64 || data[0] != 'M' || data[1] != 'Z') return false;
-    pe_offset = (uint32_t)data[60] | ((uint32_t)data[61] << 8) |
-                ((uint32_t)data[62] << 16) | ((uint32_t)data[63] << 24);
-    if ((uint64_t)pe_offset > size || size - (size_t)pe_offset < 24) return false;
-    pe = data + (size_t)pe_offset;
-    return pe[0] == 'P' && pe[1] == 'E' && pe[2] == 0 && pe[3] == 0;
-}
-
-static uint64_t xx_pe_yx_read(const uint8_t *data, size_t offset, unsigned width)
-{
-    uint64_t value = 0;
-    for (unsigned i = 0; i < width; ++i)
-        value |= (uint64_t)data[offset + i] << (8 * i);
-    return value;
-}
-
-/* Section table location and clamped count (96 sections, file-bounded), as
- * the reference module computes them. */
-static size_t xx_pe_yx_sections(const uint8_t *data, size_t size,
-                                size_t pe_offset, size_t *sections_offset)
-{
-    size_t offset = pe_offset + 24;
-    size_t count;
-    uint64_t optional_size = xx_pe_yx_read(data, pe_offset + 20, 2);
-    if (optional_size > size - offset) return 0;
-    offset += (size_t)optional_size;
-    count = (size_t)xx_pe_yx_read(data, pe_offset + 6, 2);
-    if (count > 96) count = 96;
-    if (count > (size - offset) / 40) count = (size - offset) / 40;
-    if (sections_offset) *sections_offset = offset;
-    return count;
-}
-
-/* Reads a 4-byte optional-header field with the reference module's rules: 0
- * when the optional header is truncated, false only when the input is not a
- * PE. `offset32`/`offset64` are relative to the optional header start. */
-static bool xx_pe_yx_optional_field32(const uint8_t *data, size_t size,
-                                      unsigned offset32, unsigned offset64,
-                                      uint64_t *value)
-{
-    size_t pe_offset, optional_offset, offset;
-    uint16_t magic = 0;
-    bool is_64bit, optional_valid;
-    if (!value || !xx_pe_yx_is_pe(data, size)) return false;
-    pe_offset = (size_t)xx_pe_yx_read(data, 60, 4);
-    optional_offset = pe_offset + 24;
-    if (size - optional_offset >= 2)
-        magic = (uint16_t)xx_pe_yx_read(data, optional_offset, 2);
-    is_64bit = magic == 0x20b;
-    optional_valid = size - optional_offset >= (is_64bit ? 112u : 96u);
-    if (!optional_valid) {
-        *value = 0;
-        return true;
-    }
-    offset = optional_offset + (is_64bit ? offset64 : offset32);
-    if (offset > size || 4u > size - offset) return false;
-    *value = xx_pe_yx_read(data, offset, 4);
-    return true;
-}
 
 bool xx_pe_yx_rva_to_offset(const uint8_t *data, size_t size, uint64_t rva,
                             uint64_t *value)
@@ -213,8 +151,8 @@ bool xx_pe_yx_calculate_checksum(const uint8_t *data, size_t size,
     return true;
 }
 
-static bool xx_pe_yx_offset_for_rva(const uint8_t *data, size_t size,
-                                    uint32_t rva, size_t *offset)
+static inline bool xx_pe_yx_offset_for_rva(const uint8_t *data, size_t size,
+                                           uint32_t rva, size_t *offset)
 {
     uint64_t candidate;
     if (!xx_pe_yx_rva_to_offset(data, size, rva, &candidate) || candidate > size)
@@ -833,4 +771,484 @@ bool xx_pe_yx_exports(const uint8_t *data, size_t size,
         return true;
     }
     return true;
+}
+
+/* ------------------------------------------------------------ Imphash -- */
+
+typedef struct {
+    xx_md5_context hash;
+    bool ok;
+    bool first;
+} xx_pe_yx_imphash_context;
+
+static void xx_pe_yx_hash_update(xx_pe_yx_imphash_context *ctx,
+                                 const void *bytes, size_t size)
+{
+    if (ctx->ok) xx_md5_update(&ctx->hash, bytes, size);
+}
+
+static void xx_pe_yx_hash_sink(void *opaque, const char *bytes, size_t size)
+{
+    xx_pe_yx_hash_update((xx_pe_yx_imphash_context *)opaque, bytes, size);
+}
+
+/* YARA-X's update_lowercase: an ASCII name is hashed as it is, or
+ * lowercased byte-wise in 256-byte chunks; any other name takes Rust's
+ * str::to_lowercase, streamed by xx_string_to_lower_stream. Import names
+ * are valid UTF-8 here. */
+static void xx_pe_yx_hash_lowercase(xx_pe_yx_imphash_context *ctx,
+                                    const uint8_t *s, size_t length)
+{
+    uint8_t buf[256];
+    bool upper = false;
+    size_t ascii = 0;
+    for (; ascii < length && s[ascii] < 0x80; ++ascii)
+        if (s[ascii] >= 'A' && s[ascii] <= 'Z') upper = true;
+    if (ascii < length) {
+        xx_string_to_lower_stream(s, length, xx_pe_yx_hash_sink, ctx);
+        return;
+    }
+    if (!upper) {
+        if (length) xx_pe_yx_hash_update(ctx, s, length);
+        return;
+    }
+    for (size_t offset = 0; offset < length;) {
+        size_t n = length - offset < sizeof(buf) ?
+                   length - offset : sizeof(buf);
+        for (size_t i = 0; i < n; ++i)
+            buf[i] = xx_pe_yx_ascii_lower(s[offset + i]);
+        xx_pe_yx_hash_update(ctx, buf, n);
+        offset += n;
+    }
+}
+
+static void xx_pe_yx_imphash_visit(void *opaque,
+                                   const uint8_t *dll, size_t dll_length,
+                                   const uint8_t *function,
+                                   size_t function_length,
+                                   bool by_ordinal, uint16_t ordinal,
+                                   uint32_t rva)
+{
+    xx_pe_yx_imphash_context *ctx = opaque;
+    (void)by_ordinal;
+    (void)ordinal;
+    (void)rva;
+    if (dll_length >= 4 &&
+        (xx_pe_yx_ascii_equal(dll + dll_length - 4, 4, ".dll", 4) ||
+         xx_pe_yx_ascii_equal(dll + dll_length - 4, 4, ".sys", 4) ||
+         xx_pe_yx_ascii_equal(dll + dll_length - 4, 4, ".ocx", 4)))
+        dll_length -= 4;
+    if (!ctx->first) xx_pe_yx_hash_update(ctx, ",", 1);
+    xx_pe_yx_hash_lowercase(ctx, dll, dll_length);
+    xx_pe_yx_hash_update(ctx, ".", 1);
+    xx_pe_yx_hash_lowercase(ctx, function, function_length);
+    ctx->first = false;
+}
+
+bool xx_pe_yx_imphash(const uint8_t *data, size_t size, char out[33])
+{
+    xx_pe_yx_imphash_context ctx;
+    uint8_t digest[16];
+    static const char hexadecimal[] = "0123456789abcdef";
+    bool ok;
+    if (!out || !xx_pe_yx_is_pe(data, size)) return false;
+    if (!xx_md5_init(&ctx.hash)) return false;
+    ctx.ok = true;
+    ctx.first = true;
+    xx_pe_yx_visit_imports(data, size, 1u, xx_pe_yx_imphash_visit, &ctx);
+    ok = ctx.ok && xx_md5_final(&ctx.hash, digest, sizeof(digest));
+    if (!ok) return false;
+    for (size_t i = 0; i < sizeof(digest); ++i) {
+        out[2 * i] = hexadecimal[digest[i] >> 4];
+        out[2 * i + 1] = hexadecimal[digest[i] & 15];
+    }
+    out[32] = '\0';
+    return true;
+}
+
+/* ---------------------------------------------------------- Resources -- */
+
+typedef struct {
+    size_t offset; /* Relative to the first byte of the resource directory. */
+    xx_pe_yx_resource_id ids[3];
+    unsigned level;
+} xx_pe_yx_resource_node;
+
+static xx_pe_yx_resource_id xx_pe_yx_resource_parse_id(const uint8_t *data,
+                                                       size_t section_offset,
+                                                       size_t section_size,
+                                                       uint32_t value)
+{
+    xx_pe_yx_resource_id id = {0};
+    if (!(value & 0x80000000u)) {
+        id.kind = XX_PE_YX_RESOURCE_NUMERIC;
+        id.value = value;
+    } else {
+        size_t relative = (size_t)(value & 0x7fffffffu);
+        if (relative <= section_size && section_size - relative >= 2) {
+            size_t length = (size_t)xx_pe_yx_read(data, section_offset + relative,
+                                                  2);
+            if (length < 1000 && length <=
+                (section_size - relative - 2) / 2) {
+                id.kind = XX_PE_YX_RESOURCE_NAMED;
+                id.name = data + section_offset + relative + 2;
+                id.name_length = length * 2;
+            }
+        }
+    }
+    return id;
+}
+
+bool xx_pe_yx_visit_resources(const uint8_t *data, size_t size,
+                              xx_pe_yx_resource_directory *result,
+                              xx_pe_yx_resource_visitor visitor, void *opaque,
+                              bool (*poll)(void *poll_opaque),
+                              void *poll_opaque)
+{
+    size_t pe_offset, optional_offset, directory_offset, section_offset;
+    size_t section_size, used = 0, head = 0, capacity = 16;
+    uint16_t magic;
+    uint32_t resource_rva;
+    xx_pe_yx_resource_node *queue;
+    if (!result || !xx_pe_yx_is_pe(data, size)) return false;
+    memset(result, 0, sizeof(*result));
+    pe_offset = (size_t)xx_pe_yx_read(data, 60, 4);
+    optional_offset = pe_offset + 24;
+    if (size - optional_offset < 2) return true;
+    magic = (uint16_t)xx_pe_yx_read(data, optional_offset, 2);
+    directory_offset = optional_offset + (magic == 0x20b ? 112u : 96u);
+    if (directory_offset > size || size - directory_offset < 3u * 8u)
+        return true;
+    directory_offset += 2u * 8u;
+    resource_rva = (uint32_t)xx_pe_yx_read(data, directory_offset, 4);
+    if (!xx_pe_yx_offset_for_rva(data, size, resource_rva, &section_offset))
+        return true;
+    section_size = size - section_offset;
+    queue = (xx_pe_yx_resource_node *)malloc(capacity * sizeof(*queue));
+    if (!queue) return false;
+    memset(&queue[used], 0, sizeof(*queue));
+    ++used;
+    while (head < used && head < 65536) {
+        if (poll && poll(poll_opaque)) { free(queue); return false; }
+        xx_pe_yx_resource_node node = queue[head++];
+        size_t directory = node.offset, entries;
+        if (directory > section_size || section_size - directory < 16)
+            continue;
+        directory += section_offset;
+        if (xx_pe_yx_read(data, directory, 4) != 0) continue;
+        if (xx_pe_yx_read(data, directory + 12, 2) > 32768 ||
+            xx_pe_yx_read(data, directory + 14, 2) > 32768) continue;
+        if (node.level == 0) {
+            result->timestamp = (uint32_t)xx_pe_yx_read(data, directory + 4, 4);
+            result->major_version = (uint16_t)xx_pe_yx_read(data, directory + 8, 2);
+            result->minor_version = (uint16_t)xx_pe_yx_read(data, directory + 10, 2);
+        }
+        entries = (size_t)xx_pe_yx_read(data, directory + 12, 2) +
+                  (size_t)xx_pe_yx_read(data, directory + 14, 2);
+        if (entries > (size - directory - 16) / 8)
+            entries = (size - directory - 16) / 8;
+        for (size_t i = 0; i < entries; ++i) {
+            if (poll && poll(poll_opaque)) { free(queue); return false; }
+            size_t entry = directory + 16 + i * 8;
+            uint32_t name_id = (uint32_t)xx_pe_yx_read(data, entry, 4);
+            uint32_t target = (uint32_t)xx_pe_yx_read(data, entry + 4, 4);
+            size_t relative = (size_t)(target & 0x7fffffffu);
+            xx_pe_yx_resource_node child = node;
+            size_t leaf;
+            uint32_t rva, leaf_size;
+            if (!relative || relative >= section_size) continue;
+            if (node.level >= 3) continue;
+            child.ids[node.level] = xx_pe_yx_resource_parse_id(
+                data, section_offset, section_size, name_id);
+            if (node.level == 2 &&
+                child.ids[2].kind == XX_PE_YX_RESOURCE_NUMERIC &&
+                child.ids[2].value > 0xfffffu) continue;
+            if (target & 0x80000000u && node.level < 3 && used < 65536) {
+                if (used == capacity) {
+                    size_t new_capacity = capacity * 2;
+                    xx_pe_yx_resource_node *grown = (xx_pe_yx_resource_node *)
+                        realloc(queue, new_capacity * sizeof(*grown));
+                    if (!grown) { free(queue); return false; }
+                    queue = grown;
+                    capacity = new_capacity;
+                }
+                child.offset = relative;
+                child.level = node.level + 1;
+                queue[used++] = child;
+            }
+            if (section_size - relative < 16) continue;
+            leaf = section_offset + relative;
+            rva = (uint32_t)xx_pe_yx_read(data, leaf, 4);
+            leaf_size = (uint32_t)xx_pe_yx_read(data, leaf + 4, 4);
+            if (!rva || !leaf_size || leaf_size >= 0x3fffffffu) continue;
+            {
+                xx_pe_yx_resource resource = {0};
+                uint64_t mapped;
+                resource.length = leaf_size;
+                resource.rva = rva;
+                resource.type = child.ids[0];
+                resource.id = child.ids[1];
+                resource.language = child.ids[2];
+                if (xx_pe_yx_rva_to_offset(data, size, rva, &mapped) &&
+                    mapped <= UINT32_MAX) {
+                    resource.has_offset = true;
+                    resource.offset = (uint32_t)mapped;
+                }
+                result->present = true;
+                ++result->count;
+                if (visitor) visitor(opaque, &resource);
+                if (result->count == 65536) { free(queue); return true; }
+            }
+        }
+    }
+    free(queue);
+    return true;
+}
+
+/* ------------------------------------------------------- Version info -- */
+
+typedef struct {
+    size_t next;
+    size_t children;
+    size_t end;
+    uint16_t value_length;
+} xx_pe_yx_version_node;
+
+/* The version-information format stores nested, 4-byte-aligned UTF-16
+ * records. The reference parser treats a missing terminator as the end of
+ * the input, but requires a complete 2-byte code unit at each step. */
+static bool xx_pe_yx_utf16_skip(const uint8_t *data, size_t end, size_t *position)
+{
+    size_t at = *position;
+    while (end - at >= 2) {
+        uint16_t ch = (uint16_t)xx_pe_yx_read(data, at, 2);
+        at += 2;
+        if (!ch) { *position = at; return true; }
+    }
+    if (at != end) return false;
+    *position = at;
+    return true;
+}
+
+static bool xx_pe_yx_utf16_key(const uint8_t *data, size_t start, size_t end,
+                               const char *key)
+{
+    size_t i = 0, at = start;
+    while (at + 1 < end && key[i] &&
+           data[at] == (uint8_t)key[i] && data[at + 1] == 0) {
+        at += 2;
+        ++i;
+    }
+    return key[i] == 0 && at + 1 < end &&
+           data[at] == 0 && data[at + 1] == 0;
+}
+
+static bool xx_pe_yx_version_parse_node(const uint8_t *data, size_t size,
+                                        size_t at, const char *expected_key,
+                                        xx_pe_yx_version_node *node)
+{
+    size_t length, end, key_start, key_end, aligned;
+    if (at > size || size - at < 6) return false;
+    length = ((size_t)xx_pe_yx_read(data, at, 2) + 3u) & ~(size_t)3u;
+    if (!length || length > size - at || length < 6) return false;
+    end = at + length;
+    key_start = at + 6;
+    key_end = key_start;
+    if (!xx_pe_yx_utf16_skip(data, end, &key_end)) return false;
+    if (expected_key && !xx_pe_yx_utf16_key(data, key_start, key_end,
+                                            expected_key)) return false;
+    aligned = (key_end - at + 3u) & ~(size_t)3u;
+    if (aligned > length) return false;
+    node->next = end;
+    node->children = at + aligned;
+    node->end = end;
+    node->value_length = (uint16_t)xx_pe_yx_read(data, at + 2, 2);
+    return true;
+}
+
+static char *xx_pe_yx_utf16_to_utf8(const uint8_t *data, size_t start,
+                                    size_t end, size_t *length)
+{
+    size_t units, used = 0;
+    char *text;
+    if (end < start || (end - start) / 2 > (SIZE_MAX - 1) / 3)
+        return NULL;
+    units = (end - start) / 2;
+    text = (char *)malloc(units * 3 + 1);
+    if (!text) return NULL;
+    for (size_t i = 0; i < units; ++i) {
+        uint32_t ch = (uint32_t)xx_pe_yx_read(data, start + i * 2, 2);
+        if (!ch) break;
+        if (ch >= 0xd800 && ch <= 0xdbff && i + 1 < units) {
+            uint32_t lo = (uint32_t)xx_pe_yx_read(data, start + (i + 1) * 2, 2);
+            if (lo >= 0xdc00 && lo <= 0xdfff) {
+                ch = 0x10000u + ((ch - 0xd800u) << 10) + lo - 0xdc00u;
+                ++i;
+            } else ch = 0xfffdu;
+        } else if (ch >= 0xd800 && ch <= 0xdfff) ch = 0xfffdu;
+        if (ch < 0x80) text[used++] = (char)ch;
+        else if (ch < 0x800) {
+            text[used++] = (char)(0xc0u | (ch >> 6));
+            text[used++] = (char)(0x80u | (ch & 0x3fu));
+        } else if (ch < 0x10000) {
+            text[used++] = (char)(0xe0u | (ch >> 12));
+            text[used++] = (char)(0x80u | ((ch >> 6) & 0x3fu));
+            text[used++] = (char)(0x80u | (ch & 0x3fu));
+        } else {
+            text[used++] = (char)(0xf0u | (ch >> 18));
+            text[used++] = (char)(0x80u | ((ch >> 12) & 0x3fu));
+            text[used++] = (char)(0x80u | ((ch >> 6) & 0x3fu));
+            text[used++] = (char)(0x80u | (ch & 0x3fu));
+        }
+    }
+    text[used] = 0;
+    *length = used;
+    return text;
+}
+
+static bool xx_pe_yx_version_parse_table(const uint8_t *data, size_t size,
+                                         size_t at, size_t *next,
+                                         uint64_t *strings,
+                                         xx_pe_yx_version_visitor visitor,
+                                         void *opaque,
+                                         bool (*poll)(void *poll_opaque),
+                                         void *poll_opaque)
+{
+    xx_pe_yx_version_node table, item;
+    size_t cursor;
+    uint64_t count = 0;
+    if (!xx_pe_yx_version_parse_node(data, size, at, NULL, &table)) return false;
+    cursor = table.children;
+    while (cursor < table.end &&
+           xx_pe_yx_version_parse_node(data, table.end, cursor, NULL, &item)) {
+        if (poll && poll(poll_opaque)) return false;
+        /* The value parser is optional in upstream. A malformed string value
+         * becomes an empty value without discarding the key/value record. */
+        if (visitor) {
+            size_t key_length, value_length = 0;
+            size_t key_end = cursor + 6, value_end = item.children;
+            char *key, *value;
+            if (!xx_pe_yx_utf16_skip(data, item.children, &key_end)) return false;
+            key = xx_pe_yx_utf16_to_utf8(data, cursor + 6, key_end,
+                                         &key_length);
+            if (!key) return false;
+            if (item.value_length &&
+                xx_pe_yx_utf16_skip(data, item.end, &value_end))
+                value = xx_pe_yx_utf16_to_utf8(data, item.children, value_end,
+                                               &value_length);
+            else value = xx_pe_yx_utf16_to_utf8(data, item.children,
+                                                item.children, &value_length);
+            if (!value) { free(key); return false; }
+            visitor(opaque, key, key_length, value, value_length);
+            free(key);
+            free(value);
+        }
+        if (item.value_length) {
+            size_t value_end = item.children;
+            (void)xx_pe_yx_utf16_skip(data, item.end, &value_end);
+        }
+        ++count;
+        cursor = item.next;
+    }
+    if (!count) return false;
+    *next = table.next;
+    *strings = count;
+    return true;
+}
+
+static bool xx_pe_yx_version_parse_strings(const uint8_t *data, size_t size,
+                                           size_t at, size_t *next,
+                                           uint64_t *strings,
+                                           xx_pe_yx_version_visitor visitor,
+                                           void *opaque,
+                                           bool (*poll)(void *poll_opaque),
+                                           void *poll_opaque)
+{
+    xx_pe_yx_version_node info;
+    size_t cursor;
+    uint64_t count = 0;
+    if (!xx_pe_yx_version_parse_node(data, size, at, "StringFileInfo", &info))
+        return false;
+    cursor = info.children;
+    while (cursor < info.end) {
+        size_t table_next;
+        uint64_t table_count;
+        if (!xx_pe_yx_version_parse_table(data, info.end, cursor, &table_next,
+                                          &table_count, visitor, opaque,
+                                          poll, poll_opaque)) break;
+        count += table_count;
+        cursor = table_next;
+    }
+    if (!count) return false;
+    *next = info.next;
+    *strings = count;
+    return true;
+}
+
+uint64_t xx_pe_yx_version_walk_at(const uint8_t *data, size_t size,
+                                  size_t offset,
+                                  xx_pe_yx_version_visitor visitor,
+                                  void *opaque,
+                                  bool (*poll)(void *poll_opaque),
+                                  void *poll_opaque)
+{
+    xx_pe_yx_version_node root, other;
+    size_t cursor;
+    uint64_t result = 0;
+    bool seen_strings = false, seen_var = false;
+    if (offset >= size || !xx_pe_yx_version_parse_node(data, size, offset,
+                                                       "VS_VERSION_INFO", &root))
+        return 0;
+    cursor = root.children;
+    if (root.value_length && root.end - cursor >= 52) cursor += 52;
+    /* `permutation((opt(VarFileInfo), opt(StringFileInfo)))` accepts either
+     * child order, with each optional child appearing at most once. */
+    for (unsigned i = 0; i < 2 && cursor < root.end; ++i) {
+        size_t next;
+        uint64_t strings;
+        if (!seen_var && xx_pe_yx_version_parse_node(data, root.end, cursor,
+                                                     "VarFileInfo", &other)) {
+            seen_var = true;
+            cursor = other.next;
+        } else if (!seen_strings &&
+                   xx_pe_yx_version_parse_strings(data, root.end, cursor,
+                                                  &next, &strings, visitor,
+                                                  opaque, poll, poll_opaque)) {
+            seen_strings = true;
+            result += strings;
+            cursor = next;
+        } else break;
+    }
+    return result;
+}
+
+typedef struct {
+    const uint8_t *data;
+    size_t size;
+    xx_pe_yx_version_visitor visitor;
+    void *opaque;
+} xx_pe_yx_version_context;
+
+static void xx_pe_yx_visit_version_resource(void *opaque,
+                                            const xx_pe_yx_resource *resource)
+{
+    xx_pe_yx_version_context *ctx = opaque;
+    if (resource->type.kind == XX_PE_YX_RESOURCE_NUMERIC &&
+        resource->type.value == 16 && resource->has_offset &&
+        resource->offset < ctx->size)
+        (void)xx_pe_yx_version_walk_at(ctx->data, ctx->size, resource->offset,
+                                       ctx->visitor, ctx->opaque, NULL, NULL);
+}
+
+bool xx_pe_yx_visit_version_info(const uint8_t *data, size_t size,
+                                 xx_pe_yx_version_visitor visitor,
+                                 void *opaque,
+                                 bool (*poll)(void *poll_opaque),
+                                 void *poll_opaque)
+{
+    xx_pe_yx_resource_directory directory;
+    xx_pe_yx_version_context ctx = {data, size, visitor, opaque};
+    return xx_pe_yx_visit_resources(data, size, &directory,
+                                    xx_pe_yx_visit_version_resource, &ctx,
+                                    poll, poll_opaque);
 }

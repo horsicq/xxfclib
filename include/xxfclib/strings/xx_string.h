@@ -104,6 +104,23 @@ XXFC_API bool xx_str_iequals(const char *a, const char *b);
  */
 XXFC_API bool xx_str_bytes_count_to_string(uint64_t value, uint64_t base, char *buffer, size_t capacity);
 
+/**
+ * @brief Parse a signed 64-bit integer as Rust's i64::from_str_radix does.
+ *
+ * The text is an optional single '+' or '-' followed by one or more digits
+ * of @p radix (letters of either case are digits 10..35). Nothing else is
+ * accepted: no whitespace, prefix or separator. Empty text, a sign alone,
+ * a digit outside the radix and a value outside int64_t fail; INT64_MIN is
+ * accepted. NUL is an ordinary invalid character.
+ *
+ * @param text Text to parse, @p length bytes (NULL only when length is 0).
+ * @param length Length of @p text in bytes.
+ * @param radix Base from 2 to 36; other values fail.
+ * @param value Receives the parsed value on success.
+ * @return True when the whole text is a valid number.
+ */
+XXFC_API bool xx_str_to_i64_radix(const char *text, size_t length, unsigned radix, int64_t *value);
+
 /* --- Raw Unicode (Wide) String Functions --- */
 
 XXFC_API size_t xx_str_wlen(const wchar_t *w);

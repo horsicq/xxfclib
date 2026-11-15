@@ -9,12 +9,15 @@
  * behavior of YARA-X 1.21.0's PE module (and of the xxyara port of it):
  * RVA<->file-offset conversion, the pe.calculate_checksum quirk, the Rich
  * signature view (including the decrypted clear data), standard and delay
- * import walking with the published ordinal-name tables, and export
- * enumeration with forwarder detection.
+ * import walking with the published ordinal-name tables, export enumeration
+ * with forwarder detection, the MD5 imphash with Unicode lowercasing, the
+ * resource tree and VS_VERSIONINFO string walkers, and Authenticode signature
+ * extraction over the PE security directory.
  *
  * These functions never modify their input and only read inside the supplied
  * buffer. Name and DLL bytes returned by the visitors borrow the input and
- * remain valid for its lifetime. */
+ * remain valid for its lifetime. Signature results own their strings; release
+ * them with xx_pe_yx_signature_result_destroy. */
 
 #ifndef XXFCLIB_PE_YX_H
 #define XXFCLIB_PE_YX_H
@@ -191,6 +194,187 @@ XXFC_API bool xx_pe_yx_exports(const uint8_t *data, size_t size,
                                const char *name, size_t name_length,
                                bool by_ordinal, uint64_t ordinal,
                                bool *found, uint64_t *index);
+
+/** ----------------------------------------------------------- Imphash -- */
+
+/** The pe.imphash() value: an MD5 over "dll.function" pairs in import order,
+ * comma-separated. Library and function names are lowercased with Rust's
+ * str::to_lowercase semantics (Unicode 17 per-code-point mapping plus the
+ * Final_Sigma context rule); a trailing ".dll"/".sys"/".ocx" extension is
+ * stripped from the library name. Standard imports only. `out` must hold 33
+ * bytes. Returns false on non-PE data or allocation failure. */
+XXFC_API bool xx_pe_yx_imphash(const uint8_t *data, size_t size, char out[33]);
+
+/** --------------------------------------------------------- Resources -- */
+
+typedef enum {
+    XX_PE_YX_RESOURCE_UNKNOWN,
+    XX_PE_YX_RESOURCE_NUMERIC,
+    XX_PE_YX_RESOURCE_NAMED
+} xx_pe_yx_resource_id_kind;
+
+/** A resource identifier at one tree level. Named identifiers are UTF-16LE
+ * bytes borrowing the input. */
+typedef struct {
+    xx_pe_yx_resource_id_kind kind;
+    uint32_t value;
+    const uint8_t *name;
+    size_t name_length;
+} xx_pe_yx_resource_id;
+
+/** One resource leaf in breadth-first tree order. */
+typedef struct {
+    uint32_t length;
+    uint32_t rva;
+    bool has_offset;
+    uint32_t offset;
+    xx_pe_yx_resource_id type;
+    xx_pe_yx_resource_id id;
+    xx_pe_yx_resource_id language;
+} xx_pe_yx_resource;
+
+typedef struct {
+    bool present; /* true only when at least one resource was parsed */
+    uint32_t timestamp;
+    uint16_t major_version;
+    uint16_t minor_version;
+    uint64_t count;
+} xx_pe_yx_resource_directory;
+
+typedef void (*xx_pe_yx_resource_visitor)(void *opaque,
+                                          const xx_pe_yx_resource *resource);
+
+/** Walks the resource tree in the reference parser's breadth-first order
+ * (type, name, language levels), applying its limits: 65536 queued nodes and
+ * leaves, 32768 entries per directory, named IDs below 1000 UTF-16 units,
+ * language IDs at most 0xfffff and leaf sizes below 0x3fffffff. A valid leaf
+ * is retained even when its data RVA cannot be mapped. `result` receives the
+ * directory header of the first level and the leaf count. `poll`/`poll_opaque`
+ * optionally abort the walk: returning true from `poll` stops walking and
+ * makes this function return false. Without a poll callback the walk always
+ * returns true (also for non-PE input, which yields an empty directory). */
+XXFC_API bool xx_pe_yx_visit_resources(const uint8_t *data, size_t size,
+                                       xx_pe_yx_resource_directory *result,
+                                       xx_pe_yx_resource_visitor visitor,
+                                       void *opaque,
+                                       bool (*poll)(void *poll_opaque),
+                                       void *poll_opaque);
+
+/** ------------------------------------------------------ Version info -- */
+
+/** Called for every StringFileInfo string in document order. Keys and values
+ * are decoded UTF-8; the pointers are valid only during the callback. */
+typedef void (*xx_pe_yx_version_visitor)(void *opaque,
+                                         const char *key, size_t key_length,
+                                         const char *value,
+                                         size_t value_length);
+
+/** Parses one VS_VERSIONINFO structure at `offset`, visiting its StringFileInfo
+ * strings; returns the number of strings. The reference accepts either child
+ * order (VarFileInfo, StringFileInfo), each at most once, skips the 52-byte
+ * fixed file info value, and treats a missing UTF-16 terminator as the end of
+ * the record. `poll` aborts parsing like in xx_pe_yx_visit_resources. */
+XXFC_API uint64_t xx_pe_yx_version_walk_at(const uint8_t *data, size_t size,
+                                           size_t offset,
+                                           xx_pe_yx_version_visitor visitor,
+                                           void *opaque,
+                                           bool (*poll)(void *poll_opaque),
+                                           void *poll_opaque);
+
+/** Walks the resource tree and parses every RT_VERSION resource
+ * (type numeric 16 with a mappable data offset). Returns false when the
+ * resource walk aborts through `poll`. */
+XXFC_API bool xx_pe_yx_visit_version_info(const uint8_t *data, size_t size,
+                                          xx_pe_yx_version_visitor visitor,
+                                          void *opaque,
+                                          bool (*poll)(void *poll_opaque),
+                                          void *poll_opaque);
+
+/** -------------------------------------------------------- Signatures -- */
+
+/** One X.509 certificate of a signature, with the reference module's field
+ * rendering: slash-separated issuer/subject names, lowercase hex SHA-1
+ * thumbprint, algorithm display name and OID, colon-separated serial, and
+ * 1-based version. All strings are owned. */
+typedef struct {
+    char *issuer;
+    size_t issuer_length;
+    char *subject;
+    size_t subject_length;
+    char *thumbprint;
+    char *algorithm;
+    char *algorithm_oid;
+    char *serial;
+    int64_t version;
+    int64_t not_before;
+    int64_t not_after;
+} xx_pe_yx_certificate;
+
+typedef struct {
+    bool verified;
+    bool has_sign_time;
+    int64_t sign_time;
+    char *digest;
+    char *digest_alg;
+    size_t chain_count;
+    size_t *chain_indices;
+} xx_pe_yx_countersignature;
+
+typedef struct {
+    bool verified;
+    char *digest_alg;
+    char *digest;
+    char *file_digest;
+    char *program_name;
+    char *more_info;
+    char *signer_digest;
+    char *signer_digest_alg;
+    size_t signer_chain_count;
+    size_t *signer_chain_indices;
+    size_t certificate_count;
+    xx_pe_yx_certificate *certificates;
+    size_t countersignature_count;
+    xx_pe_yx_countersignature *countersignatures;
+} xx_pe_yx_signature;
+
+typedef struct {
+    size_t count;
+    xx_pe_yx_signature *items;
+} xx_pe_yx_signature_result;
+
+/** Hasher callback used for non-PE Authenticode inputs (the msi module): the
+ * parser feeds the signed bytes to `update`, which hashes them with the
+ * signature's digest algorithm. */
+typedef void (*xx_pe_yx_authenticode_update_fn)(void *state,
+                                                const uint8_t *data,
+                                                size_t size);
+typedef void (*xx_pe_yx_authenticode_hasher_fn)(void *opaque,
+                                                xx_pe_yx_authenticode_update_fn update,
+                                                void *state);
+
+/** Parses the Authenticode PKCS#7 signatures of the PE security directory:
+ * iterates the WIN_CERTIFICATE records (length-prefixed, 8-byte aligned) and
+ * renders every nested signature with the reference policy (serial-only
+ * signer selection, prefix certificate sets, PKCS#9/RFC3161 countersignatures
+ * and nested signatures). All strings and arrays in `result` are owned and
+ * released by xx_pe_yx_signature_result_destroy. Non-PE input and a missing
+ * certificate table leave `result` empty. Returns false only for invalid
+ * arguments or allocation failure (`result` destroyed then). */
+XXFC_API bool xx_pe_yx_parse_signatures(const uint8_t *data, size_t size,
+                                        xx_pe_yx_signature_result *result);
+
+/** Parses the Authenticode signatures of one DER PKCS#7 SignedData blob, such
+ * as an MSI DigitalSignature stream; each file_digest is computed with
+ * `hasher` instead of the PE byte ranges. A blob that is not a valid
+ * signature leaves `result` empty. */
+XXFC_API bool xx_pe_yx_parse_blob(const uint8_t *blob, size_t blob_size,
+                                  xx_pe_yx_authenticode_hasher_fn hasher,
+                                  void *hasher_opaque,
+                                  xx_pe_yx_signature_result *result);
+
+/** Releases every signature, certificate and countersignature owned by
+ * `result` and zeroes it. */
+XXFC_API void xx_pe_yx_signature_result_destroy(xx_pe_yx_signature_result *result);
 
 #ifdef __cplusplus
 }

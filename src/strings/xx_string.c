@@ -414,6 +414,57 @@ bool xx_str_bytes_count_to_string(uint64_t value, uint64_t base, char *buffer, s
     return length >= 0 && (size_t)length < capacity;
 }
 
+bool xx_str_to_i64_radix(const char *text, size_t length, unsigned radix, int64_t *value)
+{
+    size_t position = 0;
+    uint64_t magnitude = 0;
+    uint64_t limit;
+    uint64_t quotient;
+    unsigned remainder;
+    bool negative = false;
+
+    if (!value || (!text && length) || radix < 2U || radix > 36U || length == 0U) {
+        return false;
+    }
+    if (text[0] == '-' || text[0] == '+') {
+        negative = text[0] == '-';
+        position = 1;
+        if (position == length) {
+            return false;
+        }
+    }
+    limit = negative ? (uint64_t)INT64_MAX + 1U : (uint64_t)INT64_MAX;
+    /* magnitude * radix + digit <= limit exactly when magnitude is below
+     * limit / radix, or equal to it with digit <= limit % radix. */
+    quotient = limit / radix;
+    remainder = (unsigned)(limit % radix);
+    for (; position < length; ++position) {
+        unsigned char ch = (unsigned char)text[position];
+        unsigned digit;
+
+        if (ch >= '0' && ch <= '9') {
+            digit = (unsigned)(ch - '0');
+        } else if (ch >= 'a' && ch <= 'z') {
+            digit = (unsigned)(ch - 'a') + 10U;
+        } else if (ch >= 'A' && ch <= 'Z') {
+            digit = (unsigned)(ch - 'A') + 10U;
+        } else {
+            return false;
+        }
+        if (digit >= radix || magnitude > quotient ||
+            (magnitude == quotient && digit > remainder)) {
+            return false;
+        }
+        magnitude = magnitude * radix + digit;
+    }
+    if (negative && magnitude == (uint64_t)INT64_MAX + 1U) {
+        *value = INT64_MIN;
+    } else {
+        *value = negative ? -(int64_t)magnitude : (int64_t)magnitude;
+    }
+    return true;
+}
+
 /* --- Raw Unicode (Wide) String Implementation --- */
 
 size_t xx_str_wlen(const wchar_t *w)
