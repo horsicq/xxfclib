@@ -6,4 +6,5 @@ xxfclib_add_family_console(cpoint
     FORMATS CPOINT
     SOURCES
         src/formats/installer/cpoint/xx_cpoint.c
-        src/formats/installer/cpoint/xx_cpoint_extractor.c)
+        src/formats/installer/cpoint/xx_cpoint_extractor.c
+        src/formats/installer/cpoint/xx_cpoint_reader_adapters.c)

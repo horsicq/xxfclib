@@ -26,4 +26,5 @@ xxfclib_add_family_console(smart_install_maker
         src/algo/lzx/xx_lzx.c
         src/algo/quantum/xx_quantum.c
         src/formats/installer/smart_install_maker/xx_smart_install_maker.c
-        src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c)
+        src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c
+        src/formats/installer/smart_install_maker/xx_smart_install_maker_reader_adapters.c)

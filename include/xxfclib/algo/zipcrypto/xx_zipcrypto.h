@@ -124,6 +124,51 @@ XXFC_API bool xx_zipcrypto_decrypt_envelope_progress(const uint8_t *envelope, si
  */
 XXFC_API uint8_t xx_zipcrypto_verifier_byte(uint32_t crc32, uint16_t last_mod_time, bool has_data_descriptor);
 
+/**
+ * @brief Decrypt a traditional ZipCrypto envelope using a known key-state.
+ *
+ * Identical to xx_zipcrypto_decrypt_envelope_progress but seeds the cipher
+ * directly from a post-password key triple (key0/key1/key2) instead of folding
+ * a password. Used to recover legacy self-extracting archives that store no
+ * in-file password, where the key-state is obtained from the recovery
+ * dictionary rather than from a user-supplied password. The 12-byte header
+ * check byte is validated before any payload is written; a match is only an
+ * 8-bit verifier, so the caller must still confirm the decoded member's CRC-32.
+ */
+XXFC_API bool xx_zipcrypto_decrypt_envelope_keystate(const uint8_t *envelope, size_t envelope_size, uint32_t key0, uint32_t key1, uint32_t key2, uint32_t crc32,
+                                                     uint16_t last_mod_time, bool has_data_descriptor, uint8_t *output, size_t output_capacity, size_t *output_size,
+                                                     xx_pd_struct *pd);
+
+/**
+ * @brief Number of entries in the bundled ZipCrypto key-state dictionary.
+ */
+XXFC_API size_t xx_zipcrypto_keystate_count(void);
+
+/**
+ * @brief Fetch the key triple at @p index from the bundled dictionary.
+ * @return true when @p index is in range.
+ */
+XXFC_API bool xx_zipcrypto_keystate_lookup(size_t index, uint32_t *key0, uint32_t *key1, uint32_t *key2);
+
+/**
+ * @brief Find a dictionary key-state whose 12-byte header check byte matches.
+ *
+ * Scans the bundled key-state dictionary from @p start_index and returns the
+ * first entry whose decrypted 12th header byte equals the expected verifier
+ * (crc>>24, or dostime>>8 for the data-descriptor path). No allocation; the
+ * loop is bounded by the dictionary size. A check-byte match is only 1/256 per
+ * entry, so the caller must confirm the candidate by decrypting and verifying
+ * a full member before trusting the key. Pass @p start_index past a rejected
+ * index to continue scanning for further candidates.
+ *
+ * @param header12 The entry's 12-byte encryption header.
+ * @param start_index First dictionary index to test (0 to scan from the start).
+ * @param out_index Receives the matching dictionary index on success.
+ * @return true when a check-byte match was found.
+ */
+XXFC_API bool xx_zipcrypto_recover_keystate(const uint8_t *header12, uint32_t crc32, uint16_t last_mod_time, bool has_data_descriptor, size_t start_index,
+                                            size_t *out_index);
+
 #ifdef __cplusplus
 }
 #endif

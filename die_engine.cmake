@@ -88,6 +88,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/js/xx_js_parse.c
     ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex.c
     ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex_search.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex_unicode16.c
     ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex_js.c
     ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex_js_lex.c
     ${CMAKE_CURRENT_LIST_DIR}/src/regex/xx_regex_js_strings.c

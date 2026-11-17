@@ -58,6 +58,7 @@
 /* u16 index size bounds the table at 65535/17 = 3855 entries; the cap merely
  * makes that explicit. */
 #define XX_GRASP_MAX_MEMBERS 3855U
+#define XX_GRASP_MAX_SLACK 1024
 
 typedef struct xx_grasp_member_s {
     char *name;
@@ -152,6 +153,26 @@ static void xx_grasp_stream_free(void *pointer)
 
 /* --------------------------------------------------------------- parse -- */
 
+/* Libraries copied through record-based media keep the slack of their last
+ * record: the chain then stops short of EOF by less than 1 KiB and the file
+ * length is a whole number of 128-byte records (the slack holds whatever was
+ * in the buffer), or the tail is a run of one filler byte. */
+static bool xx_grasp_slack_tail(Abstractformat *self, int64_t cursor, int64_t span)
+{
+    uint8_t tail[XX_GRASP_MAX_SLACK];
+    int64_t size = span - cursor;
+    int64_t i;
+
+    if (size <= 0 || size >= XX_GRASP_MAX_SLACK) return false;
+    if (span % 128 == 0) return true;
+    if (!xx_grasp_read_at(self, self->base_address + cursor, tail, (size_t)size)) return false;
+    if (tail[0] != 0x00U && tail[0] != 0x1aU) return false;
+    for (i = 1; i < size; ++i) {
+        if (tail[i] != tail[0]) return false;
+    }
+    return true;
+}
+
 static xx_grasp_stream *xx_grasp_parse(Abstractformat *self, xx_pd_struct *pd)
 {
     xx_grasp_stream *stream = NULL;
@@ -232,7 +253,8 @@ static xx_grasp_stream *xx_grasp_parse(Abstractformat *self, xx_pd_struct *pd)
 
     /* An index that describes nothing, or one whose members stop short of
      * end-of-file, is not a GL library. */
-    if (stream->count == 0U || cursor != span) goto fail;
+    if (stream->count == 0U || cursor > span) goto fail;
+    if (cursor != span && !xx_grasp_slack_tail(self, cursor, span)) goto fail;
 
     xx_mem_free(index);
     stream->archive_size = span;

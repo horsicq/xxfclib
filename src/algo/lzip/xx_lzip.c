@@ -310,13 +310,27 @@ static bool xx_lzip_header_like(const uint8_t *data, size_t size)
     return different_bits <= 2U;
 }
 
-bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination,
-                                   int64_t *output_size, size_t *member_count, int64_t *consumed_size, xx_pd_struct *pd)
+/* The dictionary a lenient walk decodes with when the header's code is out
+ * of range: the code is clamped into 4 KiB .. 64 MiB, which bounds the
+ * allocation a damaged header can request. A stream that really needs a
+ * longer distance still fails to decode. */
+static uint32_t xx_lzip_lenient_dictionary(uint8_t code)
+{
+    unsigned exponent = code & UINT8_C(0x1f);
+    if (exponent < 12U) return UINT32_C(4096);
+    if (exponent > 26U) return UINT32_C(1) << 26U;
+    return UINT32_C(1) << exponent;
+}
+
+static bool xx_lzip_decode_prefix_worker(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination,
+                                         int64_t *output_size, size_t *member_count, int64_t *consumed_size, bool lenient, uint32_t *issues,
+                                         xx_pd_struct *pd)
 {
     const size_t io_capacity = xx_get_file_buffer_size();
     int64_t source_total, end, cursor;
     uint64_t written = 0U;
     size_t count = 0U;
+    bool saw_v0 = false;
     if (output_size) *output_size = -1;
     if (member_count) *member_count = 0U;
     if (consumed_size) *consumed_size = 0;
@@ -341,12 +355,23 @@ bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_offset, i
         if ((pd && xx_pd_is_stopped(pd)) ||
             !xx_lzip_read_exact_at(source, cursor, header, available_header, io_capacity)) return false;
         if (!xx_lzip_has_header(header, available_header)) {
-            if (!count || xx_lzip_header_like(header, available_header)) return false;
-            break;
+            /* A lenient walk still needs the magic and a known version; only
+             * the dictionary code may be out of range. */
+            if (!lenient || available_header < XX_LZIP_HEADER_SIZE || memcmp(header, "LZIP", 4U) != 0 || header[4] > 1U) {
+                if (!count || xx_lzip_header_like(header, available_header)) return false;
+                break;
+            }
         }
-        /* Version zero has no member-size link and is a single-member format. */
-        if (count >= XX_LZIP_MAX_MEMBERS || (count && header[4] == 0U) ||
-            !xx_lzip_dictionary_size(header[5], &dictionary)) return false;
+        /* Version zero has no member-size link and is a single-member format;
+         * a lenient walk accepts it anywhere in a chain. */
+        if (count >= XX_LZIP_MAX_MEMBERS || (!lenient && count && header[4] == 0U)) return false;
+        if (!xx_lzip_dictionary_size(header[5], &dictionary)) {
+            if (!lenient) return false;
+            dictionary = xx_lzip_lenient_dictionary(header[5]);
+            if (issues) *issues |= XX_LZIP_ISSUE_DICTIONARY;
+        }
+        if (lenient && count && (header[4] == 0U || saw_v0) && issues) *issues |= XX_LZIP_ISSUE_VERSION0_CHAIN;
+        if (header[4] == 0U) saw_v0 = true;
         compressed_offset = cursor + (int64_t)sizeof(header);
         available = end - compressed_offset;
         if (available < 5) return false;
@@ -376,12 +401,20 @@ bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_offset, i
             !xx_lzip_read_exact_at(source, footer, trailer, trailer_size, io_capacity)) return false;
         member_end = footer + (int64_t)trailer_size;
         advertised_output = xx_data_get_u64(trailer + 4U, 8, 0, false);
-        if (advertised_output != counter.written || xx_data_get_u32(trailer, 4, 0, false) != counter.crc32 ||
-            (header[4] == 1U && xx_data_get_u64(trailer + 12U, 8, 0, false) != (uint64_t)(member_end - cursor))) return false;
+        if (!lenient) {
+            if (advertised_output != counter.written || xx_data_get_u32(trailer, 4, 0, false) != counter.crc32 ||
+                (header[4] == 1U && xx_data_get_u64(trailer + 12U, 8, 0, false) != (uint64_t)(member_end - cursor))) return false;
+        } else if (issues) {
+            /* The stream decoded cleanly to its end marker: its data is kept,
+             * and every trailer field that disagrees is reported. */
+            if (xx_data_get_u32(trailer, 4, 0, false) != counter.crc32) *issues |= XX_LZIP_ISSUE_CRC;
+            if (advertised_output != counter.written) *issues |= XX_LZIP_ISSUE_DATA_SIZE;
+            if (header[4] == 1U && xx_data_get_u64(trailer + 12U, 8, 0, false) != (uint64_t)(member_end - cursor)) *issues |= XX_LZIP_ISSUE_MEMBER_SIZE;
+        }
         written += counter.written;
         cursor = member_end;
         ++count;
-        if (header[4] == 0U && cursor < end) {
+        if (!lenient && header[4] == 0U && cursor < end) {
             size_t n = (uint64_t)(end - cursor) < sizeof(header) ? (size_t)(end - cursor) : sizeof(header);
             if (!xx_lzip_read_exact_at(source, cursor, header, n, io_capacity) || xx_lzip_header_like(header, n)) return false;
             break;
@@ -392,4 +425,17 @@ bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_offset, i
     if (member_count) *member_count = count;
     if (consumed_size) *consumed_size = cursor - source_offset;
     return true;
+}
+
+bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination,
+                                   int64_t *output_size, size_t *member_count, int64_t *consumed_size, xx_pd_struct *pd)
+{
+    return xx_lzip_decode_prefix_worker(source, source_offset, source_size, destination, output_size, member_count, consumed_size, false, NULL, pd);
+}
+
+bool xx_lzip_decode_prefix_device_lenient(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination,
+                                           int64_t *output_size, size_t *member_count, int64_t *consumed_size, uint32_t *issues, xx_pd_struct *pd)
+{
+    if (issues) *issues = 0U;
+    return xx_lzip_decode_prefix_worker(source, source_offset, source_size, destination, output_size, member_count, consumed_size, true, issues, pd);
 }

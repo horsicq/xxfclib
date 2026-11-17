@@ -55,7 +55,10 @@ static bool xx_archive_addition_candidate(xx_file_type_t type,xx_io_device *devi
         return size>=16U && !xx_rt_memcmp(first,"COMP",4) && xx_data_get_u32(first+4, 4, 0, true)==5U && !xx_data_get_u32(first+8, 4, 0, true) && !xx_data_get_u32(first+12, 4, 0, true) && source_total>=16+80*6;
     case XX_FILE_TYPE_ARC_CBM:
         if(size>=11U && (first[0]==1U || first[0]==2U) && first[1]<=(first[0]==1U?2U:5U) && first[10]>0U && first[10]<=16U && (first[9]=='P' || first[9]=='S' || first[9]=='U' || (first[0]==2U && first[9]=='R'))) {
-            n=first[7]|(uint32_t)first[8]<<8U; return n && n*254U<=(uint64_t)source_total && size>=11U+first[10]+(first[0]==2U?3U:0U);
+            /* A v2 one-pass (mode 5) member declares checksum, length and block count as zero. */
+            n=first[7]|(uint32_t)first[8]<<8U;
+            if(!n && first[0]==2U && first[1]==5U && !first[2] && !first[3] && !first[4] && !first[5] && !first[6]) return size>=11U+first[10]+3U;
+            return n && n*254U<=(uint64_t)source_total && size>=11U+first[10]+(first[0]==2U?3U:0U);
         }
         /* BASIC SYS SFX has a line-derived exact record offset. */
         if(size>=9U && first[6]==0x9EU && first[7]=='(') {

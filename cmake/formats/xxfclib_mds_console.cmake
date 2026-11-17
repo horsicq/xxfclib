@@ -6,4 +6,5 @@ xxfclib_add_family_console(mds
     FORMATS MDS
     SOURCES
         src/formats/filesystem/mds/xx_mds.c
-        src/formats/filesystem/mds/xx_mds_extractor.c)
+        src/formats/filesystem/mds/xx_mds_extractor.c
+        src/formats/filesystem/mds/xx_mds_reader_adapters.c)

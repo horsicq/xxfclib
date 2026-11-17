@@ -28,6 +28,10 @@ typedef struct xx_zipcrypto_state {
     uint32_t key2;
 } xx_zipcrypto_state;
 
+/* Dictionary of known traditional ZipCrypto key-states (provenance-free generated
+ * data). Defines xx_zipcrypto_keystate_table and XX_ZIPCRYPTO_KEYSTATE_COUNT. */
+#include "xx_zipcrypto_keystates.inc"
+
 static void xx_zipcrypto_secure_clear(void *data, size_t size)
 {
     volatile uint8_t *bytes = (volatile uint8_t *)data;
@@ -161,35 +165,23 @@ bool xx_zipcrypto_decrypt_envelope(const uint8_t *envelope, size_t envelope_size
                                                   output_size, NULL);
 }
 
-bool xx_zipcrypto_decrypt_envelope_progress(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint32_t crc32,
-                                            uint16_t last_mod_time, bool has_data_descriptor, uint8_t *output, size_t output_capacity, size_t *output_size,
-                                            xx_pd_struct *pd)
+/* Shared decrypt body. The caller supplies an already-seeded cipher state (from
+ * a password or from a known key-state triple) and this routine verifies the
+ * 12-byte header check byte and, when it matches, decrypts the payload. The
+ * state is consumed (mutated) and left to the caller to clear. */
+static bool xx_zipcrypto_decrypt_seeded(xx_zipcrypto_state *state, const uint8_t *envelope, size_t envelope_size, uint32_t crc32, uint16_t last_mod_time,
+                                        bool has_data_descriptor, uint8_t *output, size_t output_capacity, size_t *output_size, xx_pd_struct *pd)
 {
-    xx_zipcrypto_state state;
     uint8_t header[XX_ZIPCRYPTO_HEADER_SIZE];
     size_t payload_size;
     size_t index;
     size_t written = 0;
     bool success = false;
 
-    if (output_size) {
-        *output_size = 0U;
-    }
-    if (xx_pd_is_stopped(pd)) return false;
-
-    if (!envelope || envelope_size < XX_ZIPCRYPTO_HEADER_SIZE || (password_size > 0U && !password)) {
-        return false;
-    }
-
     payload_size = envelope_size - XX_ZIPCRYPTO_HEADER_SIZE;
-    if (payload_size > output_capacity || (payload_size > 0U && !output)) {
-        return false;
-    }
-
-    if (!xx_zipcrypto_initialize(&state, password, password_size, pd)) goto cleanup;
 
     for (index = 0U; index < XX_ZIPCRYPTO_HEADER_SIZE; ++index) {
-        header[index] = xx_zipcrypto_decrypt_byte(&state, envelope[index]);
+        header[index] = xx_zipcrypto_decrypt_byte(state, envelope[index]);
     }
 
     if (header[XX_ZIPCRYPTO_HEADER_SIZE - 1U] != xx_zipcrypto_verifier_byte(crc32, last_mod_time, has_data_descriptor)) {
@@ -198,7 +190,7 @@ bool xx_zipcrypto_decrypt_envelope_progress(const uint8_t *envelope, size_t enve
 
     for (index = 0U; index < payload_size; ++index) {
         if ((index & 4095U) == 0 && xx_pd_is_stopped(pd)) goto cleanup;
-        output[index] = xx_zipcrypto_decrypt_byte(&state, envelope[XX_ZIPCRYPTO_HEADER_SIZE + index]);
+        output[index] = xx_zipcrypto_decrypt_byte(state, envelope[XX_ZIPCRYPTO_HEADER_SIZE + index]);
         ++written;
     }
     if (xx_pd_is_stopped(pd)) goto cleanup;
@@ -211,6 +203,103 @@ bool xx_zipcrypto_decrypt_envelope_progress(const uint8_t *envelope, size_t enve
 cleanup:
     if (!success && written) xx_zipcrypto_secure_clear(output, written);
     xx_zipcrypto_secure_clear(header, sizeof(header));
+    return success;
+}
+
+bool xx_zipcrypto_decrypt_envelope_progress(const uint8_t *envelope, size_t envelope_size, const uint8_t *password, size_t password_size, uint32_t crc32,
+                                            uint16_t last_mod_time, bool has_data_descriptor, uint8_t *output, size_t output_capacity, size_t *output_size,
+                                            xx_pd_struct *pd)
+{
+    xx_zipcrypto_state state;
+    bool success = false;
+
+    if (output_size) {
+        *output_size = 0U;
+    }
+    if (xx_pd_is_stopped(pd)) return false;
+
+    if (!envelope || envelope_size < XX_ZIPCRYPTO_HEADER_SIZE || (password_size > 0U && !password)) {
+        return false;
+    }
+    if (envelope_size - XX_ZIPCRYPTO_HEADER_SIZE > output_capacity || (envelope_size - XX_ZIPCRYPTO_HEADER_SIZE > 0U && !output)) {
+        return false;
+    }
+
+    if (xx_zipcrypto_initialize(&state, password, password_size, pd)) {
+        success = xx_zipcrypto_decrypt_seeded(&state, envelope, envelope_size, crc32, last_mod_time, has_data_descriptor, output, output_capacity, output_size, pd);
+    }
     xx_zipcrypto_secure_clear(&state, sizeof(state));
     return success;
+}
+
+bool xx_zipcrypto_decrypt_envelope_keystate(const uint8_t *envelope, size_t envelope_size, uint32_t key0, uint32_t key1, uint32_t key2, uint32_t crc32,
+                                            uint16_t last_mod_time, bool has_data_descriptor, uint8_t *output, size_t output_capacity, size_t *output_size,
+                                            xx_pd_struct *pd)
+{
+    xx_zipcrypto_state state;
+    bool success = false;
+
+    if (output_size) {
+        *output_size = 0U;
+    }
+    if (xx_pd_is_stopped(pd)) return false;
+
+    if (!envelope || envelope_size < XX_ZIPCRYPTO_HEADER_SIZE) {
+        return false;
+    }
+    if (envelope_size - XX_ZIPCRYPTO_HEADER_SIZE > output_capacity || (envelope_size - XX_ZIPCRYPTO_HEADER_SIZE > 0U && !output)) {
+        return false;
+    }
+
+    state.key0 = key0;
+    state.key1 = key1;
+    state.key2 = key2;
+    success = xx_zipcrypto_decrypt_seeded(&state, envelope, envelope_size, crc32, last_mod_time, has_data_descriptor, output, output_capacity, output_size, pd);
+    xx_zipcrypto_secure_clear(&state, sizeof(state));
+    return success;
+}
+
+size_t xx_zipcrypto_keystate_count(void)
+{
+    return (size_t)XX_ZIPCRYPTO_KEYSTATE_COUNT;
+}
+
+bool xx_zipcrypto_keystate_lookup(size_t index, uint32_t *key0, uint32_t *key1, uint32_t *key2)
+{
+    if (index >= (size_t)XX_ZIPCRYPTO_KEYSTATE_COUNT) {
+        return false;
+    }
+    if (key0) *key0 = xx_zipcrypto_keystate_table[index][0];
+    if (key1) *key1 = xx_zipcrypto_keystate_table[index][1];
+    if (key2) *key2 = xx_zipcrypto_keystate_table[index][2];
+    return true;
+}
+
+bool xx_zipcrypto_recover_keystate(const uint8_t *header12, uint32_t crc32, uint16_t last_mod_time, bool has_data_descriptor, size_t start_index, size_t *out_index)
+{
+    size_t index;
+    uint8_t verifier;
+
+    if (!header12) {
+        return false;
+    }
+    verifier = xx_zipcrypto_verifier_byte(crc32, last_mod_time, has_data_descriptor);
+    for (index = start_index; index < (size_t)XX_ZIPCRYPTO_KEYSTATE_COUNT; ++index) {
+        xx_zipcrypto_state state;
+        uint8_t check;
+        size_t j;
+        state.key0 = xx_zipcrypto_keystate_table[index][0];
+        state.key1 = xx_zipcrypto_keystate_table[index][1];
+        state.key2 = xx_zipcrypto_keystate_table[index][2];
+        check = 0U;
+        for (j = 0U; j < XX_ZIPCRYPTO_HEADER_SIZE; ++j) {
+            check = xx_zipcrypto_decrypt_byte(&state, header12[j]);
+        }
+        xx_zipcrypto_secure_clear(&state, sizeof(state));
+        if (check == verifier) {
+            if (out_index) *out_index = index;
+            return true;
+        }
+    }
+    return false;
 }

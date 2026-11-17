@@ -26,6 +26,7 @@
 #include "xx_crc32_slice8.h"
 #include "platforms/xx_crc64_platform.h"
 #include "platforms/xx_crc_small_simd.h"
+#include "platforms/xx_crc32_pclmul.h"
 #include "platforms/xx_crc32c_sse42.h"
 #include "platforms/xx_crc32_arm.h"
 
@@ -106,10 +107,20 @@ static const uint32_t _TABLE_CRC32_MPEG2[256] = {
 
 #ifdef XX_CRC64_X86
 /* Powers of x modulo the normal-order polynomial. The shared small-width
- * fold converts reflected input and register state inside the SIMD helper. */
-static const xx_crc_small_params _CRC32_ISO_SIMD = {0x04C11DB7U, 32U, true, 0xE8A45605U, 0xC5B9CD4CU, 0xE6228B11U, 0x8833794CU, 0x04C11DB7U, 0xF200AA66U};
+ * fold converts reflected input and register state inside the SIMD helper.
+ * CRC-32/ISO-HDLC has its own reflected-domain kernel (xx_crc32_pclmul.h). */
 static const xx_crc_small_params _CRC32C_SIMD = {0x1EDC6F41U, 32U, true, 0x18571D18U, 0x6503EA99U, 0xAA97D41DU, 0xA6955F31U, 0x1EDC6F41U, 0xD7A01665U};
 static const xx_crc_small_params _CRC32_MPEG2_SIMD = {0x04C11DB7U, 32U, false, 0xE8A45605U, 0xC5B9CD4CU, 0xE6228B11U, 0x8833794CU, 0x04C11DB7U, 0xF200AA66U};
+
+/* Shortest buffer handed to the reflected PCLMUL kernel (any threshold of
+ * at least 16 gives the same CRC: the kernel needs a positive multiple of
+ * 16 bytes; 64 is where it overtakes slice-by-8). */
+#ifndef XX_CRC32_ISO_PCLMUL_MIN
+#define XX_CRC32_ISO_PCLMUL_MIN 64U
+#endif
+#if XX_CRC32_ISO_PCLMUL_MIN < 16
+#error "XX_CRC32_ISO_PCLMUL_MIN must be at least 16"
+#endif
 
 static bool xx_crc32_use_pclmul(size_t size, size_t minimum_size)
 {
@@ -150,9 +161,9 @@ uint32_t xx_crc32_calc(uint32_t crc, const void *data, size_t size)
     crc = ~crc;
 #ifdef XX_CRC64_X86
     /* Slice-by-8 wins on short IEEE buffers; PCLMUL takes over on bulk data. */
-    if (xx_crc32_use_pclmul(size, 256U)) {
+    if (xx_crc32_use_pclmul(size, XX_CRC32_ISO_PCLMUL_MIN)) {
         size_t bulk = size & ~(size_t)15U;
-        crc = xx_crc_small_pclmul(crc, p, bulk, &_CRC32_ISO_SIMD);
+        crc = xx_crc32_iso_pclmul(crc, p, bulk);
         p += bulk;
         size -= bulk;
     }

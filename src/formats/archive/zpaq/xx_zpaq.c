@@ -50,6 +50,7 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/archive/zpaq/xx_zpaq.h"
+#include "../../xx_archive_output_name.h"
 
 #include "xxfclib/algo/sha/xx_sha.h"
 #include "xxfclib/algo/store/xx_store.h"
@@ -1370,8 +1371,10 @@ static size_t zp_utf8_length(const unsigned char *text)
     return length;
 }
 
-/* Relative path a member is written to: a drive prefix and leading
- * separators are dropped (zpaq stores paths as given, often absolute),
+/* Relative path a member is written to: zpaq stores paths as given, often
+ * absolute; a drive prefix becomes a folder named after its letter
+ * ("C:/tmp/x.png" is written as "C_/tmp/x.png", XX_ARCHIVE_NAME_DRIVE_FOLDER,
+ * as Inno Setup does) and leading separators are dropped,
  * empty and "." components are dropped, trailing dots and spaces trimmed,
  * bytes that are not UTF-8 and the characters :<>"|?* written as %XX (zpaq
  * on Windows stores alternate data streams as "name:stream:$DATA"; they
@@ -1383,16 +1386,24 @@ static char *zp_make_extract_name(const char *name)
     char *result;
     size_t out = 0U, length_in = 0U;
     const unsigned char *at;
+    char drive = 0;
     if (!name) return NULL;
-    if (((cursor[0] >= 'A' && cursor[0] <= 'Z') || (cursor[0] >= 'a' && cursor[0] <= 'z')) && cursor[1] == ':') cursor += 2;
+    if (xx_archive_name_drive_letter(cursor[0]) && cursor[1] == ':') {
+        drive = cursor[0];
+        cursor += 2;
+    }
     while (*cursor == '/' || *cursor == '\\') ++cursor;
     for (at = (const unsigned char *)cursor; *at != 0U;) {
         size_t sequence = zp_utf8_length(at);
         length_in += (sequence == 0U || sequence == 1U) ? 3U : sequence;
         at += sequence == 0U ? 1U : sequence;
     }
-    result = xx_str_create_len(length_in);
+    result = xx_str_create_len(length_in + 3U); /* "C_/" */
     if (!result) return NULL;
+    if (drive) {
+        result[out++] = drive;
+        result[out++] = '_';
+    }
     while (*cursor != '\0') {
         const char *component = cursor;
         size_t length, kept, i;

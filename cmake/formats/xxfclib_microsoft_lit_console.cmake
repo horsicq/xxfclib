@@ -6,4 +6,5 @@ xxfclib_add_family_console(microsoft_lit
     FORMATS MICROSOFT_LIT
     SOURCES
         src/formats/document/microsoft_lit/xx_microsoft_lit.c
-        src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c)
+        src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c
+        src/formats/document/microsoft_lit/xx_microsoft_lit_reader_adapters.c)

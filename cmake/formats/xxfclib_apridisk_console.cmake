@@ -6,4 +6,5 @@ xxfclib_add_family_console(apridisk
     FORMATS APRIDISK
     SOURCES
         src/formats/filesystem/apridisk/xx_apridisk.c
-        src/formats/filesystem/apridisk/xx_apridisk_extractor.c)
+        src/formats/filesystem/apridisk/xx_apridisk_extractor.c
+        src/formats/filesystem/apridisk/xx_apridisk_reader_adapters.c)

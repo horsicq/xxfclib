@@ -74,6 +74,7 @@ struct xx_lzma_stream_decoder_s {
     xx_pd_struct *pd;
     uint8_t *in_buffer;
     size_t io_capacity;
+    bool lenient;
 };
 
 bool xx_lzma_stream_read_exact_at(xx_io_device *device, int64_t offset, void *data, size_t size, xx_pd_struct *pd)
@@ -358,6 +359,7 @@ static xx_lzma_stream_result xx_lzma_decode_stream_data(xx_lzma_stream_decoder *
     const uint32_t lp_mask = (UINT32_C(1) << header->lp) - 1U;
     const bool known = header->declared_size != XX_LZMA_STREAM_UNKNOWN_SIZE;
     bool marker = false;
+    bool mismatch = false;
     uint16_t *probs;
     unsigned index;
 
@@ -466,8 +468,13 @@ static xx_lzma_stream_result xx_lzma_decode_stream_data(xx_lzma_stream_decoder *
         }
 
         length += 2U;
-        if (decoder->in_failed || !xx_lzma_distance_ok(decoder, rep0) || (known && (uint64_t)length > header->declared_size - decoder->produced)) {
+        if (decoder->in_failed || !xx_lzma_distance_ok(decoder, rep0)) {
             return XX_LZMA_STREAM_FAILED;
+        }
+        if (known && (uint64_t)length > header->declared_size - decoder->produced) {
+            if (!decoder->lenient) return XX_LZMA_STREAM_FAILED;
+            length = (uint32_t)(header->declared_size - decoder->produced);
+            mismatch = true;
         }
         while (length-- > 0U) {
             if (!xx_lzma_put(decoder, xx_lzma_peek(decoder, rep0 + 1U))) {
@@ -477,7 +484,9 @@ static xx_lzma_stream_result xx_lzma_decode_stream_data(xx_lzma_stream_decoder *
     }
 
     if (decoder->in_failed || decoder->output_failed) return XX_LZMA_STREAM_FAILED;
-    if (!marker && decoder->code != 0U) {
+    if (decoder->lenient && known && marker && decoder->produced != header->declared_size) mismatch = true;
+    if (decoder->lenient && !marker && decoder->code != 0U) mismatch = true;
+    if (!marker && decoder->code != 0U && !mismatch) {
         /* Known size reached with the coder not at rest: only an end
          * marker may follow. */
         uint32_t pos_state = (uint32_t)decoder->produced & pb_mask;
@@ -491,14 +500,21 @@ static xx_lzma_stream_result xx_lzma_decode_stream_data(xx_lzma_stream_decoder *
         }
         marker = true;
     }
-    if (decoder->in_failed || decoder->code != 0U || (known && decoder->produced != header->declared_size) || !xx_lzma_flush(decoder, decoder->window_pos)) {
+    if (decoder->in_failed || (!mismatch && (decoder->code != 0U || (known && decoder->produced != header->declared_size))) ||
+        !xx_lzma_flush(decoder, decoder->window_pos)) {
         return XX_LZMA_STREAM_FAILED;
     }
     info->produced = decoder->produced;
     info->consumed = decoder->consumed;
+    info->size_mismatch = mismatch;
     info->end_marker = marker;
     info->zero_data = decoder->data_bits == 0U;
     return XX_LZMA_STREAM_FINISHED;
+}
+
+void xx_lzma_stream_decoder_set_lenient(xx_lzma_stream_decoder *decoder, bool lenient)
+{
+    if (decoder) decoder->lenient = lenient;
 }
 
 xx_lzma_stream_decoder *xx_lzma_stream_decoder_create(xx_io_device *device, xx_io_device *destination, xx_pd_struct *pd)

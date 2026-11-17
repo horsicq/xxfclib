@@ -132,7 +132,6 @@
 { XX_FILE_TYPE_HXC_STREAM, xx_hxc_stream_get_abstract_extractor, xx_hxc_stream_get_abstract_detector },
 { XX_FILE_TYPE_HXC_XML_DISK_LAYOUT, xx_hxc_xml_disk_layout_get_abstract_extractor, xx_hxc_xml_disk_layout_get_abstract_detector },
 { XX_FILE_TYPE_HXS, xx_hxs_get_abstract_extractor, xx_hxs_get_abstract_detector },
-{ XX_FILE_TYPE_INSTALIT_DATA, xx_instalit_data_get_abstract_extractor, xx_instalit_data_get_abstract_detector },
 { XX_FILE_TYPE_JFFS2_OLD, xx_jffs2_old_get_abstract_extractor, xx_jffs2_old_get_abstract_detector },
 { XX_FILE_TYPE_JFS, xx_jfs_get_abstract_extractor, xx_jfs_get_abstract_detector },
 { XX_FILE_TYPE_JVC, xx_jvc_get_abstract_extractor, xx_jvc_get_abstract_detector },

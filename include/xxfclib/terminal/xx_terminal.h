@@ -106,6 +106,79 @@ XXFC_API xxfc_status_t xx_terminal_writer_xml_attribute(
 XXFC_API xxfc_status_t xx_terminal_writer_xml_attribute_n(
     xx_terminal_writer *writer, const char *text, size_t size);
 
+/* ANSI escape sequences written through a structured-output writer.
+ *
+ * These helpers emit raw control sequences into any byte sink (a standard
+ * stream, a staging file, a buffer).  They neither detect a terminal nor
+ * consult the global color setting: the caller decides when styling is
+ * wanted, so it can reproduce another program's color decisions and bytes
+ * exactly.  Each attribute is its own sequence ("\033[91m\033[1m", not
+ * "\033[91;1m"), the way termcolor-style writers emit them. */
+
+/** @brief The 16 classic ANSI foreground colors (their SGR parameters). */
+typedef enum xx_terminal_ansi_color_e {
+    XX_TERMINAL_ANSI_DEFAULT = 0, /**< no color sequence */
+    XX_TERMINAL_ANSI_BLACK = 30,
+    XX_TERMINAL_ANSI_RED = 31,
+    XX_TERMINAL_ANSI_GREEN = 32,
+    XX_TERMINAL_ANSI_YELLOW = 33,
+    XX_TERMINAL_ANSI_BLUE = 34,
+    XX_TERMINAL_ANSI_MAGENTA = 35,
+    XX_TERMINAL_ANSI_CYAN = 36,
+    XX_TERMINAL_ANSI_WHITE = 37,
+    XX_TERMINAL_ANSI_BRIGHT_BLACK = 90,
+    XX_TERMINAL_ANSI_BRIGHT_RED = 91,
+    XX_TERMINAL_ANSI_BRIGHT_GREEN = 92,
+    XX_TERMINAL_ANSI_BRIGHT_YELLOW = 93,
+    XX_TERMINAL_ANSI_BRIGHT_BLUE = 94,
+    XX_TERMINAL_ANSI_BRIGHT_MAGENTA = 95,
+    XX_TERMINAL_ANSI_BRIGHT_CYAN = 96,
+    XX_TERMINAL_ANSI_BRIGHT_WHITE = 97
+} xx_terminal_ansi_color_t;
+
+/** @brief xx_terminal_writer_ansi_style() flag: bold (increased intensity). */
+#define XX_TERMINAL_ANSI_BOLD 0x1u
+
+/**
+ * @brief Write the sequences that select a foreground color and attributes.
+ *
+ * The color comes first ("\033[<color>m"), then one sequence per attribute
+ * flag ("\033[1m" for XX_TERMINAL_ANSI_BOLD).  XX_TERMINAL_ANSI_DEFAULT
+ * writes no color sequence.  An unknown color or flag returns
+ * XXFC_ERR_INVALID_ARG and writes nothing.
+ */
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_style(xx_terminal_writer *writer,
+    xx_terminal_ansi_color_t foreground, uint32_t flags);
+
+/** @brief Write the SGR reset sequence "\033[0m". */
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_reset(xx_terminal_writer *writer);
+
+/**
+ * @brief Write one styled span: the style, the text, then "\033[0m".
+ *
+ * The same bytes as xx_terminal_writer_ansi_style(), xx_terminal_writer_write()
+ * and xx_terminal_writer_ansi_reset() in turn; the reset is written even
+ * for an empty span.
+ */
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer,
+    const char *text, size_t size, xx_terminal_ansi_color_t foreground, uint32_t flags);
+
+/**
+ * @brief Open an OSC 8 hyperlink: "\033]8;;" URL "\033\\".
+ *
+ * The URL bytes are written as given.  Text written afterwards is the link
+ * text; xx_terminal_writer_ansi_link_end() closes the link.  A NULL or empty
+ * URL writes the closing sequence.
+ */
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_link_begin(xx_terminal_writer *writer,
+    const char *url, size_t size);
+
+/** @brief Close an OSC 8 hyperlink: "\033]8;;\033\\". */
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_link_end(xx_terminal_writer *writer);
+
+/** @brief Return to column 0 and erase the whole line: "\r\033[2K". */
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_clear_line(xx_terminal_writer *writer);
+
 /**
  * @brief Apply one common command-line option to the process-global settings.
  * X86 builds recognize --sse2/--nosse2, --sse42/--nosse42,

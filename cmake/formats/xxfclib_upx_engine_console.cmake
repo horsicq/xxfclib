@@ -10,4 +10,5 @@ xxfclib_add_family_console(upx_engine
         src/formats/archive/sevenzip_engine/xx_sevenzip_engine.c
         src/formats/executable/pe/xx_pe.c
         src/formats/executable/upx_engine/xx_upx_engine.c
-        src/formats/executable/upx_engine/xx_upx_engine_extractor.c)
+        src/formats/executable/upx_engine/xx_upx_engine_extractor.c
+        src/formats/executable/upx_engine/xx_upx_engine_reader_adapters.c)

@@ -323,6 +323,15 @@ static bool xx_debugscr_is_word(const uint8_t *line, size_t length, const char *
     return index == length;
 }
 
+/* DEBUG reads only the command letter of Q; generated scripts may put a
+ * banner behind it ("Q FileDebug (c) ..."), so "Q" alone or "Q" followed
+ * by a blank and any text is the quit command. */
+static bool xx_debugscr_is_quit(const uint8_t *line, size_t length)
+{
+    if (length == 0U || xx_debugscr_upper(line[0]) != 'Q') return false;
+    return length == 1U || xx_debugscr_is_space(line[1]);
+}
+
 /* "RCX" and "R CX" both select CX; the value is on the following line. */
 static bool xx_debugscr_is_rcx(const uint8_t *line, size_t length)
 {
@@ -409,7 +418,7 @@ static xx_debugscr_stream *xx_debugscr_parse(Abstractformat *self, xx_pd_struct 
             have_write = true;
             continue;
         }
-        if (xx_debugscr_is_word(line, length, "Q")) {
+        if (xx_debugscr_is_quit(line, length)) {
             have_quit = true;
             break;
         }
@@ -440,7 +449,7 @@ static xx_debugscr_stream *xx_debugscr_parse(Abstractformat *self, xx_pd_struct 
             want_count = true;
             continue;
         }
-        if (xx_debugscr_is_word(line, length, "Q")) break;
+        if (xx_debugscr_is_quit(line, length)) break;
         if (xx_debugscr_upper(line[0]) != 'E') continue;
         /* An E command separates its opcode from its address with a blank
          * or joins the two directly ("E0100"); anything else is some other

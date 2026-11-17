@@ -7,4 +7,5 @@ xxfclib_add_family_console(freeze
     SOURCES
         src/formats/archive/freeze/xx_freeze.c
         src/formats/archive/freeze/xx_freeze_codec.c
-        src/formats/archive/freeze/xx_freeze_extractor.c)
+        src/formats/archive/freeze/xx_freeze_extractor.c
+        src/formats/archive/freeze/xx_freeze_reader_adapters.c)

@@ -67,12 +67,52 @@ static bool pw_cab(Abstractformat *f, int64_t at, int64_t end, int64_t *stop, xx
     }
     return table <= first_data;
 }
+/* The settings block names the package length itself: decode it (new header:
+ * nibble swap then XOR 0x9E - i % 26; old header: XOR 0x61 + i % 26), take the
+ * u32 after the 4-byte (old 3-byte "2!$" form: 3-byte) tag and require the
+ * remaining settings to be a well-formed record list: 0x12 + u32, a byte below
+ * 0x80 + u16 length + data, or a byte >= 0x80 + one byte, consuming the block
+ * exactly. Used when the package is not a plain, intact cabinet (encoded
+ * packages, cabinets with damaged blocks): the package is then published as
+ * one stored member. */
+static bool pw_declared(const uint8_t *raw, uint32_t size, uint32_t *length)
+{
+    uint8_t *d;
+    uint32_t i, head, left;
+    bool ok = false;
+    if (size < 8) return false;
+    d = (uint8_t *)xx_mem_alloc(size);
+    if (!d) return false;
+    if (!xx_rt_memcmp(raw, "\xdc\xed\xbd\xa9", 4)) {
+        for (i = 0; i < size; ++i) d[i] = (uint8_t)((uint8_t)((raw[i] << 4) | (raw[i] >> 4)) ^ (uint8_t)(0x9E - i % 26));
+        head = 8;
+    } else if (!xx_rt_memcmp(raw, "2!$", 3)) {
+        for (i = 0; i < size; ++i) d[i] = (uint8_t)(raw[i] ^ (uint8_t)(0x61 + i % 26));
+        head = raw[3] == 'e' ? 8U : 7U;
+    } else
+        goto done;
+    *length = xx_data_get_u32(d + head - 4, 4, 0, false);
+    for (i = head, left = size - head; left;) {
+        uint8_t c = d[i];
+        uint32_t step;
+        if (c == 0x12U) step = 5;
+        else if (!(c & 0x80U)) step = left >= 3U ? 3U + xx_data_get_u16(d + i + 1, 2, 0, false) : 4U;
+        else step = 2;
+        if (step > left) goto done;
+        i += step;
+        left -= step;
+    }
+    ok = *length > 0 && *length <= 0x7FFFFFFFU;
+done:
+    xx_mem_free(d);
+    return ok;
+}
 static bool carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
 {
     int64_t overlay, cab, section_end, end, limit = pm_available(f);
     uint8_t h[16];
     unsigned attempt;
-    uint32_t size;
+    uint32_t size, declared = 0;
     uint8_t *settings = NULL;
     bool ok = false;
     if (!carrier_pe(f, &overlay, &cab, &section_end, pd)) return false;
@@ -89,6 +129,16 @@ static bool carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
          * bounded CAB immediately after it; a generic PE/CAB is insufficient
          * to claim this producer. Do not present opaque settings as SCG. */
         new_header = !xx_rt_memcmp(settings, "\xdc\xed\xbd\xa9", 4);
+        if (pw_declared(settings, size, &declared) && declared <= (uint64_t)(limit - start - 4 - size) &&
+            !pw_cab(f, start + 4 + size, region_end, &end, pd)) {
+            /* Not an intact plain cabinet: publish the declared package. */
+            xx_mem_free(settings);
+            settings = NULL;
+            if (!pm_add(f, s, "pftw1.pkg", start + 4 + size, declared) || !(s->items[s->count - 1].display_name = xx_str_dup("pftw1.pkg"))) goto done;
+            s->size = start + 4 + size + declared;
+            ok = true;
+            break;
+        }
         if (!new_header)
             for (i = 0; i < size; ++i) settings[i] ^= (uint8_t)(0x61 + i % 26);
         if ((!new_header && xx_rt_memcmp(settings, "SCG", 3)) || !pw_cab(f, start + 4 + size, region_end, &end, pd) ||

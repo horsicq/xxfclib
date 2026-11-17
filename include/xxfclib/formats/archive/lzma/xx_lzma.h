@@ -26,6 +26,9 @@ typedef struct xx_lzma {
     Abstractformat format;
     uint64_t uncompressed_size;
     int64_t stream_end;
+    /* The single stream disagreed with its declared size and was taken
+     * leniently (see xx_lzma.c); shown as a comment on the record. */
+    bool size_mismatch;
 } xx_lzma;
 
 typedef xx_lzma xx_lzma_t;

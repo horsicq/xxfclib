@@ -17,4 +17,5 @@ xxfclib_add_family_console(enigma_virtual_box
         src/algo/crc/xx_crc64.c
         src/algo/crc/xx_crc8.c
         src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box.c
-        src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c)
+        src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c
+        src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_reader_adapters.c)

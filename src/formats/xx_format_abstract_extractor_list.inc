@@ -1426,6 +1426,16 @@ extern Abstractextractor *xx_install4j_get_abstract_extractor(void);
 extern Abstractextractor *xx_sumatra_lzsa_get_abstract_extractor(void);
 extern Abstractextractor *xx_calibre_portable_get_abstract_extractor(void);
 extern Abstractextractor *xx_palminput_360_get_abstract_extractor(void);
+extern Abstractextractor *xx_csd_get_abstract_extractor(void);
+extern Abstractextractor *xx_consplus_get_abstract_extractor(void);
+extern Abstractextractor *xx_c64_sda_get_abstract_extractor(void);
+extern Abstractextractor *xx_cpff_get_abstract_extractor(void);
+extern Abstractextractor *xx_compaq_msgdata_get_abstract_extractor(void);
+extern Abstractextractor *xx_chasm_csid_get_abstract_extractor(void);
+extern Abstractextractor *xx_c64s_get_abstract_extractor(void);
+extern Abstractextractor *xx_createinstall_pak_get_abstract_extractor(void);
+extern Abstractextractor *xx_chieflz_v1_get_abstract_extractor(void);
+extern Abstractextractor *xx_instalit_data_get_abstract_extractor(void);
 extern Abstractextractor *xx_sdi_get_abstract_extractor(void);
 extern Abstractextractor *xx_superdat_get_abstract_extractor(void);
 extern Abstractextractor *xx_excelsior_get_abstract_extractor(void);
@@ -2897,6 +2907,16 @@ extern Abstractdetector *xx_install4j_get_abstract_detector(void);
 extern Abstractdetector *xx_sumatra_lzsa_get_abstract_detector(void);
 extern Abstractdetector *xx_calibre_portable_get_abstract_detector(void);
 extern Abstractdetector *xx_palminput_360_get_abstract_detector(void);
+extern Abstractdetector *xx_csd_get_abstract_detector(void);
+extern Abstractdetector *xx_consplus_get_abstract_detector(void);
+extern Abstractdetector *xx_c64_sda_get_abstract_detector(void);
+extern Abstractdetector *xx_cpff_get_abstract_detector(void);
+extern Abstractdetector *xx_compaq_msgdata_get_abstract_detector(void);
+extern Abstractdetector *xx_chasm_csid_get_abstract_detector(void);
+extern Abstractdetector *xx_c64s_get_abstract_detector(void);
+extern Abstractdetector *xx_createinstall_pak_get_abstract_detector(void);
+extern Abstractdetector *xx_chieflz_v1_get_abstract_detector(void);
+extern Abstractdetector *xx_instalit_data_get_abstract_detector(void);
 extern Abstractdetector *xx_sdi_get_abstract_detector(void);
 extern Abstractdetector *xx_superdat_get_abstract_detector(void);
 extern Abstractdetector *xx_excelsior_get_abstract_detector(void);
@@ -5192,6 +5212,16 @@ static const struct {
     { &xx_sumatra_lzsa_extractor, xx_sumatra_lzsa_get_abstract_extractor, xx_sumatra_lzsa_get_abstract_detector },
     { &xx_calibre_portable_extractor, xx_calibre_portable_get_abstract_extractor, xx_calibre_portable_get_abstract_detector },
     { &xx_palminput_360_extractor, xx_palminput_360_get_abstract_extractor, xx_palminput_360_get_abstract_detector },
+    { &xx_csd_extractor, xx_csd_get_abstract_extractor, xx_csd_get_abstract_detector },
+    { &xx_consplus_extractor, xx_consplus_get_abstract_extractor, xx_consplus_get_abstract_detector },
+    { &xx_c64_sda_extractor, xx_c64_sda_get_abstract_extractor, xx_c64_sda_get_abstract_detector },
+    { &xx_cpff_extractor, xx_cpff_get_abstract_extractor, xx_cpff_get_abstract_detector },
+    { &xx_compaq_msgdata_extractor, xx_compaq_msgdata_get_abstract_extractor, xx_compaq_msgdata_get_abstract_detector },
+    { &xx_chasm_csid_extractor, xx_chasm_csid_get_abstract_extractor, xx_chasm_csid_get_abstract_detector },
+    { &xx_c64s_extractor, xx_c64s_get_abstract_extractor, xx_c64s_get_abstract_detector },
+    { &xx_createinstall_pak_extractor, xx_createinstall_pak_get_abstract_extractor, xx_createinstall_pak_get_abstract_detector },
+    { &xx_chieflz_v1_extractor, xx_chieflz_v1_get_abstract_extractor, xx_chieflz_v1_get_abstract_detector },
+    { &xx_instalit_data_extractor, xx_instalit_data_get_abstract_extractor, xx_instalit_data_get_abstract_detector },
     { &xx_sdi_extractor, xx_sdi_get_abstract_extractor, xx_sdi_get_abstract_detector },
     { &xx_superdat_extractor, xx_superdat_get_abstract_extractor, xx_superdat_get_abstract_detector },
     { &xx_excelsior_extractor, xx_excelsior_get_abstract_extractor, xx_excelsior_get_abstract_detector },

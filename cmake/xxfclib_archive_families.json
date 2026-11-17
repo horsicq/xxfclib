@@ -62,6 +62,7 @@
   "src/codepages/xx_codepage_riscos.c",
   "src/codepages/xx_codepage_tis_620.c",
   "src/codepages/xx_codepage_unicode.c",
+  "src/codepages/xx_codepage_whatwg.c",
   "src/data/platforms/xx_data_avx2.c",
   "src/data/platforms/xx_data_neon.c",
   "src/data/platforms/xx_data_sse2.c",
@@ -500,7 +501,8 @@
    ],
    "sources": [
     "src/formats/archive/arc_cbm/xx_arc_cbm.c",
-    "src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c"
+    "src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c",
+    "src/formats/archive/arc_cbm/xx_arc_cbm_reader_adapters.c"
    ]
   },
   "arcfs": {
@@ -879,7 +881,8 @@
     "src/algo/deflate/xx_deflate_dec.c",
     "src/algo/deflate/xx_deflate_enc.c",
     "src/formats/archive/bga/xx_bga.c",
-    "src/formats/archive/bga/xx_bga_extractor.c"
+    "src/formats/archive/bga/xx_bga_extractor.c",
+    "src/formats/archive/bga/xx_bga_reader_adapters.c"
    ]
   },
   "bigaf": {
@@ -1239,7 +1242,46 @@
     "src/algo/crc/xx_crc8.c",
     "src/formats/archive/bzip1/xx_bzip1.c",
     "src/formats/archive/bzip1/xx_bzip1_codec.c",
-    "src/formats/archive/bzip1/xx_bzip1_extractor.c"
+    "src/formats/archive/bzip1/xx_bzip1_extractor.c",
+    "src/formats/archive/bzip1/xx_bzip1_reader_adapters.c"
+   ]
+  },
+  "c64_sda": {
+   "flag": "C64_SDA",
+   "types": [
+    "C64_SDA"
+   ],
+   "label": "C64 self-dissolving archive (SDA)",
+   "directory": "archive/c64_sda",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [],
+   "formats": [
+    "archive/c64_sda"
+   ],
+   "sources": [
+    "src/formats/archive/c64_sda/xx_c64_sda.c",
+    "src/formats/archive/c64_sda/xx_c64_sda_extractor.c"
+   ]
+  },
+  "c64s": {
+   "flag": "C64S",
+   "types": [
+    "C64S"
+   ],
+   "label": "C64S emulator DOS self-extractor",
+   "directory": "archive/c64s",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [],
+   "formats": [
+    "archive/c64s"
+   ],
+   "sources": [
+    "src/formats/archive/c64s/xx_c64s.c",
+    "src/formats/archive/c64s/xx_c64s_extractor.c"
    ]
   },
   "c64wraptor": {
@@ -1474,6 +1516,25 @@
     "src/formats/archive/cfl/xx_cfl_extractor.c"
    ]
   },
+  "chasm_csid": {
+   "flag": "CHASM_CSID",
+   "types": [
+    "CHASM_CSID"
+   ],
+   "label": "Chasm CSid resource archive",
+   "directory": "archive/chasm_csid",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [],
+   "formats": [
+    "archive/chasm_csid"
+   ],
+   "sources": [
+    "src/formats/archive/chasm_csid/xx_chasm_csid.c",
+    "src/formats/archive/chasm_csid/xx_chasm_csid_extractor.c"
+   ]
+  },
   "chieflz": {
    "flag": "CHIEFLZ",
    "types": [
@@ -1494,6 +1555,25 @@
     "src/algo/chieflz/xx_chieflz.c",
     "src/formats/archive/chieflz/xx_chieflz.c",
     "src/formats/archive/chieflz/xx_chieflz_extractor.c"
+   ]
+  },
+  "chieflz_v1": {
+   "flag": "CHIEFLZ_V1",
+   "types": [
+    "CHIEFLZ_V1"
+   ],
+   "label": "ChiefLZ multiple-file archive (version 1)",
+   "directory": "archive/chieflz_v1",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [],
+   "formats": [
+    "archive/chieflz_v1"
+   ],
+   "sources": [
+    "src/formats/archive/chieflz_v1/xx_chieflz_v1.c",
+    "src/formats/archive/chieflz_v1/xx_chieflz_v1_extractor.c"
    ]
   },
   "chieflzmulti": {
@@ -1534,7 +1614,8 @@
    ],
    "sources": [
     "src/formats/archive/chromium_pak/xx_chromium_pak.c",
-    "src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c"
+    "src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c",
+    "src/formats/archive/chromium_pak/xx_chromium_pak_reader_adapters.c"
    ]
   },
   "claylz": {
@@ -1617,6 +1698,25 @@
     "src/formats/archive/compactpro/xx_compactpro_extractor.c"
    ]
   },
+  "compaq_msgdata": {
+   "flag": "COMPAQ_MSGDATA",
+   "types": [
+    "COMPAQ_MSGDATA"
+   ],
+   "label": "Compaq diagnostics MSGDATA container",
+   "directory": "archive/compaq_msgdata",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [],
+   "formats": [
+    "archive/compaq_msgdata"
+   ],
+   "sources": [
+    "src/formats/archive/compaq_msgdata/xx_compaq_msgdata.c",
+    "src/formats/archive/compaq_msgdata/xx_compaq_msgdata_extractor.c"
+   ]
+  },
   "compaqlzh": {
    "flag": "COMPAQLZH",
    "types": [
@@ -1637,6 +1737,52 @@
     "src/algo/lzh/xx_lzh.c",
     "src/formats/archive/compaqlzh/xx_compaqlzh.c",
     "src/formats/archive/compaqlzh/xx_compaqlzh_extractor.c"
+   ]
+  },
+  "consplus": {
+   "flag": "CONSPLUS_DB",
+   "types": [
+    "CONSPLUS_DB"
+   ],
+   "label": "Consultant Plus database container",
+   "directory": "archive/consplus",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [
+    "adler32",
+    "crc",
+    "deflate"
+   ],
+   "formats": [
+    "archive/consplus"
+   ],
+   "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
+    "src/algo/crc/platforms/xx_crc32_arm.c",
+    "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
+    "src/algo/crc/platforms/xx_crc32c_sse42.c",
+    "src/algo/crc/platforms/xx_crc64_avx2.c",
+    "src/algo/crc/platforms/xx_crc64_sse2.c",
+    "src/algo/crc/platforms/xx_crc64_vpclmul.c",
+    "src/algo/crc/xx_crc.c",
+    "src/algo/crc/xx_crc16.c",
+    "src/algo/crc/xx_crc32.c",
+    "src/algo/crc/xx_crc64.c",
+    "src/algo/crc/xx_crc8.c",
+    "src/algo/deflate/platforms/xx_deflate_avx2.c",
+    "src/algo/deflate/platforms/xx_deflate_neon.c",
+    "src/algo/deflate/platforms/xx_deflate_sse2.c",
+    "src/algo/deflate/xx_deflate.c",
+    "src/algo/deflate/xx_deflate_dec.c",
+    "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/deflate/xx_zlib_stream.c",
+    "src/formats/archive/consplus/xx_consplus.c",
+    "src/formats/archive/consplus/xx_consplus_extractor.c"
    ]
   },
   "cork": {
@@ -1669,6 +1815,25 @@
     "src/algo/crc/xx_crc8.c",
     "src/formats/archive/cork/xx_cork.c",
     "src/formats/archive/cork/xx_cork_extractor.c"
+   ]
+  },
+  "cpff": {
+   "flag": "CPFF",
+   "types": [
+    "CPFF"
+   ],
+   "label": "CPFF LZW setup package",
+   "directory": "archive/cpff",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [],
+   "formats": [
+    "archive/cpff"
+   ],
+   "sources": [
+    "src/formats/archive/cpff/xx_cpff.c",
+    "src/formats/archive/cpff/xx_cpff_extractor.c"
    ]
   },
   "cpio": {
@@ -1792,6 +1957,28 @@
     "src/formats/archive/cpz/xx_cpz_extractor.c"
    ]
   },
+  "createinstall_pak": {
+   "flag": "CREATEINSTALL_PAK",
+   "types": [
+    "CREATEINSTALL_PAK"
+   ],
+   "label": "CreateInstall package (DISK1.PAK)",
+   "directory": "archive/createinstall_pak",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [
+    "ampk"
+   ],
+   "formats": [
+    "archive/createinstall_pak"
+   ],
+   "sources": [
+    "src/algo/ampk/xx_ampk.c",
+    "src/formats/archive/createinstall_pak/xx_createinstall_pak.c",
+    "src/formats/archive/createinstall_pak/xx_createinstall_pak_extractor.c"
+   ]
+  },
   "cru": {
    "flag": "CRU",
    "types": [
@@ -1809,6 +1996,28 @@
    "sources": [
     "src/formats/archive/cru/xx_cru.c",
     "src/formats/archive/cru/xx_cru_extractor.c"
+   ]
+  },
+  "csd": {
+   "flag": "CSD",
+   "types": [
+    "CSD"
+   ],
+   "label": "IBM OS/2 service-pack (CSD) compressed file",
+   "directory": "archive/csd",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [
+    "csdpack"
+   ],
+   "formats": [
+    "archive/csd"
+   ],
+   "sources": [
+    "src/algo/csdpack/xx_csdpack.c",
+    "src/formats/archive/csd/xx_csd.c",
+    "src/formats/archive/csd/xx_csd_extractor.c"
    ]
   },
   "csq": {
@@ -1991,6 +2200,7 @@
     "src/formats/archive/dgca/xx_dgca_lzp.c",
     "src/formats/archive/dgca/xx_dgca_payload.c",
     "src/formats/archive/dgca/xx_dgca_range.c",
+    "src/formats/archive/dgca/xx_dgca_reader_adapters.c",
     "src/formats/archive/dgca/xx_dgca_transform.c",
     "src/formats/archive/legacy_archive_engine/xx_legacy_archive_engine.c",
     "src/formats/archive/sevenzip_backend/xx_sevenzip_backend.c",
@@ -2016,7 +2226,8 @@
    "sources": [
     "src/algo/dcl/xx_dcl.c",
     "src/formats/archive/dh/xx_dh.c",
-    "src/formats/archive/dh/xx_dh_extractor.c"
+    "src/formats/archive/dh/xx_dh_extractor.c",
+    "src/formats/archive/dh/xx_dh_reader_adapters.c"
    ]
   },
   "diskdoubler": {
@@ -2074,7 +2285,8 @@
    "sources": [
     "src/algo/softronics/xx_softronics.c",
     "src/formats/archive/djcomp/xx_djcomp.c",
-    "src/formats/archive/djcomp/xx_djcomp_extractor.c"
+    "src/formats/archive/djcomp/xx_djcomp_extractor.c",
+    "src/formats/archive/djcomp/xx_djcomp_reader_adapters.c"
    ]
   },
   "dmapacked": {
@@ -2161,7 +2373,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/archive/dpc/xx_dpc.c",
-    "src/formats/archive/dpc/xx_dpc_extractor.c"
+    "src/formats/archive/dpc/xx_dpc_extractor.c",
+    "src/formats/archive/dpc/xx_dpc_reader_adapters.c"
    ]
   },
   "dpk": {
@@ -2261,7 +2474,8 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/archive/dwc/xx_dwc.c",
-    "src/formats/archive/dwc/xx_dwc_extractor.c"
+    "src/formats/archive/dwc/xx_dwc_extractor.c",
+    "src/formats/archive/dwc/xx_dwc_reader_adapters.c"
    ]
   },
   "ealib": {
@@ -2699,7 +2913,8 @@
    "sources": [
     "src/formats/archive/freeze/xx_freeze.c",
     "src/formats/archive/freeze/xx_freeze_codec.c",
-    "src/formats/archive/freeze/xx_freeze_extractor.c"
+    "src/formats/archive/freeze/xx_freeze_extractor.c",
+    "src/formats/archive/freeze/xx_freeze_reader_adapters.c"
    ]
   },
   "ftcomp": {
@@ -3408,7 +3623,8 @@
    ],
    "sources": [
     "src/formats/archive/is_stored/xx_is_stored.c",
-    "src/formats/archive/is_stored/xx_is_stored_extractor.c"
+    "src/formats/archive/is_stored/xx_is_stored_extractor.c",
+    "src/formats/archive/is_stored/xx_is_stored_reader_adapters.c"
    ]
   },
   "ixa": {
@@ -3627,7 +3843,8 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/kgb_archiver/xx_kgb_archiver.c",
-    "src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c"
+    "src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c",
+    "src/formats/archive/kgb_archiver/xx_kgb_archiver_reader_adapters.c"
    ]
   },
   "kolibrikpack": {
@@ -3732,7 +3949,8 @@
    "sources": [
     "src/algo/lzh/xx_lzh.c",
     "src/formats/archive/larc_pfx/xx_larc_pfx.c",
-    "src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c"
+    "src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c",
+    "src/formats/archive/larc_pfx/xx_larc_pfx_reader_adapters.c"
    ]
   },
   "lbr": {
@@ -3950,7 +4168,8 @@
    ],
    "sources": [
     "src/formats/archive/lpak/xx_lpak.c",
-    "src/formats/archive/lpak/xx_lpak_extractor.c"
+    "src/formats/archive/lpak/xx_lpak_extractor.c",
+    "src/formats/archive/lpak/xx_lpak_reader_adapters.c"
    ]
   },
   "lpaq8": {
@@ -7708,7 +7927,8 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/archive/stuffitx/xx_stuffitx.c",
-    "src/formats/archive/stuffitx/xx_stuffitx_extractor.c"
+    "src/formats/archive/stuffitx/xx_stuffitx_extractor.c",
+    "src/formats/archive/stuffitx/xx_stuffitx_reader_adapters.c"
    ]
   },
   "swag": {
@@ -9376,6 +9596,7 @@
     "src/formats/archive/zip/xx_zip_extractor.c",
     "src/formats/archive/zip/xx_zip_inspect.c",
     "src/formats/archive/zip/xx_zip_legacy_encoder.c",
+    "src/formats/archive/zip/xx_zip_yx.c",
     "src/formats/xx_stream_datastructs.c"
    ]
   },
@@ -9827,7 +10048,8 @@
    ],
    "sources": [
     "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank.c",
-    "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c"
+    "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c",
+    "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_reader_adapters.c"
    ]
   },
   "sfark_compressed_soundfont": {
@@ -9873,7 +10095,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont.c",
-    "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c"
+    "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c",
+    "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_reader_adapters.c"
    ]
   },
   "sfpack": {
@@ -10038,7 +10261,9 @@
    "sources": [
     "src/formats/document/binder/xx_binder.c",
     "src/formats/document/cfbf/xx_cfbf.c",
-    "src/formats/document/cfbf/xx_cfbf_extractor.c"
+    "src/formats/document/cfbf/xx_cfbf_extractor.c",
+    "src/formats/document/cfbf/xx_cfbf_reader_adapters.c",
+    "src/formats/document/cfbf/xx_olecf_yx.c"
    ]
   },
   "chm": {
@@ -10181,7 +10406,8 @@
    ],
    "sources": [
     "src/formats/document/microsoft_lit/xx_microsoft_lit.c",
-    "src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c"
+    "src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c",
+    "src/formats/document/microsoft_lit/xx_microsoft_lit_reader_adapters.c"
    ]
   },
   "mime_message": {
@@ -10239,7 +10465,8 @@
    ],
    "sources": [
     "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox.c",
-    "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c"
+    "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c",
+    "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_reader_adapters.c"
    ]
   },
   "pain": {
@@ -10739,7 +10966,8 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box.c",
-    "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c"
+    "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c",
+    "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_reader_adapters.c"
    ]
   },
   "executable_overlay": {
@@ -10818,7 +11046,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/md5/xx_md5.c",
     "src/formats/executable/molebox/xx_molebox.c",
-    "src/formats/executable/molebox/xx_molebox_extractor.c"
+    "src/formats/executable/molebox/xx_molebox_extractor.c",
+    "src/formats/executable/molebox/xx_molebox_reader_adapters.c"
    ]
   },
   "node_pkg": {
@@ -11105,7 +11334,8 @@
     "src/formats/archive/sevenzip_engine/xx_sevenzip_engine.c",
     "src/formats/executable/pe/xx_pe.c",
     "src/formats/executable/upx_engine/xx_upx_engine.c",
-    "src/formats/executable/upx_engine/xx_upx_engine_extractor.c"
+    "src/formats/executable/upx_engine/xx_upx_engine_extractor.c",
+    "src/formats/executable/upx_engine/xx_upx_engine_reader_adapters.c"
    ]
   },
   "adf": {
@@ -11143,7 +11373,8 @@
    ],
    "sources": [
     "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf.c",
-    "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_extractor.c"
+    "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_extractor.c",
+    "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_reader_adapters.c"
    ]
   },
   "amiga_old_ext_adf": {
@@ -11162,7 +11393,8 @@
    ],
    "sources": [
     "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf.c",
-    "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c"
+    "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c",
+    "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_reader_adapters.c"
    ]
   },
   "aodos": {
@@ -11251,7 +11483,8 @@
    ],
    "sources": [
     "src/formats/filesystem/apridisk/xx_apridisk.c",
-    "src/formats/filesystem/apridisk/xx_apridisk_extractor.c"
+    "src/formats/filesystem/apridisk/xx_apridisk_extractor.c",
+    "src/formats/filesystem/apridisk/xx_apridisk_reader_adapters.c"
    ]
   },
   "ccd": {
@@ -11270,7 +11503,8 @@
    ],
    "sources": [
     "src/formats/filesystem/ccd/xx_ccd.c",
-    "src/formats/filesystem/ccd/xx_ccd_extractor.c"
+    "src/formats/filesystem/ccd/xx_ccd_extractor.c",
+    "src/formats/filesystem/ccd/xx_ccd_reader_adapters.c"
    ]
   },
   "cfd": {
@@ -11696,7 +11930,8 @@
    ],
    "sources": [
     "src/formats/filesystem/dfsee_imz/xx_dfsee_imz.c",
-    "src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c"
+    "src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c",
+    "src/formats/filesystem/dfsee_imz/xx_dfsee_imz_reader_adapters.c"
    ]
   },
   "diskdupe": {
@@ -11926,7 +12161,8 @@
    ],
    "sources": [
     "src/formats/filesystem/ecm/xx_ecm.c",
-    "src/formats/filesystem/ecm/xx_ecm_extractor.c"
+    "src/formats/filesystem/ecm/xx_ecm_extractor.c",
+    "src/formats/filesystem/ecm/xx_ecm_reader_adapters.c"
    ]
   },
   "emt": {
@@ -12054,7 +12290,8 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/filesystem/gbi/xx_gbi.c",
-    "src/formats/filesystem/gbi/xx_gbi_extractor.c"
+    "src/formats/filesystem/gbi/xx_gbi_extractor.c",
+    "src/formats/filesystem/gbi/xx_gbi_reader_adapters.c"
    ]
   },
   "hdcopy": {
@@ -12287,7 +12524,8 @@
    ],
    "sources": [
     "src/formats/filesystem/mds/xx_mds.c",
-    "src/formats/filesystem/mds/xx_mds_extractor.c"
+    "src/formats/filesystem/mds/xx_mds_extractor.c",
+    "src/formats/filesystem/mds/xx_mds_reader_adapters.c"
    ]
   },
   "nextstep_diskimage": {
@@ -12365,7 +12603,8 @@
    ],
    "sources": [
     "src/formats/filesystem/pce_anadisk/xx_pce_anadisk.c",
-    "src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c"
+    "src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c",
+    "src/formats/filesystem/pce_anadisk/xx_pce_anadisk_reader_adapters.c"
    ]
   },
   "pmdiskcopy": {
@@ -12571,7 +12810,8 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/filesystem/sdi/xx_sdi.c",
-    "src/formats/filesystem/sdi/xx_sdi_extractor.c"
+    "src/formats/filesystem/sdi/xx_sdi_extractor.c",
+    "src/formats/filesystem/sdi/xx_sdi_reader_adapters.c"
    ]
   },
   "sfx_sydex_diskette_image": {
@@ -12872,7 +13112,8 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/filesystem/uif/xx_uif.c",
-    "src/formats/filesystem/uif/xx_uif_extractor.c"
+    "src/formats/filesystem/uif/xx_uif_extractor.c",
+    "src/formats/filesystem/uif/xx_uif_reader_adapters.c"
    ]
   },
   "vdi": {
@@ -13036,7 +13277,8 @@
    ],
    "sources": [
     "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse.c",
-    "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c"
+    "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c",
+    "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_reader_adapters.c"
    ]
   },
   "vmdk_sesparse": {
@@ -13055,7 +13297,8 @@
    ],
    "sources": [
     "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse.c",
-    "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c"
+    "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c",
+    "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_reader_adapters.c"
    ]
   },
   "ziso": {
@@ -13225,7 +13468,8 @@
    ],
    "sources": [
     "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image.c",
-    "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c"
+    "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c",
+    "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_reader_adapters.c"
    ]
   },
   "mwave": {
@@ -13931,7 +14175,8 @@
    ],
    "sources": [
     "src/formats/game/gdi/xx_gdi.c",
-    "src/formats/game/gdi/xx_gdi_extractor.c"
+    "src/formats/game/gdi/xx_gdi_extractor.c",
+    "src/formats/game/gdi/xx_gdi_reader_adapters.c"
    ]
   },
   "gob": {
@@ -14010,7 +14255,8 @@
    ],
    "sources": [
     "src/formats/game/he_tlkb/xx_he_tlkb.c",
-    "src/formats/game/he_tlkb/xx_he_tlkb_extractor.c"
+    "src/formats/game/he_tlkb/xx_he_tlkb_extractor.c",
+    "src/formats/game/he_tlkb/xx_he_tlkb_reader_adapters.c"
    ]
   },
   "hog": {
@@ -14250,7 +14496,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/game/livemaker/xx_livemaker.c",
-    "src/formats/game/livemaker/xx_livemaker_extractor.c"
+    "src/formats/game/livemaker/xx_livemaker_extractor.c",
+    "src/formats/game/livemaker/xx_livemaker_reader_adapters.c"
    ]
   },
   "mas_pack": {
@@ -14731,7 +14978,8 @@
    ],
    "sources": [
     "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad.c",
-    "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c"
+    "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c",
+    "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_reader_adapters.c"
    ]
   },
   "rsc": {
@@ -15176,7 +15424,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/game/telltale_ttarch/xx_telltale_ttarch.c",
-    "src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c"
+    "src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c",
+    "src/formats/game/telltale_ttarch/xx_telltale_ttarch_reader_adapters.c"
    ]
   },
   "titan_quest": {
@@ -15611,7 +15860,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/game/ypf/xx_ypf.c",
-    "src/formats/game/ypf/xx_ypf_extractor.c"
+    "src/formats/game/ypf/xx_ypf_extractor.c",
+    "src/formats/game/ypf/xx_ypf_reader_adapters.c"
    ]
   },
   "evd": {
@@ -15901,7 +16151,8 @@
    ],
    "sources": [
     "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache.c",
-    "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c"
+    "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c",
+    "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_reader_adapters.c"
    ]
   },
   "advanced_installer_bootstrapper": {
@@ -16275,7 +16526,8 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/installer/bitrock/xx_bitrock.c",
-    "src/formats/installer/bitrock/xx_bitrock_extractor.c"
+    "src/formats/installer/bitrock/xx_bitrock_extractor.c",
+    "src/formats/installer/bitrock/xx_bitrock_reader_adapters.c"
    ]
   },
   "bnd": {
@@ -16582,7 +16834,8 @@
    ],
    "sources": [
     "src/formats/installer/cpoint/xx_cpoint.c",
-    "src/formats/installer/cpoint/xx_cpoint_extractor.c"
+    "src/formats/installer/cpoint/xx_cpoint_extractor.c",
+    "src/formats/installer/cpoint/xx_cpoint_reader_adapters.c"
    ]
   },
   "createinstall_instcrin_extractor": {
@@ -16620,20 +16873,31 @@
    "codecs": [
     "aes",
     "aes_winzip",
+    "asn1",
+    "base64",
+    "bignum",
     "bzip2",
     "cmpsc",
     "crc",
     "dcl",
     "deflate",
+    "dsa",
+    "ec",
     "implode",
     "lzma",
+    "md2",
+    "md5",
     "packmp3",
+    "pki",
     "ppmd8",
     "reduce",
+    "rsa",
     "sha",
+    "sha512",
     "shrink",
     "wavpack",
     "winzipjpeg",
+    "x509",
     "zipcrypto",
     "zstd"
    ],
@@ -16647,6 +16911,9 @@
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
+    "src/algo/asn1/xx_asn1.c",
+    "src/algo/base64/xx_base64.c",
+    "src/algo/bignum/xx_bignum.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -16673,6 +16940,8 @@
     "src/algo/deflate/xx_deflate.c",
     "src/algo/deflate/xx_deflate_dec.c",
     "src/algo/deflate/xx_deflate_enc.c",
+    "src/algo/dsa/xx_dsa.c",
+    "src/algo/ec/xx_ec.c",
     "src/algo/implode/xx_implode.c",
     "src/algo/lzma/platforms/xx_lzma_avx2.c",
     "src/algo/lzma/platforms/xx_lzma_neon.c",
@@ -16682,20 +16951,26 @@
     "src/algo/lzma/xx_lzma_dec.c",
     "src/algo/lzma/xx_lzma_enc.c",
     "src/algo/lzma/xx_lzma_stream.c",
+    "src/algo/md2/xx_md2.c",
+    "src/algo/md5/xx_md5.c",
     "src/algo/packmp3/xx_packmp3.c",
+    "src/algo/pki/xx_pki_verify.c",
     "src/algo/ppmd8/xx_ppmd8.c",
     "src/algo/ppmd8/xx_ppmd8_common.c",
     "src/algo/ppmd8/xx_ppmd8_dec.c",
     "src/algo/ppmd8/xx_ppmd8_enc.c",
     "src/algo/reduce/xx_reduce.c",
+    "src/algo/rsa/xx_rsa.c",
     "src/algo/sha/platforms/xx_sha_arm_crypto.c",
     "src/algo/sha/platforms/xx_sha_neon.c",
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
+    "src/algo/sha512/xx_sha512.c",
     "src/algo/shrink/xx_shrink.c",
     "src/algo/wavpack/xx_wavpack.c",
     "src/algo/wavpack/xx_wavpack_dec.c",
     "src/algo/winzipjpeg/xx_winzipjpeg.c",
+    "src/algo/x509/xx_x509.c",
     "src/algo/zipcrypto/xx_zipcrypto.c",
     "src/algo/zstd/xx_zstd.c",
     "src/algo/zstd/xx_zstd_dec.c",
@@ -16706,7 +16981,8 @@
     "src/formats/archive/zip/xx_zip_inspect.c",
     "src/formats/archive/zip/xx_zip_legacy_encoder.c",
     "src/formats/installer/crx/xx_crx.c",
-    "src/formats/installer/crx/xx_crx_extractor.c"
+    "src/formats/installer/crx/xx_crx_extractor.c",
+    "src/formats/installer/crx/xx_crx_yx.c"
    ]
   },
   "desksoft": {
@@ -16747,7 +17023,8 @@
    "sources": [
     "src/algo/dcl/xx_dcl.c",
     "src/formats/installer/dsl1/xx_dsl1.c",
-    "src/formats/installer/dsl1/xx_dsl1_extractor.c"
+    "src/formats/installer/dsl1/xx_dsl1_extractor.c",
+    "src/formats/installer/dsl1/xx_dsl1_reader_adapters.c"
    ]
   },
   "dsl2": {
@@ -16873,7 +17150,8 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/7zip/xx_7zip_branch.c",
     "src/formats/installer/excelsior/xx_excelsior.c",
-    "src/formats/installer/excelsior/xx_excelsior_extractor.c"
+    "src/formats/installer/excelsior/xx_excelsior_extractor.c",
+    "src/formats/installer/excelsior/xx_excelsior_reader_adapters.c"
    ]
   },
   "fead": {
@@ -16925,6 +17203,7 @@
     "src/formats/installer/fead/xx_fead.c",
     "src/formats/installer/fead/xx_fead_bcj2.c",
     "src/formats/installer/fead/xx_fead_extractor.c",
+    "src/formats/installer/fead/xx_fead_reader_adapters.c",
     "src/formats/installer/fead/xx_fead_restore.c",
     "src/formats/installer/fead/xx_fead_zlib_encoder.c"
    ]
@@ -17294,6 +17573,30 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/installer/inno_setup/xx_inno_setup.c",
     "src/formats/installer/inno_setup/xx_inno_setup_extractor.c"
+   ]
+  },
+  "instalit_data": {
+   "flag": "INSTALIT_DATA",
+   "types": [
+    "INSTALIT_DATA"
+   ],
+   "label": "Instalit data streams",
+   "directory": "installer/instalit_data",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [
+    "dcl"
+   ],
+   "formats": [
+    "archive/dclraw",
+    "installer/instalit_data"
+   ],
+   "sources": [
+    "src/algo/dcl/xx_dcl.c",
+    "src/formats/archive/dclraw/xx_dclraw.c",
+    "src/formats/installer/instalit_data/xx_instalit_data.c",
+    "src/formats/installer/instalit_data/xx_instalit_data_extractor.c"
    ]
   },
   "install4j": {
@@ -18209,7 +18512,8 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/installer/nsis/nsis_bzip2.c",
     "src/formats/installer/nsis/xx_nsis.c",
-    "src/formats/installer/nsis/xx_nsis_extractor.c"
+    "src/formats/installer/nsis/xx_nsis_extractor.c",
+    "src/formats/installer/nsis/xx_nsis_reader_adapters.c"
    ]
   },
   "oberon": {
@@ -19331,7 +19635,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/installer/sis/xx_sis.c",
-    "src/formats/installer/sis/xx_sis_extractor.c"
+    "src/formats/installer/sis/xx_sis_extractor.c",
+    "src/formats/installer/sis/xx_sis_reader_adapters.c"
    ]
   },
   "smart_install_maker": {
@@ -19374,7 +19679,8 @@
     "src/algo/lzx/xx_lzx.c",
     "src/algo/quantum/xx_quantum.c",
     "src/formats/installer/smart_install_maker/xx_smart_install_maker.c",
-    "src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c"
+    "src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c",
+    "src/formats/installer/smart_install_maker/xx_smart_install_maker_reader_adapters.c"
    ]
   },
   "smsipak": {
@@ -19811,7 +20117,8 @@
     "src/algo/crc/xx_crc8.c",
     "src/algo/lzh/xx_lzh.c",
     "src/formats/installer/superdat/xx_superdat.c",
-    "src/formats/installer/superdat/xx_superdat_extractor.c"
+    "src/formats/installer/superdat/xx_superdat_extractor.c",
+    "src/formats/installer/superdat/xx_superdat_reader_adapters.c"
    ]
   },
   "sw": {
@@ -20372,7 +20679,8 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/video/scummvm_dxa/xx_scummvm_dxa.c",
-    "src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c"
+    "src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c",
+    "src/formats/video/scummvm_dxa/xx_scummvm_dxa_reader_adapters.c"
    ]
   },
   "swf": {

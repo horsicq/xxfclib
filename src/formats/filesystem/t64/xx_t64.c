@@ -229,6 +229,9 @@ static bool t64_signature_ok(const uint8_t *header)
     ++at;
     if (!t64_word_is(header + at, "TAPE ")) return false;
     at += 5U;
+    /* Some writers (the Centurio dump) stop at "C64 TAPE IMAGE" and NUL-pad
+     * the description. */
+    if (t64_word_is(header + at, "IMAGE") && header[at + 5U] == 0U && header[at + 6U] == 0U) return true;
     if (t64_word_is(header + at, "IMAGE ")) at += 6U;
     return t64_word_is(header + at, "FILE");
 }

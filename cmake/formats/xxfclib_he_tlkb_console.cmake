@@ -6,4 +6,5 @@ xxfclib_add_family_console(he_tlkb
     FORMATS HE_TLKB
     SOURCES
         src/formats/game/he_tlkb/xx_he_tlkb.c
-        src/formats/game/he_tlkb/xx_he_tlkb_extractor.c)
+        src/formats/game/he_tlkb/xx_he_tlkb_extractor.c
+        src/formats/game/he_tlkb/xx_he_tlkb_reader_adapters.c)

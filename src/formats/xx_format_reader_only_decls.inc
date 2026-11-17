@@ -265,8 +265,6 @@ XXFC_API Abstractextractor *xx_hxc_xml_disk_layout_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_hxc_xml_disk_layout_get_abstract_detector(void);
 XXFC_API Abstractextractor *xx_hxs_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_hxs_get_abstract_detector(void);
-XXFC_API Abstractextractor *xx_instalit_data_get_abstract_extractor(void);
-XXFC_API Abstractdetector *xx_instalit_data_get_abstract_detector(void);
 XXFC_API Abstractextractor *xx_jffs2_old_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_jffs2_old_get_abstract_detector(void);
 XXFC_API Abstractextractor *xx_jfs_get_abstract_extractor(void);

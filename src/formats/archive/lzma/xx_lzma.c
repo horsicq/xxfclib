@@ -60,6 +60,9 @@
 /* Output decoded by check_is_valid before it takes a stream as plausible. */
 #define XX_LZMA_PROBE_OUTPUT ((uint64_t)16U * 1024U)
 #define XX_LZMA_ZERO_DATA_OUTPUT 2U
+/* Lenient walk: compressed bytes a stream may leave unread when it reaches
+ * its declared size with the coder not at rest. */
+#define XX_LZMA_LENIENT_SLACK 64U
 
 static void xx_lzma_vtable_destroy(Abstractformat *self);
 
@@ -122,6 +125,7 @@ typedef struct xx_lzma_walk_s {
     uint64_t output_size;
     int64_t end;
     uint64_t streams;
+    bool size_mismatch;
 } xx_lzma_walk_info;
 
 /*
@@ -134,7 +138,7 @@ typedef struct xx_lzma_walk_s {
  * probe_output > 0 (measuring only) accepts a first stream that is still
  * decoding cleanly after that much output, without finishing it.
  */
-static bool xx_lzma_walk(xx_io_device *device, int64_t start, int64_t stop_at, xx_io_device *destination, uint64_t probe_output, xx_pd_struct *pd,
+static bool xx_lzma_walk(xx_io_device *device, int64_t start, int64_t stop_at, xx_io_device *destination, uint64_t probe_output, bool lenient, xx_pd_struct *pd,
                          xx_lzma_walk_info *info)
 {
     xx_lzma_stream_decoder *decoder;
@@ -154,6 +158,7 @@ static bool xx_lzma_walk(xx_io_device *device, int64_t start, int64_t stop_at, x
     }
     decoder = xx_lzma_stream_decoder_create(device, destination, pd);
     if (!decoder) return false;
+    xx_lzma_stream_decoder_set_lenient(decoder, lenient);
 
     while (streams < XX_LZMA_MAX_STREAMS) {
         uint8_t head[XX_LZMA_MIN_STREAM];
@@ -197,6 +202,27 @@ static bool xx_lzma_walk(xx_io_device *device, int64_t start, int64_t stop_at, x
             break;
         }
         next = position + (int64_t)XX_LZMA_HEADER_SIZE + (int64_t)stream.consumed;
+        if (lenient) {
+            /* The lenient walk takes exactly one stream that is the whole
+             * input: an encoder's dictionary size, a declared size, and
+             * either an end marker landing on the end of the input or the
+             * declared size reached with at most a few bytes left unread,
+             * which are then counted as part of the damaged stream. */
+            if (!first || header.declared_size == XX_LZMA_STREAM_UNKNOWN_SIZE || !xx_lzma_dictionary_is_canonical(header.dictionary_size) ||
+                stream.zero_data) {
+                goto done;
+            }
+            if (stream.size_mismatch && !stream.end_marker) {
+                if (next > limit || limit - next > (int64_t)XX_LZMA_LENIENT_SLACK) goto done;
+                next = limit;
+            }
+            if (next != limit) goto done;
+            info->size_mismatch = stream.size_mismatch;
+            position = next;
+            output_size += stream.produced;
+            ++streams;
+            break;
+        }
         /* A stream that stopped at its declared size without an end marker
          * is vouched for only by the coder's final state.  Ask of its
          * header what 7-Zip and xz ask before they take a file as .lzma,
@@ -270,6 +296,10 @@ static bool xx_lzma_populate_record(Abstractformat *self, xx_archive_record *rec
     record->header_size = (int64_t)XX_LZMA_HEADER_SIZE;
     record->data_offset = self->base_address + (int64_t)XX_LZMA_HEADER_SIZE;
     record->compressed_size = self->format_size;
+    if (archive->size_mismatch &&
+        !xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, "warning: damaged lzma stream: the data does not end at its declared size")) {
+        return false;
+    }
     return xx_archive_record_set_meta_str(record, XX_META_ID_ORIGINAL_NAME, XX_LZMA_PAYLOAD_NAME) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, archive->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)self->format_size) &&
@@ -344,7 +374,9 @@ bool xx_lzma_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
         !xx_lzma_stream_start_ok(head, &header, total_size - self->base_address)) {
         return false;
     }
-    return xx_lzma_walk(self->device, self->base_address, -1, NULL, XX_LZMA_PROBE_OUTPUT, pd, &info);
+    if (xx_lzma_walk(self->device, self->base_address, -1, NULL, XX_LZMA_PROBE_OUTPUT, false, pd, &info)) return true;
+    if (pd && xx_pd_is_stopped(pd)) return false;
+    return xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, true, pd, &info);
 }
 
 bool xx_lzma_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
@@ -353,7 +385,14 @@ bool xx_lzma_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     int64_t total_size;
     xx_lzma *archive = (xx_lzma *)self;
     if (!self) return false;
-    if (!self->device || self->base_address < 0 || !xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, pd, &info) || info.end <= self->base_address) {
+    xx_mem_zero(&info, sizeof(info));
+    archive->size_mismatch = false;
+    if (self->device && self->base_address >= 0 && !xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, false, pd, &info) && !(pd && xx_pd_is_stopped(pd))) {
+        xx_mem_zero(&info, sizeof(info));
+        if (xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, true, pd, &info)) archive->size_mismatch = true;
+        else info.end = -1;
+    }
+    if (!self->device || self->base_address < 0 || info.end <= self->base_address) {
         archive->uncompressed_size = 0U;
         archive->stream_end = -1;
         self->format_size = -1;
@@ -404,7 +443,7 @@ bool xx_lzma_unpack_to_device(xx_lzma *archive, xx_io_device *destination, xx_pd
         archive->stream_end < 0) {
         return false;
     }
-    return xx_lzma_walk(archive->format.device, archive->format.base_address, archive->stream_end, destination, 0U, pd, &info) && info.end == archive->stream_end &&
+    return xx_lzma_walk(archive->format.device, archive->format.base_address, archive->stream_end, destination, 0U, archive->size_mismatch, pd, &info) && info.end == archive->stream_end &&
            info.output_size == archive->uncompressed_size;
 }
 
@@ -458,7 +497,7 @@ bool xx_lzma_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
     path_value = xx_lzma_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
         xx_lzma_walk_info info;
-        return archive->stream_end >= 0 && xx_lzma_walk(self->device, self->base_address, archive->stream_end, NULL, 0U, pd, &info) &&
+        return archive->stream_end >= 0 && xx_lzma_walk(self->device, self->base_address, archive->stream_end, NULL, 0U, archive->size_mismatch, pd, &info) &&
                info.output_size == archive->uncompressed_size;
     }
     if (path_value->type == XX_VAR_TYPE_STRING || path_value->type == XX_VAR_TYPE_STRING_VIEW) {

@@ -118,11 +118,29 @@ static xx_terminal_type_t g_terminal_type = XX_TERMINAL_TYPE_NONE;
 
 /* Feature detection runs once even when several threads ask at the same
  * time (scanners run concurrently): 0 = not started, 1 = running, 2 = done.
- * The release store of 2 publishes the flags written before it. */
+ * The release store of 2 publishes the flags written before it.
+ *
+ * Every xx_is_*_enabled() call loads the state, often once per search call,
+ * from many threads. On x86 and x64 an ordinary load already has acquire
+ * ordering, so MSVC reads the volatile and adds a compiler barrier
+ * (_ReadWriteBarrier keeps the flag reads after it); a locked
+ * read-modify-write there would make every caller write the shared cache
+ * line. Other MSVC targets (ARM64) keep the interlocked load, which is a
+ * full barrier. */
 #if defined(_MSC_VER)
 #include <intrin.h>
 static volatile long g_features_state = 0;
+#if defined(_M_IX86) || (defined(_M_X64) && !defined(_M_ARM64EC))
+static __forceinline long xx_features_load_acquire(void)
+{
+    long state = g_features_state;
+    _ReadWriteBarrier();
+    return state;
+}
+#define XX_FEATURES_LOAD() xx_features_load_acquire()
+#else
 #define XX_FEATURES_LOAD() _InterlockedOr(&g_features_state, 0)
+#endif
 #define XX_FEATURES_CLAIM() (_InterlockedCompareExchange(&g_features_state, 1, 0) == 0)
 #define XX_FEATURES_DONE() _InterlockedExchange(&g_features_state, 2)
 #elif defined(__GNUC__) || defined(__clang__)

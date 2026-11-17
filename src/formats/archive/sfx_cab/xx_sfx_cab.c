@@ -292,6 +292,20 @@ static bool sfx_cab_header_plausible(const uint8_t *data, size_t size, size_t in
            xx_data_get_u16(h + 26, 2, 0, false) != 0U && xx_data_get_u16(h + 28, 2, 0, false) != 0U &&
            (xx_data_get_u16(h + 30, 2, 0, false) & ~7U) == 0U;
 }
+/* A PE whose section table runs past the end of a truncated file fails the
+ * carrier check although the cabinet it carries is complete: search such a
+ * file from the end of the DOS header. The checksum-verified cabinet probe
+ * below remains the only authentication. */
+static bool sfx_cab_broken_pe(Abstractformat *f, int64_t *low)
+{
+    uint8_t h[64], magic[4];
+    uint32_t pe;
+    if (!pm_read(f, 0, h, 64) || h[0] != 'M' || h[1] != 'Z') return false;
+    pe = xx_data_get_u32(h + 60, 4, 0, false);
+    if (pe < 64 || !pm_read(f, pe, magic, 4) || xx_rt_memcmp(magic, "PE\0\0", 4)) return false;
+    *low = 64;
+    return true;
+}
 static bool sfx_cab_find(xx_sfx_cab *archive, xx_pd_struct *pd)
 {
     int64_t low, total;
@@ -302,7 +316,7 @@ static bool sfx_cab_find(xx_sfx_cab *archive, xx_pd_struct *pd)
     if (archive->payload_offset >= 0) return true;
     total = pm_available(&archive->format);
     if ((!executable_carrier_carrier(&archive->format, &low, true, false, pd) &&
-         !sfx_cab_legacy_bss(&archive->format,&low,pd)) || low < 0 || low >= total) return false;
+         !sfx_cab_legacy_bss(&archive->format,&low,pd) && !sfx_cab_broken_pe(&archive->format, &low)) || low < 0 || low >= total) return false;
     size = (size_t)((total - low) > 16777216 ? 16777216 : total - low);
     data = (uint8_t *)xx_mem_alloc(size);
     if (!data) return false;

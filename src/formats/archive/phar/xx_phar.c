@@ -388,6 +388,7 @@ static bool phar_parse(Abstractformat *format, phar_stream **result)
     uint16_t api;
     uint64_t cursor;
     uint32_t index;
+    bool legacy;
 
     if (!format || !format->device || !result || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
@@ -402,8 +403,12 @@ static bool phar_parse(Abstractformat *format, phar_stream **result)
     count = xx_data_get_u32(head + 4U, 4, 0, false);
     /* The API version alone uses big-endian nibbles (PHP Phar format). */
     api = xx_data_get_u16(head + 8U, 2, 0, true);
-    flags = xx_data_get_u32(head + 10U, 4, 0, false);
-    alias_size = xx_data_get_u32(head + 14U, 4, 0, false);
+    /* PEAR's PHP_Archive 0.8 manifest predates the global flags and every
+     * metadata field: size, count, API, alias, then per entry the name and
+     * four u32 (size, time, packed size, CRC-32) plus one flag byte. */
+    legacy = (api & 0xff00U) == 0x0800U;
+    flags = legacy ? 0U : xx_data_get_u32(head + 10U, 4, 0, false);
+    alias_size = xx_data_get_u32(head + (legacy ? 10U : 14U), 4, 0, false);
     if (manifest_size < PHAR_MANIFEST_MIN - 4U || manifest_size > PHAR_MAX_MANIFEST || (int64_t)manifest_size > size - manifest_offset - 4) return false;
     /* PHP's own test: the manifest API version must not exceed the one the
      * reader knows (1.1.0 == 0x1100). */
@@ -416,14 +421,16 @@ static bool phar_parse(Abstractformat *format, phar_stream **result)
 
     /* `manifest` starts AFTER the length word, so the fixed part is
      * count(4) + api(2) + flags(4) + alias length(4) == 14 bytes. */
-    cursor = 14U;
+    cursor = legacy ? 10U : 14U;
     if ((uint64_t)alias_size > manifest_size - cursor) goto fail;
     cursor += alias_size;
-    if (cursor + 4U > manifest_size) goto fail;
-    meta_size = xx_data_get_u32(manifest + cursor, 4, 0, false);
-    cursor += 4U;
-    if (meta_size > manifest_size - cursor) goto fail;
-    cursor += meta_size;
+    if (!legacy) {
+        if (cursor + 4U > manifest_size) goto fail;
+        meta_size = xx_data_get_u32(manifest + cursor, 4, 0, false);
+        cursor += 4U;
+        if (meta_size > manifest_size - cursor) goto fail;
+        cursor += meta_size;
+    }
 
     stream = (phar_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) goto fail;
@@ -443,7 +450,7 @@ static bool phar_parse(Abstractformat *format, phar_stream **result)
         member.name = phar_clean_name(manifest + cursor, name_size);
         if (!member.name) goto fail;
         cursor += name_size;
-        if (cursor + 24U > manifest_size) {
+        if (cursor + (legacy ? 17U : 24U) > manifest_size) {
             xx_mem_free(member.name);
             goto fail;
         }
@@ -453,9 +460,20 @@ static bool phar_parse(Abstractformat *format, phar_stream **result)
         member.packed_size = (int64_t)xx_data_get_u32(fixed + 8U, 4, 0, false);
         member.crc32 = xx_data_get_u32(fixed + 12U, 4, 0, false);
         member.has_crc = true;
-        member.flags = xx_data_get_u32(fixed + 16U, 4, 0, false);
-        entry_meta = xx_data_get_u32(fixed + 20U, 4, 0, false);
-        cursor += 24U;
+        if (legacy) {
+            /* Only the stored form of the 0.8 flag byte is known. */
+            if (fixed[16] != 0U) {
+                xx_mem_free(member.name);
+                goto fail;
+            }
+            member.flags = 0U;
+            entry_meta = 0U;
+            cursor += 17U;
+        } else {
+            member.flags = xx_data_get_u32(fixed + 16U, 4, 0, false);
+            entry_meta = xx_data_get_u32(fixed + 20U, 4, 0, false);
+            cursor += 24U;
+        }
         if (entry_meta > manifest_size - cursor) {
             xx_mem_free(member.name);
             goto fail;

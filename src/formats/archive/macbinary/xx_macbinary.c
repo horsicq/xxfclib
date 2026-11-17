@@ -354,13 +354,16 @@ static bool mb_parse(Abstractformat *format, bool verified_only, mb_stream **res
     if (size < (int64_t)MB_HEADER_SIZE || !mb_read_at(format->device, format->base_address, header, sizeof(header))) return false;
 
     /* Structural invariants shared by every MacBinary generation. */
-    if (header[MB_OFF_VERSION] != 0U || header[MB_OFF_ZERO_74] != 0U || header[MB_OFF_ZERO_82] != 0U) return false;
+    if (header[MB_OFF_VERSION] != 0U || header[MB_OFF_ZERO_82] != 0U) return false;
     name_length = header[MB_OFF_NAME_LENGTH];
     if (name_length == 0U || name_length > MB_MAX_NAME || header[MB_OFF_NAME] < 0x20U) return false;
 
     version_written = header[MB_OFF_VERSION_WRITTEN];
     version_needed = header[MB_OFF_VERSION_NEEDED];
     verified = version_written >= MB_VERSION_II && xx_crc16_xmodem_calc(0U, header, MB_OFF_CRC) == xx_data_get_u16(header + MB_OFF_CRC, 2, 0, true);
+    /* Byte 74 is reserved zero, but some writers store the low Finder-flags
+     * byte there; a header whose CRC verifies is trusted regardless. */
+    if (!verified && header[MB_OFF_ZERO_74] != 0U) return false;
     if (verified) {
         /* A reader of revision III must refuse a file that says it needs a
          * later one; its layout is then not known. */

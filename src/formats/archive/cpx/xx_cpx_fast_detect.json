@@ -22,6 +22,15 @@
             {
               "origin": "base",
               "offset": 0,
+              "hex": "29 16 27 93"
+            }
+          ]
+        },
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
               "hex": "2A 16 27 93"
             }
           ]

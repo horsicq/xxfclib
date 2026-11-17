@@ -300,8 +300,10 @@ static bool xx_rtpatch_descriptor(const uint8_t *data, int64_t size, int64_t off
      * member descriptor must never carry is the volume-label or directory
      * bit, and compressed data mimicking a descriptor almost always sets
      * something above them. An exact 0/0x20/0x21 test would silently drop
-     * every hidden or system member. */
-    if ((attributes | 0x27U) != 0x27U) return false;
+     * every hidden or system member.
+     * Win32 builders (6.02) may also write FILE_ATTRIBUTE_NORMAL (0x80),
+     * which is only ever valid on its own. */
+    if ((attributes | 0x27U) != 0x27U && attributes != 0x80U) return false;
     if (stored_size > 0x7FFFFFFFU) return false;
     if (stored_size == 0U) {
         int64_t compressed;
@@ -1016,7 +1018,10 @@ static xx_rtpatch_stream *xx_rtpatch_parse(Abstractformat *self, xx_pd_struct *p
     /* The observed 5.20 and 6.02 extended containers use EE 76, with the extended
      * header and extra descriptor fields. Whole files retain the augmented
      * descriptor framing used by the existing later-generation reader. */
-    extended_ee76 = span >= 36 && hdr[0] == 0xeeU && hdr[1] == 0x76U && (version == 520U || version == 602U) &&
+    /* The same 5.20/5.21/6.02 extended shape also ships with the plain "K*"
+     * magic (all other header invariants and the 00 10 trailer identical). */
+    extended_ee76 = span >= 36 && ((hdr[0] == 0xeeU && hdr[1] == 0x76U) || (hdr[0] == 'K' && hdr[1] == '*')) &&
+                   (version == 520U || version == 521U || version == 602U) &&
                    (xx_data_get_u16(hdr + 4, 2, 0, false) & 0x8000U) != 0U &&
                    xx_data_get_u32(hdr + 6, 4, 0, false) == 0x00010000U;
     extended_300 = span >= 34 && hdr[0] == 'K' && hdr[1] == '*' && version == 300U &&

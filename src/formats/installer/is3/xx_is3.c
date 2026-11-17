@@ -92,6 +92,8 @@
 #define IS3_MAX_NAME 1024U
 /* Refuse to materialise a member larger than this in one piece. */
 #define IS3_MAX_MEMBER_SIZE UINT64_C(0x40000000)
+/* How far a member's DCL stream may run past its declared length. */
+#define IS3_LONGER_STREAM ((size_t)4096U)
 
 #define IS3_METHOD_STORE 0U
 #define IS3_METHOD_DCL 1U
@@ -498,9 +500,28 @@ static bool is3_decode_member(Abstractformat *format, const is3_member *member, 
         decoded = xx_dcl_scan_memory(packed, (size_t)member->packed_size, 1U, &consumed, &produced) && consumed == (size_t)member->packed_size && produced == 0U;
     } else {
         decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size, output, output_size, &written);
+        if (!decoded) {
+            /* Some INST32I directories record a length a little short of
+             * what was packed (lzwserv.exe: 20,656 declared, the stream ends
+             * 66 bytes later in the tail of its own VERSIONINFO resource).
+             * A stream that runs cleanly to its end marker over exactly the
+             * packed extent, at most IS3_LONGER_STREAM bytes past the
+             * declared length, is the file. A shorter stream stays refused. */
+            size_t consumed = 0U;
+            size_t produced = 0U;
+            if (xx_dcl_scan_memory(packed, (size_t)member->packed_size, output_size + IS3_LONGER_STREAM, &consumed, &produced) &&
+                consumed == (size_t)member->packed_size && produced > output_size && produced - output_size <= IS3_LONGER_STREAM) {
+                uint8_t *longer = (uint8_t *)xx_mem_realloc(output, produced);
+                if (!longer) goto fail;
+                output = longer;
+                output_size = produced;
+                decoded = xx_dcl_decode_memory(packed, (size_t)member->packed_size, output, output_size, &written);
+            }
+        }
     }
     /* The stored plaintext length is the only integrity anchor the format
-     * offers; a decode that does not reach it exactly is rejected. */
+     * offers; a decode that does not reach it exactly is rejected (bar the
+     * longer-stream case above, which is measured first). */
     if (!decoded || written != output_size) goto fail;
     xx_mem_free(packed);
     *plain = output;

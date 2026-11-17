@@ -35,4 +35,5 @@ xxfclib_add_family_console(nsis
         src/algo/sha/xx_sha_simd.c
         src/formats/installer/nsis/nsis_bzip2.c
         src/formats/installer/nsis/xx_nsis.c
-        src/formats/installer/nsis/xx_nsis_extractor.c)
+        src/formats/installer/nsis/xx_nsis_extractor.c
+        src/formats/installer/nsis/xx_nsis_reader_adapters.c)

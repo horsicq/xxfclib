@@ -145,6 +145,13 @@ void xx_zip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address)
     zip->lhdr_cache_size = 0;
     zip->lhdr_cache = NULL;
     zip->cd_cache = NULL;
+    zip->zc_dictionary_enabled = true;
+    zip->zc_tried = false;
+    zip->zc_have = false;
+    zip->zc_index = 0;
+    zip->zc_key0 = 0;
+    zip->zc_key1 = 0;
+    zip->zc_key2 = 0;
 }
 
 xx_zip *xx_zip_create(xx_io_device *dev, int64_t base_address)
@@ -1253,6 +1260,12 @@ static void xx_zip_stream_state_free(void *ptr)
     xx_mem_free(state);
 }
 
+#if !defined(XXFC_PROFILE_APK_EMUL)
+/* Defined with the ZipCrypto recovery helpers below. Surfaces a recovered
+ * key-state credential on an encrypted member for list-time reporting. */
+static void xx_zip_zipcrypto_annotate(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd);
+#endif
+
 xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
 {
     if (!self || !self->device || !xx_format_handle_split_format(self, pd)) {
@@ -1345,6 +1358,9 @@ xx_archive_record_state *xx_zip_create_archive_records_reading(Abstractformat *s
     }
     xx_pd_leave_level(pd, pd_level);
 
+#if !defined(XXFC_PROFILE_APK_EMUL)
+    xx_zip_zipcrypto_annotate(zip, state, pd);
+#endif
     return state;
 }
 
@@ -1414,6 +1430,9 @@ bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_
     }
 
     xx_pd_leave_level(pd, pd_level);
+#if !defined(XXFC_PROFILE_APK_EMUL)
+    xx_zip_zipcrypto_annotate((xx_zip *)self, state, pd);
+#endif
     return true;
 }
 
@@ -2277,6 +2296,163 @@ bool xx_zip_has_valid_file_pattern(Abstractformat *self, const char *prefix, con
 }
 
 #if !defined(XXFC_PROFILE_APK_EMUL)
+
+/* --- Traditional ZipCrypto key-state recovery ------------------------------
+ * Legacy self-extracting archives encrypt their members with traditional
+ * ZipCrypto but store no in-file password. A dictionary of known post-password
+ * key-states is tried against an encrypted member's 12-byte header; a check-
+ * byte match is confirmed by decrypting and decoding the member and verifying
+ * its CRC-32. The confirmed key triple is cached on the reader and reused for
+ * every later member, so one recovery decrypts the whole archive. Recovery
+ * engages only when enabled for the reader and no supplied password works, so
+ * the normal (password or unencrypted) paths are never slowed. */
+
+static bool xx_zip_zipcrypto_confirm(xx_zip *zip, const uint8_t *envelope, size_t envelope_size, uint16_t method, uint16_t flags, uint32_t crc32, uint16_t last_mod_time,
+                                     uint64_t uncompressed_size, uint32_t key0, uint32_t key1, uint32_t key2, xx_pd_struct *pd)
+{
+    uint8_t *compressed = NULL;
+    uint8_t *plain = NULL;
+    size_t compressed_capacity;
+    size_t compressed_size = 0;
+    size_t plain_size;
+    xx_io_device *compressed_device = NULL;
+    xx_io_device plain_device;
+    xx_zip_buffer_sink plain_sink;
+    uint32_t actual_crc;
+    bool ok = false;
+
+    (void)zip;
+    if (envelope_size < XX_ZIPCRYPTO_HEADER_SIZE || !xx_zip_method_is_supported(method) || uncompressed_size > (uint64_t)SIZE_MAX) return false;
+    compressed_capacity = envelope_size - XX_ZIPCRYPTO_HEADER_SIZE;
+    plain_size = (size_t)uncompressed_size;
+    if (compressed_capacity > XX_ZIP_MEMORY_CODEC_LIMIT || plain_size > XX_ZIP_MEMORY_CODEC_LIMIT) return false;
+
+    compressed = (uint8_t *)xx_mem_alloc(compressed_capacity ? compressed_capacity : 1U);
+    plain = (uint8_t *)xx_mem_alloc(plain_size ? plain_size : 1U);
+    if (!compressed || !plain) goto done;
+    if (!xx_zipcrypto_decrypt_envelope_keystate(envelope, envelope_size, key0, key1, key2, crc32, last_mod_time, (flags & 0x0008U) != 0U, compressed, compressed_capacity,
+                                                &compressed_size, pd) ||
+        (uint64_t)compressed_size > (uint64_t)INT64_MAX)
+        goto done;
+    compressed_device = xx_io_mem_open_ro(compressed, compressed_size);
+    if (!compressed_device) goto done;
+    xx_zip_init_buffer_sink(&plain_device, &plain_sink, plain, plain_size);
+    if (!xx_zip_unpack_method_to_device(compressed_device, 0, (int64_t)compressed_size, method, flags, uncompressed_size, &plain_device, pd) ||
+        plain_sink.position != plain_size)
+        goto done;
+    if (!xx_zip_crc32_progress(plain, plain_size, &actual_crc, pd) || actual_crc != crc32) goto done;
+    ok = true;
+done:
+    if (compressed_device) xx_io_close(compressed_device);
+    if (plain) { xx_mem_zero(plain, plain_size); xx_mem_free(plain); }
+    if (compressed) { xx_mem_zero(compressed, compressed_capacity); xx_mem_free(compressed); }
+    return ok;
+}
+
+/* Attempt, at most once per archive, to recover the ZipCrypto key-state. Scans
+ * the central directory for the first content-bearing, decodable encrypted
+ * member, reads its envelope, and tries each dictionary key-state whose header
+ * check byte matches, confirming the winner by decode + CRC. The confirmed key
+ * triple is cached on the reader. Returns true when a confirmed key is held.
+ * Scanning the directory here (rather than trusting the member being unpacked)
+ * keeps recovery order-independent, so an empty/directory member that happens
+ * to come first is still decrypted from the cached key. The zc_tried guard is
+ * set first, so the directory walk's own record callbacks cannot re-enter. */
+static bool xx_zip_zipcrypto_ensure(xx_zip *zip, xx_pd_struct *pd)
+{
+    xx_archive_record_state *scan;
+    const xx_archive_record *rec;
+    uint8_t *envelope = NULL;
+    size_t envelope_size = 0;
+    uint16_t flags = 0, method = 0, last_mod_time = 0;
+    uint32_t crc32 = 0;
+    uint64_t uncompressed_size = 0;
+    int64_t data_offset = -1, csize = 0;
+    bool found = false;
+
+    if (!zip) return false;
+    if (zip->zc_have) return true;
+    if (zip->zc_tried || !zip->zc_dictionary_enabled) return zip->zc_have;
+    zip->zc_tried = true;
+
+    scan = xx_zip_create_archive_records_reading(&zip->format, NULL, pd);
+    if (!scan) return false;
+    for (rec = xx_zip_get_current_archive_record(&zip->format, scan); rec != NULL; rec = xx_zip_get_current_archive_record(&zip->format, scan)) {
+        uint16_t f = (uint16_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_FLAGS, 0);
+        uint16_t m = (uint16_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_COMPRESSION_METHOD, 0);
+        uint64_t u = xx_archive_record_get_meta_u64(rec, XX_META_ID_UNCOMPRESSED_SIZE, 0);
+        int64_t c = rec->compressed_size;
+        if ((f & 0x0001U) != 0U && (f & 0x0040U) == 0U && m != 99U && xx_zip_method_is_supported(m) && u > 0U && u <= (uint64_t)SIZE_MAX &&
+            c >= (int64_t)XX_ZIPCRYPTO_HEADER_SIZE && (uint64_t)c <= (uint64_t)SIZE_MAX && (size_t)c - XX_ZIPCRYPTO_HEADER_SIZE <= XX_ZIP_MEMORY_CODEC_LIMIT) {
+            if (rec->data_offset < 0) {
+                (void)xx_zip_resolve_record_data_offset(zip, (xx_archive_record *)rec);
+            }
+            if (rec->data_offset >= 0) {
+                flags = f;
+                method = m;
+                uncompressed_size = u;
+                csize = c;
+                crc32 = (uint32_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_CRC32, 0);
+                last_mod_time = (uint16_t)xx_archive_record_get_meta_u64(rec, XX_META_ID_LAST_MOD_TIME, 0);
+                data_offset = rec->data_offset;
+                found = true;
+                break;
+            }
+        }
+        if (xx_pd_is_stopped(pd) || !xx_zip_archive_record_move_to_next(&zip->format, scan, pd)) break;
+    }
+    xx_zip_free_archive_records_reading(&zip->format, scan);
+    if (!found) return false;
+
+    envelope_size = (size_t)csize;
+    envelope = (uint8_t *)xx_mem_alloc(envelope_size);
+    if (envelope && xx_zip_read_exact_at_progress(zip->format.device, data_offset, envelope, envelope_size, pd)) {
+        size_t start, idx = 0;
+        for (start = 0; xx_zipcrypto_recover_keystate(envelope, crc32, last_mod_time, (flags & 0x0008U) != 0U, start, &idx); start = idx + 1U) {
+            uint32_t k0, k1, k2;
+            if (xx_pd_is_stopped(pd) || !xx_zipcrypto_keystate_lookup(idx, &k0, &k1, &k2)) break;
+            if (xx_zip_zipcrypto_confirm(zip, envelope, envelope_size, method, flags, crc32, last_mod_time, uncompressed_size, k0, k1, k2, pd)) {
+                zip->zc_key0 = k0;
+                zip->zc_key1 = k1;
+                zip->zc_key2 = k2;
+                zip->zc_index = idx;
+                zip->zc_have = true;
+                break;
+            }
+        }
+    }
+    if (envelope) {
+        xx_mem_zero(envelope, envelope_size);
+        xx_mem_free(envelope);
+    }
+    return zip->zc_have;
+}
+
+bool xx_zip_recover_zipcrypto_keystate(xx_zip *zip, xx_pd_struct *pd)
+{
+    return xx_zip_zipcrypto_ensure(zip, pd);
+}
+
+/* List-time reporting: when a recovered key-state is (or becomes) available and
+ * no password was supplied, surface it on each encrypted member so `xfu p` and
+ * the listing report the recovered credential. Never overrides an existing
+ * password (e.g. the PE self-extractor demolition path keeps its own string). */
+static void xx_zip_zipcrypto_annotate(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    xx_archive_record *record;
+    char text[64];
+
+    if (!zip || !zip->zc_dictionary_enabled || !state || !state->has_record) return;
+    record = &state->current_record;
+    if (!xx_archive_record_get_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) return;
+    if (xx_archive_record_get_meta_str(record, XX_META_ID_PASSWORD)) return;
+    if (xx_format_resolve_extra_parameter(&zip->format, &state->options, XX_META_ID_OPT_PASSWORD)) return;
+    if (!zip->zc_have && !xx_zip_zipcrypto_ensure(zip, pd)) return;
+    if (!zip->zc_have) return;
+    if (xx_rt_snprintf(text, sizeof(text), "recovered ZipCrypto key (dictionary index %lu)", (unsigned long)zip->zc_index) < 0) return;
+    (void)xx_archive_record_set_meta_str(record, XX_META_ID_PASSWORD, text);
+}
+
 static bool xx_zip_unpack_encrypted_to_device(Abstractformat *format, const xx_archive_record_state *state, const xx_archive_record *record, uint16_t outer_method,
                                               uint16_t flags, xx_io_device *destination, xx_pd_struct *pd)
 {
@@ -2300,6 +2476,7 @@ static bool xx_zip_unpack_encrypted_to_device(Abstractformat *format, const xx_a
     uint64_t memory_limit = 0U;
     uint64_t required_memory = 0U;
     bool success = false;
+    bool has_password = false;
     xx_io_device *compressed_device = NULL;
     xx_io_device plain_device;
     xx_zip_buffer_sink plain_sink;
@@ -2361,7 +2538,11 @@ static bool xx_zip_unpack_encrypted_to_device(Abstractformat *format, const xx_a
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ZIP extraction exceeds the configured memory limit");
         goto cleanup;
     }
-    if (!xx_zip_get_password(format, &state->options, &password)) {
+    /* A supplied password is required for AES. For traditional ZipCrypto a
+     * missing password is not fatal: the key-state dictionary may recover a key
+     * for legacy self-extractors that store no in-file password. */
+    has_password = xx_zip_get_password(format, &state->options, &password);
+    if (!has_password && is_aes) {
         goto cleanup;
     }
     envelope = (uint8_t *)xx_mem_alloc(envelope_size ? envelope_size : 1U);
@@ -2378,11 +2559,43 @@ static bool xx_zip_unpack_encrypted_to_device(Abstractformat *format, const xx_a
             goto cleanup;
         }
     } else {
+        xx_zip *zip = (xx_zip *)format;
+        bool decrypted = false;
         compressed = (uint8_t *)xx_mem_alloc(compressed_capacity ? compressed_capacity : 1U);
-        if (xx_pd_is_stopped(pd) || !compressed ||
-            !xx_zipcrypto_decrypt_envelope_progress(envelope, envelope_size, password.bytes, password.size, expected_crc, last_mod_time, (flags & 0x0008U) != 0U,
-                                                    compressed, compressed_capacity, &compressed_size, pd) ||
-            xx_pd_is_stopped(pd)) {
+        if (xx_pd_is_stopped(pd) || !compressed) {
+            goto cleanup;
+        }
+        /* 1. A confirmed key-state (CRC-verified for this archive) is
+         * authoritative. Preferring it over any supplied password avoids a
+         * rare header-check false accept from an unrelated password string. */
+        if (zip->zc_dictionary_enabled && zip->zc_have &&
+            xx_zipcrypto_decrypt_envelope_keystate(envelope, envelope_size, zip->zc_key0, zip->zc_key1, zip->zc_key2, expected_crc, last_mod_time, (flags & 0x0008U) != 0U,
+                                                   compressed, compressed_capacity, &compressed_size, pd)) {
+            decrypted = true;
+        }
+        /* 2. A genuinely supplied password (including an explicit empty one)
+         * keeps the normal path unchanged when no recovered key is held. When
+         * NO password was supplied we skip this: an empty-password keystream
+         * passes the 1-byte header verifier ~1/256 of the time and would
+         * wrongly mark the member decrypted, hiding the dictionary recovery in
+         * step 3 and losing a recoverable member. */
+        if (!decrypted && has_password &&
+            xx_zipcrypto_decrypt_envelope_progress(envelope, envelope_size, password.bytes, password.size, expected_crc, last_mod_time, (flags & 0x0008U) != 0U,
+                                                   compressed, compressed_capacity, &compressed_size, pd)) {
+            decrypted = true;
+        }
+        /* 3. No working password: recover a key-state from the dictionary. */
+        if (!decrypted && zip->zc_dictionary_enabled) {
+            if (!zip->zc_have) {
+                (void)xx_zip_zipcrypto_ensure(zip, pd);
+            }
+            if (zip->zc_have &&
+                xx_zipcrypto_decrypt_envelope_keystate(envelope, envelope_size, zip->zc_key0, zip->zc_key1, zip->zc_key2, expected_crc, last_mod_time,
+                                                       (flags & 0x0008U) != 0U, compressed, compressed_capacity, &compressed_size, pd)) {
+                decrypted = true;
+            }
+        }
+        if (!decrypted || xx_pd_is_stopped(pd)) {
             goto cleanup;
         }
     }

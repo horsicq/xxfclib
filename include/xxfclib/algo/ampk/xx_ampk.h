@@ -12,6 +12,7 @@ extern "C" {
 
 /* Decoders used by methods 1 and 2 of the Amiga AMPK archive format. */
 XXFC_API bool xx_ampk_lzari_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
+XXFC_API bool xx_ampk_lzari_decode_memory_ex(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, size_t *consumed);
 XXFC_API bool xx_ampk_lzss_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
 
 #ifdef __cplusplus

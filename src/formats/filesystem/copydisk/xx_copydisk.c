@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "xxfclib/data/xx_data.h"
+#include "../../common/xx_disk_filler.h"
 
 #ifdef COPYDISK
 #define XX_COPYDISK_FILE_TYPE XX_FILE_TYPE_COPYDISK
@@ -340,7 +341,17 @@ static bool copydisk_parse(Abstractformat *format, copydisk_stream **result)
     if (sector_size != 0x200U) return false;
 
     image_size = (uint64_t)(size - COPYDISK_HEADER_SIZE);
-    /* The payload is whole sectors; anything else is not this container. */
+    /* The payload is whole sectors; anything else is not this container -
+     * except a partial trailing sector that is one filler run (an image cut
+     * a few bytes into the unused format fill), which is dropped. */
+    if (image_size > sector_size && (image_size % sector_size) != 0U) {
+        uint8_t tail[0x200];
+        size_t partial = (size_t)(image_size % sector_size);
+        if (!copydisk_read_at(format->device, format->base_address + COPYDISK_HEADER_SIZE + (int64_t)(image_size - partial), tail, partial) ||
+            !xx_disk_filler_run(tail, partial))
+            return false;
+        image_size -= partial;
+    }
     if (image_size == 0U || (image_size % sector_size) != 0U || image_size > COPYDISK_MAX_IMAGE) return false;
 
     stream = (copydisk_stream *)xx_mem_calloc(1U, sizeof(*stream));

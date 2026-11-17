@@ -214,6 +214,9 @@ static bool sfx_carrier_absolute_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
         dir = eocd - bytes;
         if (dir != (int64_t)offset || !sfx_carrier_absolute_directory(f, low, dir, eocd, count, &first, &legacy_local, legacy_name, pd)) continue;
         xx_zip_init(&r->inner, f->device, first);
+        /* The PE/demolition descent supplies its own recovered password; keep
+         * the key-state dictionary off this reader so it never shadows it. */
+        r->inner.zc_dictionary_enabled = false;
         if (xx_zip_check_is_valid(&r->inner.format, pd) && xx_zip_handle_base_info(&r->inner.format, pd) && r->inner.cd_offset == dir && r->inner.eocd_offset == eocd &&
             r->inner.format.number_of_archive_records == count && r->inner.format.format_size == limit) {
             if (legacy_local >= 0) {
@@ -344,6 +347,7 @@ static bool sfx_carrier_relative_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
     if (!view) goto done;
     sfx_carrier_view_init(view, f->device, payload->offset, payload->size);
     xx_zip_init(&r->inner, &view->device, 0);
+    r->inner.zc_dictionary_enabled = false;
     if (!xx_zip_handle_base_info(&r->inner.format, pd) || r->inner.format.format_size != end || !r->inner.format.number_of_archive_records ||
         r->inner.format.number_of_archive_records > 4096U)
         goto discard;
@@ -383,6 +387,7 @@ done:
 #include "xx_dos_zip_disk.h"
 #include "xx_dos_zip_bias.h"
 #include "xx_dos_zip_duplicate.h"
+#include "xx_dos_zip_crypto.h"
 
 static bool sfx_carrier_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
 {
@@ -397,7 +402,10 @@ static bool sfx_carrier_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
     resource=sfx_dos_zip_disk_ensure(r,pd);if(resource)return resource>0;
     resource=sfx_dos_zip_bias_ensure(r,pd);if(resource)return resource>0;
     resource=sfx_dos_zip_duplicate_ensure(r,pd);if(resource)return resource>0;
-    return sfx_carrier_absolute_ensure(r,pd)||sfx_carrier_relative_ensure(r,pd);
+    if(sfx_carrier_absolute_ensure(r,pd)||sfx_carrier_relative_ensure(r,pd))return true;
+    /* Last: an encrypted DOS self-extractor ZIP recoverable via the key-state
+     * dictionary (only claims the file when a key is actually confirmed). */
+    return sfx_dos_zip_crypto_ensure(r,pd)>0;
 }
 
 static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)

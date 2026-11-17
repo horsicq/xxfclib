@@ -14,7 +14,7 @@
  *    16     8   ASCII hex, original (uncompressed) size in bytes
  *    24     4   ASCII hex, CRC-16/CCITT-FALSE of the PACKED bytes
  *    28     4   ASCII hex, CRC-16/CCITT-FALSE of the ORIGINAL bytes
- *    32     2   ASCII hex, method: 1 = stored, 2 = LZD
+ *    32     2   ASCII hex, method: 1 = stored, 2 = LZD, 9 = superseded (skipped)
  *    34    20   member name, ASCII, NUL padded
  *    54   ...   packed data, exactly "packed size" bytes
  *
@@ -69,6 +69,9 @@
 #define LIFKD_NAME_SIZE 20U
 #define LIFKD_METHOD_STORED 1U
 #define LIFKD_METHOD_LZD 2U
+/* An entry superseded by a later copy of the same file: its record stays in
+ * the chain (and is stepped over) but it is not a member. */
+#define LIFKD_METHOD_DELETED 9U
 /* A crafted file cannot be made to iterate forever: every step advances by
  * at least the 54-byte header, and the walk stops at this many members. */
 #define LIFKD_MAX_MEMBERS 200000U
@@ -251,7 +254,7 @@ static bool lifkd_decode_header(const uint8_t *bytes, lifkd_header *out)
 {
     uint32_t method, crc_packed, crc_plain;
     size_t length = 0U, index;
-    if (!bytes || !out || !lifkd_hex_field(bytes + 32U, 2U, &method) || (method != LIFKD_METHOD_STORED && method != LIFKD_METHOD_LZD) ||
+    if (!bytes || !out || !lifkd_hex_field(bytes + 32U, 2U, &method) || (method != LIFKD_METHOD_STORED && method != LIFKD_METHOD_LZD && method != LIFKD_METHOD_DELETED) ||
         !lifkd_hex_field(bytes, 8U, &out->dos_time) || !lifkd_hex_field(bytes + 8U, 8U, &out->packed) || !lifkd_hex_field(bytes + 16U, 8U, &out->unpacked) ||
         !lifkd_hex_field(bytes + 24U, 4U, &crc_packed) || !lifkd_hex_field(bytes + 28U, 4U, &crc_plain))
         return false;
@@ -418,7 +421,7 @@ static bool lifkd_add_member(lifkd_stream *stream, const lifkd_member *member)
 static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream, uint64_t *count_out, int64_t *size_out)
 {
     int64_t total, size, cursor = 0;
-    uint64_t count = 0U;
+    uint64_t count = 0U, records = 0U;
     bool fill = true;
     lifkd_window window;
     if (!format || !format->device || format->base_address < 0) return false;
@@ -432,10 +435,16 @@ static bool lifkd_walk(Abstractformat *format, lifkd_stream *stream, uint64_t *c
     while (cursor < size) {
         const uint8_t *bytes;
         lifkd_header header;
-        if (count >= LIFKD_MAX_MEMBERS || size - cursor < LIFKD_HEADER_SIZE ||
+        if (records >= LIFKD_MAX_MEMBERS || size - cursor < LIFKD_HEADER_SIZE ||
             !(bytes = lifkd_window_header(format->device, &window, format->base_address + cursor, total, fill)) || !lifkd_decode_header(bytes, &header) ||
             (int64_t)header.packed > size - cursor - LIFKD_HEADER_SIZE)
             goto cleanup;
+        ++records;
+        if (header.method == LIFKD_METHOD_DELETED) {
+            cursor += LIFKD_HEADER_SIZE + (int64_t)header.packed;
+            fill = header.packed < LIFKD_WINDOW_SIZE - LIFKD_HEADER_SIZE;
+            continue;
+        }
         if (stream) {
             lifkd_member member;
             xx_mem_zero(&member, sizeof(member));

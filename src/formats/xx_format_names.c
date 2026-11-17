@@ -1360,6 +1360,15 @@ const char *xx_format_file_type_to_string(xx_file_type_t type)
         case XX_FILE_TYPE_SUMATRA_LZSA: return "SumatraPDF installer (LzSA)";
         case XX_FILE_TYPE_CALIBRE_PORTABLE: return "calibre portable installer";
         case XX_FILE_TYPE_PALMINPUT_360: return "360 PalmInput installer";
+        case XX_FILE_TYPE_CSD: return "IBM OS/2 service-pack (CSD) compressed file";
+        case XX_FILE_TYPE_CONSPLUS_DB: return "Consultant Plus database container";
+        case XX_FILE_TYPE_C64_SDA: return "C64 self-dissolving archive (SDA)";
+        case XX_FILE_TYPE_CPFF: return "CPFF LZW setup package";
+        case XX_FILE_TYPE_COMPAQ_MSGDATA: return "Compaq diagnostics MSGDATA container";
+        case XX_FILE_TYPE_CHASM_CSID: return "Chasm CSid resource archive";
+        case XX_FILE_TYPE_C64S: return "C64S emulator DOS self-extractor";
+        case XX_FILE_TYPE_CREATEINSTALL_PAK: return "CreateInstall package (DISK1.PAK)";
+        case XX_FILE_TYPE_CHIEFLZ_V1: return "ChiefLZ multiple-file archive (version 1)";
         case XX_FILE_TYPE_PE_RAWFILE: return "PE RAWFILE resource container";
         case XX_FILE_TYPE_PKLITE: return "PKLITE compressed DOS executable";
         case XX_FILE_TYPE_DFSEE_IMZ: return "DFSee compressed sector image";

@@ -6,4 +6,5 @@ xxfclib_add_family_console(htc_nbh_rom_image
     FORMATS HTC_NBH_ROM_IMAGE
     SOURCES
         src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image.c
-        src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c)
+        src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c
+        src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_reader_adapters.c)

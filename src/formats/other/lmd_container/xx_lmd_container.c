@@ -125,12 +125,13 @@ static bool carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     uint8_t h[16];
     uint32_t count, i;
     int64_t limit = pm_available(f), table = 13;
-    bool bitmap;
-    if (!pm_read(f, 0, h, 13) || h[0] != 8 || (xx_rt_memcmp(h + 1, "LMDSLL30", 8) && xx_rt_memcmp(h + 1, "LMDBML30", 8)) ||
+    bool bitmap, image_list;
+    if (!pm_read(f, 0, h, 13) || h[0] != 8 || (xx_rt_memcmp(h + 1, "LMDSLL30", 8) && xx_rt_memcmp(h + 1, "LMDBML30", 8) && xx_rt_memcmp(h + 1, "LMDIML30", 8)) ||
         !(count = xx_data_get_u32(h + 9, 4, 0, false)) || count > 4096 || (uint64_t)count * 4 > (uint64_t)(limit - table)) {
         return false;
     }
     bitmap = !xx_rt_memcmp(h + 1, "LMDBML30", 8);
+    image_list = !xx_rt_memcmp(h + 1, "LMDIML30", 8);
     for (i = 0; i < count; ++i) {
         uint32_t begin, stop;
         int64_t data;
@@ -150,6 +151,27 @@ static bool carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
             return false;
         }
         data = begin;
+        if (image_list) {
+            /* IML item: a type byte, a counted name, four u32 (width, height,
+             * bytes per pixel, pixel bytes), one zero byte, the u32 length of
+             * a plain BMP and the BMP itself, which runs exactly to the
+             * item's end. */
+            uint8_t b[18];
+            uint32_t bytes;
+            int64_t at;
+            if (stop - begin < 2 || !pm_read(f, begin, b, 2) || !b[1]) return false;
+            at = (int64_t)begin + 2 + b[1] + 16;
+            if (at + 1 > (int64_t)stop || !pm_read(f, at, b, 1) || b[0] != 0U) return false;
+            ++at;
+            if (at + 4 + 26 > (int64_t)stop || !pm_read(f, at, b, 4)) return false;
+            bytes = xx_data_get_u32(b, 4, 0, false);
+            if ((int64_t)bytes != (int64_t)stop - (at + 4) || !pm_read(f, at + 4, b, 18) || b[0] != 'B' || b[1] != 'M' ||
+                xx_data_get_u32(b + 2, 4, 0, false) != bytes || xx_data_get_u32(b + 10, 4, 0, false) >= bytes)
+                return false;
+            if (!pm_add(f, s, "bitmap", at + 4, bytes)) return false;
+            xx_rt_snprintf(s->items[s->count - 1].name, sizeof(s->items[s->count - 1].name), "%u.bmp", i);
+            continue;
+        }
         {
             uint8_t flags, n;
             uint32_t bytes;

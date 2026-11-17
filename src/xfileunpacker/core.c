@@ -33,7 +33,8 @@
     defined(XFU_SUPPORT_FORMAT_IS3) || defined(XFU_SUPPORT_FORMAT_NOTETAB) || \
     defined(XFU_SUPPORT_FORMAT_AMIGALZX) || defined(XFU_SUPPORT_FORMAT_SFX_LZX) || \
     defined(XFU_SUPPORT_FORMAT_SHAR) || defined(XFU_SUPPORT_FORMAT_BEOSPKG) || \
-    defined(XFU_SUPPORT_FORMAT_IBMPACK) || defined(XFU_SUPPORT_FORMAT_QUANTUM)
+    defined(XFU_SUPPORT_FORMAT_IBMPACK) || defined(XFU_SUPPORT_FORMAT_QUANTUM) || \
+    defined(XFU_SUPPORT_FORMAT_ZPAQ)
 #define XFU_MAPPED_NAMES 1
 #else
 #define XFU_MAPPED_NAMES 0
@@ -564,6 +565,13 @@ static char *mapped_extract_name(xx_file_type_t type, const char *name, size_t o
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_IBMPACK)
     case XX_FILE_TYPE_IBMPACK:
         return xx_archive_output_name(name, 0, 0);
+#endif
+#if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_ZPAQ)
+    /* zpaq stores paths as given, often absolute ("C:/tmp/x.png", "/home/x"):
+     * a leading '/' is dropped and a drive becomes a folder ("C_/tmp/x.png");
+     * ".." is still refused. */
+    case XX_FILE_TYPE_ZPAQ:
+        return xx_archive_output_name(name, 65001, XX_ARCHIVE_NAME_ROOTED | XX_ARCHIVE_NAME_DRIVE_FOLDER);
 #endif
     default:
         return xx_str_dup(name);
@@ -1221,6 +1229,44 @@ static bool numbered_lha_sfx(const char *path, xx_io_device *borrowed,
     return valid;
 }
 
+/* A complete self-extracting ZIP with traditional ZipCrypto members can also
+ * carry the .001 suffix of a raw split. When the native SFX ZIP reader opens it
+ * and descends into encrypted members (which the key-state dictionary makes
+ * possible), prefer that reader over the filename-only split wrapper. A real
+ * split's first volume is only a partial chunk with no valid trailing directory,
+ * so it never validates here; and an unencrypted SFX ZIP exposes a plain payload
+ * member, so the split behavior is kept unless members are actually encrypted. */
+static bool numbered_sfx_zipcentral(const char *path, xx_io_device *borrowed,
+                                    xx_pd_struct *pd) {
+    xx_io_device *source = borrowed ? borrowed : xx_io_file_open(path, "rb");
+    xxfc_opened probe = {0};
+    unsigned char magic[2];
+    int64_t saved;
+    bool valid = false;
+    if (!source) return false;
+    saved = xx_io_tell(source);
+    if (saved >= 0 && xx_io_seek64(source, 0, SEEK_SET) == 0 &&
+        xx_io_read(source, magic, sizeof(magic)) == (ssize_t)sizeof(magic) &&
+        magic[0] == 'M' && magic[1] == 'Z' &&
+        xxfc_open_named(&probe, source, 0, "sfx_zipcentral") &&
+        xx_format_is_valid(probe.format, pd) &&
+        xx_format_handle_base_info(probe.format, pd) &&
+        probe.format->number_of_archive_records > 0 &&
+        !xxfc_is_incomplete(&probe)) {
+        xx_archive_record_state *state = xx_format_create_archive_records_reading(probe.format, NULL, pd);
+        if (state) {
+            const xx_archive_record *rec = xx_format_get_current_archive_record(probe.format, state);
+            if (rec && xx_archive_record_get_meta_bool(rec, XX_META_ID_IS_ENCRYPTED, false)) valid = true;
+            xx_format_free_archive_records_reading(probe.format, state);
+        }
+    }
+    xxfc_close(&probe);
+    if (borrowed) {
+        if (saved >= 0) (void)xx_io_seek64(source, saved, SEEK_SET);
+    } else xx_io_close(source);
+    return valid;
+}
+
 /* A complete ToolBook archive uses the same .001 suffix as a raw split.
  * Require both its fixed header and its entire declared directory before
  * preferring the native archive reader over the filename-only wrapper. */
@@ -1272,6 +1318,34 @@ static bool numbered_gtu(const char *path, xx_io_device *borrowed,
             xx_format_is_valid(probe.format, pd) && xx_format_handle_base_info(probe.format, pd) &&
             probe.format->number_of_archive_records > 0 && probe.format->format_size == physical &&
             !xxfc_is_incomplete(&probe)) valid = true;
+    }
+    xxfc_close(&probe);
+    if (borrowed) {
+        if (saved >= 0) (void)xx_io_seek64(source, saved, SEEK_SET);
+    } else xx_io_close(source);
+    return valid;
+}
+
+/* Instalit volumes (*.001 / *.PVL) end with a 12-byte trailer pointing at a
+ * "\x05[PVM]" directory; with it the volume is an archive of its own, not the
+ * first part of a byte-split file. */
+static bool numbered_instalit(const char *path, xx_io_device *borrowed,
+                              xx_pd_struct *pd) {
+    unsigned char t[12], m[6];
+    xx_io_device *source = borrowed ? borrowed : xx_io_file_open(path, "rb");
+    xxfc_opened probe = {0};
+    int64_t saved, physical, dir_end, dir_start;
+    bool valid = false;
+    if (!source) return false;
+    saved = xx_io_tell(source);
+    physical = xx_io_total_size(source);
+    if (saved >= 0 && physical >= 64 && xx_io_read_at(source, physical - 12, t, sizeof(t))) {
+        dir_end = (int32_t)((unsigned)t[0] | (unsigned)t[1] << 8 | (unsigned)t[2] << 16 | (unsigned)t[3] << 24);
+        dir_start = (int32_t)((unsigned)t[8] | (unsigned)t[9] << 8 | (unsigned)t[10] << 16 | (unsigned)t[11] << 24);
+        if (dir_end > 0 && dir_end < physical && !t[4] && !t[5] && !t[6] && !t[7] && dir_start > 0 && dir_start < dir_end &&
+            xx_io_read_at(source, dir_start, m, sizeof(m)) && !memcmp(m, "\x05[PVM]", 6) &&
+            xxfc_open_named(&probe, source, 0, "instalit_data") && xx_format_is_valid(probe.format, pd) &&
+            xx_format_handle_base_info(probe.format, pd) && probe.format->number_of_archive_records > 0) valid = true;
     }
     xxfc_close(&probe);
     if (borrowed) {
@@ -1565,7 +1639,8 @@ static int walk_device(const xfu_request *request, const char *unpack_to,
     }
     if (!request->reader_name && request->file_type == XX_FILE_TYPE_UNKNOWN &&
         xfu_split_is_first_volume(archive_path) && !cancelled(request, pd)) {
-        const char *numbered_reader = numbered_ibmpack(archive_path, preopened, pd) ? "ibmpack" :
+        const char *numbered_reader = numbered_instalit(archive_path, preopened, pd) ? "instalit_data" :
+            numbered_ibmpack(archive_path, preopened, pd) ? "ibmpack" :
             numbered_gtu(archive_path, preopened, pd) ? "gtu" :
             numbered_lifkd(archive_path, preopened, pd) ? "lifkd" :
             numbered_netwarepacked(archive_path, preopened, pd) ? "netwarepacked" :
@@ -1575,7 +1650,8 @@ static int walk_device(const xfu_request *request, const char *unpack_to,
             numbered_rnc(archive_path, preopened, pd) ? "rnc" :
             numbered_rtpatch_setup(archive_path, preopened, pd) ? "rtpatch_setup_data" :
             numbered_asymetrix(archive_path, preopened, pd) ? "asymetrix" :
-            numbered_lha_sfx(archive_path, preopened, pd) ? "sfx_lha" : NULL;
+            numbered_lha_sfx(archive_path, preopened, pd) ? "sfx_lha" :
+            numbered_sfx_zipcentral(archive_path, preopened, pd) ? "sfx_zipcentral" : NULL;
         if (numbered_reader) {
             resolved_request = *request;
             resolved_request.reader_name = numbered_reader;

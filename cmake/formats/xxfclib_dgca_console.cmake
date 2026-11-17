@@ -13,6 +13,7 @@ xxfclib_add_family_console(dgca
         src/formats/archive/dgca/xx_dgca_lzp.c
         src/formats/archive/dgca/xx_dgca_payload.c
         src/formats/archive/dgca/xx_dgca_range.c
+        src/formats/archive/dgca/xx_dgca_reader_adapters.c
         src/formats/archive/dgca/xx_dgca_transform.c
         src/formats/archive/legacy_archive_engine/xx_legacy_archive_engine.c
         src/formats/archive/sevenzip_backend/xx_sevenzip_backend.c

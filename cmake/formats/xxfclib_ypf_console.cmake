@@ -30,4 +30,5 @@ xxfclib_add_family_console(ypf
         src/algo/deflate/xx_deflate_enc.c
         src/algo/deflate/xx_zlib_stream.c
         src/formats/game/ypf/xx_ypf.c
-        src/formats/game/ypf/xx_ypf_extractor.c)
+        src/formats/game/ypf/xx_ypf_extractor.c
+        src/formats/game/ypf/xx_ypf_reader_adapters.c)

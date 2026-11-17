@@ -98,6 +98,17 @@ struct xx_zip {
     size_t lhdr_cache_size;     /**< Cached local file header block byte count */
     uint8_t *lhdr_cache;        /**< Owned dynamic buffer for read-ahead local header caching */
     uint8_t *cd_cache;          /**< Cached entire central directory block buffer */
+    /** Traditional ZipCrypto key-state recovery for legacy self-extractors that
+     * store no in-file password. When enabled and a member is encrypted with no
+     * working password, a dictionary of known key-states is tried; the confirmed
+     * key triple is cached here and reused for every later member. */
+    bool zc_dictionary_enabled; /**< Engage the key-state dictionary for this reader. */
+    bool zc_tried;              /**< Recovery already attempted for this archive. */
+    bool zc_have;               /**< zc_key0/1/2 hold a confirmed key-state. */
+    size_t zc_index;            /**< Winning dictionary index (for reporting). */
+    uint32_t zc_key0;           /**< Recovered ZipCrypto key0. */
+    uint32_t zc_key1;           /**< Recovered ZipCrypto key1. */
+    uint32_t zc_key2;           /**< Recovered ZipCrypto key2. */
 };
 
 /* --- Constructors & Lifecycle --- */
@@ -135,6 +146,22 @@ XXFC_API bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_arch
  */
 XXFC_API bool xx_zip_unpack_current_archive_record_to_device(Abstractformat *self, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
 XXFC_API bool xx_zip_resolve_record_data_offset(xx_zip *zip, xx_archive_record *rec);
+
+/**
+ * @brief Try to recover a traditional ZipCrypto key-state for this archive.
+ *
+ * For legacy self-extractors whose members are ZipCrypto-encrypted but carry no
+ * in-file password, scans a dictionary of known key-states against the first
+ * content-bearing encrypted member and confirms a match by decode + CRC. The
+ * confirmed key is cached on the reader and reused for every member. Does
+ * nothing (returns the cached result) when recovery was already attempted, when
+ * the reader's dictionary is disabled, or when no member is encrypted. Enclosing
+ * readers use this to decide whether an encrypted SFX ZIP can be descended and
+ * decrypted rather than emitted as an opaque payload.
+ *
+ * @return true when a confirmed key-state is held.
+ */
+XXFC_API bool xx_zip_recover_zipcrypto_keystate(xx_zip *zip, xx_pd_struct *pd);
 XXFC_API bool xx_zip_resolve_record_data_offset_ex(xx_zip *zip, xx_archive_record *rec, uint8_t *magic, bool *has_magic);
 XXFC_API bool xx_zip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);

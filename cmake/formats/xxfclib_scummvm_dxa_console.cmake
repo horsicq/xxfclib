@@ -29,4 +29,5 @@ xxfclib_add_family_console(scummvm_dxa
         src/algo/deflate/xx_deflate_enc.c
         src/algo/deflate/xx_zlib_stream.c
         src/formats/video/scummvm_dxa/xx_scummvm_dxa.c
-        src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c)
+        src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c
+        src/formats/video/scummvm_dxa/xx_scummvm_dxa_reader_adapters.c)

@@ -31,6 +31,10 @@ typedef struct xx_lzma_stream_info_s {
     bool end_marker;
     bool zero_data;
     bool allocation_failed;
+    /* Lenient decoders only: the stream disagreed with its declared size (an
+     * end marker before it, or data left once it was reached) and was taken
+     * up to whichever came first. */
+    bool size_mismatch;
 } xx_lzma_stream_info;
 
 typedef struct xx_lzma_stream_decoder_s xx_lzma_stream_decoder;
@@ -42,6 +46,11 @@ size_t xx_lzma_stream_model_entries(const xx_lzma_stream_props *properties);
  * The decoder may be reused for consecutive independent streams. */
 xx_lzma_stream_decoder *xx_lzma_stream_decoder_create(xx_io_device *device, xx_io_device *destination, xx_pd_struct *pd);
 void xx_lzma_stream_decoder_free(xx_lzma_stream_decoder *decoder);
+/* Off by default. When on, a known-size stream may end with an end marker
+ * before its declared size, or reach the declared size with the coder not at
+ * rest (the output stops there, a match crossing it is cut); either is
+ * reported through info->size_mismatch rather than failing. */
+void xx_lzma_stream_decoder_set_lenient(xx_lzma_stream_decoder *decoder, bool lenient);
 
 /* Decode the raw extent [data_offset, data_end). Known-size streams may omit
  * the end marker; successful completion verifies the final range-coder state.

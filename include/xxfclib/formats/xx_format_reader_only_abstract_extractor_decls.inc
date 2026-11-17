@@ -659,11 +659,6 @@ XXFC_API xx_file_type_t xx_hxs_file_type(xx_io_device *device, int64_t base_addr
 XXFC_API int64_t xx_hxs_size(xx_io_device *, int64_t, bool);
 XXFC_API Abstractextractor *xx_hxs_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_hxs_get_abstract_detector(void);
-XXFC_API bool xx_instalit_data_fast_detect(xx_io_device *, int64_t, bool);
-XXFC_API xx_file_type_t xx_instalit_data_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
-XXFC_API int64_t xx_instalit_data_size(xx_io_device *, int64_t, bool);
-XXFC_API Abstractextractor *xx_instalit_data_get_abstract_extractor(void);
-XXFC_API Abstractdetector *xx_instalit_data_get_abstract_detector(void);
 XXFC_API bool xx_jffs2_old_fast_detect(xx_io_device *, int64_t, bool);
 XXFC_API xx_file_type_t xx_jffs2_old_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_jffs2_old_size(xx_io_device *, int64_t, bool);

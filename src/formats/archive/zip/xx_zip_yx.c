@@ -21,6 +21,7 @@
 
 #include <xxfclib/formats/archive/zip/xx_zip_yx.h>
 
+#include <xxfclib/algo/protobuf/xx_protobuf_wire.h>
 #include <xxfclib/data/xx_data.h>
 
 #include <limits.h>
@@ -277,52 +278,14 @@ XXFC_API void xx_zip_yx_result_free(xx_zip_yx_result *result)
 static bool xxzip_pb_varint(const uint8_t *data, size_t size, size_t *at,
                             uint64_t *value)
 {
-    uint64_t result = 0;
-    for (unsigned i = 0; i < 10 && *at < size; ++i) {
-        uint8_t byte = data[(*at)++];
-        if (i == 9 && byte > 1) return false;
-        result |= (uint64_t)(byte & 0x7f) << (i * 7);
-        if (!(byte & 0x80)) {
-            *value = result;
-            return true;
-        }
-    }
-    return false;
+    return xx_protobuf_wire_varint(data, size, at, value);
 }
 
 static bool xxzip_pb_skip(const uint8_t *data, size_t size, size_t *at,
                           uint64_t field, unsigned wire, unsigned depth)
 {
-    uint64_t value;
-    switch (wire) {
-    case 0:
-        return xxzip_pb_varint(data, size, at, &value);
-    case 1:
-        if (size - *at < 8) return false;
-        *at += 8;
-        return true;
-    case 2:
-        if (!xxzip_pb_varint(data, size, at, &value) || value > size - *at)
-            return false;
-        *at += (size_t)value;
-        return true;
-    case 3:
-        if (depth >= 64) return false;
-        while (*at < size) {
-            uint64_t key;
-            if (!xxzip_pb_varint(data, size, at, &key)) return false;
-            if ((key & 7) == 4) return (key >> 3) == field;
-            if (!xxzip_pb_skip(data, size, at, key >> 3,
-                               (unsigned)(key & 7), depth + 1)) return false;
-        }
-        return false;
-    case 5:
-        if (size - *at < 4) return false;
-        *at += 4;
-        return true;
-    default:
-        return false;
-    }
+    return xx_protobuf_wire_skip_field_zip(data, size, at, field, wire,
+                                           depth);
 }
 
 static bool xxzip_pb_entry(const uint8_t *data, size_t size,

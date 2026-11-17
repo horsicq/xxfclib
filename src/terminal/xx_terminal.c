@@ -456,3 +456,70 @@ bool xx_terminal_set_attributes(const xx_terminal_state *state, uint16_t attribu
 {
     return state && xx_terminal_valid_stream(state->stream) && xx_terminal_platform_set_attributes(state, attributes);
 }
+
+/* ANSI escape sequences through a writer: the caller decides when to style. */
+static bool xx_terminal_ansi_color_valid(xx_terminal_ansi_color_t color)
+{
+    unsigned int code = (unsigned int)color;
+    return code == 0U || (code >= 30U && code <= 37U) || (code >= 90U && code <= 97U);
+}
+
+xxfc_status_t xx_terminal_writer_ansi_style(xx_terminal_writer *writer,
+    xx_terminal_ansi_color_t foreground, uint32_t flags)
+{
+    char sequence[9];
+    size_t length = 0U;
+    unsigned int code = (unsigned int)foreground;
+    if (!writer) return XXFC_ERR_NULL_PARAM;
+    if (!xx_terminal_ansi_color_valid(foreground) || (flags & ~XX_TERMINAL_ANSI_BOLD))
+        return XXFC_ERR_INVALID_ARG;
+    if (code) {
+        sequence[length++] = '\033';
+        sequence[length++] = '[';
+        sequence[length++] = (char)('0' + code / 10U);
+        sequence[length++] = (char)('0' + code % 10U);
+        sequence[length++] = 'm';
+    }
+    if (flags & XX_TERMINAL_ANSI_BOLD) {
+        sequence[length++] = '\033';
+        sequence[length++] = '[';
+        sequence[length++] = '1';
+        sequence[length++] = 'm';
+    }
+    return xx_terminal_writer_write(writer, sequence, length);
+}
+
+xxfc_status_t xx_terminal_writer_ansi_reset(xx_terminal_writer *writer)
+{
+    return xx_terminal_writer_write(writer, "\033[0m", 4U);
+}
+
+xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer,
+    const char *text, size_t size, xx_terminal_ansi_color_t foreground, uint32_t flags)
+{
+    xxfc_status_t status;
+    if (!writer || (!text && size)) return XXFC_ERR_NULL_PARAM;
+    status = xx_terminal_writer_ansi_style(writer, foreground, flags);
+    if (status != XXFC_OK) return status;
+    (void)xx_terminal_writer_write(writer, text, size);
+    return xx_terminal_writer_ansi_reset(writer);
+}
+
+xxfc_status_t xx_terminal_writer_ansi_link_begin(xx_terminal_writer *writer,
+    const char *url, size_t size)
+{
+    if (!writer) return XXFC_ERR_NULL_PARAM;
+    (void)xx_terminal_writer_write(writer, "\033]8;;", 5U);
+    if (url && size) (void)xx_terminal_writer_write(writer, url, size);
+    return xx_terminal_writer_write(writer, "\033\\", 2U);
+}
+
+xxfc_status_t xx_terminal_writer_ansi_link_end(xx_terminal_writer *writer)
+{
+    return xx_terminal_writer_ansi_link_begin(writer, NULL, 0U);
+}
+
+xxfc_status_t xx_terminal_writer_ansi_clear_line(xx_terminal_writer *writer)
+{
+    return xx_terminal_writer_write(writer, "\r\033[2K", 5U);
+}

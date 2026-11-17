@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include "xxfclib/data/xx_data.h"
+#include "../../common/xx_disk_filler.h"
 
 #ifdef DISKDUPE
 #define XX_DISKDUPE_FILE_TYPE XX_FILE_TYPE_DISKDUPE
@@ -290,6 +291,8 @@ static bool diskdupe_layout(const uint8_t *table, uint32_t track_count, uint32_t
 
 typedef struct diskdupe_im_info_s {
     uint32_t tracks, track_bytes, stored;
+    uint32_t short_bytes; /* missing bytes at the end of the last stored track */
+    uint8_t tail_fill;
     uint8_t locations[160];
 } diskdupe_im_info;
 
@@ -334,7 +337,24 @@ static bool diskdupe_im_layout(Abstractformat *f, diskdupe_im_info *info, xx_pd_
         }
     }
     if (explicit_locations) for (i = 1U; i <= info->stored; ++i) if (!used[i]) return false;
-    return (uint64_t)(total - f->base_address) == (uint64_t)(info->stored + 1U) * info->track_bytes && !(pd && xx_pd_is_stopped(pd));
+    if (pd && xx_pd_is_stopped(pd)) return false;
+    {
+        uint64_t actual = (uint64_t)(total - f->base_address);
+        uint64_t expected = (uint64_t)(info->stored + 1U) * info->track_bytes;
+        uint32_t present;
+        if (actual == expected) return true;
+        /* An image that stops less than one sector short is accepted only
+         * when the part of that last sector which is present is one filler
+         * run (the format fill 0xF6 in the observed copy); the missing bytes
+         * are projected with the same value. */
+        if (actual > expected || expected - actual >= 512U || info->stored == 0U) return false;
+        info->short_bytes = (uint32_t)(expected - actual);
+        present = 512U - info->short_bytes;
+        if (!diskdupe_read_at(f, f->base_address + (int64_t)actual - (int64_t)present, header, present, pd) ||
+            !xx_disk_filler_run(header, present)) return false;
+        info->tail_fill = header[0];
+        return true;
+    }
 }
 
 static bool diskdupe_im_member(Abstractformat *f, diskdupe_member *m, xx_pd_struct *pd)
@@ -345,7 +365,7 @@ static bool diskdupe_im_member(Abstractformat *f, diskdupe_member *m, xx_pd_stru
     m->name = diskdupe_make_name("image", -1, -1, ".img");
     m->header_offset = f->base_address; m->header_size = info.track_bytes;
     m->data_offset = f->base_address + info.track_bytes;
-    m->packed_size = (int64_t)info.stored * info.track_bytes;
+    m->packed_size = (int64_t)info.stored * info.track_bytes - (int64_t)info.short_bytes;
     m->unpacked_size = (uint64_t)info.tracks * info.track_bytes; m->method = 2U; m->decode = true;
     return m->name != NULL;
 }
@@ -356,15 +376,20 @@ static bool diskdupe_im_decode(Abstractformat *f, const diskdupe_member *m, uint
     uint8_t *out;
     uint32_t i;
     if (!diskdupe_im_layout(f, &info, pd) || m->header_offset != f->base_address || m->header_size != info.track_bytes ||
-        m->data_offset != f->base_address + info.track_bytes || m->packed_size != (int64_t)info.stored * info.track_bytes ||
+        m->data_offset != f->base_address + info.track_bytes || m->packed_size != (int64_t)info.stored * info.track_bytes - (int64_t)info.short_bytes ||
         m->unpacked_size != (uint64_t)info.tracks * info.track_bytes) return false;
     out = (uint8_t *)xx_mem_alloc((size_t)m->unpacked_size);
     if (!out) return false;
     xx_rt_memset(out, 0xf6, (size_t)m->unpacked_size);
     for (i = 0U; i < info.tracks; ++i) {
+        uint32_t length = info.track_bytes;
+        if (info.locations[i] == info.stored && info.short_bytes != 0U) {
+            length -= info.short_bytes;
+            xx_rt_memset(out + (size_t)i * info.track_bytes + length, info.tail_fill, info.short_bytes);
+        }
         if ((pd && xx_pd_is_stopped(pd)) || (info.locations[i] &&
             !diskdupe_read_at(f, f->base_address + (int64_t)info.locations[i] * info.track_bytes,
-                              out + (size_t)i * info.track_bytes, info.track_bytes, pd))) { xx_mem_free(out); return false; }
+                              out + (size_t)i * info.track_bytes, length, pd))) { xx_mem_free(out); return false; }
     }
     *plain = out; *plain_size = (size_t)m->unpacked_size; return true;
 }

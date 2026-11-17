@@ -65,6 +65,7 @@
 
 #include <stdio.h>
 #include "xxfclib/data/xx_data.h"
+#include "../../common/xx_disk_filler.h"
 
 #ifdef SAVEDSKF
 #define XX_SAVEDSKF_FILE_TYPE XX_FILE_TYPE_SAVEDSKF
@@ -425,7 +426,19 @@ static xx_savedskf_stream *xx_savedskf_parse(Abstractformat *self, xx_pd_struct 
         /* An uncompressed image is exactly its sectors and nothing else.
          * Every stored sample in the reference corpus satisfies this to the
          * byte, which makes it by far the strongest check available here. */
-        if (payload_size != image_size) return NULL;
+        if (payload_size != image_size) {
+            /* Copies padded to a record boundary carry less than one sector
+             * of one filler byte after the image; that, and only that, is
+             * tolerated. */
+            uint8_t tail[XX_SAVEDSKF_MAX_SECTOR_SIZE];
+            int64_t extra = payload_size - image_size;
+            if (extra <= 0 || extra >= (int64_t)sector_size ||
+                !xx_savedskf_read_at(self, self->base_address + (int64_t)data_offset + image_size, tail, (size_t)extra) ||
+                !xx_disk_filler_run(tail, (size_t)extra)) {
+                return NULL;
+            }
+            payload_size = image_size;
+        }
     } else {
         /* A compressed payload carries no length of its own, so nothing here
          * can be checked against the file size. It is NOT safe to require

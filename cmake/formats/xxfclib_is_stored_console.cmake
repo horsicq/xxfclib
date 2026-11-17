@@ -6,4 +6,5 @@ xxfclib_add_family_console(is_stored
     FORMATS IS_STORED
     SOURCES
         src/formats/archive/is_stored/xx_is_stored.c
-        src/formats/archive/is_stored/xx_is_stored_extractor.c)
+        src/formats/archive/is_stored/xx_is_stored_extractor.c
+        src/formats/archive/is_stored/xx_is_stored_reader_adapters.c)

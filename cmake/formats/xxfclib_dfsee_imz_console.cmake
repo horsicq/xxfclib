@@ -6,4 +6,5 @@ xxfclib_add_family_console(dfsee_imz
     FORMATS DFSEE_IMZ
     SOURCES
         src/formats/filesystem/dfsee_imz/xx_dfsee_imz.c
-        src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c)
+        src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c
+        src/formats/filesystem/dfsee_imz/xx_dfsee_imz_reader_adapters.c)

@@ -18,4 +18,5 @@ xxfclib_add_family_console(bzip1
         src/algo/crc/xx_crc8.c
         src/formats/archive/bzip1/xx_bzip1.c
         src/formats/archive/bzip1/xx_bzip1_codec.c
-        src/formats/archive/bzip1/xx_bzip1_extractor.c)
+        src/formats/archive/bzip1/xx_bzip1_extractor.c
+        src/formats/archive/bzip1/xx_bzip1_reader_adapters.c)

@@ -6,4 +6,5 @@ xxfclib_add_family_console(windows_thumbnail_cache
     FORMATS WINDOWS_THUMBNAIL_CACHE
     SOURCES
         src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache.c
-        src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c)
+        src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c
+        src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_reader_adapters.c)

@@ -13,4 +13,5 @@ xxfclib_add_family_console(kgb_archiver
         src/algo/sha/xx_sha.c
         src/algo/sha/xx_sha_simd.c
         src/formats/archive/kgb_archiver/xx_kgb_archiver.c
-        src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c)
+        src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c
+        src/formats/archive/kgb_archiver/xx_kgb_archiver_reader_adapters.c)

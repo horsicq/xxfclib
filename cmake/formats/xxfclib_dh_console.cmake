@@ -7,4 +7,5 @@ xxfclib_add_family_console(dh
     SOURCES
         src/algo/dcl/xx_dcl.c
         src/formats/archive/dh/xx_dh.c
-        src/formats/archive/dh/xx_dh_extractor.c)
+        src/formats/archive/dh/xx_dh_extractor.c
+        src/formats/archive/dh/xx_dh_reader_adapters.c)

@@ -14,7 +14,9 @@
  *
  *   0x00  0x0D 0x0A 0x1A          lead-in (the usual "TYPE-proof" prefix)
  *   0x03  "CAZIP"                 signature
- *   0x08  two ASCII digits        version; "33" throughout the corpus
+ *   0x08  two ASCII digits        version; "33" throughout the corpus.
+ *                                 Version "10" is a 10-byte header: the DCL
+ *                                 stream starts at 0x0A, no flavour, no CRC.
  *   0x0A  u16                     always 1
  *   0x0C  u16                     volume flag: 1 (406 files) or 2 (2 files)
  *   0x0E  u32 LE                  CRC-32 of the plaintext (the ordinary
@@ -110,6 +112,7 @@
 /* Twenty bytes, not twenty-two: the two that follow belong to the DCL stream
  * itself and are handed to the decoder along with the rest of it. */
 #define XX_CAZIP_CLASSIC_HEADER 20
+#define XX_CAZIP_CLASSIC_SHORT_HEADER 10
 #define XX_CAZIP_CLASSIC_NAME "cazip.bin"
 /* The DCL preamble, read from the payload rather than from the header. */
 #define XX_CAZIP_DCL_LITERAL_OFFSET 0
@@ -352,21 +355,30 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self, int64_t spa
     xx_cazip_member member;
     uint8_t *payload;
     uint16_t flavour;
+    int64_t header_size = XX_CAZIP_CLASSIC_HEADER;
+    bool short_header;
 
     if (span <= (int64_t)sizeof(header)) return NULL;
     if (!xx_cazip_read_at(self, self->base_address, header, sizeof(header))) return NULL;
     if (header[0] != 0x0dU || header[1] != 0x0aU || header[2] != 0x1aU || xx_rt_memcmp(header + 3, "CAZIP", 5U) != 0) return NULL;
     if (header[8] < '0' || header[8] > '9' || header[9] < '0' || header[9] > '9') return NULL;
-    if (xx_data_get_u16(header + 10, 2, 0, false) != 1U) return NULL;
-    flavour = xx_data_get_u16(header + 12, 2, 0, false);
-    if (flavour != 1U && flavour != 2U) return NULL;
-    if (header[18] != 0U || header[19] != 0U) return NULL;
+    /* Version "10" is the early ten-byte form: the DCL stream starts right
+     * after the version digits, with no flavour words and no CRC. */
+    short_header = header[8] == '1' && header[9] == '0';
+    if (short_header) {
+        header_size = XX_CAZIP_CLASSIC_SHORT_HEADER;
+    } else {
+        if (xx_data_get_u16(header + 10, 2, 0, false) != 1U) return NULL;
+        flavour = xx_data_get_u16(header + 12, 2, 0, false);
+        if (flavour != 1U && flavour != 2U) return NULL;
+        if (header[18] != 0U || header[19] != 0U) return NULL;
+    }
     /* The next two bytes are the DCL preamble, so they are validated as one:
      * a literal mode outside 0/1 or a dictionary exponent outside 4..6 is not
      * a stream this reader can speak for. */
-    if (header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_LITERAL_OFFSET] > 1U) return NULL;
-    if (header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET] < XX_CAZIP_DCL_DICT_MIN ||
-        header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET] > XX_CAZIP_DCL_DICT_MAX)
+    if (header[header_size + XX_CAZIP_DCL_LITERAL_OFFSET] > 1U) return NULL;
+    if (header[header_size + XX_CAZIP_DCL_DICT_OFFSET] < XX_CAZIP_DCL_DICT_MIN ||
+        header[header_size + XX_CAZIP_DCL_DICT_OFFSET] > XX_CAZIP_DCL_DICT_MAX)
         return NULL;
 
     stream = (xx_cazip_stream *)xx_mem_calloc(1U, sizeof(*stream));
@@ -379,13 +391,13 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self, int64_t spa
         return NULL;
     }
     member.header_offset = self->base_address;
-    member.header_size = XX_CAZIP_CLASSIC_HEADER;
-    member.data_offset = self->base_address + XX_CAZIP_CLASSIC_HEADER;
-    member.compressed_size = span - XX_CAZIP_CLASSIC_HEADER;
+    member.header_size = header_size;
+    member.data_offset = self->base_address + header_size;
+    member.compressed_size = span - header_size;
     member.uncompressed_size = -1;
-    member.method = XX_CAZIP_METHOD_CLASSIC_BASE + header[XX_CAZIP_CLASSIC_HEADER + XX_CAZIP_DCL_DICT_OFFSET];
-    member.crc32 = xx_data_get_u32(header + 14, 4, 0, false);
-    member.has_crc32 = true;
+    member.method = XX_CAZIP_METHOD_CLASSIC_BASE + header[header_size + XX_CAZIP_DCL_DICT_OFFSET];
+    member.crc32 = short_header ? 0U : xx_data_get_u32(header + 14, 4, 0, false);
+    member.has_crc32 = !short_header;
     member.mode = 0U;
     member.timestamp = 0U;
     member.is_folder = false;

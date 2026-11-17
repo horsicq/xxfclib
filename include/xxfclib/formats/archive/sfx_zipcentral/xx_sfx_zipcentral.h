@@ -19,6 +19,7 @@ typedef struct xx_sfx_zipcentral {
     bool inner_ready;
     bool checked_absolute;
     bool checked_relative;
+    bool checked_crypto;
 } xx_sfx_zipcentral;
 XXFC_API void xx_sfx_zipcentral_init(xx_sfx_zipcentral *, xx_io_device *, int64_t);
 XXFC_API xx_sfx_zipcentral *xx_sfx_zipcentral_create(xx_io_device *, int64_t);

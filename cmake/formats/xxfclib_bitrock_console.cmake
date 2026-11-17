@@ -42,4 +42,5 @@ xxfclib_add_family_console(bitrock
         src/algo/sha/xx_sha.c
         src/algo/sha/xx_sha_simd.c
         src/formats/installer/bitrock/xx_bitrock.c
-        src/formats/installer/bitrock/xx_bitrock_extractor.c)
+        src/formats/installer/bitrock/xx_bitrock_extractor.c
+        src/formats/installer/bitrock/xx_bitrock_reader_adapters.c)

@@ -353,6 +353,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/die_engine/die_engine.h
     include/xxfclib/die_engine/die_engine_debug.h
     include/xxfclib/regex/xx_regex.h
+    include/xxfclib/regex/xx_regex_unicode16.h
     include/xxfclib/js/xx_js.h
     include/xxfclib/js/xx_js_debug.h
     include/xxfclib/memory/xx_memory.h
@@ -407,6 +408,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/entropy/xx_entropy.h
     include/xxfclib/algo/bytestats/xx_bytestats.h
     include/xxfclib/algo/maskscan/xx_maskscan.h
+    include/xxfclib/algo/byteset/xx_byteset.h
     include/xxfclib/algo/tlsh/xx_tlsh.h
     include/xxfclib/algo/base64/xx_base64.h
     include/xxfclib/algo/kpa/xx_kpa.h
@@ -477,6 +479,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/diskdoubler/xx_diskdoubler.h
     include/xxfclib/algo/ea/xx_ea.h
     include/xxfclib/algo/flslz/xx_flslz.h
+    include/xxfclib/algo/csdpack/xx_csdpack.h
     include/xxfclib/algo/ha/xx_ha.h
     include/xxfclib/algo/hzl/xx_hzl.h
     include/xxfclib/algo/lzhuf/xx_lzhuf.h
@@ -517,9 +520,12 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/tarx/xx_tarx2.h
     include/xxfclib/algo/lzh/xx_lzh.h
     include/xxfclib/algo/lzx/xx_lzx.h
+    include/xxfclib/algo/protobuf/xx_protobuf_wire.h
     include/xxfclib/algo/quantum/xx_quantum.h
     include/xxfclib/formats/archive/zip/xx_zip.h
     include/xxfclib/formats/archive/zip/xx_zip_yx.h
+    include/xxfclib/toml/xx_toml.h
+    include/xxfclib/net/xx_domain_yx.h
     include/xxfclib/formats/executable/jar/xx_jar.h
     include/xxfclib/formats/installer/apk/xx_apk.h
     include/xxfclib/formats/installer/ipa/xx_ipa.h
@@ -1148,6 +1154,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/other/dbus_message/xx_dbus_message.h
     include/xxfclib/formats/other/windows_shell_link/xx_windows_shell_link.h
     include/xxfclib/formats/other/windows_shell_link/xx_lnk_yx.h
+    include/xxfclib/formats/other/cuckoo/xx_cuckoo_yx.h
     include/xxfclib/formats/other/pkcs7_cms/xx_pkcs7_cms.h
     include/xxfclib/formats/image/wavefront_obj/xx_wavefront_obj.h
     include/xxfclib/formats/image/off_mesh/xx_off_mesh.h
@@ -1958,6 +1965,9 @@ set(XXFCLIB_SOURCES
     src/buf/xx_buf.c
     src/json/xx_json.c
     src/xml/xx_xml.c
+    src/toml/xx_toml.c
+    src/net/xx_domain_yx.c
+    src/formats/other/cuckoo/xx_cuckoo_yx.c
     src/fs/xx_fs.c
     # Engine-neutral scan models, traversal and versioned engine interface.
     src/scan/xx_scan.c
@@ -1998,6 +2008,7 @@ set(XXFCLIB_SOURCES
     src/regex/xx_regex.c
     src/regex/xx_regex_search.c
     src/regex/xx_regex_unicode.c
+    src/regex/xx_regex_unicode16.c
     src/regex/xx_regex_js.c
     src/regex/xx_regex_js_lex.c
     src/regex/xx_regex_js_strings.c
@@ -2185,6 +2196,9 @@ set(XXFCLIB_SOURCES
     src/algo/maskscan/xx_maskscan.c
     src/algo/maskscan/platforms/xx_maskscan_sse2.c
     src/algo/maskscan/platforms/xx_maskscan_avx2.c
+    src/algo/byteset/xx_byteset.c
+    src/algo/byteset/platforms/xx_byteset_sse2.c
+    src/algo/byteset/platforms/xx_byteset_avx2.c
     src/algo/tlsh/xx_tlsh.c
     src/algo/base64/xx_base64.c
     src/algo/kpa/xx_kpa.c
@@ -2286,6 +2300,7 @@ set(XXFCLIB_SOURCES
     src/algo/diskdoubler/xx_diskdoubler.c
     src/algo/ea/xx_ea.c
     src/algo/flslz/xx_flslz.c
+    src/algo/csdpack/xx_csdpack.c
     src/algo/ha/xx_ha.c
     src/algo/hzl/xx_hzl.c
     src/algo/lzhuf/xx_lzhuf.c
@@ -5757,6 +5772,7 @@ if(MSVC AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(X86|x86|x64|AMD64)$")
     set_source_files_properties(src/algo/entropy/platforms/xx_entropy_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/bytestats/platforms/xx_bytestats_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/maskscan/platforms/xx_maskscan_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+    set_source_files_properties(src/algo/byteset/platforms/xx_byteset_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/lzma/platforms/xx_lzma_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/crc/platforms/xx_crc64_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")
     set_source_files_properties(src/algo/deflate/platforms/xx_deflate_avx2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2")

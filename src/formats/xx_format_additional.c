@@ -19,6 +19,16 @@
 #include "xxfclib/formats/archive/carman/xx_carman.h"
 #include "xxfclib/formats/archive/cbm_ark/xx_cbm_ark.h"
 #include "xxfclib/formats/archive/cwc/xx_cwc.h"
+#include "xxfclib/formats/archive/csd/xx_csd.h"
+#include "xxfclib/formats/installer/instalit_data/xx_instalit_data.h"
+#include "xxfclib/formats/archive/chieflz_v1/xx_chieflz_v1.h"
+#include "xxfclib/formats/archive/createinstall_pak/xx_createinstall_pak.h"
+#include "xxfclib/formats/archive/chasm_csid/xx_chasm_csid.h"
+#include "xxfclib/formats/archive/compaq_msgdata/xx_compaq_msgdata.h"
+#include "xxfclib/formats/archive/cpff/xx_cpff.h"
+#include "xxfclib/formats/archive/c64_sda/xx_c64_sda.h"
+#include "xxfclib/formats/archive/consplus/xx_consplus.h"
+#include "xxfclib/algo/csdpack/xx_csdpack.h"
 #include "xxfclib/formats/archive/cork/xx_cork.h"
 #include "xxfclib/formats/archive/cvrb/xx_cvrb.h"
 #include "xxfclib/formats/archive/cpz/xx_cpz.h"
@@ -275,6 +285,52 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
     /* CauseWay Compressor data: "CWC", the position width, both sizes. */
     if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "CWC", 3U) && prefix[3] >= 9U && prefix[3] <= 16U && xx_cwc_fast_detect(device, 0, false)) {
         result = XX_FILE_TYPE_CWC; goto done;
+    }
+    /* IBM OS/2 service-pack member: "S" ? ? "S" and a word, one of six
+     * magics; the reader decodes the whole stream to its end code. */
+    if (prefix_size >= 8U && prefix[0] == 0x53U && prefix[3] == 0x53U && xx_csdpack_header_key(prefix, prefix_size) &&
+        xx_csd_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CSD; goto done;
+    }
+    /* Consultant Plus database: an envelope chunk 0x00D2 of size 0xD2, or a
+     * raw 0x819A chunk spanning the whole file. */
+    if (prefix_size >= 14U && ((prefix[0] == 0xD2U && !prefix[1] && prefix[2] == 0xD2U && !prefix[3] && !prefix[4] && !prefix[5]) ||
+                               (prefix[0] == 0x9AU && prefix[1] == 0x81U && xx_data_get_u32(prefix + 2, 4, 0, false) == (uint64_t)size)) &&
+        xx_consplus_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CONSPLUS_DB; goto done;
+    }
+    /* C64 self-dissolving archive: a PRG whose one BASIC line is SYS. */
+    if (prefix_size >= 0x23U && prefix[1] && (prefix[1] == 0x04U || prefix[1] == 0x08U || prefix[1] == 0x1CU) && prefix[0] == 0x01U && prefix[6] == 0x9EU &&
+        prefix[7] == 0x28U && xx_c64_sda_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_C64_SDA; goto done;
+    }
+    if (prefix_size >= 16U && !xx_rt_memcmp(prefix, "CPFFLZW ", 8U) && xx_cpff_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CPFF; goto done;
+    }
+    /* Compaq MSGDATA: NUL-terminated 13-byte names and the first slice offset. */
+    if (prefix_size >= 0x44U && prefix[0] > 0x20U && !prefix[12] && prefix[13] > 0x20U && !prefix[25] && xx_compaq_msgdata_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_COMPAQ_MSGDATA; goto done;
+    }
+    /* Chasm "CSid" resource archive (ahead of the generic "CS" readers). */
+    if (prefix_size >= 27U && !xx_rt_memcmp(prefix, "CSid", 4U) && xx_chasm_csid_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CHASM_CSID; goto done;
+    }
+    /* CreateInstall package: three u16 1 at 8, or "xxx" at 0x39. */
+    if (prefix_size >= 64U && ((prefix[8] == 1U && !prefix[9] && prefix[10] == 1U && !prefix[11] && prefix[12] == 1U && !prefix[13]) ||
+                               (prefix[0x33] == 0x0AU && prefix[0x34] == 0x0AU && !xx_rt_memcmp(prefix + 0x39, "xxx", 3U))) &&
+        xx_createinstall_pak_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CREATEINSTALL_PAK; goto done;
+    }
+    if (prefix_size >= 0x3DU && !xx_rt_memcmp(prefix, "\x0a\x04\x0d" "ChfLZ\x05\x06\x08", 11U) && xx_chieflz_v1_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CHIEFLZ_V1; goto done;
+    }
+    /* Instalit volume: trailer + "[PVM]" directory (before the numbered-split
+     * fallback claims *.001 files). */
+    if (size >= 64 && xx_instalit_data_has_directory(device, 0)) {
+        xx_instalit_data *reader = xx_instalit_data_create(device, 0);
+        bool valid = reader && xx_instalit_data_check_is_valid(&reader->format, NULL);
+        xx_instalit_data_free(reader);
+        if (valid) { result = XX_FILE_TYPE_INSTALIT_DATA; goto done; }
     }
     /* CORK installer member: "CORK" and version 1. */
     if (prefix_size >= 33U && !xx_rt_memcmp(prefix, "CORK\x01\x00", 6U) && xx_cork_fast_detect(device, 0, false)) {

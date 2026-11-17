@@ -30,4 +30,5 @@ xxfclib_add_family_console(bga
         src/algo/deflate/xx_deflate_dec.c
         src/algo/deflate/xx_deflate_enc.c
         src/formats/archive/bga/xx_bga.c
-        src/formats/archive/bga/xx_bga_extractor.c)
+        src/formats/archive/bga/xx_bga_extractor.c
+        src/formats/archive/bga/xx_bga_reader_adapters.c)

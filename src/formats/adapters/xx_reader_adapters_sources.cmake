@@ -127,7 +127,6 @@ set(XXFC_READER_ADAPTER_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/../filesystem/hxc_stream/xx_hxc_stream_reader_adapters.c"
     "${CMAKE_CURRENT_LIST_DIR}/../filesystem/hxc_xml_disk_layout/xx_hxc_xml_disk_layout_reader_adapters.c"
     "${CMAKE_CURRENT_LIST_DIR}/../document/hxs/xx_hxs_reader_adapters.c"
-    "${CMAKE_CURRENT_LIST_DIR}/../installer/instalit_data/xx_instalit_data_reader_adapters.c"
     "${CMAKE_CURRENT_LIST_DIR}/../filesystem/jffs2_old/xx_jffs2_old_reader_adapters.c"
     "${CMAKE_CURRENT_LIST_DIR}/../filesystem/jfs/xx_jfs_reader_adapters.c"
     "${CMAKE_CURRENT_LIST_DIR}/../filesystem/jvc/xx_jvc_reader_adapters.c"

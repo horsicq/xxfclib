@@ -19,6 +19,9 @@
 /* Bucket bits of the large-set pair screen (16 per pair, see xx_literal.c). */
 #define XX_LITERAL_SCREEN_LEN3 0x003cU
 #define XX_LITERAL_SCREEN_LONG 0xffc0U
+/* Even-aligned pairs (grams) read by the stride-2 scanner per block: one per
+ * two starts plus the gram behind the block. */
+#define XX_LITERAL_GRAMS (XX_LITERAL_BLOCK / 2 + 1)
 
 typedef struct xx_literal_item {
     uint64_t value; /* bytes in native order, zero padded to 8 */
@@ -45,6 +48,12 @@ struct xx_literal_set {
     /* Large sets: exact table, two-byte length screen, four-byte fingerprints. */
     xx_literal_slot *slots;
     uint32_t *pair_screen; /* low half: buckets by the pair at offset 0, high: at offset 2 */
+    /* Stride-2 screen (NULL when not selected): 8-bit roles of a gram for
+     * even starts (bits 0-7: at offset 0, 8-15: at offset 2) and odd starts
+     * (bits 16-23: at offset -1, 24-31: at offset 1); per parity and passing
+     * role bits, the lengths a candidate may have (before pair_lengths). */
+    uint32_t *gram_screen;
+    uint8_t gram_lengths[2][256];
     uint8_t *pair_lengths;
     uint64_t *prefix_bloom;
     size_t hash_mask;
@@ -75,6 +84,8 @@ bool xx_literal_scan_avx2(const xx_literal_set *set, const uint8_t *data, size_t
                           size_t begin, size_t end, xx_literal_match_fn match, void *context);
 bool xx_literal_scan_blocks_sse2(const xx_literal_set *set, const uint8_t *data, size_t size,
                                  size_t begin, size_t end, xx_literal_match_fn match, void *context);
+bool xx_literal_scan_grams_sse2(const xx_literal_set *set, const uint8_t *data, size_t size,
+                                size_t begin, size_t end, xx_literal_match_fn match, void *context);
 bool xx_literal_verify_large_fast(const xx_literal_set *set, const uint8_t *data, size_t position,
                                   uint8_t lengths, xx_literal_match_fn match, void *context);
 
@@ -199,6 +210,16 @@ static XX_LITERAL_INLINE uint8_t xx_literal_screen(const xx_literal_set *set, co
         if ((set->prefix_bloom[key] & bits) != bits) lengths &= 7U;
     }
     return lengths;
+}
+
+/* xx_literal_screen without a branch on the fingerprint (it is read for
+ * every call). Needs four readable bytes. */
+static XX_LITERAL_INLINE uint8_t xx_literal_screen_select(const xx_literal_set *set, const uint8_t *data, uint8_t lengths)
+{
+    unsigned key = xx_literal_load16(data);
+    uint64_t bits = (UINT64_C(1) << (data[2] & 31U)) | (UINT64_C(1) << (32U + (data[3] & 31U)));
+    unsigned pass = (unsigned)((set->prefix_bloom[key] & bits) == bits);
+    return (uint8_t)(lengths & ((0U - pass) | 7U));
 }
 
 /* Lengths to confirm for a start whose pair-screen buckets are nonzero

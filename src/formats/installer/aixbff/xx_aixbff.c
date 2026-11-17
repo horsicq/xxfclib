@@ -210,6 +210,18 @@ static bool xx_bff_parse_single(Abstractformat *format, xx_bff_stream **result, 
         }
         kind = member->mode & XX_BFF_MODE_MASK;
         member->folder = kind == XX_BFF_MODE_DIRECTORY;
+        /* Some writers double separators inside a path (".//usr/x//jre");
+         * a run of separators names the same path as one, so it is folded
+         * before the safety check, which rejects empty inner components. */
+        {
+            size_t from, to = 0U;
+            for (from = 0U; member->name[from]; ++from) {
+                char c = member->name[from];
+                if ((c == '/' || c == '\\') && to > 0U && (member->name[to - 1U] == '/' || member->name[to - 1U] == '\\')) continue;
+                member->name[to++] = c;
+            }
+            member->name[to] = '\0';
+        }
         /* Historical backups spell the root directory .//. Normalize only
          * a directory's dot followed entirely by separators. */
         if (member->folder && member->name[0] == '.' && (member->name[1] == '/' || member->name[1] == '\\')) {

@@ -8,6 +8,9 @@ xxfclib_add_family_console(crx
         src/algo/aes/platforms/xx_aes_arm_crypto.c
         src/algo/aes/xx_aes.c
         src/algo/aes_winzip/xx_aes_winzip.c
+        src/algo/asn1/xx_asn1.c
+        src/algo/base64/xx_base64.c
+        src/algo/bignum/xx_bignum.c
         src/algo/bzip2/xx_bzip2.c
         src/algo/bzip2/xx_bzip2_bwt.c
         src/algo/bzip2/xx_bzip2_dec.c
@@ -34,6 +37,8 @@ xxfclib_add_family_console(crx
         src/algo/deflate/xx_deflate.c
         src/algo/deflate/xx_deflate_dec.c
         src/algo/deflate/xx_deflate_enc.c
+        src/algo/dsa/xx_dsa.c
+        src/algo/ec/xx_ec.c
         src/algo/implode/xx_implode.c
         src/algo/lzma/platforms/xx_lzma_avx2.c
         src/algo/lzma/platforms/xx_lzma_neon.c
@@ -43,20 +48,26 @@ xxfclib_add_family_console(crx
         src/algo/lzma/xx_lzma_dec.c
         src/algo/lzma/xx_lzma_enc.c
         src/algo/lzma/xx_lzma_stream.c
+        src/algo/md2/xx_md2.c
+        src/algo/md5/xx_md5.c
         src/algo/packmp3/xx_packmp3.c
+        src/algo/pki/xx_pki_verify.c
         src/algo/ppmd8/xx_ppmd8.c
         src/algo/ppmd8/xx_ppmd8_common.c
         src/algo/ppmd8/xx_ppmd8_dec.c
         src/algo/ppmd8/xx_ppmd8_enc.c
         src/algo/reduce/xx_reduce.c
+        src/algo/rsa/xx_rsa.c
         src/algo/sha/platforms/xx_sha_arm_crypto.c
         src/algo/sha/platforms/xx_sha_neon.c
         src/algo/sha/xx_sha.c
         src/algo/sha/xx_sha_simd.c
+        src/algo/sha512/xx_sha512.c
         src/algo/shrink/xx_shrink.c
         src/algo/wavpack/xx_wavpack.c
         src/algo/wavpack/xx_wavpack_dec.c
         src/algo/winzipjpeg/xx_winzipjpeg.c
+        src/algo/x509/xx_x509.c
         src/algo/zipcrypto/xx_zipcrypto.c
         src/algo/zstd/xx_zstd.c
         src/algo/zstd/xx_zstd_dec.c
@@ -67,4 +78,5 @@ xxfclib_add_family_console(crx
         src/formats/archive/zip/xx_zip_inspect.c
         src/formats/archive/zip/xx_zip_legacy_encoder.c
         src/formats/installer/crx/xx_crx.c
-        src/formats/installer/crx/xx_crx_extractor.c)
+        src/formats/installer/crx/xx_crx_extractor.c
+        src/formats/installer/crx/xx_crx_yx.c)

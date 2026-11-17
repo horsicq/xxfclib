@@ -25,4 +25,5 @@ xxfclib_add_family_console(molebox
         src/algo/deflate/xx_deflate_enc.c
         src/algo/md5/xx_md5.c
         src/formats/executable/molebox/xx_molebox.c
-        src/formats/executable/molebox/xx_molebox_extractor.c)
+        src/formats/executable/molebox/xx_molebox_extractor.c
+        src/formats/executable/molebox/xx_molebox_reader_adapters.c)

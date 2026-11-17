@@ -6,4 +6,5 @@ xxfclib_add_family_console(chromium_pak
     FORMATS CHROMIUM_PAK
     SOURCES
         src/formats/archive/chromium_pak/xx_chromium_pak.c
-        src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c)
+        src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c
+        src/formats/archive/chromium_pak/xx_chromium_pak_reader_adapters.c)

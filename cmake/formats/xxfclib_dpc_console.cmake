@@ -29,4 +29,5 @@ xxfclib_add_family_console(dpc
         src/algo/deflate/xx_deflate_enc.c
         src/algo/deflate/xx_zlib_stream.c
         src/formats/archive/dpc/xx_dpc.c
-        src/formats/archive/dpc/xx_dpc_extractor.c)
+        src/formats/archive/dpc/xx_dpc_extractor.c
+        src/formats/archive/dpc/xx_dpc_reader_adapters.c)

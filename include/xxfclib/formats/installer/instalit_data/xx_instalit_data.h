@@ -30,7 +30,22 @@ XXFC_API bool xx_instalit_data_check_is_valid(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_instalit_data_handle_base_info(Abstractformat *, xx_pd_struct *);
 XXFC_API bool xx_instalit_data_get_info(xx_instalit_data *, xx_instalit_data_info *, xx_pd_struct *);
 XXFC_API xx_file_type_t xx_instalit_data_detect(xx_io_device *, int64_t);
+/* True when the volume ends with the trailer pointing at a "[PVM]" directory. */
+XXFC_API bool xx_instalit_data_has_directory(xx_io_device *, int64_t);
 #ifdef __cplusplus
 }
 #endif
+/* BEGIN GENERATED ABSTRACT EXTRACTOR */
+#ifdef __cplusplus
+extern "C" {
+#endif
+XXFC_API bool xx_instalit_data_fast_detect(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API xx_file_type_t xx_instalit_data_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_instalit_data_size(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API Abstractextractor *xx_instalit_data_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_instalit_data_get_abstract_detector(void);
+#ifdef __cplusplus
+}
+#endif
+/* END GENERATED ABSTRACT EXTRACTOR */
 #endif

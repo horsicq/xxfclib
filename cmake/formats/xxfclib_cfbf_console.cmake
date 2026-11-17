@@ -7,4 +7,6 @@ xxfclib_add_family_console(cfbf
     SOURCES
         src/formats/document/binder/xx_binder.c
         src/formats/document/cfbf/xx_cfbf.c
-        src/formats/document/cfbf/xx_cfbf_extractor.c)
+        src/formats/document/cfbf/xx_cfbf_extractor.c
+        src/formats/document/cfbf/xx_cfbf_reader_adapters.c
+        src/formats/document/cfbf/xx_olecf_yx.c)

@@ -20,6 +20,64 @@
 #define XX_ARCHIVE_NAME_ROOTED 1U
 #define XX_ARCHIVE_NAME_DRIVE 2U
 #define XX_ARCHIVE_NAME_NATIVE_TAR 4U
+/* A DOS drive prefix becomes a folder named after its letter: "C:\WINDOWS\x"
+ * and "C:/x" are written as "C_/WINDOWS/x" and "C_/x" (the reference
+ * readers' layout; Inno Setup builds its names the same way). */
+#define XX_ARCHIVE_NAME_DRIVE_FOLDER 8U
+
+/* The ASCII letter of a "C:" drive prefix. */
+static inline bool xx_archive_name_drive_letter(char c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+
+/* A component that names the folder itself or its parent, or that Windows
+ * aliases to one by dropping trailing dots and spaces: empty, or made only
+ * of dots and spaces ("." "..", ".. ", ". .", "..."). */
+static inline bool xx_archive_name_dot_component(const char *s, size_t n)
+{
+    size_t i;
+    for (i = 0; i < n; ++i)
+        if (s[i] != '.' && s[i] != ' ') return false;
+    return true;
+}
+
+/* Member names of formats without folders, in place: '/', '\\' and ':'
+ * become '_', and a name that is empty or only dots and spaces is made of
+ * '_' ("..": "__", ".. ": "___"; Windows would trim a kept trailing space),
+ * so every name is an ordinary file in the output folder. The buffer must
+ * hold at least 2 bytes. */
+static inline void xx_archive_flat_name(char *name)
+{
+    size_t i, n = xx_rt_strlen(name);
+    for (i = 0; i < n; ++i)
+        if (name[i] == '/' || name[i] == '\\' || name[i] == ':') name[i] = '_';
+    if (!n) {
+        name[0] = '_';
+        name[1] = 0;
+    } else if (xx_archive_name_dot_component(name, n)) {
+        for (i = 0; i < n; ++i) name[i] = '_';
+    }
+}
+
+/* A relative path a reader built from folder components ('/' or '\\'
+ * separated): no root, no drive prefix or ':' anywhere, no control
+ * character and no empty, ".", ".." or other dot-and-space-only component. */
+static inline bool xx_archive_relative_name_ok(const char *name)
+{
+    const char *start = name, *p;
+    if (!name || !*name) return false;
+    for (p = name;; ++p) {
+        unsigned char c = (unsigned char)*p;
+        if (!c || c == '/' || c == '\\') {
+            if (xx_archive_name_dot_component(start, (size_t)(p - start))) return false;
+            if (!c) return true;
+            start = p + 1;
+        } else if (c < 32 || c == 127 || c == ':') {
+            return false;
+        }
+    }
+}
 
 static bool xx_archive_name_device(const char *s, size_t n)
 {
@@ -40,7 +98,7 @@ static bool xx_archive_name_device(const char *s, size_t n)
 static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned flags)
 {
     const char *s = raw, *p, *start;
-    char *out, *converted = NULL;
+    char *out, *converted = NULL, drive = 0;
     size_t length, used, written, at = 0;
     bool converted_valid = true;
     const xx_codepage *utf8 = xx_codepage_by_number(65001), *cp = xx_codepage_by_number(codepage);
@@ -52,8 +110,9 @@ static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned
         if (!(flags & XX_ARCHIVE_NAME_ROOTED)) return NULL;
         ++s;
     }
-    if (((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z')) && s[1] == ':') {
-        if (!(flags & XX_ARCHIVE_NAME_DRIVE)) return NULL;
+    if (xx_archive_name_drive_letter(s[0]) && s[1] == ':') {
+        if (!(flags & (XX_ARCHIVE_NAME_DRIVE | XX_ARCHIVE_NAME_DRIVE_FOLDER))) return NULL;
+        if (flags & XX_ARCHIVE_NAME_DRIVE_FOLDER) drive = s[0];
         s += 2;
         if (*s == '/' || *s == '\\') ++s;
     }
@@ -85,8 +144,9 @@ static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned
     }
     s = converted;
     length = xx_rt_strlen(s);
-    out = (char *)xx_mem_alloc(length * 3 + 1);
+    out = (char *)xx_mem_alloc(length * 3 + 4);
     if (!out) { xx_mem_free(converted); return NULL; }
+    if (drive) { out[at++] = drive; out[at++] = '_'; }
     for (start = p = s;; ++p) {
         if (!*p || *p == '/' || *p == '\\') {
             size_t n = (size_t)(p - start), i;

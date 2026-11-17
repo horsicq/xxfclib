@@ -34,4 +34,5 @@ xxfclib_add_family_console(gbi
         src/algo/sha/xx_sha.c
         src/algo/sha/xx_sha_simd.c
         src/formats/filesystem/gbi/xx_gbi.c
-        src/formats/filesystem/gbi/xx_gbi_extractor.c)
+        src/formats/filesystem/gbi/xx_gbi_extractor.c
+        src/formats/filesystem/gbi/xx_gbi_reader_adapters.c)

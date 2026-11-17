@@ -32,6 +32,7 @@
 #include <limits.h>
 #include "xxfclib/algo/pki/xx_pki_verify.h"
 #include "xxfclib/algo/x509/xx_x509.h"
+#include "xxfclib/algo/protobuf/xx_protobuf_wire.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -408,46 +409,13 @@ static bool crx_zip_read(const crx_zip *zip, const char *wanted,
 static bool crx_read_varint(const uint8_t *data, size_t size, size_t *pos,
                             uint64_t *value)
 {
-    uint64_t result = 0;
-    for (unsigned shift = 0; shift < 70; shift += 7) {
-        if (*pos >= size) return false;
-        uint8_t byte = data[(*pos)++];
-        if (shift == 63 && byte > 1) return false;
-        result |= (uint64_t)(byte & 0x7fU) << shift;
-        if ((byte & 0x80U) == 0) { *value = result; return true; }
-    }
-    return false;
+    return xx_protobuf_wire_varint(data, size, pos, value);
 }
 
 static bool crx_skip_group(const uint8_t *data, size_t size, size_t *pos,
-                            unsigned depth)
+                           unsigned depth)
 {
-    if (depth > 500) return false;
-    while (*pos < size) {
-        uint64_t tag, value;
-        unsigned wire;
-        if (!crx_read_varint(data, size, pos, &tag) ||
-            (tag >> 3) == 0 || (tag >> 3) > 0x1fffffff)
-            return false;
-        wire = (unsigned)(tag & 7);
-        if (wire == 4) return true;
-        if (wire == 0) {
-            if (!crx_read_varint(data, size, pos, &value)) return false;
-        } else if (wire == 1 || wire == 5) {
-            size_t width = wire == 1 ? 8 : 4;
-            if (width > size - *pos) return false;
-            *pos += width;
-        } else if (wire == 2) {
-            if (!crx_read_varint(data, size, pos, &value) ||
-                value > size - *pos) return false;
-            *pos += (size_t)value;
-        } else if (wire == 3) {
-            if (!crx_skip_group(data, size, pos, depth + 1)) return false;
-        } else {
-            return false;
-        }
-    }
-    return false;
+    return xx_protobuf_wire_skip_field_crx(data, size, pos, depth);
 }
 
 static bool crx_read_field(const uint8_t *data, size_t size, size_t *pos,

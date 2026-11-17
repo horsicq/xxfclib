@@ -1423,6 +1423,16 @@ extern xx_format_extractor xx_install4j_extractor;
 extern xx_format_extractor xx_sumatra_lzsa_extractor;
 extern xx_format_extractor xx_calibre_portable_extractor;
 extern xx_format_extractor xx_palminput_360_extractor;
+extern xx_format_extractor xx_csd_extractor;
+extern xx_format_extractor xx_consplus_extractor;
+extern xx_format_extractor xx_c64_sda_extractor;
+extern xx_format_extractor xx_cpff_extractor;
+extern xx_format_extractor xx_compaq_msgdata_extractor;
+extern xx_format_extractor xx_chasm_csid_extractor;
+extern xx_format_extractor xx_c64s_extractor;
+extern xx_format_extractor xx_createinstall_pak_extractor;
+extern xx_format_extractor xx_chieflz_v1_extractor;
+extern xx_format_extractor xx_instalit_data_extractor;
 extern xx_format_extractor xx_sdi_extractor;
 extern xx_format_extractor xx_superdat_extractor;
 extern xx_format_extractor xx_excelsior_extractor;
@@ -2905,6 +2915,16 @@ static const struct {
     { XX_FILE_TYPE_SUMATRA_LZSA, &xx_sumatra_lzsa_extractor },
     { XX_FILE_TYPE_CALIBRE_PORTABLE, &xx_calibre_portable_extractor },
     { XX_FILE_TYPE_PALMINPUT_360, &xx_palminput_360_extractor },
+    { XX_FILE_TYPE_CSD, &xx_csd_extractor },
+    { XX_FILE_TYPE_CONSPLUS_DB, &xx_consplus_extractor },
+    { XX_FILE_TYPE_C64_SDA, &xx_c64_sda_extractor },
+    { XX_FILE_TYPE_CPFF, &xx_cpff_extractor },
+    { XX_FILE_TYPE_COMPAQ_MSGDATA, &xx_compaq_msgdata_extractor },
+    { XX_FILE_TYPE_CHASM_CSID, &xx_chasm_csid_extractor },
+    { XX_FILE_TYPE_C64S, &xx_c64s_extractor },
+    { XX_FILE_TYPE_CREATEINSTALL_PAK, &xx_createinstall_pak_extractor },
+    { XX_FILE_TYPE_CHIEFLZ_V1, &xx_chieflz_v1_extractor },
+    { XX_FILE_TYPE_INSTALIT_DATA, &xx_instalit_data_extractor },
     { XX_FILE_TYPE_SDI, &xx_sdi_extractor },
     { XX_FILE_TYPE_SUPERDAT, &xx_superdat_extractor },
     { XX_FILE_TYPE_EXCELSIOR_INSTALLER, &xx_excelsior_extractor },

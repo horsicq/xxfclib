@@ -5,6 +5,9 @@
 #include "xxfclib/formats/archive/arc_cbm/xx_arc_cbm.h"
 #include "../../xx_legacy_archive.h"
 #define CBM_TAIL (8U * 254U)
+/* Mode 5 ("one-pass crunch") declares no length: a member is decoded until
+ * the LZW end code, bounded by the largest file a CBM drive can hold. */
+#define CBM_ONE_PASS_MAX (2U * 1024U * 1024U)
 typedef struct cbm_sink {
     uint8_t *p, marker, last, count, state;
     uint32_t n, at;
@@ -44,7 +47,7 @@ static uint32_t cbm_reverse(uint32_t x, unsigned n)
     }
     return v;
 }
-static bool cbm_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *out, uint32_t n, unsigned version, unsigned method)
+static bool cbm_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *out, uint32_t n, unsigned version, unsigned method, uint32_t *produced, uint32_t *consumed)
 {
     cbm_sink sink;
     ac_bits bits;
@@ -54,7 +57,7 @@ static bool cbm_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *
     sink.n = n;
     sink.b = b;
     sink.old = version == 1U;
-    sink.rle = method == 1U || method == 3U || method == 4U;
+    sink.rle = method == 1U || method == 3U || method == 4U || method == 5U;
     sink.marker = 0xFE;
     if (method == 1U) {
         if (!packed) return false;
@@ -95,13 +98,15 @@ static bool cbm_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *
             }
             if (!found) return false;
         }
-    } else if (method == 3U) {
+    } else if (method == 3U || method == 5U) {
         uint16_t prefix[4096];
         uint8_t suffix[4096], stack[4096], first = 0;
         uint32_t next = 258, previous, code, token, top, width = 9, before_bump = 253, interval = 256;
         previous = cbm_reverse(ac_bits_get(&bits, width), width);
         if (previous == 256U) {
-            return n == 0;
+            if (produced) *produced = 0U;
+            if (consumed) *consumed = (uint32_t)((bits.bit + 7U) / 8U);
+            return method == 5U || n == 0;
         }
         if (previous > 255U || bits.failed || !cbm_put(&sink, (uint8_t)previous)) return false;
         first = (uint8_t)previous;
@@ -137,8 +142,11 @@ static bool cbm_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *
             }
             previous = token;
         }
-    } else return ac_error(b, "CBM ARC one-pass mode 5 is unsupported");
-    return !bits.failed && sink.at == n && !sink.state && ac_poll(b);
+    } else return ac_error(b, "CBM ARC mode is unsupported");
+    if (produced) *produced = sink.at;
+    if (consumed) *consumed = (uint32_t)((bits.bit + 7U) / 8U);
+    /* Mode 5 is measured by its end code; n is only the output bound. */
+    return !bits.failed && (method == 5U || sink.at == n) && !sink.state && ac_poll(b);
 }
 static bool cbm_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
 {
@@ -156,7 +164,7 @@ static bool cbm_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
         unsigned ver, method;
         uint8_t *out;
         char name[96];
-        bool valid;
+        bool valid, one_pass;
         if (!ac_poll(b)) return false;
         /* Archives copied off disk images carry up to a few blocks of
          * padding or a stray sector after the last record: once members
@@ -173,19 +181,44 @@ static bool cbm_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
         blocks = xx_data_get_u16(b->p + at + 7, 2, 0, false);
         name_n = b->p[at + 10];
         header = 11U + name_n + (ver == 2U ? 3U : 0U);
-        valid = (ver == 1U || ver == 2U) && method <= (ver == 1U ? 2U : 5U) && name_n && name_n <= 16U && blocks &&
+        /* A one-pass (mode 5) member is written before its size is known:
+         * checksum, length and block count are all zero and the record runs
+         * to the end of the LZW stream, rounded up to whole 254-byte blocks. */
+        one_pass = ver == 2U && method == 5U && !blocks && !n && !expected;
+        valid = (ver == 1U || ver == 2U) && method <= (ver == 1U ? 2U : 5U) && name_n && name_n <= 16U && (blocks || one_pass) &&
             (b->p[at + 9] == 'P' || b->p[at + 9] == 'S' || b->p[at + 9] == 'U' || (ver == 2U && b->p[at + 9] == 'R')) && ac_span(b, at, header) &&
             ac_name(name, sizeof(name), b->p + at + 11, name_n);
         record = blocks * 254U;
-        if (valid && (record < header || !ac_span(b, at, record))) valid = false;
+        if (valid && !one_pass && (record < header || !ac_span(b, at, record))) valid = false;
         if (!valid) {
             if (s->count && b->n - at <= CBM_TAIL) break;
             return false;
         }
-        if (!method && (n > record - header || (n + 253U) / 254U != blocks)) return false;
+        if (one_pass) {
+            uint32_t produced = 0U, consumed = 0U;
+            out = ac_alloc(b, CBM_ONE_PASS_MAX);
+            if (!out) return false;
+            if (!cbm_decode(b, b->p + at + header, b->n - at - header, out, CBM_ONE_PASS_MAX, ver, method, &produced, &consumed) ||
+                !ac_compact(b, &out, CBM_ONE_PASS_MAX, produced)) {
+                ac_release(b, out, CBM_ONE_PASS_MAX);
+                return false;
+            }
+            /* The writer always closes the member with a partly used block:
+             * a stream that fills its last block exactly is followed by one
+             * more (whole) block before the next member. The last member of
+             * a file need not be padded at all. */
+            record = ((header + consumed) / 254U + 1U) * 254U;
+            if (record > b->n - at) record = b->n - at;
+            if (!ac_memory(f, s, b, name, out, produced, consumed, (uint16_t)method)) return false;
+            at += record;
+            continue;
+        }
+        /* The block count normally covers the data alone; some writers
+         * (lhav12) count the record header in as well. */
+        if (!method && (n > record - header || ((n + 253U) / 254U != blocks && (n + header + 253U) / 254U != blocks))) return false;
         out = ac_alloc(b, n);
         if (!out) return false;
-        if (!cbm_decode(b, b->p + at + header, method ? record - header : n, out, n, ver, method)) {
+        if (!cbm_decode(b, b->p + at + header, method ? record - header : n, out, n, ver, method, NULL, NULL)) {
             ac_release(b, out, n);
             return false;
         }

@@ -21,10 +21,14 @@
  * below). Passing starts take their candidate lengths from a two-byte length
  * table, lengths >= 4 pass a four-byte fingerprint screen, and an exact
  * (length, bytes) hash table confirms; duplicates are chained by increasing
- * index and chains of several lengths are merged by index. A large set whose
- * single-bucket nibble screen is very selective feeds the same confirmation
- * from the SIMD filter instead. Every path reports starts in increasing
- * order and, per start, literals in insertion order.
+ * index and chains of several lengths are merged by index. On x86 a large
+ * set may instead screen with one lookup per two starts (the gram screen
+ * below) when its model cost is lower; candidates take their lengths from
+ * the gram roles and the two-byte length table and meet the same
+ * confirmation. A large set whose single-bucket nibble screen is very
+ * selective feeds the same confirmation from the SIMD filter instead. Every
+ * path reports starts in increasing order and, per start, literals in
+ * insertion order.
  */
 
 static uint64_t xx_literal_native(const uint8_t *bytes, size_t length)
@@ -61,6 +65,7 @@ void xx_literal_set_free(xx_literal_set *set)
     xx_mem_free(set->items);
     xx_mem_free(set->slots);
     xx_mem_free(set->pair_screen);
+    xx_mem_free(set->gram_screen);
     xx_mem_free(set->pair_lengths);
     xx_mem_free(set->prefix_bloom);
     xx_mem_free(set);
@@ -480,6 +485,289 @@ static bool xx_literal_prepare_screen(xx_literal_set *set)
     return ok;
 }
 
+/* ------------------------------------------------------------------ */
+/* Stride-2 gram screen of large sets.                                 */
+
+/* The SSE2 scanner may look up only the pairs at even offsets of a block,
+ * the grams G_j = (byte 2j, byte 2j + 1), one lookup per two starts, and
+ * combine neighbours as c_j = screen[G_j] & (screen[G_j+1] >> 8):
+ *   bits 0-7 of c_j pass the even start 2j: role A (bits 0-7 of an entry)
+ *     holds a literal's bytes 0-1, role B (bits 8-15) its bytes 2-3;
+ *   bits 16-23 pass the odd start 2j + 1: role C (bits 16-23) holds a
+ *     literal's byte 0 as the gram's second byte, role D (bits 24-31) its
+ *     bytes 1-2.
+ * A role accepts any byte past the literal's end. Every parity has one bit
+ * for length 1 (role B or D: any gram) and the even one a bit for length 2
+ * (role B: any gram); the other classes are coloured by their first key like
+ * the pair screen (even: lengths 3 and >= 4 by bytes 0-1; odd: length 2 and
+ * lengths >= 3 by byte 0). Every literal matching at a start sets that
+ * start's bit in its colour, so the screen passes a superset of the matching
+ * starts, and the candidate's role bits give a superset of its lengths. */
+#ifdef XX_LITERAL_X86
+#define XX_LITERAL_KEY_PAIR 0U /* key = (byte 0 << 8) | byte 1 of a gram */
+#define XX_LITERAL_KEY_HEAD 1U /* key = the gram's first byte, any second */
+#define XX_LITERAL_KEY_TAIL 2U /* key = the gram's second byte, any first */
+
+typedef struct xx_literal_gram_class {
+    unsigned first_kind, second_kind;
+    unsigned first_shift, second_shift; /* role fields of the two keys */
+    unsigned base, colours;             /* role bits base .. base + colours - 1 */
+} xx_literal_gram_class;
+
+static double xx_literal_key_weight(unsigned kind, unsigned key)
+{
+    return kind == XX_LITERAL_KEY_PAIR ? xx_literal_byte_weight(key >> 8) * xx_literal_byte_weight(key & 255U)
+                                       : xx_literal_byte_weight(key & 255U);
+}
+
+/* Native-order index of the gram (b0, b1). */
+static unsigned xx_literal_gram_index(unsigned b0, unsigned b1)
+{
+    uint8_t pair[2];
+    pair[0] = (uint8_t)b0;
+    pair[1] = (uint8_t)b1;
+    return xx_literal_load16(pair);
+}
+
+/* One gram of the key's grams (all of them get the same role bits). */
+static unsigned xx_literal_key_gram(unsigned kind, unsigned key)
+{
+    if (kind == XX_LITERAL_KEY_PAIR) return xx_literal_gram_index(key >> 8, key & 255U);
+    return kind == XX_LITERAL_KEY_HEAD ? xx_literal_gram_index(key, 0) : xx_literal_gram_index(0, key);
+}
+
+static void xx_literal_key_mark(uint32_t *screen, unsigned kind, unsigned key, uint32_t bit)
+{
+    unsigned other;
+    if (kind == XX_LITERAL_KEY_PAIR) {
+        screen[xx_literal_key_gram(kind, key)] |= bit;
+        return;
+    }
+    for (other = 0; other < 256; ++other)
+        screen[kind == XX_LITERAL_KEY_HEAD ? xx_literal_gram_index(key, other) : xx_literal_gram_index(other, key)] |= bit;
+}
+
+/* Greedy colouring of one class (keys: first << 16 | second, grouped by
+ * first), as xx_literal_colour: heavy first keys first, each into the colour
+ * that adds the least expected collisions. */
+static bool xx_literal_colour_grams(uint32_t *screen, const uint32_t *keys, size_t count, const xx_literal_gram_class *cls)
+{
+    double used[8], owners[8];
+    xx_literal_first *firsts;
+    size_t first_count = 0, i, k;
+    unsigned c;
+    firsts = (xx_literal_first *)xx_mem_alloc((count ? count : 1) * sizeof(*firsts));
+    if (firsts == NULL) return false;
+    for (i = 0; i < count;) {
+        size_t j = i;
+        unsigned first = keys[i] >> 16;
+        while (j < count && (keys[j] >> 16) == first) ++j;
+        firsts[first_count].weight = xx_literal_key_weight(cls->first_kind, first);
+        firsts[first_count].begin = i;
+        firsts[first_count].end = j;
+        ++first_count;
+        i = j;
+    }
+    qsort(firsts, first_count, sizeof(*firsts), xx_literal_compare_first);
+    for (c = 0; c < cls->colours; ++c) used[c] = owners[c] = 0.0;
+    for (i = 0; i < first_count; ++i) {
+        const xx_literal_first *f = &firsts[i];
+        unsigned best = 0, first = keys[f->begin] >> 16;
+        double best_score = 0.0;
+        for (c = 0; c < cls->colours; ++c) {
+            double shared = 0.0, fresh = 0.0, score;
+            uint32_t bit = (uint32_t)1U << (cls->second_shift + cls->base + c);
+            for (k = f->begin; k < f->end; ++k) {
+                unsigned second = keys[k] & 0xffffU;
+                double weight = xx_literal_key_weight(cls->second_kind, second);
+                if ((screen[xx_literal_key_gram(cls->second_kind, second)] & bit) != 0) shared += weight; else fresh += weight;
+            }
+            score = f->weight * (used[c] - shared) + fresh * owners[c];
+            if (c == 0 || score < best_score) { best_score = score; best = c; }
+        }
+        owners[best] += f->weight;
+        xx_literal_key_mark(screen, cls->first_kind, first, (uint32_t)1U << (cls->first_shift + cls->base + best));
+        for (k = f->begin; k < f->end; ++k) {
+            unsigned second = keys[k] & 0xffffU;
+            uint32_t bit = (uint32_t)1U << (cls->second_shift + cls->base + best);
+            if ((screen[xx_literal_key_gram(cls->second_kind, second)] & bit) != 0) continue;
+            used[best] += xx_literal_key_weight(cls->second_kind, second);
+            xx_literal_key_mark(screen, cls->second_kind, second, bit);
+        }
+    }
+    xx_mem_free(firsts);
+    return true;
+}
+
+/* Coloured classes of the gram screen. */
+#define XX_LITERAL_GRAM_EVEN3 0U /* length 3: bytes 0-1 / byte 2 */
+#define XX_LITERAL_GRAM_EVEN4 1U /* length >= 4: bytes 0-1 / bytes 2-3 */
+#define XX_LITERAL_GRAM_ODD2 2U  /* length 2: byte 0 / byte 1 */
+#define XX_LITERAL_GRAM_ODD3 3U  /* length >= 3: byte 0 / bytes 1-2 */
+
+static bool xx_literal_gram_key(const xx_literal_item *item, unsigned cls, uint32_t *key)
+{
+    const uint8_t *b = item->bytes;
+    switch (cls) {
+    case XX_LITERAL_GRAM_EVEN3:
+        *key = ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | b[2];
+        return item->length == 3;
+    case XX_LITERAL_GRAM_EVEN4:
+        *key = ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3];
+        return item->length >= 4;
+    case XX_LITERAL_GRAM_ODD2:
+        *key = ((uint32_t)b[0] << 16) | b[1];
+        return item->length == 2;
+    default:
+        *key = ((uint32_t)b[0] << 16) | ((uint32_t)b[1] << 8) | b[2];
+        return item->length >= 3;
+    }
+}
+
+/* The keys of one class grouped by first key (ascending; insertion order
+ * within a group) with a counting sort over counts (65536 entries). */
+static size_t xx_literal_gram_keys(const xx_literal_set *set, unsigned cls, uint32_t *keys, uint32_t *counts)
+{
+    size_t i, count = 0;
+    uint32_t total = 0, key;
+    xx_mem_set(counts, 0, 65536 * sizeof(*counts));
+    for (i = 0; i < set->count; ++i) {
+        if (xx_literal_gram_key(&set->items[i], cls, &key)) {
+            ++counts[key >> 16];
+            ++count;
+        }
+    }
+    for (i = 0; i < 65536; ++i) {
+        uint32_t here = counts[i];
+        counts[i] = total;
+        total += here;
+    }
+    for (i = 0; i < set->count; ++i)
+        if (xx_literal_gram_key(&set->items[i], cls, &key)) keys[counts[key >> 16]++] = key;
+    return count;
+}
+
+/* Expected passing starts per position under the byte model (union bound
+ * over role bits). roles = 2: 16-bit roles of the pair screen; roles = 4:
+ * the gram screen, the mean of its two parities. */
+static double xx_literal_screen_rate(const uint32_t *screen, unsigned roles)
+{
+    double weight[32], rate = 0.0;
+    unsigned i, bit;
+    for (bit = 0; bit < 32; ++bit) weight[bit] = 0.0;
+    for (i = 0; i < 65536; ++i) {
+        uint32_t entry = screen[i];
+        uint16_t index = (uint16_t)i;
+        uint8_t pair[2];
+        double w;
+        if (entry == 0) continue;
+        memcpy(pair, &index, sizeof(pair));
+        w = xx_literal_byte_weight(pair[0]) * xx_literal_byte_weight(pair[1]);
+        while (entry != 0) {
+            weight[xx_literal_first_bit(entry)] += w;
+            entry &= entry - 1;
+        }
+    }
+    if (roles == 2) {
+        for (bit = 0; bit < 16; ++bit) rate += weight[bit] * weight[16 + bit];
+    } else {
+        for (bit = 0; bit < 8; ++bit) rate += 0.5 * (weight[bit] * weight[8 + bit] + weight[16 + bit] * weight[24 + bit]);
+    }
+    return rate;
+}
+
+/* Builds the gram screen and keeps it when its model cost (lookups per byte
+ * about 0.6 of the pair screen's, a candidate about 20 times a pair-screen
+ * byte) is lower. Returns false on allocation failure only. */
+static bool xx_literal_prepare_grams(xx_literal_set *set)
+{
+    static const xx_literal_gram_class classes[4] = {
+        {XX_LITERAL_KEY_PAIR, XX_LITERAL_KEY_HEAD, 0, 8, 0, 0},
+        {XX_LITERAL_KEY_PAIR, XX_LITERAL_KEY_PAIR, 0, 8, 0, 0},
+        {XX_LITERAL_KEY_TAIL, XX_LITERAL_KEY_HEAD, 16, 24, 0, 0},
+        {XX_LITERAL_KEY_TAIL, XX_LITERAL_KEY_PAIR, 16, 24, 0, 0}};
+    xx_literal_gram_class cls[4];
+    uint32_t *screen, *keys, *counts;
+    size_t sizes[4], i, offset = 0;
+    unsigned even = 0, odd = 0, rest, parity, bits, c;
+    uint32_t even1 = 0, even2 = 0, odd1 = 0;
+    bool has1 = false, has2 = false, ok = true;
+    for (i = 0; i < set->count; ++i) {
+        if (set->items[i].length == 1) has1 = true;
+        if (set->items[i].length == 2) has2 = true;
+    }
+    screen = (uint32_t *)xx_mem_calloc(65536, sizeof(*screen));
+    keys = (uint32_t *)xx_mem_alloc((set->count ? set->count : 1) * 4 * sizeof(*keys));
+    counts = (uint32_t *)xx_mem_alloc(65536 * sizeof(*counts));
+    if (screen == NULL || keys == NULL || counts == NULL) {
+        xx_mem_free(screen); xx_mem_free(keys); xx_mem_free(counts);
+        return false;
+    }
+    for (c = 0; c < 4; ++c) {
+        sizes[c] = xx_literal_gram_keys(set, c, keys + offset, counts);
+        offset += sizes[c];
+    }
+    /* Role bits: the uncoloured classes first, the rest split by colours. */
+    if (has1) { even1 = 1U << even++; odd1 = 1U << odd++; }
+    if (has2) even2 = 1U << even++;
+    for (c = 0; c < 4; ++c) cls[c] = classes[c];
+    rest = 8 - even;
+    cls[0].base = even;
+    cls[0].colours = sizes[0] == 0 ? 0 : (sizes[1] == 0 ? rest : rest / 3);
+    cls[1].base = even + cls[0].colours;
+    cls[1].colours = sizes[1] == 0 ? 0 : rest - cls[0].colours;
+    rest = 8 - odd;
+    cls[2].base = odd;
+    cls[2].colours = sizes[2] == 0 ? 0 : (sizes[3] == 0 ? rest : rest / 3);
+    cls[3].base = odd + cls[2].colours;
+    cls[3].colours = sizes[3] == 0 ? 0 : rest - cls[2].colours;
+    for (i = 0; i < set->count; ++i) {
+        const xx_literal_item *item = &set->items[i];
+        if (item->length == 1) {
+            xx_literal_key_mark(screen, XX_LITERAL_KEY_HEAD, item->bytes[0], even1);
+            xx_literal_key_mark(screen, XX_LITERAL_KEY_TAIL, item->bytes[0], odd1 << 16);
+        } else if (item->length == 2) {
+            screen[xx_literal_gram_index(item->bytes[0], item->bytes[1])] |= even2;
+        }
+    }
+    for (i = 0; i < 65536; ++i) screen[i] |= ((even1 | even2) << 8) | (odd1 << 24);
+    for (c = 0, offset = 0; c < 4 && ok; ++c) {
+        if (sizes[c] != 0) ok = xx_literal_colour_grams(screen, keys + offset, sizes[c], &cls[c]);
+        offset += sizes[c];
+    }
+    xx_mem_free(keys);
+    xx_mem_free(counts);
+    if (!ok) {
+        xx_mem_free(screen);
+        return false;
+    }
+    for (parity = 0; parity < 2; ++parity) {
+        for (bits = 0; bits < 256; ++bits) {
+            unsigned lengths = 0;
+            const xx_literal_gram_class *shorter = &cls[parity ? 2 : 0], *longer = &cls[parity ? 3 : 1];
+            uint32_t shorter_bits = ((1U << shorter->colours) - 1U) << shorter->base;
+            uint32_t longer_bits = ((1U << longer->colours) - 1U) << longer->base;
+            if ((bits & (parity ? odd1 : even1)) != 0) lengths |= 1U;
+            if (parity == 0 && (bits & even2) != 0) lengths |= 2U;
+            if ((bits & shorter_bits) != 0) lengths |= parity ? 2U : 4U;
+            if ((bits & longer_bits) != 0) lengths |= parity ? 0xfcU : 0xf8U;
+            set->gram_lengths[parity][bits] = (uint8_t)lengths;
+        }
+    }
+#ifdef XX_LITERAL_TEST_FORCE_GRAMS
+    /* Test builds only: every large set takes the gram screen. */
+    if (screen != NULL || xx_literal_screen_rate(screen, 4) < 0.0) {
+#else
+    if (0.6 + 20.0 * xx_literal_screen_rate(screen, 4) < 1.0 + 20.0 * xx_literal_screen_rate(set->pair_screen, 2)) {
+#endif
+        set->gram_screen = screen;
+    } else {
+        xx_mem_free(screen);
+    }
+    return true;
+}
+#endif
+
 /* Large sets: a single-bucket nibble screen over the common prefix bytes is
  * used only when it rejects nearly all starts; otherwise the branch-free
  * pair-table blocks are cheaper per start. */
@@ -572,6 +860,10 @@ static bool xx_literal_prepare_large(xx_literal_set *set)
     }
     if (!xx_literal_prepare_screen(set)) return false;
     xx_literal_prepare_filter_large(set);
+#ifdef XX_LITERAL_X86
+    /* Only the SSE2 scanner of sets without a selective nibble screen uses it. */
+    if (!set->use_filter && !xx_literal_prepare_grams(set)) return false;
+#endif
     return true;
 }
 
@@ -582,10 +874,12 @@ bool xx_literal_set_finalize(xx_literal_set *set)
     if (set->finalized) return true;
     xx_mem_free(set->slots);
     xx_mem_free(set->pair_screen);
+    xx_mem_free(set->gram_screen);
     xx_mem_free(set->pair_lengths);
     xx_mem_free(set->prefix_bloom);
     set->slots = NULL;
     set->pair_screen = NULL;
+    set->gram_screen = NULL;
     set->pair_lengths = NULL;
     set->prefix_bloom = NULL;
     xx_mem_zero(set->single_bytes, sizeof(set->single_bytes));
@@ -812,7 +1106,10 @@ bool xx_literal_set_scan(const xx_literal_set *set, const uint8_t *data, size_t 
         if (xx_is_avx2_enabled()) return xx_literal_scan_avx2(set, data, size, begin, end, match, context);
         if (set->ssse3 && xx_is_sse2_enabled()) return xx_literal_scan_ssse3(set, data, size, begin, end, match, context);
     }
-    if (!set->small && xx_is_sse2_enabled()) return xx_literal_scan_blocks_sse2(set, data, size, begin, end, match, context);
+    if (!set->small && xx_is_sse2_enabled()) {
+        if (set->gram_screen != NULL) return xx_literal_scan_grams_sse2(set, data, size, begin, end, match, context);
+        return xx_literal_scan_blocks_sse2(set, data, size, begin, end, match, context);
+    }
 #endif
     return xx_literal_scan_prepared(set, data, size, begin, end, match, context);
 }

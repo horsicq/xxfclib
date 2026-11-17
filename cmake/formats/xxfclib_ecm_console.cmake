@@ -6,4 +6,5 @@ xxfclib_add_family_console(ecm
     FORMATS ECM
     SOURCES
         src/formats/filesystem/ecm/xx_ecm.c
-        src/formats/filesystem/ecm/xx_ecm_extractor.c)
+        src/formats/filesystem/ecm/xx_ecm_extractor.c
+        src/formats/filesystem/ecm/xx_ecm_reader_adapters.c)

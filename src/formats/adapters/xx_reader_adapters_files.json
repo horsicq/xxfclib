@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "include/xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc",
-      "sha256": "f873abcba22142ad048d4d724bde13f567a164d0d530208ee52e123415b480e2"
+      "sha256": "205386f002fe753c7efca7c81b83f81c4d599777aee88b8cd9cb74866619b0c7"
     },
     {
       "path": "src/formats/adapters/xx_format_detector_adapters.c",
@@ -11,7 +11,7 @@
     },
     {
       "path": "src/formats/adapters/xx_reader_adapters_sources.cmake",
-      "sha256": "63e752014899d1da4d2301bfd847ee00fcf218996414eae585ae6d55bb50ecc6"
+      "sha256": "4de6ef1e87bf1d0f1e9d04f66fe5132279bcc3b603d6ac9c35975500fda8f055"
     },
     {
       "path": "src/formats/archive/amplus/xx_amplus_reader_adapters.c",
@@ -1146,20 +1146,16 @@
       "sha256": "bb2ba7993cf30e4c8f8e0b300a7561c2bddfba1ceb24f2f6314a03f3ef598793"
     },
     {
-      "path": "src/formats/installer/instalit_data/xx_instalit_data_reader_adapters.c",
-      "sha256": "837b8f2dd48a9187da1d2ae9e8aee096f5d7894a47ebd85ec2393eaa630e4751"
-    },
-    {
       "path": "src/formats/other/der/xx_der_reader_adapters.c",
       "sha256": "121c6c2165182e85f025c2b540bf611e0e62307fca1f5fe6174b47e2ae606d62"
     },
     {
       "path": "src/formats/xx_format_reader_only_decls.inc",
-      "sha256": "164c3e98c005e0fd8556f21a85c29232bf41b88bf4f0eab5779a30d14ab9dc39"
+      "sha256": "12e69e52d4c947386fc9ed32f4aa07064c06e65b6adde16f3a4299ecaf79c423"
     },
     {
       "path": "src/formats/xx_format_reader_only_rows.inc",
-      "sha256": "202843c84722f650f426074d8feac81b55b296ae8385e1fb32d5857dc7f5c603"
+      "sha256": "cde5a4cda28cff184dfa11bec27b625acf69c93d4e7c2698d8e150ccaabcd4de"
     }
   ]
 }

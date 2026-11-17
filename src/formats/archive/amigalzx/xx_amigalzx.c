@@ -324,6 +324,7 @@ static xx_amigalzx_stream *xx_amigalzx_parse_raw(Abstractformat *self, xx_pd_str
     size_t group_start = 0U;
     uint32_t method;
     char *name;
+    bool folder;
 
     if (!self || !self->device || self->base_address < 0) return NULL;
     total = xx_io_total_size(self->device);
@@ -379,7 +380,12 @@ static xx_amigalzx_stream *xx_amigalzx_parse_raw(Abstractformat *self, xx_pd_str
         if (!xx_amigalzx_read_at(self, self->base_address + offset + XX_AMIGALZX_ENTRY_HEADER_SIZE, name_buffer, (size_t)name_length)) {
             goto fail;
         }
-        normalized = xx_amigalzx_normalize_name(name_buffer, name_length);
+        /* A zero-size record whose name ends in a separator is a directory
+         * entry; the trailing separator is dropped and the record marked as a
+         * folder rather than refused as an empty path component. */
+        folder = unpacked_size == 0 && packed_size == 0 && name_length > 1 &&
+                 (name_buffer[name_length - 1] == '/' || name_buffer[name_length - 1] == '\\');
+        normalized = xx_amigalzx_normalize_name(name_buffer, folder ? name_length - 1 : name_length);
         if (normalized <= 0) goto fail;
         name_buffer[normalized] = 0U;
 
@@ -415,8 +421,9 @@ static xx_amigalzx_stream *xx_amigalzx_parse_raw(Abstractformat *self, xx_pd_str
          * converted: its field layout is not the UNIX epoch and re-deriving
          * it here would invent precision the container does not have. */
         member.timestamp = (uint64_t)xx_data_get_u32(header + 18, 4, 0, false);
-        /* LZX stores directories only as the path prefix of a member. */
-        member.is_folder = false;
+        /* LZX normally stores directories only as the path prefix of a
+         * member; some writers add explicit zero-size "dir/" records. */
+        member.is_folder = folder;
         /* The header CRC-32 at 0x1a (over the header with those four bytes
          * read as zero, then the name and comment) would be a far stronger
          * gate than any field check above. It is deliberately not enforced,
@@ -428,6 +435,13 @@ static xx_amigalzx_stream *xx_amigalzx_parse_raw(Abstractformat *self, xx_pd_str
             goto fail;
         }
         group_plain += unpacked_size;
+        if (folder && group_start + 1U == stream->count) {
+            /* A directory record outside any pending group addresses nothing
+             * and closes on its own, so trailing directories do not leave a
+             * group open. */
+            stream->items[stream->count - 1U].data_offset = self->base_address + data_offset;
+            group_start = stream->count;
+        }
 
         if (packed_size > 0) {
             if (!xx_amigalzx_close_group(stream, span, group_start, group_plain, data_offset, packed_size, self->base_address, method)) {

@@ -785,6 +785,101 @@ static bool xx_rar_has_decrypted_headers(const xx_rar *rar)
     return rar->split_view && ((const xx_rar_split_view *)rar->split_view)->headers_encrypted;
 }
 
+/* RAR 2.9/4.x Unicode file names (file flag 0x0200): the name field holds the ASCII/OEM fallback, a NUL and
+ * then a compact UTF-16 encoding. The encoding starts with a high byte, followed by groups of four 2-bit opcodes
+ * (one flag byte each, most significant pair first):
+ *   0 - next byte is a code unit 0x00xx
+ *   1 - next byte is the low byte, the high byte is the global one
+ *   2 - next two bytes are a little-endian code unit
+ *   3 - a length byte L: copy L+2 units from the fallback name at the same positions; if bit 7 of L is set the
+ *       next byte is a correction added to each fallback byte and the global high byte is applied ((L&0x7F)+2 units).
+ * Returns a NUL-terminated wide string (UTF-16 units joined into code points where wchar_t is 32-bit), or NULL. */
+static wchar_t *xx_rar4_decode_unicode_name(const char *fallback, size_t fallback_size, const uint8_t *enc, size_t enc_size)
+{
+    uint16_t *units;
+    wchar_t *wide;
+    size_t max_units = fallback_size + enc_size; /* each opcode yields at most one unit per input byte, or copies the fallback */
+    size_t enc_pos = 0U, dec_pos = 0U, i, out;
+    unsigned flags = 0U, flag_bits = 0U;
+    uint8_t high;
+
+    if (!fallback || !enc || enc_size < 2U || fallback_size == 0U || max_units > 0x10000U) {
+        return NULL;
+    }
+    units = (uint16_t *)xx_mem_alloc(max_units * sizeof(uint16_t));
+    if (!units) {
+        return NULL;
+    }
+    high = enc[enc_pos++];
+    while (enc_pos < enc_size && dec_pos < max_units) {
+        if (flag_bits == 0U) {
+            flags = enc[enc_pos++];
+            flag_bits = 8U;
+        }
+        switch ((flags >> 6) & 3U) {
+        case 0U:
+            if (enc_pos >= enc_size) break;
+            units[dec_pos++] = enc[enc_pos++];
+            break;
+        case 1U:
+            if (enc_pos >= enc_size) break;
+            units[dec_pos++] = (uint16_t)(enc[enc_pos++] | ((unsigned)high << 8));
+            break;
+        case 2U:
+            if (enc_pos + 1U >= enc_size) { enc_pos = enc_size; break; }
+            units[dec_pos++] = (uint16_t)(enc[enc_pos] | ((unsigned)enc[enc_pos + 1U] << 8));
+            enc_pos += 2U;
+            break;
+        default: {
+            unsigned length;
+            if (enc_pos >= enc_size) break;
+            length = enc[enc_pos++];
+            if ((length & 0x80U) != 0U) {
+                uint8_t correction;
+                if (enc_pos >= enc_size) break;
+                correction = enc[enc_pos++];
+                for (length = (length & 0x7FU) + 2U; length > 0U && dec_pos < max_units && dec_pos < fallback_size; --length, ++dec_pos) {
+                    units[dec_pos] = (uint16_t)((((uint8_t)fallback[dec_pos] + correction) & 0xFFU) | ((unsigned)high << 8));
+                }
+            } else {
+                for (length += 2U; length > 0U && dec_pos < max_units && dec_pos < fallback_size; --length, ++dec_pos) {
+                    units[dec_pos] = (uint8_t)fallback[dec_pos];
+                }
+            }
+            break;
+        }
+        }
+        flags = (flags << 2) & 0xFFU;
+        flag_bits -= 2U;
+    }
+    wide = (wchar_t *)xx_mem_alloc((dec_pos + 1U) * sizeof(wchar_t));
+    if (!wide) {
+        xx_mem_free(units);
+        return NULL;
+    }
+    out = 0U;
+    for (i = 0U; i < dec_pos; ++i) {
+        uint32_t cp = units[i];
+        if (cp == 0U) break;
+#if WCHAR_MAX > 0xFFFF
+        /* 32-bit wchar_t: join UTF-16 surrogate pairs into one code point */
+        if (cp >= 0xD800U && cp <= 0xDBFFU && i + 1U < dec_pos &&
+            units[i + 1U] >= 0xDC00U && units[i + 1U] <= 0xDFFFU) {
+            cp = 0x10000U + ((cp - 0xD800U) << 10) + (units[i + 1U] - 0xDC00U);
+            ++i;
+        }
+#endif
+        wide[out++] = (wchar_t)cp;
+    }
+    wide[out] = 0;
+    xx_mem_free(units);
+    if (out == 0U) {
+        xx_mem_free(wide);
+        return NULL;
+    }
+    return wide;
+}
+
 static bool xx_rar_set_record_name(xx_io_device *device, const xx_rar_file_info *info, xx_archive_record *record)
 {
     char *name;
@@ -819,8 +914,15 @@ static bool xx_rar_set_record_name(xx_io_device *device, const xx_rar_file_info 
         xx_mem_free(name);
         return false;
     }
+    wide_name = NULL;
+    if (info->rar4_unicode_name && usable_size + 1U < info->name_size) {
+        wide_name = xx_rar4_decode_unicode_name(name, usable_size, (const uint8_t *)name + usable_size + 1U,
+                                                info->name_size - usable_size - 1U);
+    }
     name[usable_size] = '\0';
-    if (info->block.version!=XX_RAR_VERSION_5 && info->host_os==0 && !info->rar4_unicode_name) {
+    if (wide_name) {
+        /* decoded from the Unicode part */
+    } else if (info->block.version!=XX_RAR_VERSION_5 && info->host_os==0 && !info->rar4_unicode_name) {
         const xx_codepage *dos=xx_codepage_by_number(437);
         size_t i;
         wide_name=dos?(wchar_t *)xx_mem_alloc((usable_size+1U)*sizeof(wchar_t)):NULL;
@@ -983,6 +1085,15 @@ bool xx_rar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
             return false;
         }
         if (!xx_rar_parse_block(self->device, device_size, version, offset, &block)) {
+            /* RAR 2.0 self-extractors are often followed by a few bytes of
+             * stub bookkeeping instead of ENDARC: after verified file
+             * headers, a short undecodable tail ends the archive. */
+            if (version == XX_RAR_VERSION_4 && !first_block && count != 0 && !headers_encrypted && last_unpack_version <= 20U &&
+                device_size - offset <= 64) {
+                found_end = true;
+                format_end = offset;
+                break;
+            }
             self->is_valid = false;
             return false;
         }

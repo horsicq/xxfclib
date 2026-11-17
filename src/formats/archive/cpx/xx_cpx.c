@@ -8,7 +8,8 @@
  * Four bytes of stamp open every file: one version byte then "\x16\x27\x93".
  * The version byte selects one of two container shapes.
  *
- * v1 (version byte 0x28 or 0x2a) - a flat directory:
+ * v1 (version byte 0x28 or 0x2a; 0x29 adds 8 bytes before the count) - a
+ * flat directory:
  *
  *   +0   u8   version stamp
  *   +1   3    16 27 93
@@ -80,6 +81,7 @@
 #endif
 
 #define CPX_V1_HEADER_SIZE 6
+#define CPX_V1_EXT_HEADER_SIZE 14
 #define CPX_V1_RECORD_SIZE 26
 #define CPX_V1_NAME_SIZE 13U
 #define CPX_V4_HEADER_SIZE 36
@@ -299,23 +301,23 @@ static bool cpx_check_size(uint64_t unpacked, int64_t packed)
 /* v1: flat directory                                                         */
 /* ------------------------------------------------------------------------- */
 
-static bool cpx_parse_v1(Abstractformat *format, int64_t size, const uint8_t *header, cpx_stream **result)
+static bool cpx_parse_v1(Abstractformat *format, int64_t size, const uint8_t *header, int64_t header_size, cpx_stream **result)
 {
     cpx_stream *stream;
     uint8_t *directory = NULL;
-    size_t count = (size_t)xx_data_get_u16(header + 4U, 2, 0, false);
+    size_t count = (size_t)xx_data_get_u16(header + header_size - 2, 2, 0, false);
     int64_t directory_size, directory_end;
     size_t index;
 
     if (count == 0U) return false;
     directory_size = (int64_t)count * CPX_V1_RECORD_SIZE;
-    if (size - CPX_V1_HEADER_SIZE < directory_size) return false;
-    directory_end = CPX_V1_HEADER_SIZE + directory_size;
+    if (size - header_size < directory_size) return false;
+    directory_end = header_size + directory_size;
 
     stream = cpx_stream_new(count);
     if (!stream) return false;
     directory = (uint8_t *)xx_mem_alloc((size_t)directory_size);
-    if (!directory || !cpx_read_at(format->device, format->base_address + CPX_V1_HEADER_SIZE, directory, (size_t)directory_size)) goto fail;
+    if (!directory || !cpx_read_at(format->device, format->base_address + header_size, directory, (size_t)directory_size)) goto fail;
 
     for (index = 0U; index < count; ++index) {
         const uint8_t *record = directory + index * CPX_V1_RECORD_SIZE;
@@ -341,7 +343,7 @@ static bool cpx_parse_v1(Abstractformat *format, int64_t size, const uint8_t *he
 
         member->name = cpx_normalize_name(record, CPX_V1_NAME_SIZE);
         if (!member->name || !member->name[0]) goto fail;
-        member->header_offset = format->base_address + CPX_V1_HEADER_SIZE + (int64_t)index * CPX_V1_RECORD_SIZE;
+        member->header_offset = format->base_address + header_size + (int64_t)index * CPX_V1_RECORD_SIZE;
         member->header_size = CPX_V1_RECORD_SIZE;
         member->data_offset = format->base_address + offset;
         member->attributes = record[13];
@@ -487,7 +489,13 @@ static bool cpx_parse(Abstractformat *format, cpx_stream **result)
     if (size < CPX_V1_HEADER_SIZE + CPX_V1_RECORD_SIZE) return false;
     if (!cpx_read_at(format->device, format->base_address, header, (size_t)(size < (int64_t)sizeof(header) ? size : (int64_t)sizeof(header)))) return false;
     if (header[1] != 0x16U || header[2] != 0x27U || header[3] != 0x93U) return false;
-    if (header[0] == 0x28U || header[0] == 0x2aU) return cpx_parse_v1(format, size, header, result);
+    if (header[0] == 0x28U || header[0] == 0x2aU) return cpx_parse_v1(format, size, header, CPX_V1_HEADER_SIZE, result);
+    /* 0x29 is the v1 directory behind eight more header bytes (a short
+     * label such as "great"): count at +0x0C, records at +0x0E. */
+    if (header[0] == 0x29U) {
+        if (size < CPX_V1_EXT_HEADER_SIZE + CPX_V1_RECORD_SIZE) return false;
+        return cpx_parse_v1(format, size, header, CPX_V1_EXT_HEADER_SIZE, result);
+    }
     if (header[0] == 0x2cU) {
         if (size < CPX_V4_HEADER_SIZE) return false;
         return cpx_parse_v4(format, size, header, result);

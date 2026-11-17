@@ -224,21 +224,33 @@ bool xx_ampk_lzss_decode_memory(const uint8_t *input, size_t input_size, uint8_t
 
 bool xx_ampk_lzari_decode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written)
 {
+    return xx_ampk_lzari_decode_memory_ex(input, input_size, output, output_size, written, NULL);
+}
+
+/* As above, and reports the bytes the arithmetic decoder actually fetched
+ * (ceil(bits read / 8), the 17-bit preload included even for an empty
+ * member): containers that store no packed size place the next record there. */
+bool xx_ampk_lzari_decode_memory_ex(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, size_t *consumed)
+{
     ampk_lzari *state;
     size_t output_position = 0U;
     unsigned ring_position = AMPK_RING_SIZE - AMPK_LZARI_F;
     bool result = false;
     if (written) *written = 0U;
+    if (consumed) *consumed = 0U;
     if ((!input && input_size != 0U) || (!output && output_size != 0U) || output_size > AMPK_MAX_OUTPUT) return false;
-    if (output_size == 0U) return true;
+    if (output_size == 0U) {
+        if (consumed) *consumed = (AMPK_LZARI_M + 2U + 7U) / 8U;
+        return true;
+    }
     if (input_size == 0U) return false;
     state = (ampk_lzari *)xx_mem_calloc(1U, sizeof(*state));
     if (!state) return false;
     ampk_lzari_start(state, input, input_size);
     while (output_position < output_size && !state->bits.overflow) {
-        size_t consumed = ampk_consumed_size(&state->bits);
+        size_t fetched = ampk_consumed_size(&state->bits);
         int character;
-        if (consumed > input_size && consumed - input_size > 8U) goto done;
+        if (fetched > input_size && fetched - input_size > 8U) goto done;
         character = ampk_lzari_decode_char(state);
         if (character < 0 || character >= (int)AMPK_LZARI_NCHAR) goto done;
         if (character < 256) {
@@ -263,6 +275,7 @@ bool xx_ampk_lzari_decode_memory(const uint8_t *input, size_t input_size, uint8_
     result = !state->bits.overflow && output_position == output_size;
 done:
     if (written) *written = output_position;
+    if (consumed) *consumed = ampk_consumed_size(&state->bits);
     xx_mem_free(state);
     return result;
 }

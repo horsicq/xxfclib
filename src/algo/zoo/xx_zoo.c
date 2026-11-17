@@ -234,7 +234,13 @@ bool xx_zoo_lzd_decode_memory(const uint8_t *input, size_t input_size, uint8_t *
      * match the size the directory entry promised -- a short decode reported
      * as success is exactly what a caller cannot detect.
      */
-    ok = initial_clear_seen && eof_seen && (bits.cache == 0U) && (bits.position == input_size) && (produced == output_size);
+    ok = initial_clear_seen && eof_seen && (bits.cache == 0U) &&
+         ((bits.position == input_size) ||
+          /* When the end code finishes exactly on a byte boundary the
+           * encoder's final flush still writes one (zero) byte; that byte,
+           * and only that one, is part of the member. */
+          (bits.available == 0 && bits.position + 1U == input_size && input[input_size - 1U] == 0U)) &&
+         (produced == output_size);
 
 done:
     xx_mem_free(tables);

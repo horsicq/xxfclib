@@ -227,17 +227,23 @@ static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size)
 /* ========================================================================= */
 
 /* One 32-bit entry per table slot (libdeflate-style layout):
- *   bits  0..5  bits the fast loop consumes for this entry (<= 31): the
+ *   bits  0..7  bits the fast loop consumes for this entry (<= 31): the
  *               code length (plus the extra bits of a length/distance
  *               code); the main table bits for a sub-table link. In a
  *               sub-table the code length counts only the bits past the
- *               main table.
- *   bit   7     LITERAL (literal/length and code-length tables only)
+ *               main table. Nothing else lives in this byte, so the fast
+ *               loop may subtract whole entries from its bit count.
  *   bits  8..12 code length (as above, without extra bits), or the index
  *               bits of the linked sub-table
  *   bit  13     end of block, bit 14 sub-table link, bit 15 EXCEPTIONAL
  *               (end of block, sub-table link, or BAD when alone)
  *   bits 16..31 literal byte, length/distance base or sub-table offset
+ *   bit  30     SPECULATED: a main-table literal of the block's speculated
+ *               length (literal/length tables of dynamic blocks only)
+ *   bit  31     LITERAL (literal/length and code-length tables only, where
+ *               values stay below 2^14); a distance base may use bits 30
+ *               and 31, so distance entries are never classified by
+ *               XX_HE_KIND
  * A length/distance entry is consumed with one shift; its extra bits are
  * (saved & mask(total)) >> code length of the bits before the shift.
  * Unused codes of an incomplete code resolve to BAD. */
@@ -247,10 +253,11 @@ static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size)
 #define XX_HK_EOB 2U
 #define XX_HK_SUB 3U
 #define XX_HK_BAD 4U
-#define XX_HF_LIT 0x80U
+#define XX_HF_LIT 0x80000000U
 #define XX_HF_EOB 0x2000U
 #define XX_HF_SUB 0x4000U
 #define XX_HF_EXC 0x8000U
+#define XX_HF_SPEC 0x40000000U
 /* Symbol information: flags, value and the extra-bit count in bits 0..5;
  * a table entry adds the code length to the total and the length field. */
 #define XX_HI_LIT(v) (XX_HF_LIT | ((uint32_t)(v) << 16))
@@ -276,6 +283,12 @@ static inline unsigned XX_HE_KIND(uint32_t e)
 #define XX_DEC_LIT_BITS 11U
 #define XX_DEC_DIST_BITS 9U
 #define XX_DEC_CLEN_BITS 7U
+/* The literal length the speculative fast loop is built for, and the
+ * share of the code space (in 16ths) its literals must cover. */
+#define XX_DEC_SPEC_BITS 8U
+#ifndef XX_DEC_SPEC_MIN16
+#define XX_DEC_SPEC_MIN16 15U
+#endif
 #define XX_DEC_LIT_MASK ((1U << XX_DEC_LIT_BITS) - 1U)
 #define XX_DEC_DIST_MASK ((1U << XX_DEC_DIST_BITS) - 1U)
 /* Every long code shares its main-table prefix with at most all other long
@@ -341,75 +354,110 @@ static void xx_dec_state_init(xx_dec_state *st, bool is_deflate64)
     st->fixed_built = false;
 }
 
-static inline unsigned xx_dec_bsr32(uint32_t v)
-{
-#if defined(_MSC_VER)
-    unsigned long index;
-    (void)_BitScanReverse(&index, v);
-    return (unsigned)index;
-#elif defined(__GNUC__) || defined(__clang__)
-    return 31U - (unsigned)__builtin_clz(v);
-#else
-    unsigned r = 0U;
-    while (v >>= 1) ++r;
-    return r;
-#endif
-}
+static const uint8_t g_dec_rev8[256] = {
+    0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
+    0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
+    0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
+    0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
+    0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
+    0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
+    0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
+    0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
+    0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
+    0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
+    0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
+    0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
+    0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
+    0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
+    0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
+    0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF,
+};
 
+/* The low len (1..15) bits of code, bit-reversed; no loop-carried chain. */
 static inline unsigned xx_dec_reverse(unsigned code, unsigned len)
 {
-    unsigned r = 0U;
-    while (len-- != 0U) {
-        r = (r << 1) | (code & 1U);
-        code >>= 1;
-    }
-    return r;
+    unsigned r = ((unsigned)g_dec_rev8[code & 0xFFU] << 8) | g_dec_rev8[(code >> 8) & 0xFFU];
+    return r >> (16U - len);
 }
 
 /* Same acceptance as the canonical builder it replaces: lengths <= 15 and a
  * code space that is not over-subscribed; incomplete codes are accepted and
- * their unused slots decode as BAD. */
+ * their unused slots decode as BAD. Main-table literals of length spec
+ * (1..table_bits; 0 = none) are flagged XX_HF_SPEC (a literal's info has
+ * XX_HF_LIT = 2 * XX_HF_SPEC, other symbols have neither bit).
+ * The symbols are counted and sorted in four contiguous quarters with their
+ * own counters, so that runs of equal lengths do not serialise on one
+ * counter's store-to-load chain; the quarters are placed in order, so each
+ * length group stays in symbol order. A code is first[len] plus its rank in
+ * its length group. */
 static bool xx_htab_build(uint32_t *table, size_t capacity, unsigned table_bits, const uint8_t *lengths, unsigned num_symbols, const uint32_t *info,
-                          uint8_t *out_max_bits)
+                          unsigned spec, uint8_t *out_max_bits)
 {
+    uint16_t qcount[4][XX_DEFLATE_MAX_BITS + 1];
+    uint16_t qpos[4][XX_DEFLATE_MAX_BITS + 1];
     uint16_t count[XX_DEFLATE_MAX_BITS + 1];
-    uint16_t offset[XX_DEFLATE_MAX_BITS + 2];
+    uint16_t start[XX_DEFLATE_MAX_BITS + 2];
+    uint16_t first[XX_DEFLATE_MAX_BITS + 1];
     uint16_t sorted[288];
-    uint16_t codes[288];
-    uint32_t next_code[XX_DEFLATE_MAX_BITS + 1];
+    unsigned qb[5];
     uint32_t code_space = 0U, cur = 0U;
-    unsigned i, len, max_bits = 0U, total, main_size = 1U << table_bits;
+    unsigned i, j, len, max_bits = 0U, total, main_size = 1U << table_bits, any = 0U, qmin;
     size_t next_sub = main_size;
     bool complete;
 
-    xx_rt_memset(count, 0, sizeof(count));
-    for (i = 0U; i < num_symbols; ++i) {
-        if (lengths[i] > XX_DEFLATE_MAX_BITS) return false;
-        count[lengths[i]]++;
+#define XX_HTAB_CODE(k, l) ((unsigned)first[(l)] + ((unsigned)(k) - start[(l)]))
+    {
+        unsigned q = (num_symbols + 3U) / 4U;
+        for (j = 0U; j < 5U; ++j) qb[j] = j * q < num_symbols ? j * q : num_symbols;
     }
+    qmin = qb[4] - qb[3]; /* the last quarter is the shortest */
+    xx_rt_memset(qcount, 0, sizeof(qcount));
+    for (i = 0U; i < qmin; ++i) {
+        unsigned a = lengths[qb[0] + i], b = lengths[qb[1] + i], c = lengths[qb[2] + i], d = lengths[qb[3] + i];
+        any |= a | b | c | d;
+        qcount[0][a & 15U]++;
+        qcount[1][b & 15U]++;
+        qcount[2][c & 15U]++;
+        qcount[3][d & 15U]++;
+    }
+    for (j = 0U; j < 3U; ++j)
+        for (i = qb[j] + qmin; i < qb[j + 1U]; ++i) {
+            any |= lengths[i];
+            qcount[j][lengths[i] & 15U]++;
+        }
+    if (any > XX_DEFLATE_MAX_BITS) return false;
     count[0] = 0U;
     for (len = 1U; len <= XX_DEFLATE_MAX_BITS; ++len) {
+        count[len] = (uint16_t)(qcount[0][len] + qcount[1][len] + qcount[2][len] + qcount[3][len]);
         code_space = (code_space << 1) + count[len];
         if (count[len] != 0U) max_bits = len;
     }
     if (code_space > (1U << XX_DEFLATE_MAX_BITS)) return false;
 
-    offset[1] = 0U;
-    for (len = 1U; len <= XX_DEFLATE_MAX_BITS; ++len) offset[len + 1U] = (uint16_t)(offset[len] + count[len]);
-    total = offset[XX_DEFLATE_MAX_BITS + 1U];
-    next_code[0] = 0U;
+    start[1] = 0U;
+    for (len = 1U; len <= XX_DEFLATE_MAX_BITS; ++len) start[len + 1U] = (uint16_t)(start[len] + count[len]);
+    total = start[XX_DEFLATE_MAX_BITS + 1U];
+    first[0] = 0U;
     for (len = 1U; len <= XX_DEFLATE_MAX_BITS; ++len) {
         cur = (cur + count[len - 1U]) << 1;
-        next_code[len] = cur;
+        first[len] = (uint16_t)cur;
     }
-    for (i = 0U; i < num_symbols; ++i) {
-        len = lengths[i];
-        if (len != 0U) {
-            sorted[offset[len]] = (uint16_t)i;
-            codes[offset[len]] = (uint16_t)next_code[len]++;
-            offset[len]++;
+    /* Unused (length 0) symbols are parked after the coded ones. */
+    for (len = 0U; len <= XX_DEFLATE_MAX_BITS; ++len) {
+        unsigned p = len != 0U ? start[len] : total;
+        for (j = 0U; j < 4U; ++j) {
+            qpos[j][len] = (uint16_t)p;
+            p += qcount[j][len];
         }
     }
+    for (i = 0U; i < qmin; ++i) {
+        sorted[qpos[0][lengths[qb[0] + i]]++] = (uint16_t)(qb[0] + i);
+        sorted[qpos[1][lengths[qb[1] + i]]++] = (uint16_t)(qb[1] + i);
+        sorted[qpos[2][lengths[qb[2] + i]]++] = (uint16_t)(qb[2] + i);
+        sorted[qpos[3][lengths[qb[3] + i]]++] = (uint16_t)(qb[3] + i);
+    }
+    for (j = 0U; j < 3U; ++j)
+        for (i = qb[j] + qmin; i < qb[j + 1U]; ++i) sorted[qpos[j][lengths[i]]++] = (uint16_t)i;
 
     /* A complete code assigns every slot; only incomplete ones need BAD fill. */
     complete = code_space == (1U << XX_DEFLATE_MAX_BITS);
@@ -417,35 +465,28 @@ static bool xx_htab_build(uint32_t *table, size_t capacity, unsigned table_bits,
     if (!complete) {
         unsigned k;
         for (k = 0U; k < main_size; ++k) table[k] = XX_HI_BAD;
-    } else if (offset[table_bits] != 0U) {
-        /* Complete code: the main-table codes (offset[table_bits] of them
-         * after the sort) are stored once each at their bit-reversed
-         * codeword in the first 2^len slots, and that prefix is doubled
-         * whenever the length grows (libdeflate's fill), so the stores are
-         * sequential copies instead of 2^(bits - len) strided ones. The
-         * slots of long-code prefixes are set by the sub-table links below. */
-        unsigned nshort = offset[table_bits], codeword = 0U, end;
+    } else if (start[table_bits + 1U] != 0U) {
+        /* Complete code: the main-table codes of each length are stored
+         * once each at their bit-reversed codeword in the first 2^len
+         * slots, and that prefix is doubled whenever the length grows
+         * (libdeflate's fill), so the stores are sequential copies instead
+         * of 2^(bits - len) strided ones. The slots of long-code prefixes
+         * are set by the sub-table links below. */
+        unsigned end;
         len = lengths[sorted[0]];
         end = 1U << len;
-        for (; i < nshort; ++i) {
-            unsigned sym = sorted[i], bit;
-            while (len < lengths[sym]) {
-                memcpy(table + end, table, end * sizeof(*table));
-                end <<= 1;
-                ++len;
+        for (;;) {
+            unsigned k, kend = start[len + 1U], code = first[len];
+            uint32_t flag = len == spec ? XX_HF_SPEC : 0U;
+            for (k = start[len]; k < kend; ++k, ++code) {
+                uint32_t sym_info = info[sorted[k]];
+                table[xx_dec_reverse(code, len)] = XX_HE_ADD_LEN(sym_info, len) | ((sym_info >> 1) & flag);
             }
-            table[codeword] = XX_HE_ADD_LEN(info[sym], len);
-            if (codeword == end - 1U) {
-                ++i;
-                break; /* all-ones: the last code */
-            }
-            bit = 1U << xx_dec_bsr32(codeword ^ (end - 1U));
-            codeword = (codeword & (bit - 1U)) | bit;
-        }
-        while (end < main_size) {
+            if (++len > table_bits) break;
             memcpy(table + end, table, end * sizeof(*table));
             end <<= 1;
         }
+        i = start[table_bits + 1U];
     }
 
     for (; i < total;) {
@@ -453,15 +494,19 @@ static bool xx_htab_build(uint32_t *table, size_t capacity, unsigned table_bits,
         len = lengths[sym];
         if (len <= table_bits) {
             unsigned idx;
-            uint32_t entry = XX_HE_ADD_LEN(info[sym], len);
-            for (idx = xx_dec_reverse(codes[i], len); idx < main_size; idx += 1U << len) table[idx] = entry;
+            uint32_t entry = XX_HE_ADD_LEN(info[sym], len) | ((info[sym] >> 1) & (len == spec ? XX_HF_SPEC : 0U));
+            for (idx = xx_dec_reverse(XX_HTAB_CODE(i, len), len); idx < main_size; idx += 1U << len) table[idx] = entry;
             ++i;
         } else {
             /* Canonical long codes sharing a main-table prefix are adjacent;
              * the last of the group is its longest. */
-            unsigned prefix = (unsigned)codes[i] >> (len - table_bits);
+            unsigned prefix = XX_HTAB_CODE(i, len) >> (len - table_bits);
             unsigned last = i, sub_bits, sub_size, k;
-            while (last + 1U < total && ((unsigned)codes[last + 1U] >> (lengths[sorted[last + 1U]] - table_bits)) == prefix) ++last;
+            while (last + 1U < total) {
+                unsigned next_len = lengths[sorted[last + 1U]];
+                if ((XX_HTAB_CODE(last + 1U, next_len) >> (next_len - table_bits)) != prefix) break;
+                ++last;
+            }
             sub_bits = lengths[sorted[last]] - table_bits;
             sub_size = 1U << sub_bits;
             if (next_sub + sub_size > capacity) return false; /* unreachable by the size bounds */
@@ -474,12 +519,13 @@ static bool xx_htab_build(uint32_t *table, size_t capacity, unsigned table_bits,
                 sym = sorted[i];
                 len = lengths[sym];
                 rest = len - table_bits;
-                for (idx = xx_dec_reverse(codes[i] & ((1U << rest) - 1U), rest); idx < sub_size; idx += 1U << rest)
+                for (idx = xx_dec_reverse(XX_HTAB_CODE(i, len) & ((1U << rest) - 1U), rest); idx < sub_size; idx += 1U << rest)
                     table[next_sub + idx] = XX_HE_ADD_LEN(info[sym], rest);
             }
             next_sub += sub_size;
         }
     }
+#undef XX_HTAB_CODE
     *out_max_bits = (uint8_t)max_bits;
     return true;
 }
@@ -531,8 +577,8 @@ static void xx_dec_build_fixed(xx_dec_state *st)
     for (i = 256; i <= 279; ++i) lit_lens[i] = 7;
     for (i = 280; i <= 287; ++i) lit_lens[i] = 8;
     for (i = 0; i < 32; ++i) dist_lens[i] = 5;
-    (void)xx_htab_build(st->fixed_lit, XX_ARRAYSIZE_DEC(st->fixed_lit), XX_DEC_LIT_BITS, lit_lens, 288U, st->lit_info, &st->fixed_lit_max);
-    (void)xx_htab_build(st->fixed_dist, XX_ARRAYSIZE_DEC(st->fixed_dist), XX_DEC_DIST_BITS, dist_lens, 32U, st->dist_info, &st->fixed_dist_max);
+    (void)xx_htab_build(st->fixed_lit, XX_ARRAYSIZE_DEC(st->fixed_lit), XX_DEC_LIT_BITS, lit_lens, 288U, st->lit_info, 0U, &st->fixed_lit_max);
+    (void)xx_htab_build(st->fixed_dist, XX_ARRAYSIZE_DEC(st->fixed_dist), XX_DEC_DIST_BITS, dist_lens, 32U, st->dist_info, 0U, &st->fixed_dist_max);
     st->fixed_built = true;
 }
 
@@ -876,6 +922,57 @@ static XX_DEFLATE_DEC_INLINE void xx_dec_copy_avx2(uint8_t *dst, size_t distance
 }
 #endif
 
+#ifdef XX_DEFLATE_DEC_BMI2
+/* The AVX2 copy with 128-bit operations only: Zen 1 splits 256-bit ones
+ * anyway, and a loop free of YMM registers needs no VZEROUPPER on its back
+ * edge (MSVC places one there before the calls of the loop). The same
+ * bytes are stored as by xx_dec_copy_avx2, including the slack. */
+XX_DEFLATE_DEC_TARGET_AVX2
+static XX_DEFLATE_DEC_INLINE void xx_dec_copy_x128(uint8_t *dst, size_t distance, size_t length)
+{
+    const uint8_t *src = dst - distance;
+    uint8_t *end = dst + length;
+    if (distance >= 16U) {
+        _mm_storeu_si128((__m128i *)(void *)dst, _mm_loadu_si128((const __m128i *)(const void *)src));
+        _mm_storeu_si128((__m128i *)(void *)(dst + 16), _mm_loadu_si128((const __m128i *)(const void *)(src + 16)));
+        dst += 32U;
+        src += 32U;
+        if (dst < end) {
+            if (distance >= 32U) {
+                do {
+                    __m128i a = _mm_loadu_si128((const __m128i *)(const void *)src);
+                    __m128i b = _mm_loadu_si128((const __m128i *)(const void *)(src + 16));
+                    _mm_storeu_si128((__m128i *)(void *)dst, a);
+                    _mm_storeu_si128((__m128i *)(void *)(dst + 16), b);
+                    dst += 32U;
+                    src += 32U;
+                } while (dst < end);
+            } else {
+                do {
+                    _mm_storeu_si128((__m128i *)(void *)dst, _mm_loadu_si128((const __m128i *)(const void *)src));
+                    dst += 16U;
+                    src += 16U;
+                } while (dst < end);
+            }
+        }
+    } else if (distance == 1U) {
+        __m128i value = _mm_set1_epi8((char)src[0]);
+        do {
+            _mm_storeu_si128((__m128i *)(void *)dst, value);
+            dst += 16U;
+        } while (dst < end);
+    } else {
+        __m128i value = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)src),
+                                         _mm_loadu_si128((const __m128i *)(const void *)g_dec_pattern[distance]));
+        size_t step = g_dec_step[distance];
+        do {
+            _mm_storeu_si128((__m128i *)(void *)dst, value);
+            dst += step;
+        } while (dst < end);
+    }
+}
+#endif
+
 #ifdef XX_DEFLATE_DEC_NEON
 static XX_DEFLATE_DEC_INLINE void xx_dec_copy_neon(uint8_t *dst, size_t distance, size_t length)
 {
@@ -904,58 +1001,194 @@ static XX_DEFLATE_DEC_INLINE void xx_dec_copy_neon(uint8_t *dst, size_t distance
 
 typedef int (*xx_dec_fast_fn)(const uint32_t *, const uint32_t *, xx_bit_reader *, xx_out_lin *);
 
-#define XXDF_NAME xx_dec_fast_scalar
+/* Every backend has a plain instance and a speculative one (XXDF_SPEC, for
+ * blocks whose literals are mostly XX_DEC_SPEC_BITS long; see the loop). */
+typedef struct {
+    xx_dec_fast_fn plain;
+    xx_dec_fast_fn spec;
+} xx_dec_fast_pair;
+
+/* Plain shifts; the BMI2 instances replace them (see the fast loop). */
+#define XXDF_SHL(v, n) ((v) << ((n) & 63U))
+#define XXDF_SHR(v, e) ((v) >> XX_HE_TOTAL(e))
+#define XXDF_EXTRA(e) ((size_t)(((uint32_t)saved & ((1U << XX_HE_TOTAL(e)) - 1U)) >> XX_HE_CL(e)))
+
 #define XXDF_ATTR
 #define XXDF_COPY xx_dec_copy_scalar
+#define XXDF_NAME xx_dec_fast_scalar
 #include "platforms/xx_deflate_dec_fast.inc"
 #undef XXDF_NAME
+#define XXDF_SPEC
+#define XXDF_NAME xx_dec_fast_scalar_spec
+#include "platforms/xx_deflate_dec_fast.inc"
+#undef XXDF_NAME
+#undef XXDF_SPEC
 #undef XXDF_ATTR
 #undef XXDF_COPY
 
 #ifdef XX_DEFLATE_DEC_X86
-#define XXDF_NAME xx_dec_fast_sse2
 #define XXDF_ATTR XX_DEFLATE_DEC_TARGET_SSE2
 #define XXDF_COPY xx_dec_copy_sse2
+#define XXDF_NAME xx_dec_fast_sse2
 #include "platforms/xx_deflate_dec_fast.inc"
 #undef XXDF_NAME
+#define XXDF_SPEC
+#define XXDF_NAME xx_dec_fast_sse2_spec
+#include "platforms/xx_deflate_dec_fast.inc"
+#undef XXDF_NAME
+#undef XXDF_SPEC
 #undef XXDF_ATTR
 #undef XXDF_COPY
 
-#define XXDF_NAME xx_dec_fast_avx2
 #define XXDF_ATTR XX_DEFLATE_DEC_TARGET_AVX2
 #define XXDF_COPY xx_dec_copy_avx2
+#define XXDF_NAME xx_dec_fast_avx2
 #include "platforms/xx_deflate_dec_fast.inc"
 #undef XXDF_NAME
+#define XXDF_SPEC
+#define XXDF_NAME xx_dec_fast_avx2_spec
+#include "platforms/xx_deflate_dec_fast.inc"
+#undef XXDF_NAME
+#undef XXDF_SPEC
 #undef XXDF_ATTR
 #undef XXDF_COPY
 #endif
 
 #ifdef XX_DEFLATE_DEC_NEON
-#define XXDF_NAME xx_dec_fast_neon
 #define XXDF_ATTR
 #define XXDF_COPY xx_dec_copy_neon
+#define XXDF_NAME xx_dec_fast_neon
 #include "platforms/xx_deflate_dec_fast.inc"
 #undef XXDF_NAME
+#define XXDF_SPEC
+#define XXDF_NAME xx_dec_fast_neon_spec
+#include "platforms/xx_deflate_dec_fast.inc"
+#undef XXDF_NAME
+#undef XXDF_SPEC
 #undef XXDF_ATTR
 #undef XXDF_COPY
+#endif
+
+#ifdef XX_DEFLATE_DEC_BMI2
+/* The bit-buffer shifts sit on the loop's critical path (table load ->
+ * shift -> mask -> next table load). SHRX takes its count modulo 64 from
+ * the entry itself, which saves the move/zero-extension into CL. */
+#undef XXDF_SHL
+#undef XXDF_SHR
+#undef XXDF_EXTRA
+#if defined(_MSC_VER) && !defined(__clang__)
+#define XXDF_SHL(v, n) _shlx_u64((v), (unsigned)(n))
+#define XXDF_SHR(v, e) _shrx_u64((v), (unsigned)(e))
+/* BZHI keeps the low (e & 0xFF) = total bits; SHRX by (e >> 8) mod 32
+ * drops the code length. */
+#define XXDF_EXTRA(e) ((size_t)_shrx_u32(_bzhi_u32((uint32_t)saved, (e)), (e) >> 8))
+#else
+/* GCC and Clang have no SHLX/SHRX intrinsics; with the BMI2 target they
+ * emit them for masked shift counts. */
+#define XXDF_SHL(v, n) ((v) << ((n) & 63U))
+#define XXDF_SHR(v, e) ((v) >> ((e) & 63U))
+#define XXDF_EXTRA(e) ((size_t)(_bzhi_u32((uint32_t)saved, (e)) >> (((e) >> 8) & 31U)))
+#endif
+#define XXDF_ATTR XX_DEFLATE_DEC_TARGET_AVX2_BMI2
+#define XXDF_COPY xx_dec_copy_x128
+#define XXDF_NAME xx_dec_fast_avx2_bmi2
+#include "platforms/xx_deflate_dec_fast.inc"
+#undef XXDF_NAME
+#define XXDF_SPEC
+#define XXDF_NAME xx_dec_fast_avx2_bmi2_spec
+#include "platforms/xx_deflate_dec_fast.inc"
+#undef XXDF_NAME
+#undef XXDF_SPEC
+#undef XXDF_ATTR
+#undef XXDF_COPY
+
+/* CPUID.(EAX=7,ECX=0):EBX bit 8; only the immutable capability is cached. */
+static bool xx_dec_has_bmi2(void)
+{
+#if defined(_MSC_VER)
+    static volatile long capability = 0;
+    long value = _InterlockedCompareExchange(&capability, 0, 0);
+    if (value == 0) {
+        int info[4];
+        bool supported = false;
+        __cpuid(info, 0);
+        if (info[0] >= 7) {
+            __cpuidex(info, 7, 0);
+            supported = (info[1] & (1 << 8)) != 0;
+        }
+        value = supported ? 2 : 1;
+        _InterlockedCompareExchange(&capability, value, 0);
+    }
+    return value == 2;
+#elif defined(__GNUC__) || defined(__clang__)
+    static int capability = 0;
+    int value = __atomic_load_n(&capability, __ATOMIC_RELAXED);
+    if (value == 0) {
+        unsigned eax, ebx, ecx, edx;
+        value = __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx) && (ebx & (1U << 8)) ? 2 : 1;
+        __atomic_store_n(&capability, value, __ATOMIC_RELAXED);
+    }
+    return value == 2;
+#else
+    return false;
+#endif
+}
 #endif
 
 /* Respects the acceleration switches; resolved once per stream. */
-static xx_dec_fast_fn xx_dec_select_fast(void)
+static xx_dec_fast_pair xx_dec_select_fast(void)
 {
+    xx_dec_fast_pair pair;
+    pair.plain = xx_dec_fast_scalar;
+    pair.spec = xx_dec_fast_scalar_spec;
 #ifdef XX_DEFLATE_DEC_X86
-    if (xx_is_avx2_enabled()) return xx_dec_fast_avx2;
-    if (xx_is_sse2_enabled()) return xx_dec_fast_sse2;
+#ifdef XX_DEFLATE_DEC_BMI2
+    if (xx_is_avx2_enabled() && xx_dec_has_bmi2()) {
+        pair.plain = xx_dec_fast_avx2_bmi2;
+        pair.spec = xx_dec_fast_avx2_bmi2_spec;
+        return pair;
+    }
+#endif
+    if (xx_is_avx2_enabled()) {
+        pair.plain = xx_dec_fast_avx2;
+        pair.spec = xx_dec_fast_avx2_spec;
+        return pair;
+    }
+    if (xx_is_sse2_enabled()) {
+        pair.plain = xx_dec_fast_sse2;
+        pair.spec = xx_dec_fast_sse2_spec;
+        return pair;
+    }
 #endif
 #ifdef XX_DEFLATE_DEC_NEON
-    if (xx_is_neon_enabled()) return xx_dec_fast_neon;
+    if (xx_is_neon_enabled()) {
+        pair.plain = xx_dec_fast_neon;
+        pair.spec = xx_dec_fast_neon_spec;
+    }
 #endif
-    return xx_dec_fast_scalar;
+    return pair;
 }
 
 /* ========================================================================= */
 /* --- Decompression Engine Core                                         --- */
 /* ========================================================================= */
+
+/* Whether a dynamic block runs the speculative fast loop: its literals of
+ * XX_DEC_SPEC_BITS bits carry at least 15/16 of the probability that the
+ * code implies (2^-len per codeword), so that three literals in a row have
+ * that length most of the time, as in data that barely compresses. Only
+ * speed depends on it. Four counters keep the sums independent. */
+static bool xx_dec_speculate(const uint8_t *lit_lens)
+{
+    unsigned i, c0 = 0U, c1 = 0U, c2 = 0U, c3 = 0U;
+    for (i = 0U; i < 256U; i += 4U) {
+        c0 += lit_lens[i] == XX_DEC_SPEC_BITS;
+        c1 += lit_lens[i + 1U] == XX_DEC_SPEC_BITS;
+        c2 += lit_lens[i + 2U] == XX_DEC_SPEC_BITS;
+        c3 += lit_lens[i + 3U] == XX_DEC_SPEC_BITS;
+    }
+    return ((uint32_t)(c0 + c1 + c2 + c3) << (XX_DEFLATE_MAX_BITS - XX_DEC_SPEC_BITS)) >= (XX_DEC_SPEC_MIN16 << (XX_DEFLATE_MAX_BITS - 4U));
+}
 
 /* Decodes Huffman block symbols up to the end-of-block code. The unchecked
  * loop runs while input and output room allow; near either end each symbol
@@ -985,7 +1218,8 @@ static bool xx_dec_huffman_block(const uint32_t *lit_table, unsigned lit_max, co
             size_t length = (size_t)(entry >> 16) + (extra != 0U ? (size_t)xx_br_read(reader, (int)extra) : 0U);
             size_t distance;
             entry = xx_htab_decode(dist_table, XX_DEC_DIST_BITS, dist_max, reader);
-            if (XX_HE_KIND(entry) != XX_HK_LEN) return false;
+            /* A resolved distance entry is a value or BAD (EXCEPTIONAL). */
+            if (entry & XX_HF_EXC) return false;
             extra = XX_HE_EXTRA(entry);
             distance = (size_t)(entry >> 16) + (extra != 0U ? (size_t)xx_br_read(reader, (int)extra) : 0U);
             if (distance == 0U || distance > out->win_size || distance > (size_t)(out->pos - out->base)) return false;
@@ -1002,7 +1236,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
     size_t win_size = xx_deflate_resolve_window(is_deflate64, window_size);
     xx_out_lin out;
     xx_dec_state *st;
-    xx_dec_fast_fn fast;
+    xx_dec_fast_pair fast;
     int pd_level = -1;
     bool success = true;
     bool bfinal = false;
@@ -1067,6 +1301,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
             /* Block Type 1 (Fixed) or Type 2 (Dynamic) */
             const uint32_t *lit_table, *dist_table;
             unsigned lit_max, dist_max;
+            bool spec = false;
 
             if (btype == 1) {
                 if (!st->fixed_built) xx_dec_build_fixed(st);
@@ -1094,7 +1329,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                 for (i = 0; i < hclen; ++i) {
                     clen_lens[g_cll_order[i]] = (uint8_t)xx_br_read(reader, 3);
                 }
-                if (!xx_htab_build(st->clen, XX_ARRAYSIZE_DEC(st->clen), XX_DEC_CLEN_BITS, clen_lens, XX_DEFLATE_MAX_CLEN_CODES, st->clen_info, &st->clen_max)) {
+                if (!xx_htab_build(st->clen, XX_ARRAYSIZE_DEC(st->clen), XX_DEC_CLEN_BITS, clen_lens, XX_DEFLATE_MAX_CLEN_CODES, st->clen_info, 0U, &st->clen_max)) {
                     success = false;
                     break;
                 }
@@ -1102,7 +1337,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                 total_codes = hlit + hdist;
                 while (code_idx < total_codes) {
                     uint32_t entry = xx_htab_decode(st->clen, XX_DEC_CLEN_BITS, st->clen_max, reader);
-                    uint32_t sym = entry >> 16;
+                    uint32_t sym = (entry >> 16) & 0xFFU; /* without the LITERAL flag */
                     if (XX_HE_KIND(entry) != XX_HK_LIT) {
                         success = false;
                         break;
@@ -1142,8 +1377,10 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                 }
                 if (!success) break;
 
-                if (!xx_htab_build(st->lit, XX_ARRAYSIZE_DEC(st->lit), XX_DEC_LIT_BITS, lit_dist_lens, hlit, st->lit_info, &st->lit_max) ||
-                    !xx_htab_build(st->dist, XX_ARRAYSIZE_DEC(st->dist), XX_DEC_DIST_BITS, lit_dist_lens + hlit, hdist, st->dist_info, &st->dist_max)) {
+                spec = xx_dec_speculate(lit_dist_lens);
+                if (!xx_htab_build(st->lit, XX_ARRAYSIZE_DEC(st->lit), XX_DEC_LIT_BITS, lit_dist_lens, hlit, st->lit_info, spec ? XX_DEC_SPEC_BITS : 0U,
+                                   &st->lit_max) ||
+                    !xx_htab_build(st->dist, XX_ARRAYSIZE_DEC(st->dist), XX_DEC_DIST_BITS, lit_dist_lens + hlit, hdist, st->dist_info, 0U, &st->dist_max)) {
                     success = false;
                     break;
                 }
@@ -1153,7 +1390,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                 dist_max = st->dist_max;
             }
 
-            if (!xx_dec_huffman_block(lit_table, lit_max, dist_table, dist_max, reader, &out, fast)) {
+            if (!xx_dec_huffman_block(lit_table, lit_max, dist_table, dist_max, reader, &out, spec ? fast.spec : fast.plain)) {
                 success = false;
                 break;
             }

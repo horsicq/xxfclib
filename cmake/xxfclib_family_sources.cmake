@@ -468,6 +468,7 @@ set(XXFCLIB_FAMILY_RUNTIME_SOURCES
     src/codepages/xx_codepage_riscos.c
     src/codepages/xx_codepage_tis_620.c
     src/codepages/xx_codepage_unicode.c
+    src/codepages/xx_codepage_whatwg.c
     src/data/platforms/xx_data_avx2.c
     src/data/platforms/xx_data_neon.c
     src/data/platforms/xx_data_sse2.c
@@ -528,9 +529,16 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/arcv4
     src/algo/arj
     src/algo/ash0
+    src/algo/asn1
     src/algo/asymetrix
+    src/algo/base64
+    src/algo/bignum
     src/algo/blake2
     src/algo/brotli
+    src/algo/byteset/platforms
+    src/algo/byteset
+    src/algo/bytestats/platforms
+    src/algo/bytestats
     src/algo/bzip2
     src/algo/c64wraptor
     src/algo/charc
@@ -544,12 +552,16 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/corelltec
     src/algo/crc/platforms
     src/algo/crc
+    src/algo/csdpack
     src/algo/dcl
     src/algo/deflate/platforms
     src/algo/deflate
     src/algo/diskdoubler
+    src/algo/dsa
     src/algo/ea
+    src/algo/ec
     src/algo/eid
+    src/algo/entropy
     src/algo/flslz
     src/algo/fpak
     src/algo/ftcomp
@@ -568,6 +580,8 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/kolibrikpack
     src/algo/kpa
     src/algo/lim
+    src/algo/literal
+    src/algo/literal_nocase
     src/algo/lizard
     src/algo/lofi
     src/algo/lz4
@@ -587,6 +601,9 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/lzw15v
     src/algo/lzwvariants
     src/algo/lzx
+    src/algo/maskscan/platforms
+    src/algo/maskscan
+    src/algo/md2
     src/algo/md5
     src/algo/mi10
     src/algo/mscompress
@@ -599,6 +616,8 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/panorama
     src/algo/pcommos2
     src/algo/pcsecure
+    src/algo/pkcs7
+    src/algo/pki
     src/algo/pkt
     src/algo/ppmd7
     src/algo/ppmd8
@@ -610,6 +629,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/rid
     src/algo/ripemd256
     src/algo/rompaq
+    src/algo/rsa
     src/algo/rsvk
     src/algo/rtpatch
     src/algo/saf
@@ -617,6 +637,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/sfpack
     src/algo/sha/platforms
     src/algo/sha
+    src/algo/sha512
     src/algo/shrink
     src/algo/sls
     src/algo/softronics
@@ -627,6 +648,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/terse
     src/algo/ti99arc
     src/algo/tivoli
+    src/algo/tlsh
     src/algo/topspeed
     src/algo/tps
     src/algo/ulead
@@ -637,6 +659,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/algo/wintersoft
     src/algo/winzipjpeg
     src/algo/wpk
+    src/algo/x509
     src/algo/xeditpack
     src/algo/zcmp
     src/algo/zie
@@ -684,6 +707,8 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/bwf
     src/formats/archive/bz2
     src/formats/archive/bzip1
+    src/formats/archive/c64_sda
+    src/formats/archive/c64s
     src/formats/archive/c64wraptor
     src/formats/archive/cab
     src/formats/archive/cadc
@@ -691,19 +716,26 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/cazip
     src/formats/archive/cbm_ark
     src/formats/archive/cfl
+    src/formats/archive/chasm_csid
     src/formats/archive/chieflz
+    src/formats/archive/chieflz_v1
     src/formats/archive/chieflzmulti
     src/formats/archive/chromium_pak
     src/formats/archive/chz
     src/formats/archive/claylz
     src/formats/archive/cmp
     src/formats/archive/compactpro
+    src/formats/archive/compaq_msgdata
     src/formats/archive/compaqlzh
+    src/formats/archive/consplus
     src/formats/archive/cork
+    src/formats/archive/cpff
     src/formats/archive/cpio
     src/formats/archive/cpx
     src/formats/archive/cpz
+    src/formats/archive/createinstall_pak
     src/formats/archive/cru
+    src/formats/archive/csd
     src/formats/archive/csq
     src/formats/archive/cvrb
     src/formats/archive/cwc
@@ -986,7 +1018,6 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/document/binder
     src/formats/document/cfbf
     src/formats/document/chm
-    src/formats/document/vba
     src/formats/document/frontpagetheme
     src/formats/document/gnu_gettext_mo
     src/formats/document/ivt
@@ -1236,6 +1267,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/installer/ifah_installer
     src/formats/installer/igf2
     src/formats/installer/inno_setup
+    src/formats/installer/instalit_data
     src/formats/installer/install4j
     src/formats/installer/installanywhere_unix
     src/formats/installer/installer_vise_windows
@@ -1257,7 +1289,6 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/installer/lyme_sfx
     src/formats/installer/makeself
     src/formats/installer/metaproducts
-    src/formats/installer/msi
     src/formats/installer/msi_resource
     src/formats/installer/msmpi_bootstrapper
     src/formats/installer/mva
@@ -1386,8 +1417,17 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_arj
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_ash0
     src/algo/ash0/xx_ash0.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_asn1
+    src/algo/asn1/xx_asn1.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_asymetrix
     src/algo/asymetrix/xx_asymetrix.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_base64
+    src/algo/base64/xx_base64.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_bignum
+    src/algo/bignum/xx_bignum.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_blake2
     src/algo/blake2/xx_blake2.c
@@ -1395,6 +1435,20 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_blake2
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_brotli
     src/algo/brotli/xx_brotli.c
     src/algo/brotli/xx_brotli_data.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_byteset_platforms
+    src/algo/byteset/platforms/xx_byteset_avx2.c
+    src/algo/byteset/platforms/xx_byteset_sse2.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_byteset
+    src/algo/byteset/xx_byteset.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_bytestats_platforms
+    src/algo/bytestats/platforms/xx_bytestats_avx2.c
+    src/algo/bytestats/platforms/xx_bytestats_sse2.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_bytestats
+    src/algo/bytestats/xx_bytestats.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_bzip2
     src/algo/bzip2/xx_bzip2.c
@@ -1451,6 +1505,9 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_crc
     src/algo/crc/xx_crc8.c
     src/algo/crc/xx_crc_io.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_csdpack
+    src/algo/csdpack/xx_csdpack.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_dcl
     src/algo/dcl/xx_dcl.c
 )
@@ -1468,11 +1525,20 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_deflate
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_diskdoubler
     src/algo/diskdoubler/xx_diskdoubler.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_dsa
+    src/algo/dsa/xx_dsa.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_ea
     src/algo/ea/xx_ea.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_ec
+    src/algo/ec/xx_ec.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_eid
     src/algo/eid/xx_eid_crypto.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_entropy
+    src/algo/entropy/xx_entropy_log2.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_flslz
     src/algo/flslz/xx_flslz.c
@@ -1527,6 +1593,14 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_kpa
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_lim
     src/algo/lim/xx_lim.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_literal
+    src/algo/literal/xx_literal.c
+    src/algo/literal/xx_literal_avx2.c
+    src/algo/literal/xx_literal_ssse3.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_literal_nocase
+    src/algo/literal_nocase/xx_literal_nocase.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_lizard
     src/algo/lizard/xx_lizard.c
@@ -1597,6 +1671,16 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_lzwvariants
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_lzx
     src/algo/lzx/xx_lzx.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_maskscan_platforms
+    src/algo/maskscan/platforms/xx_maskscan_avx2.c
+    src/algo/maskscan/platforms/xx_maskscan_sse2.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_maskscan
+    src/algo/maskscan/xx_maskscan.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_md2
+    src/algo/md2/xx_md2.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_md5
     src/algo/md5/xx_md5.c
 )
@@ -1632,6 +1716,14 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_pcommos2
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_pcsecure
     src/algo/pcsecure/xx_pcsecure.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_pkcs7
+    src/algo/pkcs7/xx_authenticode.c
+    src/algo/pkcs7/xx_pkcs7.c
+    src/algo/pkcs7/xx_tsp.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_pki
+    src/algo/pki/xx_pki_verify.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_pkt
     src/algo/pkt/xx_pkt.c
@@ -1676,6 +1768,9 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_ripemd256
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_rompaq
     src/algo/rompaq/xx_rompaq.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_rsa
+    src/algo/rsa/xx_rsa.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_rsvk
     src/algo/rsvk/xx_rsvk.c
 )
@@ -1698,6 +1793,9 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_sha_platforms
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_sha
     src/algo/sha/xx_sha.c
     src/algo/sha/xx_sha_simd.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_sha512
+    src/algo/sha512/xx_sha512.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_shrink
     src/algo/shrink/xx_shrink.c
@@ -1730,6 +1828,9 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_ti99arc
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_tivoli
     src/algo/tivoli/xx_tivoli.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_tlsh
+    src/algo/tlsh/xx_tlsh.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_topspeed
     src/algo/topspeed/xx_topspeed.c
 )
@@ -1760,6 +1861,9 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_winzipjpeg
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_wpk
     src/algo/wpk/xx_wpk.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_algo_x509
+    src/algo/x509/xx_x509.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_xeditpack
     src/algo/xeditpack/xx_xeditpack.c
@@ -1839,6 +1943,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ar
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_arc_cbm
     src/formats/archive/arc_cbm/xx_arc_cbm.c
     src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c
+    src/formats/archive/arc_cbm/xx_arc_cbm_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_arcfs
     src/formats/archive/arcfs/xx_arcfs.c
@@ -1895,6 +2000,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bcm
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bga
     src/formats/archive/bga/xx_bga.c
     src/formats/archive/bga/xx_bga_extractor.c
+    src/formats/archive/bga/xx_bga_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bigaf
     src/formats/archive/bigaf/xx_bigaf.c
@@ -1949,6 +2055,15 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_bzip1
     src/formats/archive/bzip1/xx_bzip1.c
     src/formats/archive/bzip1/xx_bzip1_codec.c
     src/formats/archive/bzip1/xx_bzip1_extractor.c
+    src/formats/archive/bzip1/xx_bzip1_reader_adapters.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_c64_sda
+    src/formats/archive/c64_sda/xx_c64_sda.c
+    src/formats/archive/c64_sda/xx_c64_sda_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_c64s
+    src/formats/archive/c64s/xx_c64s.c
+    src/formats/archive/c64s/xx_c64s_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_c64wraptor
     src/formats/archive/c64wraptor/xx_c64wraptor.c
@@ -1978,9 +2093,17 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cfl
     src/formats/archive/cfl/xx_cfl.c
     src/formats/archive/cfl/xx_cfl_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chasm_csid
+    src/formats/archive/chasm_csid/xx_chasm_csid.c
+    src/formats/archive/chasm_csid/xx_chasm_csid_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chieflz
     src/formats/archive/chieflz/xx_chieflz.c
     src/formats/archive/chieflz/xx_chieflz_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chieflz_v1
+    src/formats/archive/chieflz_v1/xx_chieflz_v1.c
+    src/formats/archive/chieflz_v1/xx_chieflz_v1_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chieflzmulti
     src/formats/archive/chieflzmulti/xx_chieflzmulti.c
@@ -1989,6 +2112,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chieflzmulti
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chromium_pak
     src/formats/archive/chromium_pak/xx_chromium_pak.c
     src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c
+    src/formats/archive/chromium_pak/xx_chromium_pak_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_chz
     src/formats/archive/chz/xx_chz.c
@@ -2006,13 +2130,25 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_compactpro
     src/formats/archive/compactpro/xx_compactpro.c
     src/formats/archive/compactpro/xx_compactpro_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_compaq_msgdata
+    src/formats/archive/compaq_msgdata/xx_compaq_msgdata.c
+    src/formats/archive/compaq_msgdata/xx_compaq_msgdata_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_compaqlzh
     src/formats/archive/compaqlzh/xx_compaqlzh.c
     src/formats/archive/compaqlzh/xx_compaqlzh_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_consplus
+    src/formats/archive/consplus/xx_consplus.c
+    src/formats/archive/consplus/xx_consplus_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cork
     src/formats/archive/cork/xx_cork.c
     src/formats/archive/cork/xx_cork_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cpff
+    src/formats/archive/cpff/xx_cpff.c
+    src/formats/archive/cpff/xx_cpff_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cpio
     src/formats/archive/cpio/xx_cpio.c
@@ -2027,9 +2163,17 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cpz
     src/formats/archive/cpz/xx_cpz.c
     src/formats/archive/cpz/xx_cpz_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_createinstall_pak
+    src/formats/archive/createinstall_pak/xx_createinstall_pak.c
+    src/formats/archive/createinstall_pak/xx_createinstall_pak_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_cru
     src/formats/archive/cru/xx_cru.c
     src/formats/archive/cru/xx_cru_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_csd
+    src/formats/archive/csd/xx_csd.c
+    src/formats/archive/csd/xx_csd_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_csq
     src/formats/archive/csq/xx_csq.c
@@ -2068,11 +2212,13 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dgca
     src/formats/archive/dgca/xx_dgca_lzp.c
     src/formats/archive/dgca/xx_dgca_payload.c
     src/formats/archive/dgca/xx_dgca_range.c
+    src/formats/archive/dgca/xx_dgca_reader_adapters.c
     src/formats/archive/dgca/xx_dgca_transform.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dh
     src/formats/archive/dh/xx_dh.c
     src/formats/archive/dh/xx_dh_extractor.c
+    src/formats/archive/dh/xx_dh_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_diskdoubler
     src/formats/archive/diskdoubler/xx_diskdoubler.c
@@ -2081,6 +2227,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_diskdoubler
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_djcomp
     src/formats/archive/djcomp/xx_djcomp.c
     src/formats/archive/djcomp/xx_djcomp_extractor.c
+    src/formats/archive/djcomp/xx_djcomp_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dmapacked
     src/formats/archive/dmapacked/xx_dmapacked.c
@@ -2093,6 +2240,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dn
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dpc
     src/formats/archive/dpc/xx_dpc.c
     src/formats/archive/dpc/xx_dpc_extractor.c
+    src/formats/archive/dpc/xx_dpc_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dpk
     src/formats/archive/dpk/xx_dpk.c
@@ -2105,6 +2253,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dtpacked
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_dwc
     src/formats/archive/dwc/xx_dwc.c
     src/formats/archive/dwc/xx_dwc_extractor.c
+    src/formats/archive/dwc/xx_dwc_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ealib
     src/formats/archive/ealib/xx_ealib.c
@@ -2166,6 +2315,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_freeze
     src/formats/archive/freeze/xx_freeze.c
     src/formats/archive/freeze/xx_freeze_codec.c
     src/formats/archive/freeze/xx_freeze_extractor.c
+    src/formats/archive/freeze/xx_freeze_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ftcomp
     src/formats/archive/ftcomp/xx_ftcomp.c
@@ -2258,6 +2408,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_inteduft
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_is_stored
     src/formats/archive/is_stored/xx_is_stored.c
     src/formats/archive/is_stored/xx_is_stored_extractor.c
+    src/formats/archive/is_stored/xx_is_stored_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_ixa
     src/formats/archive/ixa/xx_ixa.c
@@ -2294,6 +2445,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kboom
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kgb_archiver
     src/formats/archive/kgb_archiver/xx_kgb_archiver.c
     src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c
+    src/formats/archive/kgb_archiver/xx_kgb_archiver_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kolibrikpack
     src/formats/archive/kolibrikpack/xx_kolibrikpack.c
@@ -2310,6 +2462,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_kwaj
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_larc_pfx
     src/formats/archive/larc_pfx/xx_larc_pfx.c
     src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c
+    src/formats/archive/larc_pfx/xx_larc_pfx_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lbr
     src/formats/archive/lbr/xx_lbr.c
@@ -2349,6 +2502,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_logitechcompress
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lpak
     src/formats/archive/lpak/xx_lpak.c
     src/formats/archive/lpak/xx_lpak_extractor.c
+    src/formats/archive/lpak/xx_lpak_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_lpaq8
     src/formats/archive/lpaq8/xx_lpaq8.c
@@ -2881,6 +3035,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stuffit_split_file
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_stuffitx
     src/formats/archive/stuffitx/xx_stuffitx.c
     src/formats/archive/stuffitx/xx_stuffitx_extractor.c
+    src/formats/archive/stuffitx/xx_stuffitx_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_swag
     src/formats/archive/swag/xx_swag.c
@@ -3084,11 +3239,11 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zie
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zip
     src/formats/archive/zip/xx_zip.c
-    src/formats/archive/zip/xx_zip_yx.c
     src/formats/archive/zip/xx_zip_datastructs.c
     src/formats/archive/zip/xx_zip_extractor.c
     src/formats/archive/zip/xx_zip_inspect.c
     src/formats/archive/zip/xx_zip_legacy_encoder.c
+    src/formats/archive/zip/xx_zip_yx.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zip_psc
     src/formats/archive/zip_psc/xx_zip_psc.c
@@ -3141,10 +3296,12 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zzz
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_audio_fmod_sample_bank
     src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank.c
     src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c
+    src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_audio_sfark_compressed_soundfont
     src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont.c
     src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c
+    src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_audio_sfpack
     src/formats/audio/sfpack/xx_sfpack.c
@@ -3173,13 +3330,8 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_binder
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_cfbf
     src/formats/document/cfbf/xx_cfbf.c
     src/formats/document/cfbf/xx_cfbf_extractor.c
+    src/formats/document/cfbf/xx_cfbf_reader_adapters.c
     src/formats/document/cfbf/xx_olecf_yx.c
-)
-set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_vba
-    src/formats/document/vba/xx_vba_yx.c
-)
-set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_msi
-    src/formats/installer/msi/xx_msi_yx.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_chm
     src/formats/document/chm/xx_chm.c
@@ -3207,6 +3359,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_mathcad
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_microsoft_lit
     src/formats/document/microsoft_lit/xx_microsoft_lit.c
     src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c
+    src/formats/document/microsoft_lit/xx_microsoft_lit_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_mime_message
     src/formats/document/mime_message/xx_mime_message_extractor.c
@@ -3218,6 +3371,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_notetab
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_outlook_express_dbx_mailbox
     src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox.c
     src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c
+    src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_document_pain
     src/formats/document/pain/xx_pain.c
@@ -3307,6 +3461,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_dotnet_resources_archive
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_enigma_virtual_box
     src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box.c
     src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c
+    src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_executable_overlay
     src/formats/executable/executable_overlay/xx_executable_overlay.c
@@ -3319,6 +3474,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_lbrcobol
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_molebox
     src/formats/executable/molebox/xx_molebox.c
     src/formats/executable/molebox/xx_molebox_extractor.c
+    src/formats/executable/molebox/xx_molebox_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_ne
     src/formats/executable/ne/xx_ne.c
@@ -3372,6 +3528,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_starkit
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_upx_engine
     src/formats/executable/upx_engine/xx_upx_engine.c
     src/formats/executable/upx_engine/xx_upx_engine_extractor.c
+    src/formats/executable/upx_engine/xx_upx_engine_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_adf
     src/formats/filesystem/adf/xx_adf.c
@@ -3380,10 +3537,12 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_adf
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_amiga_ext_adf
     src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf.c
     src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_extractor.c
+    src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_amiga_old_ext_adf
     src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf.c
     src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c
+    src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_aodos
     src/formats/filesystem/aodos/xx_aodos.c
@@ -3400,10 +3559,12 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_apple_sparse_bundle
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_apridisk
     src/formats/filesystem/apridisk/xx_apridisk.c
     src/formats/filesystem/apridisk/xx_apridisk_extractor.c
+    src/formats/filesystem/apridisk/xx_apridisk_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ccd
     src/formats/filesystem/ccd/xx_ccd.c
     src/formats/filesystem/ccd/xx_ccd_extractor.c
+    src/formats/filesystem/ccd/xx_ccd_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_cfd
     src/formats/filesystem/cfd/xx_cfd.c
@@ -3451,6 +3612,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dcp_disk
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dfsee_imz
     src/formats/filesystem/dfsee_imz/xx_dfsee_imz.c
     src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c
+    src/formats/filesystem/dfsee_imz/xx_dfsee_imz_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_diskdupe
     src/formats/filesystem/diskdupe/xx_diskdupe.c
@@ -3475,6 +3637,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_dms
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ecm
     src/formats/filesystem/ecm/xx_ecm.c
     src/formats/filesystem/ecm/xx_ecm_extractor.c
+    src/formats/filesystem/ecm/xx_ecm_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_emt
     src/formats/filesystem/emt/xx_emt.c
@@ -3495,6 +3658,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_fdi
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_gbi
     src/formats/filesystem/gbi/xx_gbi.c
     src/formats/filesystem/gbi/xx_gbi_extractor.c
+    src/formats/filesystem/gbi/xx_gbi_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_hdcopy
     src/formats/filesystem/hdcopy/xx_hdcopy.c
@@ -3532,6 +3696,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_mbr
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_mds
     src/formats/filesystem/mds/xx_mds.c
     src/formats/filesystem/mds/xx_mds_extractor.c
+    src/formats/filesystem/mds/xx_mds_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_nextstep_diskimage
     src/formats/filesystem/nextstep_diskimage/xx_nextstep_diskimage.c
@@ -3548,6 +3713,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_pc_magazine_flp
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_pce_anadisk
     src/formats/filesystem/pce_anadisk/xx_pce_anadisk.c
     src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c
+    src/formats/filesystem/pce_anadisk/xx_pce_anadisk_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_pmdiskcopy
     src/formats/filesystem/pmdiskcopy/xx_pmdiskcopy.c
@@ -3588,6 +3754,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_scl
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_sdi
     src/formats/filesystem/sdi/xx_sdi.c
     src/formats/filesystem/sdi/xx_sdi_extractor.c
+    src/formats/filesystem/sdi/xx_sdi_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_sfx_sydex_diskette_image
     src/formats/filesystem/sfx_sydex_diskette_image/xx_sfx_sydex_diskette_image.c
@@ -3632,6 +3799,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_twoimg
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_uif
     src/formats/filesystem/uif/xx_uif.c
     src/formats/filesystem/uif/xx_uif_extractor.c
+    src/formats/filesystem/uif/xx_uif_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vdi
     src/formats/filesystem/vdi/xx_vdi.c
@@ -3656,10 +3824,12 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vmdk
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vmdk_cowd_sparse
     src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse.c
     src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c
+    src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_vmdk_sesparse
     src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse.c
     src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c
+    src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_ziso
     src/formats/filesystem/ziso/xx_ziso_extractor.c
@@ -3679,6 +3849,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_androidboot
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_htc_nbh_rom_image
     src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image.c
     src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c
+    src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_firmware_mwave
     src/formats/firmware/mwave/xx_mwave.c
@@ -3774,6 +3945,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_fury_dat
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_gdi
     src/formats/game/gdi/xx_gdi.c
     src/formats/game/gdi/xx_gdi_extractor.c
+    src/formats/game/gdi/xx_gdi_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_gob
     src/formats/game/gob/xx_gob.c
@@ -3790,6 +3962,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_gta_img
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_he_tlkb
     src/formats/game/he_tlkb/xx_he_tlkb.c
     src/formats/game/he_tlkb/xx_he_tlkb_extractor.c
+    src/formats/game/he_tlkb/xx_he_tlkb_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_hog
     src/formats/game/hog/xx_hog.c
@@ -3817,6 +3990,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_live_maker_gal
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_livemaker
     src/formats/game/livemaker/xx_livemaker.c
     src/formats/game/livemaker/xx_livemaker_extractor.c
+    src/formats/game/livemaker/xx_livemaker_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_mas_pack
     src/formats/game/mas_pack/xx_mas_pack.c
@@ -3883,6 +4057,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_rpg_maker_mv
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_rpg_maker_rgssad
     src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad.c
     src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c
+    src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_rsc
     src/formats/game/rsc/xx_rsc.c
@@ -3942,6 +4117,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_teacy
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_telltale_ttarch
     src/formats/game/telltale_ttarch/xx_telltale_ttarch.c
     src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c
+    src/formats/game/telltale_ttarch/xx_telltale_ttarch_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_titan_quest
     src/formats/game/titan_quest/xx_titan_quest.c
@@ -3990,6 +4166,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ycg_image
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_ypf
     src/formats/game/ypf/xx_ypf.c
     src/formats/game/ypf/xx_ypf_extractor.c
+    src/formats/game/ypf/xx_ypf_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_evd
     src/formats/image/evd/xx_evd.c
@@ -4034,6 +4211,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_skf
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_image_windows_thumbnail_cache
     src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache.c
     src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c
+    src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_advanced_installer_bootstrapper
     src/formats/installer/advanced_installer_bootstrapper/xx_advanced_installer_bootstrapper.c
@@ -4078,6 +4256,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_beospkg
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_bitrock
     src/formats/installer/bitrock/xx_bitrock.c
     src/formats/installer/bitrock/xx_bitrock_extractor.c
+    src/formats/installer/bitrock/xx_bitrock_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_bnd
     src/formats/installer/bnd/xx_bnd.c
@@ -4102,6 +4281,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_corelltec
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_cpoint
     src/formats/installer/cpoint/xx_cpoint.c
     src/formats/installer/cpoint/xx_cpoint_extractor.c
+    src/formats/installer/cpoint/xx_cpoint_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_createinstall_instcrin_extractor
     src/formats/installer/createinstall_instcrin_extractor/xx_createinstall_instcrin_extractor.c
@@ -4109,8 +4289,8 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_createinstall_instcrin_extrac
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_crx
     src/formats/installer/crx/xx_crx.c
-    src/formats/installer/crx/xx_crx_yx.c
     src/formats/installer/crx/xx_crx_extractor.c
+    src/formats/installer/crx/xx_crx_yx.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_desksoft
     src/formats/installer/desksoft/xx_desksoft.c
@@ -4119,6 +4299,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_desksoft
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_dsl1
     src/formats/installer/dsl1/xx_dsl1.c
     src/formats/installer/dsl1/xx_dsl1_extractor.c
+    src/formats/installer/dsl1/xx_dsl1_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_dsl2
     src/formats/installer/dsl2/xx_dsl2.c
@@ -4135,6 +4316,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_eschalon_setup_epsf
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_excelsior
     src/formats/installer/excelsior/xx_excelsior.c
     src/formats/installer/excelsior/xx_excelsior_extractor.c
+    src/formats/installer/excelsior/xx_excelsior_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_fead_encoder
     src/formats/installer/fead/encoder/adler32.c
@@ -4147,6 +4329,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_fead
     src/formats/installer/fead/xx_fead.c
     src/formats/installer/fead/xx_fead_bcj2.c
     src/formats/installer/fead/xx_fead_extractor.c
+    src/formats/installer/fead/xx_fead_reader_adapters.c
     src/formats/installer/fead/xx_fead_restore.c
     src/formats/installer/fead/xx_fead_zlib_encoder.c
 )
@@ -4197,6 +4380,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_igf2
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_inno_setup
     src/formats/installer/inno_setup/xx_inno_setup.c
     src/formats/installer/inno_setup/xx_inno_setup_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_instalit_data
+    src/formats/installer/instalit_data/xx_instalit_data.c
+    src/formats/installer/instalit_data/xx_instalit_data_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_install4j
     src/formats/installer/install4j/xx_install4j.c
@@ -4310,6 +4497,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_nsis
     src/formats/installer/nsis/nsis_bzip2.c
     src/formats/installer/nsis/xx_nsis.c
     src/formats/installer/nsis/xx_nsis_extractor.c
+    src/formats/installer/nsis/xx_nsis_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_oberon
     src/formats/installer/oberon/xx_oberon.c
@@ -4462,10 +4650,12 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sfxstart
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sis
     src/formats/installer/sis/xx_sis.c
     src/formats/installer/sis/xx_sis_extractor.c
+    src/formats/installer/sis/xx_sis_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_smart_install_maker
     src/formats/installer/smart_install_maker/xx_smart_install_maker.c
     src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c
+    src/formats/installer/smart_install_maker/xx_smart_install_maker_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_smsipak
     src/formats/installer/smsipak/xx_smsipak.c
@@ -4514,6 +4704,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sun_java_binsh
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_superdat
     src/formats/installer/superdat/xx_superdat.c
     src/formats/installer/superdat/xx_superdat_extractor.c
+    src/formats/installer/superdat/xx_superdat_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_installer_sw
     src/formats/installer/sw/xx_sw.c
@@ -4594,12 +4785,14 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_video_grasp
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_video_scummvm_dxa
     src/formats/video/scummvm_dxa/xx_scummvm_dxa.c
     src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c
+    src/formats/video/scummvm_dxa/xx_scummvm_dxa_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_video_swf
     src/formats/video/swf/xx_swf.c
     src/formats/video/swf/xx_swf_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats
+    src/formats/xx_corpus_extra_extractors.c
     src/formats/xx_data_signature.c
     src/formats/xx_format_additional.c
     src/formats/xx_format_datastructs.c

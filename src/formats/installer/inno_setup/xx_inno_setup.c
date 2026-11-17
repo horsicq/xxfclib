@@ -34,6 +34,7 @@
 #include "xxfclib/codepages/xx_codepage.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/installer/inno_setup/xx_inno_setup.h"
+#include "../../xx_archive_output_name.h"
 
 #include "xxfclib/algo/adler32/xx_adler32.h"
 #include "xxfclib/algo/bzip2/xx_bzip2.h"
@@ -2389,7 +2390,7 @@ static uint32_t inno_utf8_next(const char **ps)
 
 /* UTF-8 output name with '/' separators.  Reserved punctuation becomes
  * '_', and "." or empty components are dropped ("{app}\.\bin\x.dll" is
- * common).  *safe is cleared for absolute or drive paths, an empty name,
+ * common).  *safe is cleared for absolute paths, an empty name,
  * components made of dots and spaces only (".."), control characters and
  * device names. */
 static char *inno_make_name(const inno_raw *r, bool *safe)
@@ -2407,7 +2408,11 @@ static char *inno_make_name(const inno_raw *r, bool *safe)
         uint32_t cp = inno_next_cp(r, &i);
         if (cp == '\\') cp = '/';
         if (o == 0U && cp == '/') *safe = false;
-        if (o == 1U && cp == ':') *safe = false;
+        /* A drive letter becomes a folder ("C:\WINDOWS\x" is written as
+         * "C_/WINDOWS/x", the reference reader's layout, shared with ZPAQ as
+         * XX_ARCHIVE_NAME_DRIVE_FOLDER); a ':' after anything else at that
+         * place is still refused. */
+        if (o == 1U && cp == ':' && !xx_archive_name_drive_letter(name[0])) *safe = false;
         if (cp < 0x20U || cp == 0x7FU) *safe = false;
         if (cp == ':' || cp == '*' || cp == '?' || cp == '"' || cp == '<' || cp == '>' || cp == '|') cp = '_';
         o += inno_put_utf8(name + o, cp);

@@ -365,7 +365,8 @@ XX_FORMAT_READER_PROBE(sfx_lha, XX_FILE_TYPE_SFX_LHA,
     ((header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\xeb",1) == 0)) ||
      (header_size >= 8U && xx_rt_memcmp(header, "EXEC", 4U) == 0)))
 XX_FORMAT_READER_PROBE(lmd_container, XX_FILE_TYPE_LMD_CONTAINER,
-    (header_size >= 9 && (xx_rt_memcmp(header+0,"\x08\x4c\x4d\x44\x53\x4c\x4c\x33\x30",9) == 0 || xx_rt_memcmp(header+0,"\x08\x4c\x4d\x44\x42\x4d\x4c\x33\x30",9) == 0)))
+    (header_size >= 9 && (xx_rt_memcmp(header+0,"\x08\x4c\x4d\x44\x53\x4c\x4c\x33\x30",9) == 0 || xx_rt_memcmp(header+0,"\x08\x4c\x4d\x44\x42\x4d\x4c\x33\x30",9) == 0 ||
+                          xx_rt_memcmp(header+0,"\x08\x4c\x4d\x44\x49\x4d\x4c\x33\x30",9) == 0)))
 XX_FORMAT_READER_PROBE(totalannihilation_hpi, XX_FILE_TYPE_TOTALANNIHILATION_HPI,
     (header_size >= 4 && (xx_rt_memcmp(header+0,"\x48\x41\x50\x49",4) == 0)))
 XX_FORMAT_READER_PROBE(ravensoft_rff, XX_FILE_TYPE_RAVENSOFT_RFF,

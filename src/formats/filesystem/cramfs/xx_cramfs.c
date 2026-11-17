@@ -570,7 +570,15 @@ static bool xx_cramfs_parse(Abstractformat *self, xx_cramfs_private *parsed, boo
     }
     image_size = xx_data_get_u32(superblock, sizeof(superblock), 4U, big_endian);
     parsed->image_size = image_size;
-    if (image_size < (uint32_t)XX_CRAMFS_SUPERBLOCK_SIZE || (int64_t)image_size > XX_CRAMFS_MAX_IMAGE_SIZE ||
+    if (!(parsed->flags & XX_CRAMFS_FLAG_FSID_VERSION_2)) {
+        /* Version 1 images (no FSID_VERSION_2 flag) carry no trustworthy size:
+         * mkcramfs of that era wrote a fixed 64 KiB, and the kernel ignores the
+         * field for them. The image is bounded by the end of the input instead. */
+        if (total_size - self->base_address < (int64_t)XX_CRAMFS_SUPERBLOCK_SIZE || total_size - self->base_address > XX_CRAMFS_MAX_IMAGE_SIZE) {
+            goto fail;
+        }
+        parsed->image_end = total_size;
+    } else if (image_size < (uint32_t)XX_CRAMFS_SUPERBLOCK_SIZE || (int64_t)image_size > XX_CRAMFS_MAX_IMAGE_SIZE ||
         !xx_cramfs_add(self->base_address, image_size, &parsed->image_end) || parsed->image_end > total_size) {
         goto fail;
     }

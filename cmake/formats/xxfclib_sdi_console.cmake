@@ -17,4 +17,5 @@ xxfclib_add_family_console(sdi
         src/algo/crc/xx_crc64.c
         src/algo/crc/xx_crc8.c
         src/formats/filesystem/sdi/xx_sdi.c
-        src/formats/filesystem/sdi/xx_sdi_extractor.c)
+        src/formats/filesystem/sdi/xx_sdi_extractor.c
+        src/formats/filesystem/sdi/xx_sdi_reader_adapters.c)

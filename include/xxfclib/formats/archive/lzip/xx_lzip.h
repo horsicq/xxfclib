@@ -18,6 +18,8 @@ typedef struct xx_lzip {
     uint64_t number_of_members;
     uint64_t uncompressed_size;
     int64_t stream_end;
+    uint32_t integrity_issues; /* XX_LZIP_ISSUE_* found by the lenient walk */
+    bool lenient_framing;      /* the measuring pass needed the lenient walk */
 } xx_lzip;
 
 typedef xx_lzip xx_lzip_t;

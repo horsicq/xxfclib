@@ -30,4 +30,5 @@ xxfclib_add_family_console(livemaker
         src/algo/deflate/xx_deflate_enc.c
         src/algo/deflate/xx_zlib_stream.c
         src/formats/game/livemaker/xx_livemaker.c
-        src/formats/game/livemaker/xx_livemaker_extractor.c)
+        src/formats/game/livemaker/xx_livemaker_extractor.c
+        src/formats/game/livemaker/xx_livemaker_reader_adapters.c)

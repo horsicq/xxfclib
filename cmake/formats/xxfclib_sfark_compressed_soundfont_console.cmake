@@ -29,4 +29,5 @@ xxfclib_add_family_console(sfark_compressed_soundfont
         src/algo/deflate/xx_deflate_enc.c
         src/algo/deflate/xx_zlib_stream.c
         src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont.c
-        src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c)
+        src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c
+        src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_reader_adapters.c)

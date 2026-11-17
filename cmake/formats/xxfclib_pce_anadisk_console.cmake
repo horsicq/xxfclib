@@ -6,4 +6,5 @@ xxfclib_add_family_console(pce_anadisk
     FORMATS PCE_ANADISK
     SOURCES
         src/formats/filesystem/pce_anadisk/xx_pce_anadisk.c
-        src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c)
+        src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c
+        src/formats/filesystem/pce_anadisk/xx_pce_anadisk_reader_adapters.c)

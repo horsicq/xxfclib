@@ -1143,6 +1143,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
 #include "xxfclib/formats/archive/sfx_gzip/xx_sfx_gzip.h"
 #include "xxfclib/formats/archive/sfx_tar/xx_sfx_tar.h"
 #include "xxfclib/formats/archive/sfx_cab/xx_sfx_cab.h"
+#include "xxfclib/formats/archive/c64s/xx_c64s.h"
+#include "xxfclib/formats/archive/rar/xx_rar.h"
 #include "xxfclib/formats/archive/pmarc_sfx/xx_pmarc_sfx.h"
 #include "xxfclib/formats/archive/sfx_7zip/xx_sfx_7zip.h"
 #include "xxfclib/formats/installer/squirrel/xx_squirrel.h"
@@ -2666,6 +2668,27 @@ xx_file_type_t xx_format_gap_detect(xx_io_device *device);
 
 #include "xx_format_probe_registry.h"
 
+/* A RAR 1.5-4.x archive whose marker block starts exactly at the end of the
+ * DOS load image (e_cp/e_cblp) of a non-PE MZ file, with a valid header walk
+ * holding at least one file. */
+static bool xx_format_dos_image_rar(xx_io_device *dev)
+{
+    uint8_t h[32], sig[7];
+    uint64_t image;
+    xx_rar *rar;
+    bool valid;
+    if (xx_io_seek64(dev, 0, SEEK_SET) != 0 || !xx_format_read_probe_exact(dev, h, sizeof(h)) || h[0] != 'M' || h[1] != 'Z') return false;
+    image = xx_data_get_u16(h + 4, 2, 0, false);
+    if (!image || xx_data_get_u16(h + 2, 2, 0, false) > 511U) return false;
+    image = (image - 1U) * 512U + (xx_data_get_u16(h + 2, 2, 0, false) ? xx_data_get_u16(h + 2, 2, 0, false) : 512U);
+    if (image < 64U || (int64_t)image + 20 > xx_io_total_size(dev) || xx_io_seek64(dev, (int64_t)image, SEEK_SET) != 0 ||
+        !xx_format_read_probe_exact(dev, sig, sizeof(sig)) || xx_rt_memcmp(sig, "Rar!\x1a\x07\x00", 7))
+        return false;
+    rar = xx_rar_create(dev, 0);
+    valid = rar && xx_rar_handle_base_info(&rar->format, NULL) && rar->format.number_of_archive_records > 0 && rar->signature_offset == (int64_t)image;
+    xx_rar_free(rar);
+    return valid;
+}
 static XX_FORMAT_NOINLINE xx_file_type_t xx_format_get_unpacked_file_type_device(xx_io_device *dev)
 {
 #else
@@ -4185,6 +4208,17 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
             xx_dos4g_destroy(&probe_dos4g);
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             if (valid_dos4g) return XX_FILE_TYPE_DOS4G;
+        }
+        /* Plain DOS self-extractors that carry a whole archive: C64S
+         * emulator packages, and RAR archives starting exactly at the end of
+         * the DOS load image. */
+        if (xx_c64s_fast_detect(dev, 0, false)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_C64S;
+        }
+        if (xx_format_dos_image_rar(dev)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
+            return XX_FILE_TYPE_RAR;
         }
         xx_msdos_init(&msdos, dev, 0);
         valid_msdos = xx_msdos_check_is_valid(&msdos.format, NULL);

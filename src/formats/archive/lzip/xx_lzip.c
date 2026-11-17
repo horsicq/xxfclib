@@ -81,9 +81,27 @@ static bool xx_lzip_decode_stream(Abstractformat *self, xx_io_device *destinatio
     counter.target = destination;
     sink.write = xx_lzip_counter_write;
     sink.priv = &counter;
-    if (!xx_lzip_decode_prefix_device(self->device, self->base_address, input_size, &sink, &decoded_size, &members, &consumed_size, pd) || counter.failed || decoded_size < 0 ||
+    /* Writing replays the walk the measuring pass chose: a strict attempt
+     * that fails part-way would already have written its first members. */
+    if ((destination && ((xx_lzip *)self)->lenient_framing) ||
+        !xx_lzip_decode_prefix_device(self->device, self->base_address, input_size, &sink, &decoded_size, &members, &consumed_size, pd) || counter.failed || decoded_size < 0 ||
         (uint64_t)decoded_size != counter.written || members == 0U) {
-        return false;
+        /* A stream whose header or trailer fields are damaged but whose data
+         * decodes cleanly to the end marker is still published; what was
+         * wrong is kept in integrity_issues and shown on the record. */
+        uint32_t issues = 0U;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        xx_mem_zero(&counter, sizeof(counter));
+        counter.target = destination;
+        if (!xx_lzip_decode_prefix_device_lenient(self->device, self->base_address, input_size, &sink, &decoded_size, &members, &consumed_size, &issues, pd) ||
+            counter.failed || decoded_size < 0 || (uint64_t)decoded_size != counter.written || members == 0U) {
+            return false;
+        }
+        ((xx_lzip *)self)->integrity_issues = issues;
+        ((xx_lzip *)self)->lenient_framing = true;
+    } else {
+        ((xx_lzip *)self)->integrity_issues = 0U;
+        ((xx_lzip *)self)->lenient_framing = false;
     }
     *uncompressed_size = counter.written;
     *member_count = (uint64_t)members;
@@ -132,6 +150,16 @@ static bool xx_lzip_populate_record(Abstractformat *self, xx_archive_record *rec
     record->header_size = (int64_t)XX_LZIP_HEADER_SIZE;
     record->data_offset = self->base_address + (int64_t)XX_LZIP_HEADER_SIZE;
     record->compressed_size = self->format_size;
+    if (archive->integrity_issues != 0U) {
+        char note[160];
+        xx_rt_snprintf(note, sizeof(note), "warning: damaged lzip framing:%s%s%s%s%s",
+                       (archive->integrity_issues & XX_LZIP_ISSUE_DICTIONARY) ? " dictionary-size" : "",
+                       (archive->integrity_issues & XX_LZIP_ISSUE_CRC) ? " crc32" : "",
+                       (archive->integrity_issues & XX_LZIP_ISSUE_DATA_SIZE) ? " data-size" : "",
+                       (archive->integrity_issues & XX_LZIP_ISSUE_MEMBER_SIZE) ? " member-size" : "",
+                       (archive->integrity_issues & XX_LZIP_ISSUE_VERSION0_CHAIN) ? " version-0-in-chain" : "");
+        if (!xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, note)) return false;
+    }
     return xx_archive_record_set_meta_str(record, XX_META_ID_ORIGINAL_NAME, XX_LZIP_PAYLOAD_NAME) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, archive->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)self->format_size) &&
@@ -199,7 +227,10 @@ bool xx_lzip_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
     if (!self || !self->device || self->base_address < 0) return false;
     total_size = xx_io_total_size(self->device);
     return total_size >= self->base_address && total_size - self->base_address >= (int64_t)XX_LZIP_V0_MIN_MEMBER_SIZE &&
-           xx_lzip_read_exact_at(self->device, self->base_address, header, sizeof(header)) && xx_lzip_has_header(header, sizeof(header));
+           xx_lzip_read_exact_at(self->device, self->base_address, header, sizeof(header)) &&
+           (xx_lzip_has_header(header, sizeof(header)) ||
+            /* A damaged dictionary code is left to the decode to judge. */
+            (header[0] == 'L' && header[1] == 'Z' && header[2] == 'I' && header[3] == 'P' && header[4] <= 1U));
 }
 
 bool xx_lzip_handle_base_info(Abstractformat *self, xx_pd_struct *pd)

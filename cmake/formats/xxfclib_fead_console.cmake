@@ -35,5 +35,6 @@ xxfclib_add_family_console(fead
         src/formats/installer/fead/xx_fead.c
         src/formats/installer/fead/xx_fead_bcj2.c
         src/formats/installer/fead/xx_fead_extractor.c
+        src/formats/installer/fead/xx_fead_reader_adapters.c
         src/formats/installer/fead/xx_fead_restore.c
         src/formats/installer/fead/xx_fead_zlib_encoder.c)

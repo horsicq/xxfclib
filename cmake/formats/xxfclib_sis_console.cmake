@@ -30,4 +30,5 @@ xxfclib_add_family_console(sis
         src/algo/deflate/xx_deflate_enc.c
         src/algo/deflate/xx_zlib_stream.c
         src/formats/installer/sis/xx_sis.c
-        src/formats/installer/sis/xx_sis_extractor.c)
+        src/formats/installer/sis/xx_sis_extractor.c
+        src/formats/installer/sis/xx_sis_reader_adapters.c)

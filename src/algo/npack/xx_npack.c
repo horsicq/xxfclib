@@ -126,6 +126,8 @@ static bool npack_run(const uint8_t *input, size_t input_size, uint8_t *output, 
     npack_bits reader;
     npack_state state;
     bool stop_code = false;
+    size_t good_produced = 0U;
+    size_t good_consumed = 0U;
 
     if (produced) *produced = 0U;
     if (consumed) *consumed = 0U;
@@ -151,49 +153,60 @@ static bool npack_run(const uint8_t *input, size_t input_size, uint8_t *output, 
         uint64_t i;
 
         is_match = npack_get_bits(&reader, 1);
-        if (reader.eof) return false;
+        if (reader.eof) goto block_failed;
 
         if (is_match == 0U) {
             uint32_t literal = npack_get_bits(&reader, 8);
-            if (reader.eof) return false;
-            if (!npack_emit(&state, (uint8_t)literal)) return false;
+            if (reader.eof) goto block_failed;
+            if (!npack_emit(&state, (uint8_t)literal)) goto block_failed;
             continue;
         }
 
         if (npack_get_bits(&reader, 1) == 0U) {
-            if (reader.eof) return false;
+            if (reader.eof) goto block_failed;
             distance = npack_get_bits(&reader, 11);
-            if (reader.eof) return false;
+            if (reader.eof) goto block_failed;
             /* The 11-bit form never encodes distance 0. */
-            if (distance == 0U) return false;
+            if (distance == 0U) goto block_failed;
         } else {
-            if (reader.eof) return false;
+            if (reader.eof) goto block_failed;
             distance = npack_get_bits(&reader, 7);
-            if (reader.eof) return false;
+            if (reader.eof) goto block_failed;
             if (distance == 0U) {
+                /* End marker: the block ends at the next byte boundary. A
+                 * following block continues with the same history window. */
                 stop_code = true;
-                break;
+                good_produced = state.produced;
+                good_consumed = reader.pos;
+                if (reader.pos >= reader.size) break;
+                reader.buffer = 0U;
+                reader.live = 0U;
+                continue;
             }
         }
 
         /* Deliberate: a genuine stream never reads the window pre-fill. */
-        if ((uint64_t)distance > (uint64_t)state.produced) return false;
+        if ((uint64_t)distance > (uint64_t)state.produced) goto block_failed;
 
-        if (!npack_read_match_length(&reader, &length)) return false;
-        if (reader.eof) return false;
+        if (!npack_read_match_length(&reader, &length)) goto block_failed;
+        if (reader.eof) goto block_failed;
 
         for (i = 0U; i < length; ++i) {
             uint32_t source = (state.window_pos - distance) & NPACK_WINDOW_MASK;
-            if (!npack_emit(&state, state.window[source])) return false;
+            if (!npack_emit(&state, state.window[source])) goto block_failed;
         }
     }
 
+block_failed:
+    /* A later block that does not reach its own end marker is not part of
+     * the stream: report the blocks that did, and let the caller's extent
+     * check decide. */
     if (!stop_code) return false;
 
-    if (produced) *produced = state.produced;
-    /* Byte-aligned end of the block: the reader refills one byte at a time, so
-     * reader.pos is already the rounded-up consumed count. */
-    if (consumed) *consumed = reader.pos;
+    if (produced) *produced = good_produced;
+    /* Byte-aligned end of the last complete block: the reader refills one
+     * byte at a time, so reader.pos was already the rounded-up count. */
+    if (consumed) *consumed = good_consumed;
 
     return true;
 }

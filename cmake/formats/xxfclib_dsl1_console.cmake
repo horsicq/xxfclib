@@ -7,4 +7,5 @@ xxfclib_add_family_console(dsl1
     SOURCES
         src/algo/dcl/xx_dcl.c
         src/formats/installer/dsl1/xx_dsl1.c
-        src/formats/installer/dsl1/xx_dsl1_extractor.c)
+        src/formats/installer/dsl1/xx_dsl1_extractor.c
+        src/formats/installer/dsl1/xx_dsl1_reader_adapters.c)
