@@ -405,6 +405,10 @@ static bool xx_domain_yx_chars_init(xx_domain_yx_chars *chars, const char *text,
                              size_t length) {
   const uint8_t *bytes = (const uint8_t *)text;
   memset(chars, 0, sizeof(*chars));
+  /* One decoded scalar per input byte at most; reject sizes whose byte
+   * count would overflow the allocation multiplier (32-bit targets). */
+  if (length > SIZE_MAX / sizeof(uint32_t))
+    return false;
   chars->items = (uint32_t *)malloc((length ? length : 1) * sizeof(uint32_t));
   if (!chars->items)
     return false;

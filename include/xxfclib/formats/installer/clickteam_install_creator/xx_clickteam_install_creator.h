@@ -20,13 +20,26 @@
  *   list: u16 count, u16 0, then `count` nodes whose layout depends on the
  *   builder version (20, 24, 30, 35, 40).  A member is stored at its node's
  *   offset inside the data region as {u8 method, stream}.
- * - Install Creator 1.x carries no tag; the first chunk (id 0x1239, 0x1241
- *   or 0x1242, flags 1) starts right at the overlay.  A body with flags 1 is
- *   {u32 unpacked, Clickteam-Deflate stream}.  Chunk 0x1243 is the file list:
- *   u32 count, then entries {u32 size, .., u8 flags @0x0D, u32 unpacked @0x12,
- *   u32 packed @0x16, [0x14 bytes if flags & 6][0x18 bytes if flags & 8],
- *   NUL-terminated relative path}.  Members follow each other in list order
- *   inside the data region, each one a Clickteam-Deflate stream.
+ * - Install Creator 1.x (and Patch Maker) carries no tag; the first chunk
+ *   (id 0x1239, 0x1241 or 0x1242, flags 1) starts right at the overlay.  A
+ *   body with flags 1 is {u32 unpacked, Clickteam-Deflate stream}.  Every
+ *   chunk is published as a member "File_<n>.bin" holding its decoded body
+ *   (n counts the chunks from 1).  The chunks 0x123A, 0x1242, 0x1243 and
+ *   0x143A that read as a file list add the installed files: u32 count, then
+ *   records {u16|u32 size, fixed part, [0x14 bytes if flags & 6],
+ *   [three FILETIMEs if flags & 8], NUL-terminated relative path}.  The fixed
+ *   part has one of fourteen layouts (numbered 1..3 and 6..16), found by
+ *   reading the first list with each; it gives the member's offset in the
+ *   data region (the layouts 1 and 2 store the members back to back), its
+ *   packed and unpacked sizes, a checksum and flags.  A member is a
+ *   Clickteam-Deflate stream or, with flag 0x10, a delta against the member
+ *   with the same file id; the members of a protected component set are
+ *   XOR-masked.  A setup with several component sets (one chunk 0x123E per
+ *   set) lists the files of set n under "License.<n>/"; a member that an
+ *   earlier set already listed (same offset) is not repeated.
+ *   The member checksum is h = rol32(h, 1) + dword over the little-endian
+ *   dwords of the file (trailing bytes one by one), XOR a constant that
+ *   depends on the product title.
  *
  * Clickteam-Deflate is RFC 1951 with a different block header: 3 bits of
  * type then 1 bit "final", type 5 = fixed Huffman, 6 = dynamic, 7 = stored
@@ -45,7 +58,7 @@ extern "C" {
 typedef struct xx_clickteam_install_creator {
     Abstractformat format;
     uint32_t generation;    /**< 1 = Install Creator 1.x, 2 = 2.x */
-    uint32_t list_version;  /**< 2.x file-list layout (20..40), 0 for 1.x */
+    uint32_t list_version;  /**< File-list layout: 2.x 20..40, 1.x 1..16 (0: no list) */
     int64_t overlay_offset; /**< Device offset of the PE overlay */
     int64_t data_offset;    /**< Device offset of the member region */
     int64_t data_size;      /**< Size of the member region */

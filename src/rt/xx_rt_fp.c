@@ -984,6 +984,89 @@ static int dtoa_special(double nValue, char *pBuffer, size_t nBufferSize, int *p
     return 0;
 }
 
+/* Rust's `{:?}` for f64: the same shortest round-trip digits as ECMAScript,
+ * but the layout differs - a fractional ".0" is always kept, and the
+ * exponential form is used when the decimal exponent is < -4 or > 16.
+ * serde's Unexpected::Float renders with this format. */
+int xx_rt_dtoa_debug(double nValue, char *pBuffer, size_t nBufferSize)
+{
+    char sDigits[32];
+    int nCount = 0;
+    int nPoint = 0;
+    XOut out;
+    int i = 0;
+
+    if (nBufferSize == 0) return 0;
+
+    out.pBuffer = pBuffer;
+    out.nCapacity = nBufferSize;
+    out.nWritten = 0;
+
+    if (xx_rt_isnan(nValue)) {
+        out_text(&out, "NaN");
+        return out_finish(&out);
+    }
+
+    if (xx_rt_isinf(nValue)) {
+        out_text(&out, (nValue < 0) ? "-inf" : "inf");
+        return out_finish(&out);
+    }
+
+    /* The sign is a bit test: -0.0 must keep its '-'. */
+    if (double_bits(nValue) & (1ull << 63)) {
+        out_char(&out, '-');
+        nValue = -nValue;
+    }
+
+    if (nValue == 0) {
+        out_text(&out, "0.0");
+        return out_finish(&out);
+    }
+
+    nCount = dtoa_digits_shortest(nValue, sDigits, &nPoint);
+
+    if (nPoint < -4 || nPoint > 16) {
+        /* 0.digits * 10^nPoint -> d[.rest]e(+/-)(nPoint - 1) */
+        int nExponent = nPoint - 1;
+        out_char(&out, sDigits[0]);
+        if (nCount > 1) {
+            out_char(&out, '.');
+            for (i = 1; i < nCount; ++i) {
+                out_char(&out, sDigits[i]);
+            }
+        }
+        out_char(&out, 'e');
+        out_char(&out, (nExponent >= 0) ? '+' : '-');
+        out_int(&out, (nExponent >= 0) ? nExponent : -nExponent);
+    } else if (nPoint <= 0) {
+        out_text(&out, "0.");
+        for (i = 0; i < -nPoint; ++i) {
+            out_char(&out, '0');
+        }
+        for (i = 0; i < nCount; ++i) {
+            out_char(&out, sDigits[i]);
+        }
+    } else if (nPoint >= nCount) {
+        for (i = 0; i < nCount; ++i) {
+            out_char(&out, sDigits[i]);
+        }
+        for (i = nCount; i < nPoint; ++i) {
+            out_char(&out, '0');
+        }
+        out_text(&out, ".0");
+    } else {
+        for (i = 0; i < nPoint; ++i) {
+            out_char(&out, sDigits[i]);
+        }
+        out_char(&out, '.');
+        for (i = nPoint; i < nCount; ++i) {
+            out_char(&out, sDigits[i]);
+        }
+    }
+
+    return out_finish(&out);
+}
+
 int xx_rt_dtoa_shortest(double nValue, char *pBuffer, size_t nBufferSize)
 {
     char sDigits[32];

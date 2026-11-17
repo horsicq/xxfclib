@@ -33,6 +33,17 @@
  * Files are handed out in directory order: the first directory owns the first
  * "file count" entries of the file table, and so on.
  *
+ * Multi-volume sets (bit 0 of the u16 at 0x0A; this volume's number at 0x1F):
+ * every volume repeats the directory and file tables of the whole set at its
+ * own end. A file entry names the volume its data ends on in byte 0 and the
+ * volume it starts on in byte 28, and bit 0x100 of the u16 at 25 marks a file
+ * that crosses a volume boundary. Each volume's packed data runs from 0xFF to
+ * its directory table; the u32 at 0x25 is where the tail of a file continued
+ * from the previous volume ends, i.e. where this volume's own first file
+ * begins. When the whole set is present it is joined (xx_is3_volumes.h). A
+ * volume found on its own still holds complete files: those that start and
+ * end on it. They are published; files that need another volume are not.
+ *
  * Payload archive ("_INST32I.EX_", "_INST16.EX_"):
  *
  *   0x00 u32  signature 0xD879AB2A
@@ -108,6 +119,9 @@ typedef struct is3_member_s {
     uint32_t dos_time;
     uint32_t attributes;
     uint16_t volume;
+    uint32_t wire_offset; /**< Data offset as stored, relative to its volume. */
+    uint8_t first_part;   /**< Volume the data starts on (cabinet only). */
+    uint8_t last_part;    /**< Volume the data ends on (cabinet only). */
     uint8_t method;
     bool present;
 } is3_member;
@@ -303,6 +317,9 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header, int
             member.dos_time = xx_data_get_u32(entry + 15U, 4, 0, false);
             member.attributes = xx_data_get_u32(entry + 19U, 4, 0, false);
             member.volume = xx_data_get_u16(entry + 25U, 2, 0, false);
+            member.wire_offset = xx_data_get_u32(entry + 11U, 4, 0, false);
+            member.first_part = entry[28];
+            member.last_part = entry[0];
             is3_set_extent(&member, format->base_address, size, xx_data_get_u32(entry + 11U, 4, 0, false), xx_data_get_u32(entry + 7U, 4, 0, false));
             member.method = (member.unpacked_size == (uint64_t)member.packed_size) ? IS3_METHOD_STORE : IS3_METHOD_DCL;
             member.header_offset = format->base_address + (int64_t)file_offset + (int64_t)cursor_file;
@@ -535,6 +552,57 @@ fail:
 
 #include "xx_is3_volumes.h"
 
+/* Reduce the member list of one volume of an incomplete set to the files that
+ * lie wholly on that volume. The table gives no checksum, so the layout has to
+ * prove itself: the files that start here must follow one another without a
+ * gap from the continuation mark (header 0x25) to the directory table, only
+ * the last of them may run on into the next volume, and every imploded file
+ * must open with a valid DCL header (literal mode 0/1, dictionary 4..6). */
+static bool is3_lone_volume(Abstractformat *format, is3_stream *stream)
+{
+    uint8_t header[IS3_HEADER_SIZE];
+    uint32_t cursor, directory;
+    unsigned part;
+    size_t index, kept = 0U;
+    bool closed = false;
+    if (!is3_read_at(format->device, format->base_address, header, sizeof(header))) return false;
+    part = header[0x1FU];
+    cursor = xx_data_get_u32(header + 0x25U, 4, 0, false);
+    directory = xx_data_get_u32(header + 0x29U, 4, 0, false);
+    if (part == 0U || cursor < 0xFFU || cursor > directory) return false;
+    for (index = 0U; index < stream->count; ++index) {
+        const is3_member *member = &stream->items[index];
+        bool crosses = (member->volume & 0x100U) != 0U;
+        if (member->first_part != part) continue;
+        if (closed || member->wire_offset != cursor || member->last_part < part || crosses != (member->last_part != part)) return false;
+        if (crosses) {
+            cursor = directory;
+            closed = true;
+            continue;
+        }
+        if (!member->present || member->packed_size <= 0 || (uint64_t)member->packed_size > (uint64_t)(directory - cursor)) return false;
+        if (member->method == IS3_METHOD_DCL) {
+            uint8_t lead[2];
+            if (member->packed_size < 4 || !is3_read_at(format->device, member->data_offset, lead, sizeof(lead)) || lead[0] > 1U || lead[1] < 4U || lead[1] > 6U)
+                return false;
+        }
+        cursor += (uint32_t)member->packed_size;
+        ++kept;
+    }
+    if (kept == 0U || cursor != directory) return false;
+    kept = 0U;
+    for (index = 0U; index < stream->count; ++index) {
+        is3_member *member = &stream->items[index];
+        if (member->first_part == part && member->last_part == part) {
+            stream->items[kept++] = *member;
+        } else if (member->name) {
+            xx_str_free(member->name);
+        }
+    }
+    stream->count = kept;
+    return true;
+}
+
 static bool is3_parse(Abstractformat *format,is3_stream **result,xx_pd_struct *pd)
 {
     is3_stream *single=NULL,*joined=NULL;xx_io_device *view=NULL;Abstractformat logical;
@@ -547,7 +615,7 @@ static bool is3_parse(Abstractformat *format,is3_stream **result,xx_pd_struct *p
         if(!xx_io_read_at(format->device,format->base_address+10,flags,sizeof(flags)))goto done;
         /* Never expose directory bytes as a missing member's payload merely
          * because its numeric extent happens to fit the physical volume. */
-        if((xx_data_get_u16(flags,2,0,false)&3U)&&!view)goto done;
+        if((xx_data_get_u16(flags,2,0,false)&3U)&&!view&&!is3_lone_volume(format,single))goto done;
     }
     if(xx_pd_is_stopped(pd))goto done;
     if(view) {

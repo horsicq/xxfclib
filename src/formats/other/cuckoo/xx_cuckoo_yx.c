@@ -22,6 +22,7 @@
 #include <xxfclib/formats/other/cuckoo/xx_cuckoo_yx.h>
 
 #include <xxfclib/json/xx_json.h>
+#include <xxfclib/rt/xx_rt.h>
 #include <xxfclib/strings/xx_string.h>
 
 #include <stdarg.h>
@@ -329,9 +330,28 @@ static bool xx_cuckoo_yx_unsigned(xx_json *json, uint64_t *value)
     return true;
 }
 
-static bool xx_cuckoo_yx_skip_number(xx_json *json)
+/* serde_json's number parser rejects tokens that overflow f64 ("number out
+ * of range") whenever the number is actually read. The token is not
+ * NUL-terminated in the input buffer, so parse a copy. */
+static bool xx_cuckoo_yx_number_in_range(const uint8_t *token, size_t length)
 {
-    size_t at = json->position;
+    char stack_buffer[384];
+    char *text = stack_buffer;
+    bool in_range;
+    if (length >= sizeof(stack_buffer)) {
+        text = (char *)malloc(length + 1);
+        if (!text) return false;
+    }
+    memcpy(text, token, length);
+    text[length] = 0;
+    in_range = !xx_rt_isinf(xx_rt_strtod(text, NULL));
+    if (text != stack_buffer) free(text);
+    return in_range;
+}
+
+static bool xx_cuckoo_yx_skip_number(xx_json *json, bool checked)
+{
+    size_t start, at = json->position;
     if (at < json->size && json->data[at] == '-') ++at;
     if (at >= json->size) return false;
     if (json->data[at] == '0') {
@@ -363,16 +383,24 @@ static bool xx_cuckoo_yx_skip_number(xx_json *json)
         json->data[at] != '}' && json->data[at] != ']' &&
         json->data[at] != ' ' && json->data[at] != '\t' &&
         json->data[at] != '\r' && json->data[at] != '\n') return false;
+    start = json->position;
     json->position = at;
+    /* The range is validated only for numbers that serde_json would
+     * actually read: everything inside the network map passes through a
+     * serde_json::Value first, while unknown fields of the derive structs
+     * are skipped unread. */
+    if (checked && !xx_cuckoo_yx_number_in_range(json->data + start,
+                                                 at - start))
+        return false;
     return true;
 }
 
-static bool xx_cuckoo_yx_skip(xx_json *json, unsigned depth)
+static bool xx_cuckoo_yx_skip(xx_json *json, unsigned depth, bool checked)
 {
     xx_json_type_t type = xx_json_peek(json);
     if (depth >= XX_JSON_MAX_DEPTH) return false;
     if (type == XX_JSON_TYPE_STRING) return xx_json_skip(json);
-    if (type == XX_JSON_TYPE_NUMBER) return xx_cuckoo_yx_skip_number(json);
+    if (type == XX_JSON_TYPE_NUMBER) return xx_cuckoo_yx_skip_number(json, checked);
     if (type == XX_JSON_TYPE_BOOL) return xx_json_bool(json, NULL);
     if (type == XX_JSON_TYPE_NULL) return xx_json_null(json);
     if (type == XX_JSON_TYPE_OBJECT) {
@@ -380,7 +408,7 @@ static bool xx_cuckoo_yx_skip(xx_json *json, unsigned depth)
         if (!xx_json_object_empty(json)) {
             do {
                 if (!xx_json_object_key(json, NULL) ||
-                    !xx_cuckoo_yx_skip(json, depth + 1)) return false;
+                    !xx_cuckoo_yx_skip(json, depth + 1, checked)) return false;
             } while (xx_json_more(json));
         }
         return xx_json_object_end(json);
@@ -389,7 +417,7 @@ static bool xx_cuckoo_yx_skip(xx_json *json, unsigned depth)
         if (!xx_json_array_begin(json)) return false;
         if (!xx_json_array_empty(json)) {
             do {
-                if (!xx_cuckoo_yx_skip(json, depth + 1)) return false;
+                if (!xx_cuckoo_yx_skip(json, depth + 1, checked)) return false;
             } while (xx_json_more(json));
         }
         return xx_json_array_end(json);
@@ -397,12 +425,13 @@ static bool xx_cuckoo_yx_skip(xx_json *json, unsigned depth)
     return false;
 }
 
-static bool xx_cuckoo_yx_capture(xx_json *json, xx_cuckoo_yx_raw *raw)
+static bool xx_cuckoo_yx_capture(xx_json *json, xx_cuckoo_yx_raw *raw,
+                                 bool checked)
 {
     size_t start;
     xx_json_peek(json);
     start = json->position;
-    if (!xx_cuckoo_yx_skip(json, 0)) return false;
+    if (!xx_cuckoo_yx_skip(json, 0, checked)) return false;
     raw->data = json->data + start;
     raw->size = json->position - start;
     raw->present = true;
@@ -428,6 +457,25 @@ static bool xx_cuckoo_yx_string_array(xx_json *json,
     return xx_json_array_end(json);
 }
 
+/* DomainJson/OldDomainJson in sequence form: exactly one element. */
+static bool xx_cuckoo_yx_domain_seq(xx_json *json, xx_cuckoo_yx_text *domain)
+{
+    if (!xx_json_array_begin(json)) return false;
+    if (xx_json_array_empty(json)) return false;
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) {
+        if (!xx_json_null(json)) return false;
+    } else {
+        if (!xx_cuckoo_yx_string(json, domain)) return false;
+    }
+    if (xx_json_more(json) || !xx_json_array_end(json)) {
+        /* The decoded string is not in the report yet: release it here. */
+        xx_str_free(domain->data);
+        memset(domain, 0, sizeof(*domain));
+        return false;
+    }
+    return true;
+}
+
 static bool xx_cuckoo_yx_domain_array(xx_json *json,
                                      xx_cuckoo_yx_strings *vector,
                                      const char *field)
@@ -439,23 +487,30 @@ static bool xx_cuckoo_yx_domain_array(xx_json *json,
         do {
             xx_cuckoo_yx_text domain = {0};
             xx_cuckoo_yx_raw selected = {0};
-            if (!xx_json_object_begin(json)) return false;
-            if (!xx_json_object_empty(json)) {
-                do {
-                    char *key = NULL;
-                    size_t key_length = 0;
-                    bool ok;
-                    if (!xx_cuckoo_yx_object_key(json, &key, &key_length))
-                        return false;
-                    if (xx_cuckoo_yx_key_equal(key, key_length, field))
-                        ok = xx_cuckoo_yx_capture(json, &selected);
-                    else
-                        ok = xx_cuckoo_yx_skip(json, 0);
-                    xx_str_free(key);
-                    if (!ok) return false;
-                } while (xx_json_more(json));
+            bool object_form = xx_json_peek(json) != XX_JSON_TYPE_ARRAY;
+            if (!object_form) {
+                if (!xx_cuckoo_yx_domain_seq(json, &domain)) return false;
+            } else {
+                if (!xx_json_object_begin(json)) return false;
             }
-            if (!xx_json_object_end(json)) return false;
+            if (object_form) {
+                if (!xx_json_object_empty(json)) {
+                    do {
+                        char *key = NULL;
+                        size_t key_length = 0;
+                        bool ok;
+                        if (!xx_cuckoo_yx_object_key(json, &key, &key_length))
+                            return false;
+                        if (xx_cuckoo_yx_key_equal(key, key_length, field))
+                            ok = xx_cuckoo_yx_capture(json, &selected, true);
+                        else
+                            ok = xx_cuckoo_yx_skip(json, 0, true);
+                        xx_str_free(key);
+                        if (!ok) return false;
+                    } while (xx_json_more(json));
+                }
+                if (!xx_json_object_end(json)) return false;
+            }
             /* The domains/dns arrays pass through serde_json::Value before
              * item decoding, so only the final duplicate key is typed. */
             if (selected.present) {
@@ -472,6 +527,79 @@ static bool xx_cuckoo_yx_domain_array(xx_json *json,
     return xx_json_array_end(json);
 }
 
+/* SummaryJson in sequence form: exactly [mutexes, files, keys]. */
+static bool xx_cuckoo_yx_summary_seq(xx_json *json, xx_cuckoo_yx_report *report)
+{
+    xx_cuckoo_yx_strings *vectors[3];
+    unsigned i;
+    vectors[0] = &report->mutexes;
+    vectors[1] = &report->files;
+    vectors[2] = &report->keys;
+    if (!xx_json_array_begin(json)) return false;
+    if (xx_json_array_empty(json)) return false;
+    for (i = 0;; ++i) {
+        if (xx_json_peek(json) == XX_JSON_TYPE_NULL) {
+            if (!xx_json_null(json)) return false;
+        } else {
+            xx_cuckoo_yx_strings_free(vectors[i]);
+            if (!xx_cuckoo_yx_string_array(json, vectors[i])) return false;
+        }
+        if (i == 2) break;
+        if (!xx_json_more(json)) return false;
+    }
+    if (xx_json_more(json)) return false;
+    return xx_json_array_end(json);
+}
+
+/* HttpJson in sequence form: exactly [user-agent, method, uri]. */
+static bool xx_cuckoo_yx_http_seq(xx_json *json, xx_cuckoo_yx_http *item)
+{
+    unsigned i;
+    if (!xx_json_array_begin(json)) return false;
+    if (xx_json_array_empty(json)) return false;
+    for (i = 0;; ++i) {
+        if (xx_json_peek(json) == XX_JSON_TYPE_NULL) {
+            if (!xx_json_null(json)) return false;
+        } else {
+            xx_cuckoo_yx_text value = {0};
+            xx_cuckoo_yx_text *slot = i == 0 ? &item->user_agent :
+                                     i == 1 ? &item->method : &item->uri;
+            if (!xx_cuckoo_yx_string(json, &value)) return false;
+            *slot = value;
+        }
+        if (i == 2) break;
+        if (!xx_json_more(json)) return false;
+    }
+    if (xx_json_more(json)) return false;
+    return xx_json_array_end(json);
+}
+
+/* TcpJson/UdpJson in sequence form: exactly [dst, dst_domain, dport]. */
+static bool xx_cuckoo_yx_connection_seq(xx_json *json,
+                                        xx_cuckoo_yx_connection *item)
+{
+    unsigned i;
+    if (!xx_json_array_begin(json)) return false;
+    if (xx_json_array_empty(json)) return false;
+    for (i = 0;; ++i) {
+        if (xx_json_peek(json) == XX_JSON_TYPE_NULL) {
+            if (!xx_json_null(json)) return false;
+        } else if (i == 2) {
+            if (!xx_cuckoo_yx_unsigned(json, &item->dport)) return false;
+            item->has_dport = true;
+        } else {
+            xx_cuckoo_yx_text value = {0};
+            xx_cuckoo_yx_text *slot = i == 0 ? &item->dst : &item->dst_domain;
+            if (!xx_cuckoo_yx_string(json, &value)) return false;
+            *slot = value;
+        }
+        if (i == 2) break;
+        if (!xx_json_more(json)) return false;
+    }
+    if (xx_json_more(json)) return false;
+    return xx_json_array_end(json);
+}
+
 static bool xx_cuckoo_yx_http_array(xx_json *json,
                                    xx_cuckoo_yx_http_vector *vector)
 {
@@ -482,6 +610,12 @@ static bool xx_cuckoo_yx_http_array(xx_json *json,
         do {
             xx_cuckoo_yx_http item = {0};
             xx_cuckoo_yx_raw method = {0}, uri = {0}, user_agent = {0};
+            if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY) {
+                /* HttpJson in sequence form: [user-agent, method, uri]. */
+                if (!xx_cuckoo_yx_http_seq(json, &item)) goto item_error;
+                if (!xx_cuckoo_yx_push_http(vector, item)) goto item_error;
+                continue;
+            }
             if (!xx_json_object_begin(json)) return false;
             if (!xx_json_object_empty(json)) {
                 do {
@@ -499,8 +633,8 @@ static bool xx_cuckoo_yx_http_array(xx_json *json,
                                                     "user-agent")) {
                         slot = &user_agent;
                     }
-                    if (slot) ok = xx_cuckoo_yx_capture(json, slot);
-                    else ok = xx_cuckoo_yx_skip(json, 0);
+                    if (slot) ok = xx_cuckoo_yx_capture(json, slot, true);
+                    else ok = xx_cuckoo_yx_skip(json, 0, true);
                     xx_str_free(key);
                     if (!ok) goto item_error;
                 } while (xx_json_more(json));
@@ -548,6 +682,12 @@ static bool xx_cuckoo_yx_connection_array(
         do {
             xx_cuckoo_yx_connection item = {0};
             xx_cuckoo_yx_raw dst = {0}, dst_domain = {0}, dport = {0};
+            if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY) {
+                /* TcpJson/UdpJson in sequence form: [dst, dst_domain, dport]. */
+                if (!xx_cuckoo_yx_connection_seq(json, &item)) goto item_error;
+                if (!xx_cuckoo_yx_push_connection(vector, item)) goto item_error;
+                continue;
+            }
             if (!xx_json_object_begin(json)) return false;
             if (!xx_json_object_empty(json)) {
                 do {
@@ -566,8 +706,8 @@ static bool xx_cuckoo_yx_connection_array(
                                                     "dport")) {
                         slot = &dport;
                     }
-                    if (slot) ok = xx_cuckoo_yx_capture(json, slot);
-                    else ok = xx_cuckoo_yx_skip(json, 0);
+                    if (slot) ok = xx_cuckoo_yx_capture(json, slot, true);
+                    else ok = xx_cuckoo_yx_skip(json, 0, true);
                     xx_str_free(key);
                     if (!ok) goto item_error;
                 } while (xx_json_more(json));
@@ -621,9 +761,9 @@ static bool xx_cuckoo_yx_network(xx_json *json, xx_cuckoo_yx_report *report)
             bool ok;
             if (!xx_cuckoo_yx_object_key(json, &key, &key_length)) return false;
             if (xx_cuckoo_yx_key_equal(key, key_length, "domains"))
-                ok = xx_cuckoo_yx_capture(json, &domains);
+                ok = xx_cuckoo_yx_capture(json, &domains, true);
             else if (xx_cuckoo_yx_key_equal(key, key_length, "dns"))
-                ok = xx_cuckoo_yx_capture(json, &old_dns);
+                ok = xx_cuckoo_yx_capture(json, &old_dns, true);
             else if (xx_cuckoo_yx_key_equal(key, key_length, "http")) {
                 if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
                     ok = xx_json_null(json);
@@ -652,7 +792,7 @@ static bool xx_cuckoo_yx_network(xx_json *json, xx_cuckoo_yx_report *report)
                     xx_cuckoo_yx_strings_free(&report->hosts);
                     ok = xx_cuckoo_yx_string_array(json, &report->hosts);
                 }
-            } else ok = xx_cuckoo_yx_skip(json, 0);
+            } else ok = xx_cuckoo_yx_skip(json, 0, true);
             xx_str_free(key);
             if (!ok) return false;
         } while (xx_json_more(json));
@@ -680,6 +820,8 @@ static bool xx_cuckoo_yx_summary(xx_json *json, xx_cuckoo_yx_report *report)
     unsigned seen = 0;
     if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
         return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY)
+        return xx_cuckoo_yx_summary_seq(json, report);
     if (!xx_json_object_begin(json)) return false;
     if (!xx_json_object_empty(json)) {
         do {
@@ -699,12 +841,26 @@ static bool xx_cuckoo_yx_summary(xx_json *json, xx_cuckoo_yx_report *report)
                 xx_cuckoo_yx_strings_free(&report->keys);
                 ok = xx_cuckoo_yx_mark_once(&seen, 4u) &&
                      xx_cuckoo_yx_string_array(json, &report->keys);
-            } else ok = xx_cuckoo_yx_skip(json, 0);
+            } else ok = xx_cuckoo_yx_skip(json, 0, false);
             xx_str_free(key);
             if (!ok) return false;
         } while (xx_json_more(json));
     }
     return xx_json_object_end(json);
+}
+
+/* BehaviorJson in sequence form: exactly one element (summary). */
+static bool xx_cuckoo_yx_behavior_seq(xx_json *json, xx_cuckoo_yx_report *report)
+{
+    if (!xx_json_array_begin(json)) return false;
+    if (xx_json_array_empty(json)) return false;
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) {
+        if (!xx_json_null(json)) return false;
+    } else {
+        if (!xx_cuckoo_yx_summary(json, report)) return false;
+    }
+    if (xx_json_more(json)) return false;
+    return xx_json_array_end(json);
 }
 
 static bool xx_cuckoo_yx_behavior(xx_json *json,
@@ -713,6 +869,8 @@ static bool xx_cuckoo_yx_behavior(xx_json *json,
     unsigned seen = 0;
     if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
         return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY)
+        return xx_cuckoo_yx_behavior_seq(json, report);
     if (!xx_json_object_begin(json)) return false;
     if (!xx_json_object_empty(json)) {
         do {
@@ -723,7 +881,7 @@ static bool xx_cuckoo_yx_behavior(xx_json *json,
             if (xx_cuckoo_yx_key_equal(key, key_length, "summary"))
                 ok = xx_cuckoo_yx_mark_once(&seen, 1u) &&
                      xx_cuckoo_yx_summary(json, report);
-            else ok = xx_cuckoo_yx_skip(json, 0);
+            else ok = xx_cuckoo_yx_skip(json, 0, false);
             xx_str_free(key);
             if (!ok) return false;
         } while (xx_json_more(json));
@@ -771,7 +929,7 @@ static bool xx_cuckoo_yx_report_parse_data(const uint8_t *json, size_t size,
             else if (xx_cuckoo_yx_key_equal(key, key_length, "behavior"))
                 ok = xx_cuckoo_yx_mark_once(&seen, 2u) &&
                      xx_cuckoo_yx_behavior(&cursor, report);
-            else ok = xx_cuckoo_yx_skip(&cursor, 0);
+            else ok = xx_cuckoo_yx_skip(&cursor, 0, false);
             xx_str_free(key);
             if (!ok) goto error;
         } while (xx_json_more(&cursor));

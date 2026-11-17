@@ -20,6 +20,7 @@
  */
 
 #include <xxfclib/toml/xx_toml.h>
+#include <xxfclib/rt/xx_rt.h>
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
@@ -29,6 +30,96 @@
 
 /* TOML 1.0 document parsing. Syntax is parsed independently of the CLI
  * configuration schema, so syntax errors take precedence over type errors. */
+/* Duplicate-key detection indexed by (table, key). The check used to scan
+ * every previous child of a table, which is quadratic for wide tables; the
+ * parser keeps this open-addressing index instead, so lookups stay O(1)
+ * amortized while the public tree layout is untouched. */
+typedef struct {
+    xx_toml_value *table;
+    const char *key;   /* borrowed from the child's own key copy */
+    size_t key_length;
+    xx_toml_value *child;
+} xx_toml_slot;
+
+typedef struct {
+    xx_toml_slot *slots;
+    size_t count, capacity;
+} xx_toml_index;
+
+static void xx_toml_index_free(xx_toml_index *index)
+{
+    free(index->slots);
+    memset(index, 0, sizeof(*index));
+}
+
+static size_t xx_toml_index_hash(const xx_toml_value *table, const char *key,
+                                 size_t length)
+{
+    size_t h = (size_t)14695981039346656037ULL;
+    size_t folded = (size_t)table >> 4;
+    size_t i;
+    for (i = 0; i < sizeof(folded); ++i)
+        h = (h ^ ((folded >> (i * 8)) & 0xff)) * (size_t)1099511628211ULL;
+    for (i = 0; i < length; ++i)
+        h = (h ^ (unsigned char)key[i]) * (size_t)1099511628211ULL;
+    return h;
+}
+
+static bool xx_toml_index_insert(xx_toml_index *index,
+                                 xx_toml_value *table, xx_toml_value *child)
+{
+    size_t h, mask, probe;
+    if ((index->count + 1) * 10 >= index->capacity * 7) {
+        size_t capacity = index->capacity ? index->capacity * 2 : 64;
+        xx_toml_slot *slots =
+            (xx_toml_slot *)calloc(capacity, sizeof(*slots));
+        size_t i;
+        if (!slots) return false;
+        for (i = 0; i < index->capacity; ++i) {
+            xx_toml_slot moved = index->slots[i];
+            size_t at;
+            if (!moved.table) continue;
+            at = xx_toml_index_hash(moved.table, moved.key,
+                                    moved.key_length) & (capacity - 1);
+            while (slots[at].table) at = (at + 1) & (size_t)(capacity - 1);
+            slots[at] = moved;
+        }
+        free(index->slots);
+        index->slots = slots;
+        index->capacity = capacity;
+    }
+    h = xx_toml_index_hash(table, child->key, child->key_length);
+    mask = index->capacity - 1;
+    probe = h & mask;
+    while (index->slots[probe].table) probe = (probe + 1) & mask;
+    index->slots[probe].table = table;
+    index->slots[probe].key = child->key;
+    index->slots[probe].key_length = child->key_length;
+    index->slots[probe].child = child;
+    ++index->count;
+    return true;
+}
+
+/* The parse-time lookup: exact same result as scanning the table's children,
+ * but backed by the index. */
+static xx_toml_value *xx_toml_lookup_indexed(
+    const xx_toml_index *index, const xx_toml_value *v,
+    const char *key, size_t length)
+{
+    size_t probe, mask;
+    if (!index->capacity) return NULL;
+    probe = xx_toml_index_hash(v, key, length) & (index->capacity - 1);
+    mask = index->capacity - 1;
+    for (;;) {
+        const xx_toml_slot *slot = &index->slots[probe];
+        if (!slot->table) return NULL;
+        if (slot->table == v && slot->key_length == length &&
+            memcmp(slot->key, key, length) == 0)
+            return slot->child;
+        probe = (probe + 1) & mask;
+    }
+}
+
 typedef struct xx_toml_parser {
     const char *source;
     size_t at, length;
@@ -36,6 +127,7 @@ typedef struct xx_toml_parser {
     bool failed;
     xx_toml_error *error;
     char *table_path;
+    xx_toml_index index;
 } xx_toml_parser;
 
 typedef struct xx_toml_path {
@@ -43,6 +135,7 @@ typedef struct xx_toml_path {
     size_t *lengths;
     size_t count;
 } xx_toml_path;
+
 
 static bool xx_toml_fail(xx_toml_parser *p, size_t at, const char *format, ...)
 {
@@ -143,6 +236,13 @@ static bool xx_toml_push(xx_toml_parser *p, xx_toml_value *parent,
     if (!items) return xx_toml_fail(p, p->at, "out of memory");
     parent->children = items;
     parent->children[parent->count++] = v;
+    if (parent->kind == XX_TOML_TABLE && v->key &&
+        !xx_toml_index_insert(&p->index, parent, v)) {
+        /* Roll the append back so the caller's xx_toml_free(v) stays the
+         * only cleanup, like the realloc failures above. */
+        --parent->count;
+        return xx_toml_fail(p, p->at, "out of memory");
+    }
     return true;
 }
 
@@ -261,7 +361,15 @@ static char *xx_toml_string(xx_toml_parser *p, bool key, size_t *length)
                 }
                 for (size_t i = 3; i < run; ++i) out[used++] = quote;
             }
-            out[used] = 0; *length = used; return out;
+            out[used] = 0; *length = used;
+            /* The allocation was sized to the rest of the document; keep
+             * only what the value uses (realloc failure keeps the larger
+             * block, which is still correct). */
+            {
+                char *fit = (char *)realloc(out, used + 1);
+                if (fit) out = fit;
+            }
+            return out;
         }
         if (c == '\\' && quote == '"') {
             if (multi) {
@@ -428,7 +536,9 @@ static xx_toml_value *xx_toml_descend(xx_toml_parser *p, xx_toml_value *table,
                                        bool dotted, bool inline_table, size_t start)
 {
     for (size_t i = 0; i < count; ++i) {
-        xx_toml_value *child = xx_toml_lookup(table, path->keys[i], path->lengths[i]);
+        xx_toml_value *child = xx_toml_lookup_indexed(&p->index, table,
+                                                      path->keys[i],
+                                                      path->lengths[i]);
         if (!child) {
             child = xx_toml_new(p, XX_TOML_TABLE);
             if (!child) return NULL;
@@ -461,7 +571,8 @@ static bool xx_toml_insert(xx_toml_parser *p, xx_toml_value *table,
     size_t last = path->count - 1;
     table = xx_toml_descend(p, table, path, last, true, inline_table, start);
     if (!table) return false;
-    if (xx_toml_lookup(table, path->keys[last], path->lengths[last])) {
+    if (xx_toml_lookup_indexed(&p->index, table, path->keys[last],
+                               path->lengths[last])) {
         if (inline_table) return xx_toml_fail(p, start, "duplicate key `%s`", path->keys[last]);
         return xx_toml_fail(p, start, "duplicate key `%s` in %s%s%s", path->keys[last],
                             p->table_path && p->table_path[0] ? "table `" : "document root",
@@ -736,8 +847,11 @@ static xx_toml_value *xx_toml_value_parse(xx_toml_parser *p)
         }
         errno = 0;
         if (floating) {
-            v->kind = XX_TOML_FLOAT; v->floating = strtod(number, &end);
-            if (*end || v->floating == INFINITY) {
+            /* Locale-independent correctly-rounded parse: strtod would stop
+             * at '.' in a comma-decimal locale, rejecting valid TOML. */
+            const char *parsed = NULL;
+            v->kind = XX_TOML_FLOAT; v->floating = xx_rt_strtod(number, &parsed);
+            if (!parsed || *parsed || v->floating == INFINITY) {
                 xx_toml_fail(p, start, "invalid floating-point number"); goto failed;
             }
         } else {
@@ -778,7 +892,8 @@ static bool xx_toml_header(xx_toml_parser *p, xx_toml_value *root,
         xx_toml_header_error(p);
         goto failed;
     }
-    child = xx_toml_lookup(parent, path.keys[last], path.lengths[last]);
+    child = xx_toml_lookup_indexed(&p->index, parent, path.keys[last],
+                                   path.lengths[last]);
     if (child && (array ? !child->table_array :
         child->kind != XX_TOML_TABLE || !child->implicit || child->dotted || child->sealed)) {
         char *name = xx_toml_path_text(&path, last);
@@ -870,8 +985,10 @@ xx_toml_value *xx_toml_parse(const char *source, size_t length, xx_toml_error *e
         xx_toml_path_free(&path);
     }
     free(p.table_path);
+    xx_toml_index_free(&p.index);
     return root;
 failed:
     free(p.table_path);
+    xx_toml_index_free(&p.index);
     xx_toml_free(root); return NULL;
 }

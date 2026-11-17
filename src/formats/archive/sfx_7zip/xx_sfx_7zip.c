@@ -26,7 +26,7 @@ static bool executable_carrier_at_parse(Abstractformat *f, pm_stream *s, int64_t
     if (!r) return false;
     ok = xx_format_handle_base_info(&r->format, pd);
     size = r->format.format_size;
-    ok = ok && !carrier_stop(pd) && r->format.number_of_archive_records > 0 && r->format.number_of_archive_records <= 4096 &&
+    ok = ok && !carrier_stop(pd) && r->format.number_of_archive_records > 0 && r->format.number_of_archive_records <= 65536 &&
          carrier_range(pm_available(f), at, (uint64_t)size);
     xx_7zip_free(r);
     return ok && executable_carrier_component(f, s, at, size, "payload.7z");
@@ -52,6 +52,65 @@ static bool sfx7_resource_at_parse(Abstractformat *f, pm_stream *s, int64_t at, 
 }
 #include "xx_sfx_7zip_resources.h"
 #include "xx_sfx_7zip_packed_pe.h"
+/* Some early stubs declare a SizeOfHeaders that is larger than the file
+ * offset of their first section (4096 against a 512-byte file alignment and a
+ * first section at 1024). The general PE carrier check refuses a section that
+ * begins inside the declared headers, so the overlay of such a stub is never
+ * scanned. Only for that one anomaly the image end is measured here with the
+ * section table itself as the lower bound: every section must still lie
+ * behind the table, inside the file, and overlap no other section. */
+static bool sfx7_short_headers_overlay(Abstractformat *f, int64_t *overlay, xx_pd_struct *pd)
+{
+    uint8_t dos[64], coff[24], opt[64], row[40];
+    carrier_extent spans[96];
+    int64_t limit = pm_available(f), end, table_end;
+    uint32_t pe, headers, first = UINT32_MAX;
+    uint16_t count, optional, magic;
+    unsigned i;
+    if (carrier_stop(pd) || !pm_read(f, 0, dos, 64) || xx_rt_memcmp(dos, "MZ", 2)) return false;
+    pe = xx_data_get_u32(dos + 60, 4, 0, false);
+    if (pe < 64 || pe > 1048576 || !pm_read(f, pe, coff, 24) || xx_rt_memcmp(coff, "PE\0\0", 4)) return false;
+    count = xx_data_get_u16(coff + 6, 2, 0, false);
+    optional = xx_data_get_u16(coff + 20, 2, 0, false);
+    if (!count || count > 96 || optional < 64 || optional > 4096 || !pm_read(f, (int64_t)pe + 24, opt, 64)) return false;
+    magic = xx_data_get_u16(opt, 2, 0, false);
+    headers = xx_data_get_u32(opt + 60, 4, 0, false);
+    table_end = (int64_t)pe + 24 + optional + (int64_t)count * 40;
+    if ((magic != 0x10b && magic != 0x20b) || table_end > limit || (int64_t)headers > limit) return false;
+    end = table_end;
+    for (i = 0; i < count; ++i) {
+        uint32_t bytes, at;
+        if (carrier_stop(pd) || !pm_read(f, table_end - (int64_t)(count - i) * 40, row, 40)) return false;
+        bytes = xx_data_get_u32(row + 16, 4, 0, false);
+        at = xx_data_get_u32(row + 20, 4, 0, false);
+        if (bytes && ((int64_t)at < table_end || !carrier_range(limit, at, bytes))) return false;
+        spans[i].lo = bytes ? (int64_t)at : limit;
+        spans[i].hi = bytes ? (int64_t)at + bytes : limit;
+        if (bytes && at < first) first = at;
+        if (bytes && (int64_t)at + bytes > end) end = (int64_t)at + bytes;
+    }
+    /* The anomaly itself: otherwise the general scan has already run. */
+    if (first == UINT32_MAX || first >= headers || !carrier_extents(spans, count, pd)) return false;
+    *overlay = end;
+    return true;
+}
+static bool sfx7_short_headers_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
+{
+    static const uint8_t sig[] = {0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c};
+    int64_t low, end, limit = pm_available(f);
+    unsigned candidates = 0;
+    if (!sfx7_short_headers_overlay(f, &low, pd) || low >= limit) return false;
+    end = limit - low > 16777216 ? low + 16777216 : limit;
+    while (low <= end - 6 && !carrier_stop(pd)) {
+        int64_t at = xx_io_find_bytes_buffer_optimize_ex(f->device, f->base_address + low, end - low, sig, sizeof(sig), xx_get_file_buffer_size(), pd);
+        if (at < 0 || ++candidates > 8) return false;
+        at -= f->base_address;
+        if (executable_carrier_at_parse(f, s, at, pd)) return true;
+        if (s->count) return false;
+        low = at + 1;
+    }
+    return false;
+}
 static bool sfx_carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
 {
     static const uint8_t sig[] = {55, 122, 188, 175, 39, 28};
@@ -59,7 +118,9 @@ static bool sfx_carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     if (s->count || carrier_stop(pd)) return false;
     if (sfx7_packed_overlay_parse(f, s, pd)) return true;
     if (s->count || carrier_stop(pd)) return false;
-    return sfx7_resources(f, s, pd);
+    if (sfx7_resources(f, s, pd)) return true;
+    if (s->count || carrier_stop(pd)) return false;
+    return sfx7_short_headers_parse(f, s, pd);
 }
 
 static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)

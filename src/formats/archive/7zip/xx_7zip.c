@@ -898,20 +898,72 @@ static bool xx_7zip_parse_optional_vector(xx_7zip_reader *r, uint64_t count, uin
     return xx_7zip_parse_bool_vector(r, count, defined);
 }
 
-static bool xx_7zip_parse_file_times(xx_7zip_reader *prop, xx_7zip_file *files, uint64_t count)
+/* Decoded AdditionalStreamsInfo folders, one buffer per folder.
+ *
+ * Archives written by the earliest releases of the format (start header
+ * version 0.01 / 0.02) do not compress the header as a whole. They keep it
+ * plain and move the bulky file properties out of it instead: a property
+ * (names, attributes, times) starts with an "external" byte, and when that
+ * byte is 1 a 7z number follows that selects one of the additional streams;
+ * the property's values are then read from that decoded stream rather than
+ * from the header. Each additional stream is an ordinary folder (LZMA in
+ * every archive seen) packed right behind the main streams. */
+typedef struct xx_7zip_external_s {
+    uint8_t **data;
+    size_t *sizes;
+    uint64_t count;
+} xx_7zip_external;
+
+static void xx_7zip_external_cleanup(xx_7zip_external *external)
+{
+    uint64_t i;
+    if (!external) return;
+    if (external->data) {
+        for (i = 0; i < external->count; ++i)
+            if (external->data[i]) xx_mem_free(external->data[i]);
+        xx_mem_free(external->data);
+    }
+    if (external->sizes) xx_mem_free(external->sizes);
+    xx_mem_zero(external, sizeof(*external));
+}
+
+/* Read a property's external byte and name the reader that holds its values:
+ * the property itself, or `storage` set over the selected additional stream.
+ * NULL when the selector is malformed or names a stream that does not exist. */
+static xx_7zip_reader *xx_7zip_property_values(xx_7zip_reader *prop, const xx_7zip_external *streams, xx_7zip_reader *storage)
+{
+    uint8_t external;
+    uint64_t index;
+    if (!xx_7zip_reader_u8(prop, &external)) return NULL;
+    if (external == 0) return prop;
+    if (external != 1 || !streams || !xx_7zip_reader_number(prop, &index) || index >= streams->count || !streams->data[index]) return NULL;
+    storage->data = streams->data[index];
+    storage->size = streams->sizes[index];
+    storage->pos = 0;
+    return storage;
+}
+
+/* An external stream holds exactly one property: nothing may be left over. */
+static bool xx_7zip_property_values_done(const xx_7zip_reader *prop, const xx_7zip_reader *values)
+{
+    return values == prop || values->pos == values->size;
+}
+
+static bool xx_7zip_parse_file_times(xx_7zip_reader *prop, xx_7zip_file *files, uint64_t count, const xx_7zip_external *streams)
 {
     uint8_t *defined;
-    uint8_t external;
+    xx_7zip_reader storage;
+    xx_7zip_reader *values;
     uint64_t i;
     defined = (uint8_t *)xx_7zip_alloc_array(count, sizeof(uint8_t));
     if (count && !defined) return false;
-    if (!xx_7zip_parse_optional_vector(prop, count, defined) || !xx_7zip_reader_u8(prop, &external) || external != 0) {
+    if (!xx_7zip_parse_optional_vector(prop, count, defined) || !(values = xx_7zip_property_values(prop, streams, &storage))) {
         if (defined) xx_mem_free(defined);
         return false;
     }
     for (i = 0; i < count; ++i) {
         if (defined[i]) {
-            if (!xx_7zip_reader_u64_real(prop, &files[i].mtime)) {
+            if (!xx_7zip_reader_u64_real(values, &files[i].mtime)) {
                 xx_mem_free(defined);
                 return false;
             }
@@ -919,23 +971,24 @@ static bool xx_7zip_parse_file_times(xx_7zip_reader *prop, xx_7zip_file *files, 
         }
     }
     if (defined) xx_mem_free(defined);
-    return true;
+    return xx_7zip_property_values_done(prop, values);
 }
 
-static bool xx_7zip_parse_file_attributes(xx_7zip_reader *prop, xx_7zip_file *files, uint64_t count)
+static bool xx_7zip_parse_file_attributes(xx_7zip_reader *prop, xx_7zip_file *files, uint64_t count, const xx_7zip_external *streams)
 {
     uint8_t *defined;
-    uint8_t external;
+    xx_7zip_reader storage;
+    xx_7zip_reader *values;
     uint64_t i;
     defined = (uint8_t *)xx_7zip_alloc_array(count, sizeof(uint8_t));
     if (count && !defined) return false;
-    if (!xx_7zip_parse_optional_vector(prop, count, defined) || !xx_7zip_reader_u8(prop, &external) || external != 0) {
+    if (!xx_7zip_parse_optional_vector(prop, count, defined) || !(values = xx_7zip_property_values(prop, streams, &storage))) {
         if (defined) xx_mem_free(defined);
         return false;
     }
     for (i = 0; i < count; ++i) {
         if (defined[i]) {
-            if (!xx_7zip_reader_u32(prop, &files[i].attributes)) {
+            if (!xx_7zip_reader_u32(values, &files[i].attributes)) {
                 xx_mem_free(defined);
                 return false;
             }
@@ -943,7 +996,7 @@ static bool xx_7zip_parse_file_attributes(xx_7zip_reader *prop, xx_7zip_file *fi
         }
     }
     if (defined) xx_mem_free(defined);
-    return true;
+    return xx_7zip_property_values_done(prop, values);
 }
 
 static bool xx_7zip_map_files_to_streams(xx_7zip_private *priv)
@@ -988,7 +1041,7 @@ static bool xx_7zip_map_files_to_streams(xx_7zip_private *priv)
     return sub_index == streams->num_substreams;
 }
 
-static bool xx_7zip_parse_files_info(xx_7zip_reader *r, xx_7zip_private *priv)
+static bool xx_7zip_parse_files_info(xx_7zip_reader *r, xx_7zip_private *priv, const xx_7zip_external *streams)
 {
     uint64_t count;
     uint8_t *empty_stream = NULL;
@@ -1016,11 +1069,13 @@ static bool xx_7zip_parse_files_info(xx_7zip_reader *r, xx_7zip_private *priv)
         if (type == XX_7ZIP_NID_END) break;
         if (!xx_7zip_reader_number(r, &property_size) || !xx_7zip_reader_subreader(r, property_size, &prop)) goto cleanup;
         if (type == XX_7ZIP_NID_NAME) {
-            uint8_t external;
-            if (!xx_7zip_reader_u8(&prop, &external) || external != 0) goto cleanup;
+            xx_7zip_reader storage;
+            xx_7zip_reader *values = xx_7zip_property_values(&prop, streams, &storage);
+            if (!values) goto cleanup;
             for (i = 0; i < count; ++i) {
-                if (priv->files[i].name || !(priv->files[i].name = xx_7zip_read_utf16_name(&prop))) goto cleanup;
+                if (priv->files[i].name || !(priv->files[i].name = xx_7zip_read_utf16_name(values))) goto cleanup;
             }
+            if (!xx_7zip_property_values_done(&prop, values)) goto cleanup;
         } else if (type == XX_7ZIP_NID_EMPTY_STREAM) {
             if (have_empty_stream || !xx_7zip_parse_bool_vector(&prop, count, empty_stream)) goto cleanup;
             have_empty_stream = true;
@@ -1037,9 +1092,9 @@ static bool xx_7zip_parse_files_info(xx_7zip_reader *r, xx_7zip_private *priv)
                 if (!*target || !xx_7zip_parse_bool_vector(&prop, empty_count, *target)) goto cleanup;
             }
         } else if (type == XX_7ZIP_NID_MTIME) {
-            if (!xx_7zip_parse_file_times(&prop, priv->files, count)) goto cleanup;
+            if (!xx_7zip_parse_file_times(&prop, priv->files, count, streams)) goto cleanup;
         } else if (type == XX_7ZIP_NID_WIN_ATTRIBUTES) {
-            if (!xx_7zip_parse_file_attributes(&prop, priv->files, count)) goto cleanup;
+            if (!xx_7zip_parse_file_attributes(&prop, priv->files, count, streams)) goto cleanup;
         } else {
             /* Unknown file properties are length-delimited and safely ignored. */
             prop.pos = prop.size;
@@ -1079,46 +1134,91 @@ static bool xx_7zip_skip_archive_properties(xx_7zip_reader *r)
     }
 }
 
-static bool xx_7zip_parse_plain_header(const uint8_t *data, size_t size, xx_7zip_private *priv)
+static bool xx_7zip_decode_folder(Abstractformat *self, const xx_7zip_streams *streams, uint64_t folder_index, xx_io_device *destination, xx_pd_struct *pd,
+                                  uint32_t *out_final_crc, bool *out_has_crc);
+
+/* Decode every AdditionalStreamsInfo folder into memory. The folders use the
+ * same pack-stream addressing as the main streams and the same coder graph
+ * decoder; a folder that cannot be decoded is left NULL and only fails the
+ * archive when a file property actually refers to it. The total is held to
+ * the header ceiling, since these streams are header material. */
+static bool xx_7zip_decode_additional_streams(Abstractformat *self, const xx_7zip_streams *additional, xx_7zip_external *external)
+{
+    uint64_t i;
+    uint64_t total = 0;
+    if (!self || !additional || !external || external->data || additional->num_folders > XX_7ZIP_MAX_ITEMS) return false;
+    if (additional->num_folders == 0) return true;
+    external->data = (uint8_t **)xx_7zip_alloc_array(additional->num_folders, sizeof(uint8_t *));
+    external->sizes = (size_t *)xx_7zip_alloc_array(additional->num_folders, sizeof(size_t));
+    if (!external->data || !external->sizes) return false;
+    external->count = additional->num_folders;
+    for (i = 0; i < additional->num_folders; ++i) {
+        const xx_7zip_folder *folder = &additional->folders[i];
+        xx_7zip_buffer_device destination;
+        uint8_t *buffer;
+        if (!folder->supported || folder->encrypted || folder->unpack_size == 0 || folder->unpack_size > XX_7ZIP_MAX_HEADER_SIZE ||
+            !xx_7zip_u64_add(total, folder->unpack_size, &total) || total > XX_7ZIP_MAX_HEADER_SIZE)
+            continue;
+        buffer = (uint8_t *)xx_mem_alloc((size_t)folder->unpack_size);
+        if (!buffer) return false;
+        xx_7zip_buffer_device_init(&destination, buffer, (size_t)folder->unpack_size);
+        if (!xx_7zip_decode_folder(self, additional, i, &destination.device, NULL, NULL, NULL)) {
+            xx_mem_free(buffer);
+            continue;
+        }
+        external->data[i] = buffer;
+        external->sizes[i] = (size_t)folder->unpack_size;
+    }
+    return true;
+}
+
+static bool xx_7zip_parse_plain_header(Abstractformat *self, const uint8_t *data, size_t size, xx_7zip_private *priv)
 {
     xx_7zip_reader r;
+    xx_7zip_external external;
     uint8_t nid;
     bool have_streams = false;
     bool have_files = false;
+    bool ok = false;
     if (!data || !priv) return false;
+    xx_mem_zero(&external, sizeof(external));
     r.data = data;
     r.size = size;
     r.pos = 0;
     if (!xx_7zip_reader_u8(&r, &nid) || nid != XX_7ZIP_NID_HEADER) return false;
     for (;;) {
-        if (!xx_7zip_reader_u8(&r, &nid)) return false;
+        if (!xx_7zip_reader_u8(&r, &nid)) goto cleanup;
         if (nid == XX_7ZIP_NID_END) break;
         if (nid == XX_7ZIP_NID_ARCHIVE_PROPERTIES) {
-            if (!xx_7zip_skip_archive_properties(&r)) return false;
+            if (!xx_7zip_skip_archive_properties(&r)) goto cleanup;
         } else if (nid == XX_7ZIP_NID_ADDITIONAL_STREAMS_INFO) {
             xx_7zip_streams additional;
+            bool decoded;
             xx_mem_zero(&additional, sizeof(additional));
-            if (!xx_7zip_parse_streams_info(&r, &additional)) {
-                xx_7zip_streams_cleanup(&additional);
-                return false;
-            }
+            /* A later block replaces an earlier one, as it always did. */
+            xx_7zip_external_cleanup(&external);
+            decoded = xx_7zip_parse_streams_info(&r, &additional) && xx_7zip_decode_additional_streams(self, &additional, &external);
             xx_7zip_streams_cleanup(&additional);
+            if (!decoded) goto cleanup;
         } else if (nid == XX_7ZIP_NID_MAIN_STREAMS_INFO) {
-            if (have_streams || !xx_7zip_parse_streams_info(&r, &priv->streams)) return false;
+            if (have_streams || !xx_7zip_parse_streams_info(&r, &priv->streams)) goto cleanup;
             have_streams = true;
         } else if (nid == XX_7ZIP_NID_FILES_INFO) {
-            if (have_files || !xx_7zip_parse_files_info(&r, priv)) return false;
+            if (have_files || !xx_7zip_parse_files_info(&r, priv, &external)) goto cleanup;
             have_files = true;
         } else {
-            return false;
+            goto cleanup;
         }
     }
-    if (r.pos != r.size || !have_files) return false;
+    if (r.pos != r.size || !have_files) goto cleanup;
     if (!have_streams) {
         /* A valid empty-only archive omits MainStreamsInfo. */
-        if (!xx_7zip_prepare_substreams(&priv->streams)) return false;
+        if (!xx_7zip_prepare_substreams(&priv->streams)) goto cleanup;
     }
-    return true;
+    ok = true;
+cleanup:
+    xx_7zip_external_cleanup(&external);
+    return ok;
 }
 
 bool xx_7zip_pack_offset(const Abstractformat *self, const xx_7zip_streams *streams, uint64_t pack_index, int64_t *offset, uint64_t *size)
@@ -1879,7 +1979,7 @@ bool xx_7zip_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
             plain_header = stored_header;
             plain_size = (size_t)next_size;
         }
-        if (!xx_7zip_parse_plain_header(plain_header, plain_size, priv)) goto cleanup;
+        if (!xx_7zip_parse_plain_header(self, plain_header, plain_size, priv)) goto cleanup;
     }
 
     physical_end = (uint64_t)next_offset + next_size;

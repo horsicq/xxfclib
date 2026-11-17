@@ -10,6 +10,10 @@
  *    the 1.x directory entry, and the description of Clickteam-Deflate (its
  *    block header, stored-block length and code-length order).  The decoder
  *    below is a streaming re-implementation of that description, not a copy.
+ *  - The other 1.x directory layouts, the component lists, the member
+ *    checksum, the delta ("patch") members and their XOR mask were measured
+ *    on corpus installers (Install Creator and Patch Maker setups) and are
+ *    verified by the checksum every member carries.
  *  - The 2.x file-list node layouts per builder version (20/24/30/35/40) were
  *    taken from the behaviour of cicdec (Bioruebe) and confirmed on the v40
  *    corpus samples; no code was taken from it.
@@ -43,7 +47,6 @@
 #define CIC_TAG_SIZE 6U
 #define CIC_CHUNK_HEADER 8U
 #define CIC_DATA_ID 0x7F7FU
-#define CIC_LIST_ID_1 0x1243U
 #define CIC_LIST_ID_2 0x143AU
 #define CIC_MAX_CHUNKS 256U
 #define CIC_MAX_META (8U << 20)        /* one decoded metadata chunk */
@@ -54,8 +57,8 @@
 #define CIC_MAX_SECTIONS 96U
 #define CIC_WINDOW 32768U
 #define CIC_WINDOW_MASK (CIC_WINDOW - 1U)
-#define CIC_LIST1_HEADER 0x1AU
 #define CIC_LIST1_MAX_ENTRY 0x4000U
+#define CIC_MAX_PATCH_BASE (512U << 20) /* a delta's base file, held in memory */
 
 static const uint8_t cic_tag[CIC_TAG_SIZE] = {0x77, 0x77, 0x67, 0x54, 0x29, 0x48};
 
@@ -90,7 +93,54 @@ typedef struct cic_sink {
     uint64_t written;
     uint32_t adler_a;
     uint32_t adler_b;
+    uint32_t sum;      /* 1.x member checksum: rotate-add over LE dwords */
+    uint32_t sum_word; /* bytes of the dword being collected */
+    uint32_t sum_fill;
 } cic_sink;
+
+/* The 1.x member checksum: for every little-endian dword h = rol(h, 1) + d;
+ * the 1..3 bytes left at the end are added one by one the same way. */
+static void cic_sum_update(cic_sink *sink, const uint8_t *data, size_t n)
+{
+    uint32_t h = sink->sum;
+    while (n > 0U && sink->sum_fill != 0U) {
+        sink->sum_word |= (uint32_t)*data++ << (8U * sink->sum_fill);
+        --n;
+        if (++sink->sum_fill == 4U) {
+            h = ((h << 1) | (h >> 31)) + sink->sum_word;
+            sink->sum_word = 0U;
+            sink->sum_fill = 0U;
+        }
+    }
+    while (n >= 4U) {
+        h = ((h << 1) | (h >> 31)) + ((uint32_t)data[0] | ((uint32_t)data[1] << 8) | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24));
+        data += 4;
+        n -= 4U;
+    }
+    while (n > 0U) {
+        sink->sum_word |= (uint32_t)*data++ << (8U * sink->sum_fill);
+        ++sink->sum_fill;
+        --n;
+    }
+    sink->sum = h;
+}
+
+static uint32_t cic_sink_sum(const cic_sink *sink)
+{
+    uint32_t h = sink->sum, i;
+    for (i = 0U; i < sink->sum_fill; ++i) h = ((h << 1) | (h >> 31)) + ((sink->sum_word >> (8U * i)) & 0xFFU);
+    return h;
+}
+
+/* The same sum continued over a byte string (no dword grouping state). */
+static uint32_t cic_sum_bytes(uint32_t h, const uint8_t *data, size_t n)
+{
+    cic_sink sink;
+    xx_mem_zero(&sink, sizeof(sink));
+    sink.sum = h;
+    cic_sum_update(&sink, data, n);
+    return cic_sink_sum(&sink);
+}
 
 static void cic_adler_update(cic_sink *sink, const uint8_t *data, size_t n)
 {
@@ -116,6 +166,7 @@ static ssize_t cic_sink_write(xx_io_device *self, const void *buffer, size_t n)
     if ((uint64_t)n > sink->limit - sink->written) return -1;
     if (n == 0U) return 0;
     cic_adler_update(sink, (const uint8_t *)buffer, n);
+    cic_sum_update(sink, (const uint8_t *)buffer, n);
     if (sink->memory) {
         xx_rt_memcpy(sink->memory + sink->written, buffer, n);
     } else if (sink->target) {
@@ -437,6 +488,7 @@ typedef struct cic_chunk {
     uint16_t id;
     uint16_t flags;
     uint32_t size;
+    uint32_t unpacked; /* 1.x: decoded size of the body (its size when stored) */
     int64_t body;
 } cic_chunk;
 
@@ -552,6 +604,7 @@ static bool cic_walk(xx_io_device *device, int64_t base, cic_scan *scan)
         scan->chunks[index].id = id;
         scan->chunks[index].flags = flags;
         scan->chunks[index].size = size;
+        scan->chunks[index].unpacked = flags != 0U ? xx_data_get_u32(head + 8, 4, 0, false) : size;
         scan->chunks[index].body = p + (int64_t)CIC_CHUNK_HEADER;
         p += (int64_t)CIC_CHUNK_HEADER + (int64_t)size;
     }
@@ -623,13 +676,31 @@ typedef struct cic_entry {
     uint32_t unpacked;
     char *name; /* UTF-8, '/' separated */
     bool safe;
-    bool shared; /* 2.x: its record overlaps another member's */
+    bool shared; /* its record overlaps another member's */
+    /* 1.x only */
+    bool is_chunk;     /* a decoded metadata chunk ("File_<n>.bin") */
+    bool patch;        /* a delta against another member */
+    uint32_t chunk;    /* is_chunk: index into the scan's chunks */
+    uint32_t checksum; /* 0: not checked */
+    uint32_t group;    /* list a patch's base lives in / mask key slot */
+    uint32_t id;       /* file id, pairs a patch with its base */
+    uint32_t list;     /* index of the file list the entry came from */
 } cic_entry;
+
+#define CIC_SUM_KEYS 38U
+#define CIC_KEY_SLOTS 32U
 
 typedef struct cic_list {
     cic_entry *entries;
     uint32_t count;
+    uint32_t capacity;
     uint32_t version;
+    /* 1.x only */
+    uint32_t list_count;              /* file lists seen (one per component set) */
+    uint32_t mask_bits;               /* lists whose patches are XOR-masked */
+    int8_t key[CIC_KEY_SLOTS];        /* 0 unknown, k + 1 = key k, -1 none fits */
+    uint32_t sum_keys[CIC_SUM_KEYS];  /* checksum whitening candidates */
+    int32_t sum_key;                  /* the candidate in use, -1 until one fits */
 } cic_list;
 
 static void cic_list_free(cic_list *list)
@@ -924,45 +995,214 @@ static size_t cic_name_length(const uint8_t *p, size_t n, bool need_nul)
     return i;
 }
 
-/* Install Creator 1.x: u32 count, then back-to-back entries; the members
- * sit in list order and their packed sizes add up to the member region. */
-static bool cic_parse_list1(const uint8_t *b, size_t n, uint64_t region_size, cic_list *list)
+/* ---------------------------------------------------------------------- */
+/* Install Creator 1.x file lists                                           */
+/*                                                                          */
+/* A list is {u32 count, count records}.  A record opens with its own size  */
+/* (u16 or u32) and a fixed part whose layout changed from build to build;  */
+/* fourteen layouts are known.  After the fixed part: 0x14 bytes when       */
+/* flags & 6, three FILETIMEs when flags & 8, then the NUL-terminated       */
+/* relative path; the record size skips whatever follows.  The layout is    */
+/* not stored anywhere: it is the one that reads the whole first list       */
+/* cleanly (sizes, reserved fields, the FILETIME range, printable names).   */
+/* Members are addressed by offset inside the data region (the two oldest   */
+/* layouts store them back to back in list order).                          */
+
+typedef struct cic_layout1 {
+    uint8_t version;
+    uint8_t fixed;      /* bytes before the optional blocks */
+    uint8_t size_bytes; /* width of the record-size field at +0 */
+    uint8_t mode_at, mode_bytes;
+    uint8_t offset_at; /* 0: members follow each other */
+    uint8_t packed_at, unpacked_at, sum_at;
+    uint8_t flags_at, flags_bytes;
+    uint8_t group_at; /* u16; 0: none */
+    uint8_t id_at, id_bytes;
+} cic_layout1;
+
+static const cic_layout1 cic_layouts1[] = {
+    {1U, 0x18U, 2U, 0U, 0U, 0U, 0x06U, 0x0AU, 0x0EU, 0x12U, 4U, 0U, 0U, 0U},
+    {2U, 0x1AU, 4U, 0U, 0U, 0U, 0x16U, 0x12U, 0x0EU, 0x0DU, 1U, 0U, 0U, 0U},
+    {3U, 0x1EU, 2U, 0x02U, 4U, 0x06U, 0x0AU, 0x0EU, 0x12U, 0x16U, 4U, 0U, 0x1DU, 1U},
+    {6U, 0x20U, 4U, 0x04U, 4U, 0x18U, 0x1CU, 0x14U, 0x10U, 0x08U, 4U, 0U, 0U, 0U},
+    {7U, 0x22U, 2U, 0x02U, 4U, 0x06U, 0x0AU, 0x0EU, 0x12U, 0x16U, 4U, 0x1CU, 0x1EU, 4U},
+    {8U, 0x24U, 2U, 0x02U, 4U, 0x06U, 0x0AU, 0x0EU, 0x12U, 0x16U, 4U, 0U, 0U, 0U},
+    {9U, 0x24U, 4U, 0x04U, 4U, 0x16U, 0x1AU, 0x12U, 0x0EU, 0x0DU, 1U, 0x22U, 0x1EU, 4U},
+    {10U, 0x26U, 2U, 0x02U, 4U, 0x06U, 0x0AU, 0x12U, 0x16U, 0x1AU, 4U, 0U, 0U, 0U},
+    {11U, 0x26U, 4U, 0x0CU, 2U, 0x18U, 0x1CU, 0x14U, 0x10U, 0x0EU, 2U, 0x24U, 0x20U, 4U},
+    {12U, 0x28U, 4U, 0x04U, 4U, 0x1CU, 0x20U, 0x18U, 0x14U, 0x08U, 4U, 0U, 0U, 0U},
+    {13U, 0x2AU, 2U, 0x02U, 4U, 0x06U, 0x0AU, 0x12U, 0x16U, 0x1AU, 4U, 0U, 0U, 0U},
+    {14U, 0x2CU, 2U, 0x02U, 4U, 0x06U, 0x0AU, 0x12U, 0x16U, 0x1AU, 4U, 0x26U, 0x28U, 4U},
+    {15U, 0x2EU, 4U, 0x04U, 4U, 0x1CU, 0x20U, 0x18U, 0x14U, 0x08U, 4U, 0x2CU, 0x28U, 4U},
+    {16U, 0x2EU, 2U, 0x02U, 4U, 0x06U, 0x0AU, 0x12U, 0x16U, 0x1AU, 4U, 0x26U, 0x2AU, 4U},
+};
+
+#define CIC_FLAG1_PATCH 0x10U
+#define CIC_FLAG1_NO_DATA 0x200000U
+
+static uint32_t cic_u16(const uint8_t *p)
+{
+    return xx_data_get_u16(p, 2, 0, false);
+}
+
+static uint32_t cic_u32(const uint8_t *p)
+{
+    return xx_data_get_u32(p, 4, 0, false);
+}
+
+static uint32_t cic_field(const uint8_t *p, uint32_t bytes)
+{
+    return bytes == 1U ? p[0] : (bytes == 2U ? cic_u16(p) : cic_u32(p));
+}
+
+/* A 1.x FILETIME: 0x01A0000000000001..0x01FFFFFFFFFFFFFF (1972..2057), or
+ * the same value with its top byte cleared. */
+static bool cic_time1_ok(const uint8_t *p)
+{
+    uint64_t t = (uint64_t)cic_u32(p) | ((uint64_t)cic_u32(p + 4) << 32);
+    if ((t >> 56) == 0U) t |= UINT64_C(0x0100000000000000);
+    return t >= UINT64_C(0x01A0000000000001) && t <= UINT64_C(0x01FFFFFFFFFFFFFF);
+}
+
+static bool cic_list_reserve(cic_list *list, uint32_t extra)
+{
+    uint32_t need, capacity;
+    cic_entry *grown;
+    if (list->count > CIC_MAX_FILES + CIC_MAX_CHUNKS || extra > CIC_MAX_FILES + CIC_MAX_CHUNKS - list->count) return false;
+    need = list->count + extra;
+    if (need <= list->capacity) return true;
+    capacity = list->capacity ? list->capacity : 64U;
+    while (capacity < need) capacity *= 2U;
+    grown = (cic_entry *)xx_mem_calloc(capacity, sizeof(cic_entry));
+    if (!grown) return false;
+    if (list->count) xx_rt_memcpy(grown, list->entries, (size_t)list->count * sizeof(cic_entry));
+    if (list->entries) xx_mem_free(list->entries);
+    list->entries = grown;
+    list->capacity = capacity;
+    return true;
+}
+
+typedef struct cic_record1 {
+    uint32_t size;
+    int64_t offset; /* -1: no data, -2: follows the previous member */
+    uint32_t packed, unpacked, checksum, flags, group, id;
+    size_t name_at, name_size;
+} cic_record1;
+
+/* Reads the record at @p pos; false when it cannot belong to the layout. */
+static bool cic_record1_read(const cic_layout1 *l, const uint8_t *b, size_t n, size_t pos, uint64_t total, cic_record1 *r)
+{
+    const uint8_t *p = b + pos;
+    size_t left = n - pos, at, length = 0U;
+    uint32_t mode = 0U, value;
+    if (left < l->fixed) return false;
+    r->size = l->size_bytes == 2U ? cic_u16(p) : cic_u32(p);
+    if (r->size < l->fixed || r->size > CIC_LIST1_MAX_ENTRY || r->size > left) return false;
+    if (l->mode_bytes) mode = cic_field(p + l->mode_at, l->mode_bytes);
+    r->packed = cic_u32(p + l->packed_at);
+    r->unpacked = cic_u32(p + l->unpacked_at);
+    r->checksum = cic_u32(p + l->sum_at);
+    r->flags = cic_field(p + l->flags_at, l->flags_bytes);
+    r->group = l->group_at ? cic_u16(p + l->group_at) : 0U;
+    r->id = l->id_bytes ? cic_field(p + l->id_at, l->id_bytes) : 0U;
+    r->offset = l->offset_at ? (int64_t)(int32_t)cic_u32(p + l->offset_at) : -2;
+    if (r->packed > 0x7FFFFFFFU || r->unpacked > 0x7FFFFFFFU || r->id > 0x10000U || (l->offset_at && r->offset < -1)) return false;
+    switch (l->version) {
+        case 1U:
+            if (cic_u32(p + 2) != 0U || cic_u16(p + 0x16) > 1U) return false;
+            break;
+        case 3U:
+            if ((mode != 0U && mode != 2U) || cic_u16(p + 0x1A) > 1U || p[0x1C] != 0U || r->offset < 0 || (uint64_t)r->offset > total || (uint64_t)r->packed > total)
+                return false;
+            break;
+        case 6U:
+            value = cic_u32(p + 0x0C);
+            if (value != 0U && value != 2U && value != 8U) return false;
+            break;
+        case 10U:
+            value = cic_u32(p + 0x1E);
+            if (cic_u32(p + 0x0E) != 0U || (value != 0U && value != 0x2000U)) return false;
+            value = cic_u32(p + 0x22);
+            if (value >= 16U || !((1U << value) & 0x50DU)) return false;
+            break;
+        case 11U:
+            if (cic_u32(p + 4) != 0U || (mode != 0U && mode != 2U)) return false;
+            break;
+        case 12U:
+            if (cic_u32(p + 0x24) != 0U) return false;
+            break;
+        case 13U:
+            if (cic_u32(p + 0x0E) != 0U || cic_u32(p + 0x22) != 0U || cic_u32(p + 0x26) != 0U) return false;
+            break;
+        default: break;
+    }
+    at = l->fixed;
+    if (r->flags & 6U) at += 0x14U;
+    if (r->flags & 8U) {
+        if (left < at + 0x18U || !cic_time1_ok(p + at) || !cic_time1_ok(p + at + 8U) || !cic_time1_ok(p + at + 16U)) return false;
+        at += 0x18U;
+    }
+    if (at >= left) return false;
+    /* The path runs to its NUL (or the end of the list). */
+    while (at + length < left && p[at + length]) {
+        if (p[at + length] < 0x20U || ++length >= CIC_MAX_NAME) return false;
+    }
+    if (length == 0U) return false;
+    r->name_at = pos + at;
+    r->name_size = length;
+    return true;
+}
+
+/* Walks one list with one layout.  With @p list NULL it only tests. */
+static bool cic_walk_list1(const cic_layout1 *l, const uint8_t *b, size_t n, uint64_t total, cic_list *list, uint32_t list_index)
 {
     uint32_t count, i;
     size_t pos = 4U;
     uint64_t running = 0U;
-    xx_mem_zero(list, sizeof(*list));
     if (n < 4U) return false;
-    count = xx_data_get_u32(b, 4, 0, false);
-    if (count == 0U || count > CIC_MAX_FILES || (uint64_t)count * (CIC_LIST1_HEADER + 2U) > n) return false;
-    list->entries = (cic_entry *)xx_mem_calloc(count, sizeof(cic_entry));
-    if (!list->entries) return false;
+    count = cic_u32(b);
+    if (count > CIC_MAX_FILES || (uint64_t)count * l->fixed > n - 4U) return false;
     for (i = 0U; i < count; ++i) {
-        uint32_t size, unpacked, packed;
-        size_t name_at, name_size;
-        uint8_t flags;
-        if (n - pos < CIC_LIST1_HEADER) goto fail;
-        size = xx_data_get_u32(b + pos, 4, 0, false);
-        if (size <= CIC_LIST1_HEADER || size > CIC_LIST1_MAX_ENTRY || size > n - pos) goto fail;
-        flags = b[pos + 0x0D];
-        unpacked = xx_data_get_u32(b + pos + 0x12, 4, 0, false);
-        packed = xx_data_get_u32(b + pos + 0x16, 4, 0, false);
-        if ((uint64_t)packed > region_size - running) goto fail;
-        if (packed == 0U && unpacked != 0U) goto fail;
-        name_at = CIC_LIST1_HEADER;
-        if (flags & 6U) name_at += 0x14U;
-        if (flags & 8U) name_at += 0x18U;
-        if (name_at >= size) goto fail;
-        name_size = cic_name_length(b + pos + name_at, size - name_at, true);
-        if (name_size == 0U || !cic_add_entry(list, count, running, packed, unpacked, b + pos + name_at, name_size)) goto fail;
-        running += packed;
-        pos += size;
+        cic_record1 r;
+        if (!cic_record1_read(l, b, n, pos, total, &r)) return false;
+        if (r.offset == -2) {
+            r.offset = (int64_t)running;
+            running += r.packed;
+        }
+        if (list && r.offset >= 0 && !(r.flags & CIC_FLAG1_NO_DATA)) {
+            cic_entry *e;
+            if (!cic_list_reserve(list, 1U) || !cic_add_entry(list, list->capacity, (uint64_t)r.offset, r.packed, r.unpacked, b + r.name_at, r.name_size)) return false;
+            e = &list->entries[list->count - 1U];
+            e->patch = (r.flags & CIC_FLAG1_PATCH) != 0U;
+            e->checksum = r.checksum;
+            e->group = r.group;
+            e->id = r.id;
+            e->list = list_index;
+        }
+        pos += r.size;
     }
-    if (pos != n || running != region_size) goto fail;
     return true;
-fail:
-    cic_list_free(list);
-    return false;
+}
+
+static const cic_layout1 *cic_layout1_for(uint32_t version)
+{
+    uint32_t k;
+    for (k = 0U; k < sizeof(cic_layouts1) / sizeof(cic_layouts1[0]); ++k)
+        if (cic_layouts1[k].version == version) return &cic_layouts1[k];
+    return NULL;
+}
+
+/* The one layout that reads the list; 0 when none or several do (an empty
+ * list reads with every layout and decides nothing). */
+static uint32_t cic_detect_list1(const uint8_t *b, size_t n, uint64_t total)
+{
+    uint32_t k, found = 0U;
+    for (k = 0U; k < sizeof(cic_layouts1) / sizeof(cic_layouts1[0]); ++k) {
+        if (!cic_walk_list1(&cic_layouts1[k], b, n, total, NULL, 0U)) continue;
+        if (found) return 0U;
+        found = cic_layouts1[k].version;
+    }
+    return found;
 }
 
 /* Install Creator 2.x node layouts per builder version.  Field offsets are
@@ -1153,38 +1393,195 @@ static bool cic_parse_list2(const uint8_t *b, size_t n, xx_io_device *device, co
     return false;
 }
 
+/* Checksum whitening: a member's stored checksum is its sum XOR one of
+ * these words, each first run through the sum of the product title (chunk
+ * 0x1237; for the two oldest list layouts the strings of chunks 0x1235 and
+ * 0x1239).  Which word applies is not stored: it is the one that fits the
+ * first checked member, and it then holds for the whole setup. */
+static const uint32_t cic_sum_key_table[CIC_SUM_KEYS] = {
+    0x0C537EFFU, 0x13FC10E5U, 0x18B28974U, 0x1E99D544U, 0x21CA4D1AU, 0x304070C5U, 0x35CA5B09U, 0x35E4519CU, 0x375B3E52U, 0x38F7E80FU,
+    0x3D99891AU, 0x3DC9BEFAU, 0x41AA608EU, 0x41E6C286U, 0x503BE7B6U, 0x5211F061U, 0x59B49970U, 0x6A87DC67U, 0x6C3CF255U, 0x6DF052EDU,
+    0x75D98DF0U, 0x7AFCDDC2U, 0x8AE81D1FU, 0x8B500C75U, 0xA79BCF27U, 0xA903E273U, 0xAE2B6B08U, 0xB0F5C845U, 0xB47B783DU, 0xB673563DU,
+    0xCC1896D2U, 0xD341F726U, 0xD526AEE6U, 0xD74AD264U, 0xD92E2893U, 0xDDE2B8D2U, 0xEC144819U, 0xFD0021C7U,
+};
+
+static bool cic_set_name(cic_entry *e, const char *text)
+{
+    size_t length = xx_str_len(text);
+    char *copy = (char *)xx_mem_alloc(length + 1U);
+    if (!copy) return false;
+    xx_rt_memcpy(copy, text, length + 1U);
+    if (e->name) xx_mem_free(e->name);
+    e->name = copy;
+    return true;
+}
+
+/* 1.x members are addressed by offset.  A later list repeats the members it
+ * shares with an earlier one (same offset): the first occurrence is kept.
+ * In offset order, a member that starts inside the last claimed one is
+ * refused (never extracted). */
+static bool cic1_resolve_offsets(cic_list *list)
+{
+    uint32_t n = list->count, i, members = 0U, kept = 0U;
+    uint32_t *index;
+    uint8_t *drop;
+    uint64_t claimed_end = 0U, previous = 0U;
+    bool have_previous = false;
+    if (n == 0U) return true;
+    index = (uint32_t *)xx_mem_alloc((size_t)n * sizeof(uint32_t));
+    drop = (uint8_t *)xx_mem_calloc(n, 1U);
+    if (!index || !drop) {
+        if (index) xx_mem_free(index);
+        if (drop) xx_mem_free(drop);
+        return false;
+    }
+    for (i = 0U; i < n; ++i)
+        if (!list->entries[i].is_chunk) index[members++] = i;
+    xx_sort_stable_context(index, members, sizeof(*index), cic_offset_cmp, list->entries);
+    for (i = 0U; i < members; ++i) {
+        cic_entry *e = &list->entries[index[i]];
+        if (have_previous && e->offset == previous) {
+            drop[index[i]] = 1U;
+            continue;
+        }
+        previous = e->offset;
+        have_previous = true;
+        if (e->packed == 0U) continue;
+        if (e->offset < claimed_end) {
+            e->shared = true;
+            continue;
+        }
+        claimed_end = e->offset + e->packed;
+    }
+    for (i = 0U; i < n; ++i) {
+        if (drop[i]) {
+            if (list->entries[i].name) xx_mem_free(list->entries[i].name);
+            continue;
+        }
+        if (kept != i) list->entries[kept] = list->entries[i];
+        ++kept;
+    }
+    for (i = kept; i < n; ++i) xx_mem_zero(&list->entries[i], sizeof(cic_entry));
+    list->count = kept;
+    xx_mem_free(index);
+    xx_mem_free(drop);
+    return true;
+}
+
+/* Install Creator 1.x: every chunk before the data chunk becomes a member
+ * "File_<n>.bin" (its decoded body); the chunks 0x123A/0x1242/0x1243/0x143A
+ * that read as file lists add the installed files.  A component set opens
+ * with chunk 0x123E/0x143E; with more than one set the files of set n go
+ * under "License.<n>/". */
+static bool cic1_read_list(xx_io_device *device, const cic_scan *scan, cic_list *list, xx_pd_struct *pd)
+{
+    uint64_t budget = CIC_MAX_META_TOTAL, total;
+    uint32_t alternative[CIC_SUM_KEYS];
+    uint32_t i, k;
+    int64_t device_size = xx_io_total_size(device);
+    char text[40];
+    xx_mem_zero(list, sizeof(*list));
+    list->sum_key = -1;
+    total = device_size > 0 ? (uint64_t)device_size : 0U;
+    for (k = 0U; k < CIC_SUM_KEYS; ++k) list->sum_keys[k] = alternative[k] = cic_sum_key_table[k];
+    if (!cic_list_reserve(list, scan->chunk_count)) goto fail;
+    for (i = 0U; i < scan->chunk_count; ++i) {
+        const cic_chunk *c = &scan->chunks[i];
+        cic_entry *e = &list->entries[list->count];
+        (void)xx_rt_snprintf(text, sizeof(text), "File_%u.bin", i + 1U);
+        if (!cic_set_name(e, text)) goto fail;
+        e->is_chunk = true;
+        e->chunk = i;
+        e->packed = c->flags ? c->size - 4U : c->size;
+        e->unpacked = c->unpacked;
+        e->safe = true;
+        ++list->count;
+    }
+    for (i = 0U; i < scan->chunk_count; ++i) {
+        const cic_chunk *c = &scan->chunks[i];
+        bool is_title = c->id == 0x1237U, is_alternative = c->id == 0x1235U || c->id == 0x1239U;
+        bool is_set = c->id == 0x123EU || c->id == 0x143EU;
+        bool is_list = c->id == 0x123AU || c->id == 0x1242U || c->id == 0x1243U || c->id == 0x143AU;
+        uint8_t *body;
+        size_t size;
+        if (!is_title && !is_alternative && !is_set && !is_list) continue;
+        if (cic_stopped(pd)) goto fail;
+        body = cic_load_chunk(device, scan, c, &size, &budget, pd);
+        if (!body) {
+            /* The title strings feed every checksum. */
+            if (is_title || is_alternative) goto fail;
+            continue;
+        }
+        if (is_title || is_alternative) {
+            const uint8_t *nul = size ? (const uint8_t *)xx_rt_memchr(body, 0, size) : NULL;
+            uint32_t *keys = is_title ? list->sum_keys : alternative;
+            if (nul)
+                for (k = 0U; k < CIC_SUM_KEYS; ++k) keys[k] = cic_sum_bytes(keys[k], body, (size_t)(nul - body));
+        } else if (is_set) {
+            if (size >= 16U) {
+                if (cic_u16(body + 2) != 0U && cic_u32(body + 4) != 2U && list->list_count < CIC_KEY_SLOTS) list->mask_bits |= 1U << list->list_count;
+                ++list->list_count;
+            }
+        } else {
+            if (list->version == 0U) list->version = cic_detect_list1(body, size, total);
+            if (list->version != 0U) {
+                const cic_layout1 *l = cic_layout1_for(list->version);
+                if (list->list_count == 0U) list->list_count = 1U;
+                if (l && cic_walk_list1(l, body, size, total, NULL, 0U) && !cic_walk_list1(l, body, size, total, list, list->list_count - 1U)) {
+                    xx_mem_free(body);
+                    goto fail;
+                }
+            }
+        }
+        xx_mem_free(body);
+    }
+    if (list->version == 1U || list->version == 2U) xx_rt_memcpy(list->sum_keys, alternative, sizeof(alternative));
+    if (!cic1_resolve_offsets(list)) goto fail;
+    if (list->list_count > 1U) {
+        for (i = 0U; i < list->count; ++i) {
+            cic_entry *e = &list->entries[i];
+            char *joined;
+            bool ok;
+            if (e->is_chunk) continue;
+            (void)xx_rt_snprintf(text, sizeof(text), "License.%u/", e->list + 1U);
+            joined = xx_str_concat(text, e->name);
+            ok = joined && cic_set_name(e, joined);
+            if (joined) xx_str_free(joined);
+            if (!ok) goto fail;
+        }
+    }
+    if (!cic_dedupe(list)) goto fail;
+    return true;
+fail:
+    cic_list_free(list);
+    return false;
+}
+
 /* Finds and parses the file list; the entries get unique names. */
 static bool cic_read_list(xx_io_device *device, const cic_scan *scan, cic_list *list, xx_pd_struct *pd)
 {
-    uint32_t pass, i;
+    uint32_t i;
     uint64_t budget = CIC_MAX_META_TOTAL;
-    uint16_t list_id = scan->generation == 1U ? CIC_LIST_ID_1 : CIC_LIST_ID_2;
+    if (scan->generation == 1U) return cic1_read_list(device, scan, list, pd);
     xx_mem_zero(list, sizeof(*list));
-    /* Pass 0: the chunk with the list's id.  Pass 1 (1.x only): any other
-     * chunk that parses as a list whose sizes tile the member region. */
-    for (pass = 0U; pass < (scan->generation == 1U ? 2U : 1U); ++pass) {
-        for (i = 0U; i < scan->chunk_count; ++i) {
-            const cic_chunk *c = &scan->chunks[i];
-            uint8_t *body;
-            size_t size;
-            bool ok;
-            if ((pass == 0U) != (c->id == list_id)) continue;
-            if (budget == 0U) return false;
-            body = cic_load_chunk(device, scan, c, &size, &budget, pd);
-            if (!body) continue;
-            ok = scan->generation == 1U ? cic_parse_list1(body, size, (uint64_t)scan->region_size, list) : cic_parse_list2(body, size, device, scan, list);
-            xx_mem_free(body);
-            /* 2.x has one list chunk; trying every chunk that carries the
-             * id would multiply the node walk (each node reads the device). */
-            if (!ok && scan->generation == 2U) return false;
-            if (ok) {
-                if (!cic_dedupe(list)) {
-                    cic_list_free(list);
-                    return false;
-                }
-                return true;
-            }
+    for (i = 0U; i < scan->chunk_count; ++i) {
+        const cic_chunk *c = &scan->chunks[i];
+        uint8_t *body;
+        size_t size;
+        bool ok;
+        if (c->id != CIC_LIST_ID_2) continue;
+        body = cic_load_chunk(device, scan, c, &size, &budget, pd);
+        if (!body) continue;
+        ok = cic_parse_list2(body, size, device, scan, list);
+        xx_mem_free(body);
+        /* 2.x has one list chunk; trying every chunk that carries the id
+         * would multiply the node walk (each node reads the device). */
+        if (!ok) return false;
+        if (!cic_dedupe(list)) {
+            cic_list_free(list);
+            return false;
         }
+        return true;
     }
     return false;
 }
@@ -1192,45 +1589,332 @@ static bool cic_read_list(xx_io_device *device, const cic_scan *scan, cic_list *
 /* ---------------------------------------------------------------------- */
 /* Members                                                                  */
 
+/* Copies a device range to the sink. */
+static bool cic_copy_range(xx_io_device *device, int64_t position, uint64_t left, cic_sink *sink, xx_pd_struct *pd)
+{
+    uint8_t *buffer;
+    size_t io_capacity = xx_get_file_buffer_size();
+    bool ok = true;
+    if (left == 0U) return true;
+    if (left < io_capacity) io_capacity = (size_t)left;
+    buffer = (uint8_t *)xx_mem_alloc(io_capacity);
+    if (!buffer) return false;
+    while (left > 0U && ok) {
+        size_t k = left < io_capacity ? (size_t)left : io_capacity;
+        ok = !cic_stopped(pd) && cic_read_at(device, position, buffer, k) && cic_sink_write(&sink->device, buffer, k) == (ssize_t)k;
+        left -= k;
+        position += (int64_t)k;
+    }
+    xx_mem_free(buffer);
+    return ok;
+}
+
+static uint8_t *cic_load_range(xx_io_device *device, int64_t position, uint32_t size)
+{
+    uint8_t *data = (uint8_t *)xx_mem_alloc(size ? size : 1U);
+    if (data && !cic_read_at(device, position, data, size)) {
+        xx_mem_free(data);
+        data = NULL;
+    }
+    return data;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Install Creator 1.x members                                              */
+/*                                                                          */
+/* A member is a Clickteam-Deflate stream, or (list flag 0x10) a delta      */
+/* against another member: {section commands, section literals}, each       */
+/* section {u8 kind, u16|u32 size, [u16|u32 packed size, Clickteam-Deflate] */
+/* or raw bytes}.  Commands copy literal runs and ranges of the base file,  */
+/* the range position being relative to the end of the previous range.     */
+/* The members of a protected component set are XOR-masked with a running   */
+/* key derived from one of fourteen fixed strings; the string in use is     */
+/* the one whose output passes the member checksum.                         */
+
+#define CIC_KEY_COUNT 14U
+
+static const char *const cic_mask_keys[CIC_KEY_COUNT] = {
+    "IYKSU",           "JZ3E2",           "MAFH3",           "IAOK4MB1UMAOWCH", "IAX2A31PZLTLDV1", "IAYCPRBGLYSFLMB", "IA2MQYOUFMDQFYI",
+    "IAP2HQAD5SZKM6D", "IA2C6OQT5DYPZQ1", "IAXR3E6LOMQN66B", "IAAHIN4ENSDZTKC", "IAX1Q3BN6NS1G32", "IAIFPP2CSAQCHP2", "IASLGD432WJX4TI",
+};
+
+static void cic_unmask(uint8_t *data, size_t n, uint32_t key_index)
+{
+    uint8_t key[16];
+    const char *text = cic_mask_keys[key_index];
+    size_t length = xx_str_len(text), at = 0U, i;
+    uint8_t step = 0x39U;
+    if (length == 0U || length > sizeof(key)) return;
+    xx_rt_memcpy(key, text, length);
+    for (i = 0U; i < n; ++i) {
+        uint8_t x = (uint8_t)(step ^ key[at]);
+        data[i] ^= x;
+        key[at] = (uint8_t)((x << 1) | (x >> 7));
+        step = (uint8_t)(step + 5U);
+        if (++at >= length) at = 0U;
+    }
+}
+
+/* One delta section.  @p data points into @p patch or at @p owned. */
+static bool cic_patch_section(const uint8_t *patch, size_t n, size_t *at, uint32_t unpacked, uint8_t **owned, const uint8_t **data, size_t *size)
+{
+    uint8_t kind;
+    uint32_t width, length, packed;
+    size_t used = 0U;
+    *owned = NULL;
+    *data = NULL;
+    *size = 0U;
+    if (*at >= n) return false;
+    kind = patch[(*at)++];
+    if (kind >= 8U || !((1U << kind) & 0xAFU)) return false;
+    width = (kind & 2U) ? 4U : 2U;
+    if (n - *at < width) return false;
+    length = width == 4U ? cic_u32(patch + *at) : cic_u16(patch + *at);
+    *at += width;
+    if (length > 0x7FFFFFFFU) return false;
+    if (length == 0U) return true;
+    if (!(kind & 1U)) {
+        if (n - *at < length) return false;
+        *data = patch + *at;
+        *size = length;
+        *at += length;
+        return true;
+    }
+    width = (kind & 4U) ? 4U : 2U;
+    if (n - *at < width) return false;
+    packed = width == 4U ? cic_u32(patch + *at) : cic_u16(patch + *at);
+    *at += width;
+    if (packed == 0U || packed > 0x7FFFFFFFU || n - *at < packed || length > unpacked || length > CIC_MAX_PATCH_BASE) return false;
+    *owned = (uint8_t *)xx_mem_alloc(length);
+    if (!*owned || !xx_clickteam_install_creator_inflate_memory(patch + *at, packed, *owned, length, &used) || used > packed) {
+        if (*owned) xx_mem_free(*owned);
+        *owned = NULL;
+        return false;
+    }
+    *data = *owned;
+    *size = length;
+    *at += packed;
+    return true;
+}
+
+static bool cic_patch_apply(const uint8_t *base, size_t base_size, const uint8_t *patch, size_t n, uint32_t unpacked, cic_sink *sink, xx_pd_struct *pd)
+{
+    uint8_t *owned_commands = NULL, *owned_literals = NULL;
+    const uint8_t *commands = NULL, *literals = NULL;
+    size_t command_count = 0U, literal_count = 0U, at = 0U, c = 0U, literal_at = 0U;
+    int64_t position = 0;
+    uint32_t tick = 0U;
+    bool ok = false;
+    if (!cic_patch_section(patch, n, &at, unpacked, &owned_commands, &commands, &command_count) ||
+        !cic_patch_section(patch, n, &at, unpacked, &owned_literals, &literals, &literal_count) || at != n)
+        goto done;
+    while (c < command_count) {
+        uint32_t b = commands[c++], copy = 0U, x, v;
+        int64_t delta, source;
+        if ((++tick & 0xFFFU) == 0U && cic_stopped(pd)) goto done;
+        if (b & 0x80U) {
+            /* 1..32 literals, or 1..3 literals and then a range of 2..33 */
+            uint32_t run = (b >> 5) & 3U;
+            if (run == 0U) run = (b & 0x1FU) + 1U;
+            else copy = (b & 0x1FU) + 2U;
+            if (run > literal_count - literal_at || cic_sink_write(&sink->device, literals + literal_at, run) != (ssize_t)run) goto done;
+            literal_at += run;
+            if (copy == 0U) continue;
+        } else if (b == 0U) {
+            if (command_count - c < 2U) goto done;
+            copy = cic_u16(commands + c) + 0x81U;
+            c += 2U;
+        } else {
+            copy = b + 1U;
+        }
+        /* The range position: a signed step from the end of the last range
+         * in 6, 15 or 22 bits (biased past the shorter forms), or 32 bits. */
+        if (c >= command_count) goto done;
+        x = commands[c++];
+        if (!(x & 0x80U)) {
+            if (c >= command_count) goto done;
+            v = (x << 8) | commands[c++];
+            if (x & 0x40U) v |= 0xFFFFC000U;
+            delta = (int32_t)v;
+            delta += delta < 0 ? -0x20 : 0x20;
+        } else if (!(x & 0x40U)) {
+            v = x & 0x3FU;
+            if (x & 0x20U) v |= 0xFFFFFFE0U;
+            delta = (int32_t)v;
+        } else {
+            if (command_count - c < 2U) goto done;
+            v = ((x << 16) | ((uint32_t)commands[c] << 8) | commands[c + 1U]) & 0x3FFFFFU;
+            c += 2U;
+            if (v == 0x100000U) {
+                if (command_count - c < 4U) goto done;
+                v = ((uint32_t)commands[c] << 24) | ((uint32_t)commands[c + 1U] << 16) | ((uint32_t)commands[c + 2U] << 8) | commands[c + 3U];
+                c += 4U;
+            } else if (x & 0x20U) {
+                v |= 0xFFE00000U;
+            }
+            delta = (int32_t)v;
+            delta += delta < 0 ? -0x4020 : 0x4020;
+        }
+        source = position + delta;
+        if (source < 0 || (uint64_t)source > (uint64_t)base_size || (uint64_t)copy > (uint64_t)base_size - (uint64_t)source ||
+            cic_sink_write(&sink->device, base + source, copy) != (ssize_t)copy)
+            goto done;
+        position = source + (int64_t)copy;
+    }
+    ok = true;
+done:
+    if (owned_commands) xx_mem_free(owned_commands);
+    if (owned_literals) xx_mem_free(owned_literals);
+    return ok;
+}
+
+static bool cic1_member(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, cic_sink *sink, uint32_t depth, xx_pd_struct *pd);
+
+/* The base of a delta: the one plain member with the same file id in the
+ * list the delta names (else in the first list). */
+static const cic_entry *cic1_patch_base(const cic_list *list, const cic_entry *e)
+{
+    uint32_t pass, i;
+    for (pass = 0U; pass < 2U; ++pass) {
+        const cic_entry *found = NULL;
+        uint32_t wanted = pass == 0U ? e->group : 0U, hits = 0U;
+        if (pass == 1U && e->group == 0U) break;
+        for (i = 0U; i < list->count; ++i) {
+            const cic_entry *x = &list->entries[i];
+            if (x->is_chunk || x->patch || x->id != e->id || x->list != wanted) continue;
+            found = x;
+            ++hits;
+        }
+        if (hits == 1U) return found;
+    }
+    return NULL;
+}
+
+/* Decodes one member with the given mask keys (-1: unmasked) and verifies
+ * its size and checksum. */
+static bool cic1_member_body(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, cic_sink *sink, int member_key, int patch_key, uint32_t depth,
+                             xx_pd_struct *pd)
+{
+    int64_t at = scan->region + (int64_t)e->offset;
+    uint64_t used = 0U;
+    bool ok = false;
+    if (e->offset > (uint64_t)scan->region_size || (uint64_t)e->packed > (uint64_t)scan->region_size - e->offset) return false;
+    if (!e->patch) {
+        if (member_key < 0) {
+            ok = cic_ctdeflate(device, at, e->packed, NULL, sink, e->unpacked, &used, pd);
+        } else {
+            uint8_t *packed = cic_load_range(device, at, e->packed);
+            if (packed) {
+                cic_unmask(packed, e->packed, (uint32_t)member_key);
+                ok = cic_ctdeflate(NULL, 0, e->packed, packed, sink, e->unpacked, &used, pd);
+                xx_mem_free(packed);
+            }
+        }
+    } else {
+        const cic_entry *base = depth == 0U ? cic1_patch_base(list, e) : NULL;
+        bool masked = e->list < CIC_KEY_SLOTS && ((list->mask_bits >> e->list) & 1U) != 0U;
+        uint8_t *base_data = NULL, *patch = NULL;
+        cic_sink base_sink;
+        if (!base || base->unpacked > CIC_MAX_PATCH_BASE || (masked && patch_key < 0)) return false;
+        base_data = (uint8_t *)xx_mem_alloc(base->unpacked ? base->unpacked : 1U);
+        if (base_data) {
+            cic_sink_init(&base_sink, NULL, base_data, base->unpacked);
+            if (cic1_member(device, scan, list, base, &base_sink, depth + 1U, pd) && (patch = cic_load_range(device, at, e->packed)) != NULL) {
+                if (masked) cic_unmask(patch, e->packed, (uint32_t)patch_key);
+                ok = cic_patch_apply(base_data, base->unpacked, patch, e->packed, e->unpacked, sink, pd);
+            }
+        }
+        if (patch) xx_mem_free(patch);
+        if (base_data) xx_mem_free(base_data);
+    }
+    if (!ok || sink->written != e->unpacked) return false;
+    if (e->checksum != 0U) {
+        uint32_t sum = cic_sink_sum(sink);
+        if (list->version == 4U || list->version == 5U) return sum == e->checksum;
+        if (list->sum_key < 0) {
+            uint32_t k;
+            for (k = 0U; k < CIC_SUM_KEYS; ++k) {
+                if ((sum ^ list->sum_keys[k]) == e->checksum) {
+                    list->sum_key = (int32_t)k;
+                    break;
+                }
+            }
+        }
+        return list->sum_key >= 0 && (sum ^ list->sum_keys[list->sum_key]) == e->checksum;
+    }
+    return true;
+}
+
+/* Settles the mask key of slot @p slot by trial decodes of @p e into
+ * nothing; the key is remembered for the slot. */
+static bool cic1_find_key(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, uint32_t slot, bool member_masked, uint32_t depth, xx_pd_struct *pd)
+{
+    uint32_t k;
+    if (list->key[slot] != 0) return list->key[slot] > 0;
+    for (k = 0U; k < CIC_KEY_COUNT; ++k) {
+        cic_sink probe;
+        int other = e->list < CIC_KEY_SLOTS && e->list != slot ? (int)list->key[e->list] - 1 : (int)k;
+        if (cic_stopped(pd)) return false;
+        cic_sink_init(&probe, NULL, NULL, e->unpacked);
+        list->key[slot] = (int8_t)(k + 1U);
+        if (cic1_member_body(device, scan, list, e, &probe, member_masked ? (int)k : -1, member_masked ? other : (int)k, depth, pd)) return true;
+    }
+    list->key[slot] = -1;
+    return false;
+}
+
+static bool cic1_member(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, cic_sink *sink, uint32_t depth, xx_pd_struct *pd)
+{
+    if (e->is_chunk || e->shared) return false;
+    if (e->packed == 0U && !e->patch) return e->unpacked == 0U;
+    if (e->group < CIC_KEY_SLOTS && e->checksum != 0U && ((list->mask_bits >> e->group) & 1U) != 0U) {
+        int patch_key = e->list < CIC_KEY_SLOTS && list->key[e->list] > 0 ? (int)list->key[e->list] - 1 : -1;
+        if (!cic1_find_key(device, scan, list, e, e->group, true, depth, pd)) return false;
+        if (e->list == e->group) patch_key = (int)list->key[e->group] - 1;
+        return cic1_member_body(device, scan, list, e, sink, (int)list->key[e->group] - 1, patch_key, depth, pd);
+    }
+    if (e->patch && e->list < CIC_KEY_SLOTS && ((list->mask_bits >> e->list) & 1U) != 0U) {
+        if (!cic1_find_key(device, scan, list, e, e->list, false, depth, pd)) return false;
+        return cic1_member_body(device, scan, list, e, sink, -1, (int)list->key[e->list] - 1, depth, pd);
+    }
+    return cic1_member_body(device, scan, list, e, sink, -1, -1, depth, pd);
+}
+
+/* A metadata chunk published as a member: its decoded body. */
+static bool cic1_unpack_chunk(xx_io_device *device, const cic_scan *scan, const cic_entry *e, cic_sink *sink, xx_pd_struct *pd)
+{
+    const cic_chunk *c;
+    uint64_t used = 0U;
+    if (e->chunk >= scan->chunk_count) return false;
+    c = &scan->chunks[e->chunk];
+    if (c->flags == 0U) return cic_copy_range(device, c->body, c->size, sink, pd) && sink->written == e->unpacked;
+    if (c->size < 5U) return false;
+    return cic_ctdeflate(device, c->body + 4, (uint64_t)c->size - 4U, NULL, sink, e->unpacked, &used, pd) && sink->written == e->unpacked;
+}
+
 static uint32_t cic_entry_method(xx_io_device *device, const cic_scan *scan, const cic_entry *e)
 {
     uint8_t method = 0U;
-    if (scan->generation == 1U) return XX_CLICKTEAM_METHOD_CTDEFLATE;
+    if (scan->generation == 1U)
+        return e->is_chunk && e->chunk < scan->chunk_count && scan->chunks[e->chunk].flags == 0U ? XX_CLICKTEAM_METHOD_STORED : XX_CLICKTEAM_METHOD_CTDEFLATE;
     if (e->packed == 0U || !cic_read_at(device, scan->region + (int64_t)e->offset, &method, 1U)) return XX_CLICKTEAM_METHOD_STORED;
     return method;
 }
 
-static bool cic_unpack_entry(xx_io_device *device, const cic_scan *scan, const cic_entry *e, xx_io_device *destination, xx_pd_struct *pd)
+static bool cic_unpack_entry(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, xx_io_device *destination, xx_pd_struct *pd)
 {
     cic_sink sink;
     int64_t at = scan->region + (int64_t)e->offset;
     uint8_t method = 0U;
     cic_sink_init(&sink, destination, NULL, e->unpacked);
+    if (scan->generation == 1U) return e->is_chunk ? cic1_unpack_chunk(device, scan, e, &sink, pd) : cic1_member(device, scan, list, e, &sink, 0U, pd);
     if (e->packed == 0U) return e->unpacked == 0U;
     if (e->shared) return false;
     if (e->offset + e->packed > (uint64_t)scan->region_size) return false;
-    if (scan->generation == 1U) {
-        uint64_t used = 0U;
-        return cic_ctdeflate(device, at, e->packed, NULL, &sink, e->unpacked, &used, pd) && sink.written == e->unpacked && used <= e->packed;
-    }
     if (!cic_read_at(device, at, &method, 1U)) return false;
     if (method == 0U) {
-        uint8_t *buffer;
-        uint64_t left = (uint64_t)e->packed - 1U, pos = (uint64_t)at + 1U;
-        bool ok = true;
-        size_t io_capacity = xx_get_file_buffer_size();
-        if (left && left < io_capacity) io_capacity = (size_t)left;
-        if (left != e->unpacked) return false;
-        buffer = (uint8_t *)xx_mem_alloc(io_capacity);
-        if (!buffer) return false;
-        while (left > 0U && ok) {
-            size_t k = left < io_capacity ? (size_t)left : io_capacity;
-            ok = !cic_stopped(pd) && cic_read_at(device, (int64_t)pos, buffer, k) && cic_sink_write(&sink.device, buffer, k) == (ssize_t)k;
-            left -= k;
-            pos += k;
-        }
-        xx_mem_free(buffer);
-        return ok && sink.written == e->unpacked;
+        if ((uint64_t)e->packed - 1U != e->unpacked) return false;
+        return cic_copy_range(device, at + 1, (uint64_t)e->packed - 1U, &sink, pd) && sink.written == e->unpacked;
     }
     if (method == 1U) {
         uint8_t header[2], trailer[4];
@@ -1302,7 +1986,7 @@ static bool cic_set_record(xx_archive_record *record, xx_io_device *device, cons
     xx_archive_record_init(record);
     record->header_offset = -1;
     record->header_size = 0;
-    record->data_offset = stream->scan.region + (int64_t)e->offset;
+    record->data_offset = e->is_chunk && e->chunk < stream->scan.chunk_count ? stream->scan.chunks[e->chunk].body : stream->scan.region + (int64_t)e->offset;
     record->compressed_size = (int64_t)e->packed;
     return xx_archive_record_set_original_name(record, e->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, e->packed) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, e->unpacked) &&
@@ -1474,7 +2158,7 @@ bool xx_clickteam_install_creator_unpack_current_archive_record(Abstractformat *
         return false;
     e = &stream->list.entries[stream->index];
     path_option = cic_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
-    if (!path_option) return cic_unpack_entry(format->device, &stream->scan, e, NULL, pd);
+    if (!path_option) return cic_unpack_entry(format->device, &stream->scan, &stream->list, e, NULL, pd);
     if (!e->safe || e->shared) return false;
     if (path_option->type == XX_VAR_TYPE_STRING || path_option->type == XX_VAR_TYPE_STRING_VIEW) {
         base = xx_var_get_str(path_option);
@@ -1489,7 +2173,7 @@ bool xx_clickteam_install_creator_unpack_current_archive_record(Abstractformat *
         xx_io_device *destination = xx_io_file_open(path, "wb");
         created = destination != NULL;
         if (!destination) goto done;
-        result = cic_unpack_entry(format->device, &stream->scan, e, destination, pd);
+        result = cic_unpack_entry(format->device, &stream->scan, &stream->list, e, destination, pd);
         if (xx_io_close(destination) != 0) result = false;
     }
 done:

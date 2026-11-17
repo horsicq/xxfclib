@@ -25,7 +25,9 @@
 #include <xxfclib/strings/xx_string_casecmp.h>
 #include <xxfclib/strings/xx_string_casefold.h>
 #include <xxfclib/algo/literal_nocase/xx_literal_nocase.h>
+#include <xxfclib/algo/byteset/xx_byteset.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 /* Items of malformed bytes are kept apart from every scalar. */
@@ -286,11 +288,92 @@ static bool xx_casecmp_contains_items(const uint8_t *haystack,
     }
 }
 
+/* Needles up to this many bytes keep their KMP tables on the stack. */
+#define XX_CASECMP_KMP_STACK 64
+/* ASCII needles up to this many bytes try the SIMD literal search first. */
+#define XX_CASECMP_LITERAL_MAX 32
+
+/* The same answer as xx_casecmp_contains_items in O(n + m) item steps:
+ * Knuth-Morris-Pratt over the item streams. A needle byte yields at most
+ * one item (U+0130's two items take its two bytes), so needle_length bounds
+ * the item count. Returns false, with no answer, only when the tables
+ * cannot be allocated; the caller then keeps the allocation-free search. */
+static bool xx_casecmp_contains_kmp(const uint8_t *haystack,
+                                    size_t haystack_length,
+                                    const uint8_t *needle,
+                                    size_t needle_length, bool *result)
+{
+    size_t stack_fail[XX_CASECMP_KMP_STACK];
+    uint32_t stack_items[XX_CASECMP_KMP_STACK];
+    size_t *fail = stack_fail;
+    uint32_t *items = stack_items;
+    void *block = NULL;
+    xx_casecmp_forward it = {needle, needle + needle_length, 0};
+    size_t count = 0, q, k;
+    uint32_t item;
+    xx_byteset starts;
+    bool skip;
+    if (needle_length > XX_CASECMP_KMP_STACK) {
+        if (needle_length > SIZE_MAX / (sizeof(size_t) + sizeof(uint32_t)))
+            return false;
+        block = malloc(needle_length * (sizeof(size_t) + sizeof(uint32_t)));
+        if (!block) return false;
+        fail = (size_t *)block;
+        items = (uint32_t *)(fail + needle_length);
+    }
+    while (count < needle_length && xx_casecmp_next(&it, &item))
+        items[count++] = item;
+    fail[0] = 0;
+    for (q = 1, k = 0; q < count; ++q) {
+        while (k && items[q] != items[k]) k = fail[k - 1];
+        if (items[q] == items[k]) ++k;
+        fail[q] = k;
+    }
+    /* An ASCII first item comes only from that byte in either case, or
+     * from U+212A ('k') or U+0130 ('i'). ASCII and lead bytes always start
+     * an item (decoding never consumes them as continuations), so with no
+     * partial match the search may jump to the next such byte: the skipped
+     * items could not have advanced it. Each byte is still visited at most
+     * once, so the bound stays O(n + m). */
+    skip = items[0] < 0x80;
+    if (skip) {
+        uint8_t lower = (uint8_t)items[0];
+        xx_byteset_clear(&starts);
+        xx_byteset_add(&starts, lower);
+        if (lower >= 'a' && lower <= 'z')
+            xx_byteset_add(&starts, (uint8_t)(lower - ('a' - 'A')));
+        if (lower == 'k') xx_byteset_add(&starts, 0xe2);
+        if (lower == 'i') xx_byteset_add(&starts, 0xc4);
+        xx_byteset_prepare(&starts);
+    }
+    *result = false;
+    it.at = haystack;
+    it.end = haystack + haystack_length;
+    it.pending = 0;
+    for (q = 0;;) {
+        if (skip && !q && !it.pending) {
+            size_t from = (size_t)(it.at - haystack);
+            size_t next = xx_byteset_find(&starts, haystack, haystack_length, from);
+            if (next >= haystack_length) break;
+            it.at = haystack + next;
+        }
+        if (!xx_casecmp_next(&it, &item)) break;
+        while (q && item != items[q]) q = fail[q - 1];
+        if (item == items[q] && ++q == count) {
+            *result = true;
+            break;
+        }
+    }
+    free(block);
+    return true;
+}
+
 XXFC_API bool xx_string_unicode_icontains(const uint8_t *haystack,
                                           size_t haystack_length,
                                           const uint8_t *needle,
                                           size_t needle_length)
 {
+    bool found;
     if ((!haystack && haystack_length) || (!needle && needle_length))
         return false;
     if (!needle_length) return true;
@@ -299,11 +382,22 @@ XXFC_API bool xx_string_unicode_icontains(const uint8_t *haystack,
         /* An ASCII needle has one item per byte, a haystack at most as many
          * items as bytes (U+0130's two items take its two bytes). */
         if (needle_length > haystack_length) return false;
-        if (xx_literal_nocase_find(haystack, haystack_length, 0, needle,
-                                   needle_length) != SIZE_MAX) return true;
-        if (!xx_casecmp_has_ascii_lowercase_source(haystack, haystack_length))
-            return false;
+        /* The SIMD literal search verifies each pivot hit in full, at most
+         * needle_length steps per haystack byte; short needles keep it as
+         * the fast path (linear with a constant factor below the cap), long
+         * ones go straight to KMP, which gives the same answer. */
+        if (needle_length <= XX_CASECMP_LITERAL_MAX) {
+            if (xx_literal_nocase_find(haystack, haystack_length, 0, needle,
+                                       needle_length) != SIZE_MAX) return true;
+            if (!xx_casecmp_has_ascii_lowercase_source(haystack, haystack_length))
+                return false;
+        }
     }
+    /* Linear in the worst case; if its tables cannot be allocated, the
+     * allocation-free search gives the same answer more slowly. */
+    if (xx_casecmp_contains_kmp(haystack, haystack_length, needle,
+                                needle_length, &found))
+        return found;
     return xx_casecmp_contains_items(haystack, haystack_length, needle,
                                      needle_length);
 }

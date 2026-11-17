@@ -209,6 +209,9 @@ XXFC_API int xx_rt_signbit(double nValue);
  * same double, with the exponent rules of the specification. Returns the
  * number of characters written.                                            */
 XXFC_API int xx_rt_dtoa_shortest(double nValue, char *pBuffer, size_t nBufferSize);
+/* Rust `{:?}` layout of the same shortest digits: keeps a ".0" on integral
+ * values and switches to the exponential form outside [1e-5, 1e16). */
+XXFC_API int xx_rt_dtoa_debug(double nValue, char *pBuffer, size_t nBufferSize);
 
 /* Number.prototype.toFixed: nDigits digits after the decimal point. */
 XXFC_API int xx_rt_dtoa_fixed(double nValue, int nDigits, char *pBuffer, size_t nBufferSize);
