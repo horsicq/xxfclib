@@ -164,6 +164,18 @@ if(XXFC_BUILD_CODEPAGE_TESTS)
     target_compile_definitions(xxfc_codepage_tests PRIVATE XXFC_STATIC)
     add_test(NAME xxfc_codepages COMMAND xxfc_codepage_tests)
 endif()
+# xx_ms_log2 (include/xxfclib/crt/xx_ms_log2.h) against the log2 of the C
+# runtime, bit for bit. Only meaningful where that runtime is Microsoft's
+# UCRT, so MSVC only. See docs/CRT.md.
+option(XXFC_BUILD_CRT_TESTS "Build the xx_ms_log2 differential test against the Microsoft C runtime" OFF)
+if(XXFC_BUILD_CRT_TESTS AND MSVC)
+    enable_testing()
+    add_executable(xxfc_ms_log2_ucrt_test tests/crt/ms_log2_ucrt_test.c src/crt/xx_ms_log2.c)
+    target_include_directories(xxfc_ms_log2_ucrt_test PRIVATE include)
+    target_compile_definitions(xxfc_ms_log2_ucrt_test PRIVATE XXFC_STATIC _CRT_SECURE_NO_WARNINGS)
+    add_test(NAME xxfc_ms_log2_ucrt COMMAND xxfc_ms_log2_ucrt_test)
+    set_tests_properties(xxfc_ms_log2_ucrt PROPERTIES TIMEOUT 1200)
+endif()
 set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/translation/xx_translation.h
     include/xxfclib/history/xx_history.h
