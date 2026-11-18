@@ -407,7 +407,7 @@ static int sp_read(const xfu_request *request, xx_pd_struct *pd) {
     if (request->callbacks.file_types)
         request->callbacks.file_types(request->callbacks.user, types, 2, XX_FILE_TYPE_NUMBERED_SPLIT);
     if (request->callbacks.unpack_handle_types) {
-        xx_handle_type_t handle = XX_HANDLE_TYPE_NUMBERED_SPLIT;
+        xx_unpack_handle_t handle = {XX_FILE_TYPE_NUMBERED_SPLIT, XX_UNPACK_CARRIER_NONE};
         request->callbacks.unpack_handle_types(request->callbacks.user, &handle, 1, handle);
     }
     if (request->extract_selected && (request->selected_record_count != 1 ||

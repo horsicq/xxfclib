@@ -42,7 +42,8 @@ void xx_format_init(Abstractformat *fmt, xx_io_device *dev, int64_t base_address
     fmt->overlay_size = 0;
     fmt->endian = XX_ENDIAN_UNKNOWN;
     fmt->file_type = XX_FILE_TYPE_UNKNOWN;
-    fmt->handle_type = XX_HANDLE_TYPE_UNKNOWN;
+    fmt->handle_type = XX_FILE_TYPE_UNKNOWN;
+    fmt->handle_carrier = XX_UNPACK_CARRIER_NONE;
     fmt->os = XX_OS_UNKNOWN;
     fmt->format_type = XX_FORMAT_TYPE_UNKNOWN;
     fmt->arch = XX_ARCH_UNKNOWN;

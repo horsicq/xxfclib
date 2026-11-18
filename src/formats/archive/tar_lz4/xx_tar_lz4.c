@@ -356,7 +356,7 @@ void xx_tar_lz4_init(xx_tar_lz4 *tar_lz4, xx_io_device *dev, int64_t base_addres
     xx_format_init(&tar_lz4->format, dev, base_address);
     tar_lz4->format.endian = XX_ENDIAN_UNKNOWN;
     tar_lz4->format.file_type = XX_FILE_TYPE_TAR_LZ4;
-    tar_lz4->format.handle_type = XX_HANDLE_TYPE_TAR_LZ4;
+    tar_lz4->format.handle_type = XX_FILE_TYPE_TAR_LZ4;
     tar_lz4->format.format_type = XX_TYPE_ARCHIVE;
     tar_lz4->format.is_archive = true;
     xx_format_set_mime_type(&tar_lz4->format, "application/x-lz4");

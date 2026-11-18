@@ -6,5 +6,4 @@ xxfclib_add_family_console(ccd
     FORMATS CCD
     SOURCES
         src/formats/filesystem/ccd/xx_ccd.c
-        src/formats/filesystem/ccd/xx_ccd_extractor.c
-        src/formats/filesystem/ccd/xx_ccd_reader_adapters.c)
+        src/formats/filesystem/ccd/xx_ccd_extractor.c)

@@ -71,7 +71,7 @@ void xx_tar_compress_init(xx_tar_compress *archive, xx_io_device *device, int64_
     xx_format_init(&archive->format, device, base_address);
     archive->format.endian = XX_ENDIAN_UNKNOWN;
     archive->format.file_type = XX_FILE_TYPE_TAR_COMPRESS;
-    archive->format.handle_type = XX_HANDLE_TYPE_TAR_COMPRESS;
+    archive->format.handle_type = XX_FILE_TYPE_TAR_COMPRESS;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-compress");

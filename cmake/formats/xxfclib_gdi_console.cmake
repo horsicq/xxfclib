@@ -6,5 +6,4 @@ xxfclib_add_family_console(gdi
     FORMATS GDI
     SOURCES
         src/formats/game/gdi/xx_gdi.c
-        src/formats/game/gdi/xx_gdi_extractor.c
-        src/formats/game/gdi/xx_gdi_reader_adapters.c)
+        src/formats/game/gdi/xx_gdi_extractor.c)

@@ -6,16 +6,15 @@
 #include "xx_format_handle_policy.h"
 
 typedef struct xx_unpack_handle_identity {
-    xx_handle_type_t handle;
     xx_file_type_t file_type;
-    unsigned carrier;
+    xx_unpack_carrier_t carrier;
     const char *name;
 } xx_unpack_handle_identity;
 
 static const xx_unpack_handle_identity identities[] = {
-#define XX_UNPACK_HANDLE(name, value, type, carrier) {XX_HANDLE_TYPE_##name, XX_FILE_TYPE_##type, carrier, #name},
+#define XX_UNPACK_HANDLE(name, type, carrier) {XX_FILE_TYPE_##type, (xx_unpack_carrier_t)(carrier), #name},
 #if !XFU_FORMAT_SUPPORT_FULL
-#define XX_SUPPORTED_FORMAT(type, name, label) {XX_HANDLE_TYPE_##type, XX_FILE_TYPE_##type, 0, #type},
+#define XX_SUPPORTED_FORMAT(type, name, label) {XX_FILE_TYPE_##type, XX_UNPACK_CARRIER_NONE, #type},
 #include "xxfclib/formats/xx_format_support_rows.inc"
 #undef XX_SUPPORTED_FORMAT
 #else
@@ -24,31 +23,17 @@ static const xx_unpack_handle_identity identities[] = {
 #undef XX_UNPACK_HANDLE
 };
 
-static const xx_unpack_handle_identity *xx_handle_identity(xx_handle_type_t type)
+static const xx_unpack_handle_identity *xx_handle_identity(xx_unpack_handle_t handle)
 {
     size_t i;
     for (i = 0; i < sizeof(identities) / sizeof(identities[0]); ++i)
-        if (identities[i].handle == type) return &identities[i];
+        if (identities[i].file_type == handle.type && identities[i].carrier == handle.carrier) return &identities[i];
     return NULL;
 }
 
-static xx_handle_type_t xx_handle_identity_from_file_type(xx_file_type_t type)
+const char *xx_format_unpack_handle_to_string(xx_unpack_handle_t handle)
 {
-    size_t i;
-    for (i = 0; i < sizeof(identities) / sizeof(identities[0]); ++i)
-        if (!identities[i].carrier && identities[i].file_type == type) return identities[i].handle;
-    return XX_HANDLE_TYPE_UNKNOWN;
-}
-
-xx_file_type_t xx_format_handle_type_file_type(xx_handle_type_t type)
-{
-    const xx_unpack_handle_identity *identity = xx_handle_identity(type);
-    return identity ? identity->file_type : XX_FILE_TYPE_UNKNOWN;
-}
-
-const char *xx_format_handle_type_to_string(xx_handle_type_t type)
-{
-    const xx_unpack_handle_identity *identity = xx_handle_identity(type);
+    const xx_unpack_handle_identity *identity = xx_handle_identity(handle);
     return identity ? identity->name : "UNKNOWN";
 }
 
@@ -116,28 +101,49 @@ static unsigned xx_handle_carrier(Abstractformat *format)
     return 0;
 }
 
-xx_handle_type_t xx_format_get_handle_type(Abstractformat *format)
+xx_file_type_t xx_format_get_handle_type(Abstractformat *format)
 {
     unsigned carrier;
     size_t i;
-    if (!format) return XX_HANDLE_TYPE_UNKNOWN;
+    if (!format) return XX_FILE_TYPE_UNKNOWN;
     if (xx_format_handle_is_inspection_only(format->file_type) || format->file_type == XX_FILE_TYPE_DER ||
         (format->base_info_handled && !format->is_archive) || !format->create_archive_records_reading || !format->get_current_archive_record || !format->unpack_current_archive_record ||
         !format->archive_record_move_to_next || !format->free_archive_records_reading) {
-        format->handle_type = XX_HANDLE_TYPE_UNKNOWN;
-        return XX_HANDLE_TYPE_UNKNOWN;
+        format->handle_type = XX_FILE_TYPE_UNKNOWN;
+        format->handle_carrier = XX_UNPACK_CARRIER_NONE;
+        return XX_FILE_TYPE_UNKNOWN;
     }
     /* A factory may have been given an unvalidated requested carrier. Always
      * refresh from the actual device; PE and DOS handles can share a reader. */
     carrier = xx_handle_carrier(format);
     if (carrier) {
         for (i = 0; i < sizeof(identities) / sizeof(identities[0]); ++i) {
-            if (identities[i].carrier == carrier && identities[i].file_type == format->file_type) {
-                format->handle_type = identities[i].handle;
+            if (identities[i].carrier == (xx_unpack_carrier_t)carrier && identities[i].file_type == format->file_type) {
+                format->handle_type = format->file_type;
+                format->handle_carrier = (xx_unpack_carrier_t)carrier;
                 return format->handle_type;
             }
         }
     }
-    format->handle_type = xx_handle_identity_from_file_type(format->file_type);
-    return format->handle_type;
+    for (i = 0; i < sizeof(identities) / sizeof(identities[0]); ++i) {
+        if (identities[i].carrier == XX_UNPACK_CARRIER_NONE && identities[i].file_type == format->file_type) {
+            format->handle_type = format->file_type;
+            format->handle_carrier = XX_UNPACK_CARRIER_NONE;
+            return format->handle_type;
+        }
+    }
+    format->handle_type = XX_FILE_TYPE_UNKNOWN;
+    format->handle_carrier = XX_UNPACK_CARRIER_NONE;
+    return XX_FILE_TYPE_UNKNOWN;
+}
+
+xx_unpack_handle_t xx_format_get_unpack_handle(Abstractformat *format)
+{
+    xx_unpack_handle_t result = {XX_FILE_TYPE_UNKNOWN, XX_UNPACK_CARRIER_NONE};
+    (void)xx_format_get_handle_type(format);
+    if (format) {
+        result.type = format->handle_type;
+        result.carrier = format->handle_carrier;
+    }
+    return result;
 }

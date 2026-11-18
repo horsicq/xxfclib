@@ -56,15 +56,17 @@ static void pp20_image_name(const pp20_image *s,const pp20_image_item *m,char *n
     if(!s->library)xx_rt_snprintf(name,size,"block-%08x.bin",(unsigned)m->start);
     else xx_rt_snprintf(name,size,m->stored?"%03u_stored.iff":"%03u.bin",(unsigned)m->index);
 }
-static bool pp20_image_info(Abstractformat *f,xx_pd_struct *pd)
+static bool pp20_image_publish(Abstractformat *f,pp20_image *s)
 {
-    pp20_image *s=pp20_image_open(f,pd);xx_pp20 *a=(xx_pp20*)f;if(!s)return false;
+    xx_pp20 *a=(xx_pp20*)f;if(!s)return false;
     a->variant=s->library?XX_PP20_VARIANT_LIBRARY:XX_PP20_VARIANT_IMAGE;a->uncompressed_size=s->raw;a->stream_end=f->base_address+(int64_t)s->size;
     a->skip_bits=0;xx_mem_zero(a->offset_widths,sizeof(a->offset_widths));
     f->format_size=(int64_t)s->size;f->number_of_archive_records=s->count;f->overlay_offset=-1;f->overlay_size=0;
     f->is_archive=true;f->is_crypted=false;f->is_executable=false;f->is_valid=true;f->base_info_handled=true;
     pp20_image_free(s);return true;
 }
+static bool pp20_image_info(Abstractformat *f,xx_pd_struct *pd){return pp20_image_publish(f,pp20_image_open(f,pd));}
+static bool pp20_library_info(Abstractformat *f,xx_pd_struct *pd){return pp20_image_publish(f,pp20_library_open(f,pd));}
 static bool pp20_image_record(Abstractformat *f,xx_archive_record_state *state)
 {
     pp20_image *s=(pp20_image*)state->internal_state;const pp20_image_item *m;xx_archive_record *r=&state->current_record;char name[40];
@@ -81,7 +83,7 @@ static bool pp20_image_record(Abstractformat *f,xx_archive_record_state *state)
 }
 static xx_archive_record_state *pp20_image_records(Abstractformat *f,const xx_list_s *options,xx_pd_struct *pd)
 {
-    pp20_image *s=pp20_image_open(f,pd);xx_archive_record_state *state;if(!s)return NULL;
+    pp20_image *s=((xx_pp20*)f)->variant==XX_PP20_VARIANT_LIBRARY?pp20_library_open(f,pd):pp20_image_open(f,pd);xx_archive_record_state *state;if(!s)return NULL;
     state=(xx_archive_record_state*)xx_mem_alloc(sizeof(*state));if(!state){pp20_image_free(s);return NULL;}
     xx_archive_record_state_init(state,f);state->internal_state=s;state->free_internal=pp20_image_free;state->current_index=0;state->total_records=s->count;
     if(!xx_pp20_copy_options(&state->options,options)||!pp20_image_record(f,state)){xx_archive_record_state_free(state);return NULL;}

@@ -6,5 +6,4 @@ xxfclib_add_family_console(amiga_old_ext_adf
     FORMATS AMIGA_OLD_EXT_ADF
     SOURCES
         src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf.c
-        src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c
-        src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_reader_adapters.c)
+        src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c)

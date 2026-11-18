@@ -61,7 +61,8 @@ typedef struct Abstractformat xx_format;
 typedef struct Abstractformat xx_format_t;
 typedef struct Abstractformat xx_abstract_format;
 typedef struct Abstractformat AbstractFormat;
-XXFC_API xx_handle_type_t xx_format_get_handle_type(Abstractformat *format);
+XXFC_API xx_file_type_t xx_format_get_handle_type(Abstractformat *format);
+XXFC_API xx_unpack_handle_t xx_format_get_unpack_handle(Abstractformat *format);
 
 typedef struct Abstractdetector Abstractdetector;
 typedef struct Abstractdetector xx_abstract_detector;
@@ -261,7 +262,12 @@ typedef enum xx_meta_id_e {
     XX_META_ID_COMPRESSION_LAZY_MATCH, /**< DEFLATE lazy match-length threshold; zero/absent is greedy (uint64_t) */
     XX_META_ID_COMPRESSION_SHORT_MATCH_FILTER, /**< Skip length-3 matches beyond distance 4096 (bool, default false) */
     XX_META_ID_COMPRESSION_NICE_MATCH, /**< Stop search at this match length; zero disables (uint64_t) */
-    XX_META_ID_COMPRESSION_GOOD_MATCH /**< Reduce candidate budget at this match length; zero disables (uint64_t) */
+    XX_META_ID_COMPRESSION_GOOD_MATCH, /**< Reduce candidate budget at this match length; zero disables (uint64_t) */
+    /* Salvage: a member whose stream is damaged keeps the bytes that decoded
+     * before the damage (never padded, nothing past a decoder error). The
+     * member still fails; the reader reports what it kept through
+     * xx_io_extract_salvaged(). Absent or false: a failed member writes nothing. */
+    XX_META_ID_OPT_FORCE /**< Keep the readable part of a damaged member on unpack (bool) */
 } xx_meta_id_t;
 
 typedef enum xx_meta_id_e xx_archive_meta_id_t;
@@ -480,9 +486,10 @@ struct Abstractformat {
     xx_endian_t endian;           /**< Format endianness (XX_ENDIAN_LITTLE/BIG/UNKNOWN) */
     xx_file_type_t file_type;     /**< Detected or assigned file type (0: unknown, 1:
                                      binary, 2: ZIP, 3: ZIP64) */
-    xx_handle_type_t handle_type; /**< Unpacking interpretation, independent of file_type.
+    xx_file_type_t handle_type;   /**< Unpacking interpretation, independent of file_type.
                                       Refreshed by successful base-info handling/getter;
                                       before validation a factory may store the requested handle. */
+    xx_unpack_carrier_t handle_carrier;
     xx_os_t os;                   /**< Operating system enum (XX_OS_UNKNOWN, XX_OS_WINDOWS, etc.) */
     xx_format_type_t format_type; /**< Target binary type enum (XX_TYPE_CONSOLE_APPLICATION, XX_TYPE_DRIVER, XX_TYPE_LIBRARY, etc.) */
     xx_arch_t arch;               /**< Architecture enum (XX_ARCH_UNKNOWN, XX_ARCH_X86_64, etc.) */
@@ -774,30 +781,24 @@ XXFC_API void xx_format_set_type(Abstractformat *f, xx_format_type_t type);
 XXFC_API xx_file_type_t xx_format_get_file_type(Abstractformat *f);
 XXFC_API xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev);
 
-/** Native unpacking interpretations are a distinct enum domain. A mapping
- * identifies the reader; its streaming callbacks and validity still decide
- * whether an individual input can be unpacked. */
-XXFC_API xx_handle_type_t xx_format_handle_type_from_file_type(xx_file_type_t type);
-XXFC_API xx_file_type_t xx_format_handle_type_file_type(xx_handle_type_t type);
-XXFC_API const char *xx_format_handle_type_to_string(xx_handle_type_t type);
-XXFC_API xx_handle_type_t xx_format_get_handle_type(Abstractformat *format);
-
-/** Caller-owned, deduplicated list of xx_handle_type_t values. Magic and
- * executable-carrier readers are tried before suffix hints. Structural
- * readers without a signature are tried only when deep is true and no
- * shallow interpretation was found. EXECUTABLE_OVERLAY is an explicit/deep
- * view of adjacent executable images and preserves the bytes after the
- * outer image without changing physical type or reconstructing packed code.
- * Preserves the device cursor. */
+/* File type of the format's unpacking interpretation, or XX_FILE_TYPE_UNKNOWN when it cannot be unpacked.
+ * Also refreshes format->handle_type and format->handle_carrier from the device. */
+XXFC_API xx_file_type_t xx_format_get_handle_type(Abstractformat *format);
+/* The same, with the carrier. */
+XXFC_API xx_unpack_handle_t xx_format_get_unpack_handle(Abstractformat *format);
+/* type when a native reader can unpack it, else XX_FILE_TYPE_UNKNOWN. */
+XXFC_API xx_file_type_t xx_format_handle_type_from_file_type(xx_file_type_t type);
+/* "ZIP", "PE_ZIP", "MSDOS_ZIP", "COM_ZIP"; "UNKNOWN" for a pair that has no row. Same strings as before. */
+XXFC_API const char *xx_format_unpack_handle_to_string(xx_unpack_handle_t handle);
+/* Lists of xx_unpack_handle_t. */
 XXFC_API xx_list_t *xx_format_get_unpack_handle_types_device(xx_io_device *dev, bool deep);
-/** Caller-owned catalog of compiled readers with complete unpack callbacks. */
 XXFC_API xx_list_t *xx_format_get_supported_unpack_handle_types(void);
 
 /** Construct an unvalidated native reader, including writer-capable readers.
  * A nonzero base uses an owned view whose reader offset starts at zero.
  * The caller retains dev and releases the result with xx_format_free_reader. */
 XXFC_API Abstractformat *xx_format_create_reader(xx_file_type_t type, xx_io_device *dev, int64_t base_address);
-XXFC_API Abstractformat *xx_format_create_handle_reader(xx_handle_type_t type, xx_io_device *dev, int64_t base_address);
+XXFC_API Abstractformat *xx_format_create_handle_reader(xx_unpack_handle_t handle, xx_io_device *dev, int64_t base_address);
 XXFC_API void xx_format_free_reader(Abstractformat *format);
 
 /** Return a provisional type from a case-insensitive filename suffix alone.

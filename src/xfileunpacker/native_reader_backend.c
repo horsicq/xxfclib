@@ -1485,10 +1485,10 @@ static int native_raw_device_read(const xfu_request *request,
     if (request->callbacks.file_types)
         request->callbacks.file_types(request->callbacks.user, types, type_count, type);
     if (request->callbacks.unpack_handle_types) {
-        xx_handle_type_t handle = xx_format_handle_type_from_file_type(type);
+        xx_unpack_handle_t handle = {xx_format_handle_type_from_file_type(type), XX_UNPACK_CARRIER_NONE};
         request->callbacks.unpack_handle_types(request->callbacks.user,
-            handle == XX_HANDLE_TYPE_UNKNOWN ? NULL : &handle,
-            handle == XX_HANDLE_TYPE_UNKNOWN ? 0 : 1, handle);
+            handle.type == XX_FILE_TYPE_UNKNOWN ? NULL : &handle,
+            handle.type == XX_FILE_TYPE_UNKNOWN ? 0 : 1, handle);
     }
     /* The same log shape as the member walk: the interpretation, one line
      * per member and the member count. */

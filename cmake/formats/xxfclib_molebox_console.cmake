@@ -6,6 +6,11 @@ xxfclib_add_family_console(molebox
     FORMATS MOLEBOX
     SORT
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/crc/platforms/xx_crc32_arm.c
         src/algo/crc/platforms/xx_crc32_arm_pmull.c
         src/algo/crc/platforms/xx_crc32c_sse42.c
@@ -25,5 +30,4 @@ xxfclib_add_family_console(molebox
         src/algo/deflate/xx_deflate_enc.c
         src/algo/md5/xx_md5.c
         src/formats/executable/molebox/xx_molebox.c
-        src/formats/executable/molebox/xx_molebox_extractor.c
-        src/formats/executable/molebox/xx_molebox_reader_adapters.c)
+        src/formats/executable/molebox/xx_molebox_extractor.c)

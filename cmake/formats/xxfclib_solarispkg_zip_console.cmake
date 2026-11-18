@@ -27,6 +27,5 @@ xxfclib_add_family_console(solarispkg_zip
         src/algo/deflate/xx_deflate.c
         src/algo/deflate/xx_deflate_dec.c
         src/algo/deflate/xx_deflate_enc.c
-        src/algo/deflate/xx_zlib_stream.c
         src/formats/installer/solarispkg_zip/xx_solarispkg_zip.c
         src/formats/installer/solarispkg_zip/xx_solarispkg_zip_extractor.c)

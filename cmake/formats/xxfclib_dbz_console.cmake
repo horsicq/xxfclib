@@ -5,6 +5,11 @@ include("${CMAKE_CURRENT_LIST_DIR}/../xxfclib_family_console.cmake")
 xxfclib_add_family_console(dbz
     FORMATS DBZ
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/compress/xx_compress.c
         src/algo/crc/platforms/xx_crc32_arm.c
         src/algo/crc/platforms/xx_crc32_arm_pmull.c

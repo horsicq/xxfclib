@@ -311,7 +311,7 @@ void xx_executable_overlay_init(xx_executable_overlay *r, xx_io_device *d, int64
     if (!r) return;
     xx_mem_zero(r, sizeof(*r));
     pm_init(&r->format, d, base, XX_FILE_TYPE_EXECUTABLE_OVERLAY, "exe");
-    r->format.handle_type = XX_HANDLE_TYPE_EXECUTABLE_OVERLAY;
+    r->format.handle_type = XX_FILE_TYPE_EXECUTABLE_OVERLAY;
     r->format.destroy = xo_vtable_destroy;
     xx_format_set_mime_type(&r->format, "application/x-executable-overlay");
 }

@@ -5,6 +5,11 @@ include("${CMAKE_CURRENT_LIST_DIR}/../xxfclib_family_console.cmake")
 xxfclib_add_family_console(gbi
     FORMATS GBI
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/crc/platforms/xx_crc32_arm.c
         src/algo/crc/platforms/xx_crc32_arm_pmull.c
         src/algo/crc/platforms/xx_crc32c_sse42.c
@@ -34,5 +39,4 @@ xxfclib_add_family_console(gbi
         src/algo/sha/xx_sha.c
         src/algo/sha/xx_sha_simd.c
         src/formats/filesystem/gbi/xx_gbi.c
-        src/formats/filesystem/gbi/xx_gbi_extractor.c
-        src/formats/filesystem/gbi/xx_gbi_reader_adapters.c)
+        src/formats/filesystem/gbi/xx_gbi_extractor.c)

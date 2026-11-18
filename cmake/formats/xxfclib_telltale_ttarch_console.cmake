@@ -29,5 +29,4 @@ xxfclib_add_family_console(telltale_ttarch
         src/algo/deflate/xx_deflate_enc.c
         src/algo/deflate/xx_zlib_stream.c
         src/formats/game/telltale_ttarch/xx_telltale_ttarch.c
-        src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c
-        src/formats/game/telltale_ttarch/xx_telltale_ttarch_reader_adapters.c)
+        src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c)

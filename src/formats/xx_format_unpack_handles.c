@@ -12,15 +12,15 @@
 #include "xxfclib/formats/installer/lifkd/xx_lifkd.h"
 
 typedef struct xx_unpack_handle_row {
-    xx_handle_type_t handle;
     xx_file_type_t file_type;
-    unsigned carrier;
+    xx_unpack_carrier_t carrier;
+    const char *name;
 } xx_unpack_handle_row;
 
 static const xx_unpack_handle_row handle_rows[] = {
-#define XX_UNPACK_HANDLE(name, value, type, carrier) {XX_HANDLE_TYPE_##name, XX_FILE_TYPE_##type, carrier},
+#define XX_UNPACK_HANDLE(name, type, carrier) {XX_FILE_TYPE_##type, (xx_unpack_carrier_t)(carrier), #name},
 #if !XFU_FORMAT_SUPPORT_FULL
-#define XX_SUPPORTED_FORMAT(type, name, label) {XX_HANDLE_TYPE_##type, XX_FILE_TYPE_##type, 0},
+#define XX_SUPPORTED_FORMAT(type, name, label) {XX_FILE_TYPE_##type, XX_UNPACK_CARRIER_NONE, #type},
 #include "xxfclib/formats/xx_format_support_rows.inc"
 #undef XX_SUPPORTED_FORMAT
 #else
@@ -36,33 +36,33 @@ static bool xx_handle_can_unpack(const Abstractformat *format)
            format->archive_record_move_to_next && format->free_archive_records_reading;
 }
 
-xx_handle_type_t xx_format_handle_type_from_file_type(xx_file_type_t type)
+xx_file_type_t xx_format_handle_type_from_file_type(xx_file_type_t type)
 {
     uint8_t dummy = 0;
     xx_io_device *empty;
     Abstractformat *format;
     bool supported;
     size_t i;
-    if (xx_format_handle_is_inspection_only(type)) return XX_HANDLE_TYPE_UNKNOWN;
+    if (xx_format_handle_is_inspection_only(type)) return XX_FILE_TYPE_UNKNOWN;
 #if XFU_FORMAT_SUPPORT_FULL
-    if (type == XX_FILE_TYPE_NUMBERED_SPLIT) return XX_HANDLE_TYPE_NUMBERED_SPLIT;
+    if (type == XX_FILE_TYPE_NUMBERED_SPLIT) return XX_FILE_TYPE_NUMBERED_SPLIT;
 #endif
     empty = xx_io_mem_open_ro(&dummy, 0U);
-    if (!empty) return XX_HANDLE_TYPE_UNKNOWN;
+    if (!empty) return XX_FILE_TYPE_UNKNOWN;
     format = xx_format_create_reader(type, empty, 0);
     supported = xx_handle_can_unpack(format);
     xx_format_free_reader(format);
     xx_io_close(empty);
     if (supported) {
         for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i)
-            if (!handle_rows[i].carrier && handle_rows[i].file_type == type) return handle_rows[i].handle;
+            if (handle_rows[i].carrier == XX_UNPACK_CARRIER_NONE && handle_rows[i].file_type == type) return type;
     }
-    return XX_HANDLE_TYPE_UNKNOWN;
+    return XX_FILE_TYPE_UNKNOWN;
 }
 
-static bool xx_handle_append(xx_list_t *types, xx_handle_type_t type)
+static bool xx_handle_append(xx_list_t *types, xx_unpack_handle_t handle)
 {
-    return type == XX_HANDLE_TYPE_UNKNOWN || xx_list_contains(types, &type, NULL) || xx_list_append(types, &type);
+    return handle.type == XX_FILE_TYPE_UNKNOWN || xx_list_contains(types, &handle, NULL) || xx_list_append(types, &handle);
 }
 
 static bool xx_handle_has_carrier_reader(xx_file_type_t type)
@@ -133,7 +133,7 @@ static void xx_handle_prepare_reader(Abstractformat *format, xx_file_type_t type
 
 static bool xx_handle_probe_format(Abstractformat *format, xx_file_type_t type, xx_list_t *types)
 {
-    xx_handle_type_t handle = XX_HANDLE_TYPE_UNKNOWN;
+    xx_unpack_handle_t handle = {XX_FILE_TYPE_UNKNOWN, XX_UNPACK_CARRIER_NONE};
     xx_handle_prepare_reader(format, type);
     /* The native UPX reader can use a configured official backend. Never
      * ask that backend to probe unrelated input: first authenticate the
@@ -146,7 +146,7 @@ static bool xx_handle_probe_format(Abstractformat *format, xx_file_type_t type, 
         /* A CRC-authenticated 7z encoded-header grammar can identify AES
          * encryption before a password is supplied. Retain that reader so
          * callers can apply their password before opening its directory. */
-        if ((parsed && format->is_archive) || (type == XX_FILE_TYPE_7ZIP && format->is_crypted)) handle = xx_format_get_handle_type(format);
+        if ((parsed && format->is_archive) || (type == XX_FILE_TYPE_7ZIP && format->is_crypted)) handle = xx_format_get_unpack_handle(format);
     }
     return xx_handle_append(types, handle);
 }
@@ -298,9 +298,9 @@ static int xx_handle_signature(xx_file_type_t type, xx_io_device *dev)
 
 /* Less nested views precede their compound forms, independently of catalog
  * order. The unpacker can therefore prefer the final, most specific handle. */
-static unsigned xx_handle_priority(xx_handle_type_t handle)
+static unsigned xx_handle_priority(xx_unpack_handle_t handle)
 {
-    xx_file_type_t type = xx_format_handle_type_file_type(handle);
+    xx_file_type_t type = handle.type;
     switch (type) {
         case XX_FILE_TYPE_PE_RAWFILE: case XX_FILE_TYPE_PKLITE: return 0U;
         case XX_FILE_TYPE_GZ: case XX_FILE_TYPE_BZ2: case XX_FILE_TYPE_XZ:
@@ -323,12 +323,12 @@ static void xx_handle_order(xx_list_t *types)
     size_t i;
     for (i = 1U; i < xx_list_count(types); ++i) {
         size_t j = i;
-        xx_handle_type_t value = *(xx_handle_type_t *)xx_list_at(types, i);
-        while (j && xx_handle_priority(*(xx_handle_type_t *)xx_list_at(types, j - 1U)) > xx_handle_priority(value)) {
-            *(xx_handle_type_t *)xx_list_at(types, j) = *(xx_handle_type_t *)xx_list_at(types, j - 1U);
+        xx_unpack_handle_t value = *(xx_unpack_handle_t *)xx_list_at(types, i);
+        while (j && xx_handle_priority(*(xx_unpack_handle_t *)xx_list_at(types, j - 1U)) > xx_handle_priority(value)) {
+            *(xx_unpack_handle_t *)xx_list_at(types, j) = *(xx_unpack_handle_t *)xx_list_at(types, j - 1U);
             --j;
         }
-        *(xx_handle_type_t *)xx_list_at(types, j) = value;
+        *(xx_unpack_handle_t *)xx_list_at(types, j) = value;
     }
 }
 
@@ -339,7 +339,7 @@ xx_list_t *xx_format_get_unpack_handle_types_device(xx_io_device *dev, bool deep
     bool executable;
     size_t i;
     if (!dev || (saved = xx_io_tell(dev)) < 0) return NULL;
-    types = xx_list_create(sizeof(xx_handle_type_t), NULL);
+    types = xx_list_create(sizeof(xx_unpack_handle_t), NULL);
     if (!types) return NULL;
     executable = xx_handle_is_executable(dev);
 
@@ -375,7 +375,8 @@ xx_list_t *xx_format_get_unpack_handle_types_device(xx_io_device *dev, bool deep
          * is sufficient for its extension-based interpretation. */
 #if XFU_FORMAT_SUPPORT_FULL
         if (hint == XX_FILE_TYPE_NUMBERED_SPLIT && xx_io_total_size(dev) > 0) {
-            if (!xx_handle_append(types, XX_HANDLE_TYPE_NUMBERED_SPLIT)) goto failed;
+            xx_unpack_handle_t split_handle = {XX_FILE_TYPE_NUMBERED_SPLIT, XX_UNPACK_CARRIER_NONE};
+            if (!xx_handle_append(types, split_handle)) goto failed;
         } else
 #endif
         if (hint != XX_FILE_TYPE_UNKNOWN && !xx_handle_probe(dev, hint, types)) goto failed;
@@ -420,7 +421,7 @@ failed:
 
 xx_list_t *xx_format_get_supported_unpack_handle_types(void)
 {
-    xx_list_t *types = xx_list_create(sizeof(xx_handle_type_t), NULL);
+    xx_list_t *types = xx_list_create(sizeof(xx_unpack_handle_t), NULL);
     xx_io_device *empty;
     uint8_t dummy = 0;
     size_t i;
@@ -428,7 +429,10 @@ xx_list_t *xx_format_get_supported_unpack_handle_types(void)
     empty = xx_io_mem_open_ro(&dummy, 0U);
     if (!empty) { xx_list_destroy(types); return NULL; }
 #if XFU_FORMAT_SUPPORT_FULL
-    if (!xx_handle_append(types, XX_HANDLE_TYPE_NUMBERED_SPLIT)) goto failed;
+    {
+        xx_unpack_handle_t split_handle = {XX_FILE_TYPE_NUMBERED_SPLIT, XX_UNPACK_CARRIER_NONE};
+        if (!xx_handle_append(types, split_handle)) goto failed;
+    }
 #endif
     for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i) {
         const xx_unpack_handle_row *row = &handle_rows[i];
@@ -440,9 +444,14 @@ xx_list_t *xx_format_get_supported_unpack_handle_types(void)
         xx_format_free_reader(format);
         if (supported) {
             size_t j;
-            if (!xx_handle_append(types, row->handle)) goto failed;
-            for (j = 0; j < sizeof(handle_rows) / sizeof(handle_rows[0]); ++j)
-                if (handle_rows[j].carrier && handle_rows[j].file_type == row->file_type && !xx_handle_append(types, handle_rows[j].handle)) goto failed;
+            xx_unpack_handle_t h = {row->file_type, row->carrier};
+            if (!xx_handle_append(types, h)) goto failed;
+            for (j = 0; j < sizeof(handle_rows) / sizeof(handle_rows[0]); ++j) {
+                if (handle_rows[j].carrier && handle_rows[j].file_type == row->file_type) {
+                    xx_unpack_handle_t carrier_h = {handle_rows[j].file_type, handle_rows[j].carrier};
+                    if (!xx_handle_append(types, carrier_h)) goto failed;
+                }
+            }
         }
     }
     xx_io_close(empty);
@@ -453,14 +462,23 @@ failed:
     return NULL;
 }
 
-Abstractformat *xx_format_create_handle_reader(xx_handle_type_t type, xx_io_device *dev, int64_t base_address)
+Abstractformat *xx_format_create_handle_reader(xx_unpack_handle_t handle, xx_io_device *dev, int64_t base_address)
 {
-    xx_file_type_t file_type = xx_format_handle_type_file_type(type);
     Abstractformat *format;
-    if (file_type == XX_FILE_TYPE_UNKNOWN) return NULL;
-    format = xx_format_create_reader(file_type, dev, base_address);
+    size_t i;
+    bool found = false;
+    if (handle.type == XX_FILE_TYPE_UNKNOWN) return NULL;
+    for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i) {
+        if (handle_rows[i].file_type == handle.type && handle_rows[i].carrier == handle.carrier) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) return NULL;
+    format = xx_format_create_reader(handle.type, dev, base_address);
     if (!xx_handle_can_unpack(format)) { xx_format_free_reader(format); return NULL; }
-    xx_handle_prepare_reader(format, file_type);
-    format->handle_type = type;
+    xx_handle_prepare_reader(format, handle.type);
+    format->handle_type = handle.type;
+    format->handle_carrier = handle.carrier;
     return format;
 }

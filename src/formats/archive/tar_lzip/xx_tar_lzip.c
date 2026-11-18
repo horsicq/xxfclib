@@ -77,7 +77,7 @@ void xx_tar_lzip_init(xx_tar_lzip *archive, xx_io_device *device, int64_t base_a
     xx_format_init(&archive->format, device, base_address);
     archive->format.endian = XX_ENDIAN_LITTLE;
     archive->format.file_type = XX_FILE_TYPE_TAR_LZIP;
-    archive->format.handle_type = XX_HANDLE_TYPE_TAR_LZIP;
+    archive->format.handle_type = XX_FILE_TYPE_TAR_LZIP;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-lzip");

@@ -6,5 +6,4 @@ xxfclib_add_family_console(arc_cbm
     FORMATS ARC_CBM
     SOURCES
         src/formats/archive/arc_cbm/xx_arc_cbm.c
-        src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c
-        src/formats/archive/arc_cbm/xx_arc_cbm_reader_adapters.c)
+        src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c)

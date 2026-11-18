@@ -924,7 +924,7 @@ void xx_xz_init(xx_xz *xz, xx_io_device *dev, int64_t base_address)
     xx_format_init(&xz->format, dev, base_address);
     xz->format.endian = XX_ENDIAN_LITTLE;
     xz->format.file_type = XX_FILE_TYPE_XZ;
-    xz->format.handle_type = XX_HANDLE_TYPE_XZ;
+    xz->format.handle_type = XX_FILE_TYPE_XZ;
     xz->format.format_type = XX_TYPE_ARCHIVE;
     xz->format.is_archive = true;
     xx_format_set_mime_type(&xz->format, "application/x-xz");

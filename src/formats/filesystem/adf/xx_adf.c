@@ -5,8 +5,8 @@
  * carries the block layouts.
  *
  * Written from the AmigaDOS on-disk structure.  The volume is located by
- * the boot block's "DOS" tag (or, on an exact DD/HD floppy, all-zero boot
- * blocks) and a root block that must check out in full (type, key, hash
+ * the boot block's "DOS" tag (or, on an exact DD/HD floppy, the root block
+ * alone when the boot blocks are zero or foreign) and a root block that must check out in full (type, key, hash
  * table size, secondary type and checksum).  The directory
  * tree is walked from the root's hash table through every hash chain; each
  * header block is claimed once, so cross-linked or looping chains cannot
@@ -133,7 +133,7 @@ typedef struct adf_volume_s {
     bool ffs;
     bool long_names;
     bool blank_boot; /**< Boot blocks all zero; OFS/FFS still to decide. */
-    bool type_known; /**< ffs is settled (always, unless blank_boot). */
+    bool type_known; /**< ffs is settled (always, when the boot tag is DOS). */
     int64_t format_size;
     char volume_name[96];
 } adf_volume;
@@ -313,7 +313,8 @@ static bool adf_boot_blank(xx_io_device *device, int64_t base)
 /* Find the root block.  Candidates, in order: the middle of the whole image
  * (floppies, 81..83-cylinder images and hardfiles), then a standard DD and
  * a standard HD floppy at the start of a longer or shorter image.  A volume
- * with blank boot blocks is accepted only as an exact standard floppy. */
+ * without a DOS tag (blank or foreign boot blocks) is accepted only as an
+ * exact standard floppy. */
 static bool adf_open_volume(Abstractformat *format, adf_volume *out, uint8_t *root_block)
 {
     uint8_t boot[4];
@@ -322,17 +323,22 @@ static bool adf_open_volume(Abstractformat *format, adf_volume *out, uint8_t *ro
     uint32_t candidates[3], spans[3];
     size_t count = 0U, index;
     adf_volume volume;
-    bool blank = false;
+    bool blank = false, untagged = false;
     if (!format || !format->device || !out || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     size = total - format->base_address;
     if (size < (int64_t)(4U * ADF_BSIZE) || !adf_read_at(format->device, format->base_address, boot, sizeof(boot))) return false;
     if (boot[0] != 'D' || boot[1] != 'O' || boot[2] != 'S' || boot[3] > 7U) {
-        if (boot[0] != 0U || boot[1] != 0U || boot[2] != 0U || boot[3] != 0U ||
-            (size != (int64_t)ADF_DD_BLOCKS * ADF_BSIZE && size != (int64_t)ADF_HD_BLOCKS * ADF_BSIZE) || !adf_boot_blank(format->device, format->base_address))
-            return false;
-        blank = true;
+        /* No usable tag: only an exact standard floppy, located by its root
+         * block alone.  The boot blocks are either all zero or foreign: a
+         * custom boot loader, a cracker's tag, "DOS" with a bad flags byte
+         * (TOSEC "[b DOS ID missing]").  AmigaDOS refuses such a disk, but
+         * the tree behind it is complete on real dumps (Shaq-Fu disks 2-6,
+         * Cytadela disk 5, Skaermtrolden Hugo disk 2). */
+        if (size != (int64_t)ADF_DD_BLOCKS * ADF_BSIZE && size != (int64_t)ADF_HD_BLOCKS * ADF_BSIZE) return false;
+        untagged = true;
+        blank = boot[0] == 0U && boot[1] == 0U && boot[2] == 0U && boot[3] == 0U && adf_boot_blank(format->device, format->base_address);
     }
     whole = size / (int64_t)ADF_BSIZE;
     if (whole <= (int64_t)ADF_MAX_BLOCKS) {
@@ -363,11 +369,11 @@ static bool adf_open_volume(Abstractformat *format, adf_volume *out, uint8_t *ro
         volume.base = format->base_address;
         volume.blocks = spans[index];
         volume.root = candidates[index];
-        volume.dos_type = blank ? 0U : boot[3];
-        volume.ffs = !blank && (boot[3] & 1U) != 0U;
-        volume.long_names = !blank && boot[3] >= 6U;
+        volume.dos_type = untagged ? 0U : boot[3];
+        volume.ffs = !untagged && (boot[3] & 1U) != 0U;
+        volume.long_names = !untagged && boot[3] >= 6U;
         volume.blank_boot = blank;
-        volume.type_known = !blank;
+        volume.type_known = !untagged;
         volume.format_size = (int64_t)spans[index] * (int64_t)ADF_BSIZE;
         adf_latin1_to_utf8(block + ADF_OFF_NAME + 1U, block[ADF_OFF_NAME], volume.volume_name, sizeof(volume.volume_name));
         *out = volume;
@@ -788,7 +794,7 @@ static bool adf_entry_text(const adf_volume *volume, const uint8_t *block, uint3
     return true;
 }
 
-/* Blank boot blocks leave OFS or FFS open.  The first file with data settles
+/* Blank or foreign boot blocks leave OFS or FFS open.  The first file with data settles
  * it: an OFS data block is tagged (type 8, owning header, sequence 1, a size
  * that fits, a zero checksum), a raw FFS block essentially never is. */
 static void adf_settle_type(adf_volume *volume, uint32_t header, uint32_t first)

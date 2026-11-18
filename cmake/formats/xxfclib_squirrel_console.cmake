@@ -5,6 +5,11 @@ include("${CMAKE_CURRENT_LIST_DIR}/../xxfclib_family_console.cmake")
 xxfclib_add_family_console(squirrel
     FORMATS SQUIRREL
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/aes/platforms/xx_aes_arm_crypto.c
         src/algo/aes/xx_aes.c
         src/algo/aes_winzip/xx_aes_winzip.c

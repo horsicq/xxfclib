@@ -6,6 +6,11 @@ xxfclib_add_family_console(ifah_installer
     FORMATS IFAH_INSTALLER
     SORT
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/crc/platforms/xx_crc32_arm.c
         src/algo/crc/platforms/xx_crc32_arm_pmull.c
         src/algo/crc/platforms/xx_crc32c_sse42.c

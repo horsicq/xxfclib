@@ -89,11 +89,11 @@ typedef struct xfu_callbacks {
      * ...). The run then logs that the type "cannot be opened as an archive"
      * and returns 2. */
     void (*not_archive)(void *user, xx_file_type_t type);
-    /* Actionable unpack interpretations, outer layers first. Values belong
-     * to the independent XX_HANDLE_TYPE_* namespace; ordinary Binary/PE/COM
-     * inspection types are never offered. Borrowed for this call. */
-    void (*unpack_handle_types)(void *user, const xx_handle_type_t *types,
-                                size_t count, xx_handle_type_t selected);
+    /* Actionable unpack interpretations, outer layers first.
+     * Ordinary Binary/PE/COM inspection types are never offered. Borrowed
+     * for this call. */
+    void (*unpack_handle_types)(void *user, const xx_unpack_handle_t *types,
+                                size_t count, xx_unpack_handle_t selected);
     /* Reader-confirmed encryption, independent of localized log text.
      * DETECTED does not imply failure: an encrypted archive can be listed.
      * REQUIRED/REJECTED mean an attempted operation could not read encrypted
@@ -150,7 +150,14 @@ typedef struct xfu_request {
     /* UNKNOWN detects the unpack method automatically. Any other value is
      * an exact unpack interpretation and must match this input. Cannot be
      * combined with reader_name; file_type remains a compatibility selector. */
-    xx_handle_type_t handle_type;
+    xx_unpack_handle_t handle;
+    /* EXTRACT: salvage. A member whose stream is damaged keeps the bytes
+     * that decoded before the damage (readers that support it; never padded,
+     * nothing past a decoder error) and is logged "-- PARTIAL (...)"; the run
+     * still returns 1. Refused paths, filesystem failures and encrypted
+     * members are unaffected. Without it such a member writes nothing and
+     * its "-- FAILED" line names the flag. */
+    bool force;
 } xfu_request;
 
 xfu_command xfu_parse_command(const char *text);

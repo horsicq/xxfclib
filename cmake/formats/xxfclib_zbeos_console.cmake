@@ -27,6 +27,5 @@ xxfclib_add_family_console(zbeos
         src/algo/deflate/xx_deflate.c
         src/algo/deflate/xx_deflate_dec.c
         src/algo/deflate/xx_deflate_enc.c
-        src/algo/deflate/xx_zlib_stream.c
         src/formats/firmware/zbeos/xx_zbeos.c
         src/formats/firmware/zbeos/xx_zbeos_extractor.c)

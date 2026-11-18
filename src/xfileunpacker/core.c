@@ -1063,26 +1063,30 @@ static void layers_append(outer_layers *result, const outer_layers *outer,
 
 /* The file_types callback for a chain read inside the outer layers, if any.
  * A pick from the merged list reads the file through those layers again. */
-static bool handle_append(xx_list_t *handles, xx_handle_type_t handle) {
+static bool handle_append(xx_list_t *handles, xx_unpack_handle_t handle) {
     size_t i;
-    if (handle == XX_HANDLE_TYPE_UNKNOWN) return true;
-    for (i = 0; i < handles->count; ++i)
-        if (*(const xx_handle_type_t *)xx_list_at(handles, i) == handle) return true;
+    if (handle.type == XX_FILE_TYPE_UNKNOWN) return true;
+    for (i = 0; i < handles->count; ++i) {
+        const xx_unpack_handle_t *it = (const xx_unpack_handle_t *)xx_list_at(handles, i);
+        if (it->type == handle.type && it->carrier == handle.carrier) return true;
+    }
     return xx_list_append(handles, &handle);
 }
 
-static bool handle_contains(const xx_list_t *handles, xx_handle_type_t handle) {
+static bool handle_contains(const xx_list_t *handles, xx_unpack_handle_t handle) {
     size_t i;
-    if (!handles || handle == XX_HANDLE_TYPE_UNKNOWN) return false;
-    for (i = 0; i < handles->count; ++i)
-        if (*(const xx_handle_type_t *)xx_list_at(handles, i) == handle) return true;
+    if (!handles || handle.type == XX_FILE_TYPE_UNKNOWN) return false;
+    for (i = 0; i < handles->count; ++i) {
+        const xx_unpack_handle_t *it = (const xx_unpack_handle_t *)xx_list_at(handles, i);
+        if (it->type == handle.type && it->carrier == handle.carrier) return true;
+    }
     return false;
 }
 
-static bool handle_matches_device(xx_io_device *device, xx_handle_type_t handle) {
+static bool handle_matches_device(xx_io_device *device, xx_unpack_handle_t handle) {
     xx_list_t *handles;
     bool matches;
-    if (handle == XX_HANDLE_TYPE_UNKNOWN) return true;
+    if (handle.type == XX_FILE_TYPE_UNKNOWN) return true;
     handles = xx_format_get_unpack_handle_types_device(device, true);
     matches = handle_contains(handles, handle);
     xx_list_destroy(handles);
@@ -1092,11 +1096,11 @@ static bool handle_matches_device(xx_io_device *device, xx_handle_type_t handle)
 static void report_types_with_handle(const xfu_request *request, const outer_layers *outer,
                                      const xx_file_type_t *types, size_t count,
                                      xx_file_type_t selected, xx_io_device *device,
-                                     xx_handle_type_t proven_handle) {
+                                     xx_unpack_handle_t proven_handle) {
     outer_layers merged;
     xx_list_t handles;
     xx_list_t *detected = NULL;
-    xx_handle_type_t selected_handle = XX_HANDLE_TYPE_UNKNOWN;
+    xx_unpack_handle_t selected_handle = {XX_FILE_TYPE_UNKNOWN, XX_UNPACK_CARRIER_NONE};
     size_t i;
     if (request->callbacks.file_types) {
         if (!outer || !outer->count)
@@ -1108,32 +1112,36 @@ static void report_types_with_handle(const xfu_request *request, const outer_lay
         }
     }
     if (!request->callbacks.unpack_handle_types ||
-        !xx_list_init(&handles, sizeof(xx_handle_type_t), NULL)) return;
+        !xx_list_init(&handles, sizeof(xx_unpack_handle_t), NULL)) return;
     if (outer)
-        for (i = 0; i < outer->count; ++i)
-            handle_append(&handles, xx_format_handle_type_from_file_type(outer->types[i]));
+        for (i = 0; i < outer->count; ++i) {
+            xx_unpack_handle_t h = {xx_format_handle_type_from_file_type(outer->types[i]), XX_UNPACK_CARRIER_NONE};
+            handle_append(&handles, h);
+        }
     if (device) detected = xx_format_get_unpack_handle_types_device(device, true);
     if (detected && detected->count) {
         for (i = 0; i < detected->count; ++i)
-            handle_append(&handles, *(const xx_handle_type_t *)xx_list_at(detected, i));
+            handle_append(&handles, *(const xx_unpack_handle_t *)xx_list_at(detected, i));
     } else if (!device) {
         /* The caller has already proved a decoded envelope or damaged
          * stream interpretation. An ordinary file with no actionable device
          * detections must never acquire handles from its inspection chain. */
-        for (i = 0; i < count; ++i)
-            handle_append(&handles, xx_format_handle_type_from_file_type(types[i]));
+        for (i = 0; i < count; ++i) {
+            xx_unpack_handle_t h = {xx_format_handle_type_from_file_type(types[i]), XX_UNPACK_CARRIER_NONE};
+            handle_append(&handles, h);
+        }
     }
     /* A password-dependent archive may only become identifiable once its
      * reader has validated the supplied password and parsed its members. */
     if (!detected || !detected->count) handle_append(&handles, proven_handle);
     for (i = 0; i < handles.count; ++i) {
-        xx_handle_type_t candidate = *(const xx_handle_type_t *)xx_list_at(&handles, i);
-        if (xx_format_handle_type_file_type(candidate) == selected) selected_handle = candidate;
+        xx_unpack_handle_t candidate = *(const xx_unpack_handle_t *)xx_list_at(&handles, i);
+        if (candidate.type == selected) selected_handle = candidate;
     }
-    if (request->handle_type != XX_HANDLE_TYPE_UNKNOWN &&
-        handle_contains(&handles, request->handle_type)) selected_handle = request->handle_type;
+    if (request->handle.type != XX_FILE_TYPE_UNKNOWN &&
+        handle_contains(&handles, request->handle)) selected_handle = request->handle;
     request->callbacks.unpack_handle_types(request->callbacks.user,
-        (const xx_handle_type_t *)handles.data, handles.count, selected_handle);
+        (const xx_unpack_handle_t *)handles.data, handles.count, selected_handle);
     xx_list_destroy(detected);
     xx_list_cleanup(&handles);
 }
@@ -1141,8 +1149,9 @@ static void report_types_with_handle(const xfu_request *request, const outer_lay
 static void report_types(const xfu_request *request, const outer_layers *outer,
                          const xx_file_type_t *types, size_t count,
                          xx_file_type_t selected, xx_io_device *device) {
+    xx_unpack_handle_t unknown_handle = {XX_FILE_TYPE_UNKNOWN, XX_UNPACK_CARRIER_NONE};
     report_types_with_handle(request, outer, types, count, selected, device,
-                             XX_HANDLE_TYPE_UNKNOWN);
+                             unknown_handle);
 }
 
 /* outer plus one more layer read as type: its chain up to and including
@@ -1565,6 +1574,7 @@ static int walk_device(const xfu_request *request, const char *unpack_to,
     xx_archive_record_state *state;
     xx_list_t options;
     uint64_t total = 0, failed = 0, known_total = 0, interrupted = 0;
+    uint64_t salvaged_members = 0; /* --force: failed, readable part kept. */
     uint64_t visited = 0;
 #if XFU_FORMAT_SUPPORT_FULL
     int64_t freearc_sfx_base;
@@ -1773,8 +1783,8 @@ layers:
              * whose framing does not disclose the decoded size. Prefer that
              * precise handle before recursively opening the inner TAR. */
             for (i = 0; handles && i < handles->count; ++i) {
-                xx_file_type_t candidate = xx_format_handle_type_file_type(
-                    *(const xx_handle_type_t *)xx_list_at(handles, i));
+                const xx_unpack_handle_t *it = (const xx_unpack_handle_t *)xx_list_at(handles, i);
+                xx_file_type_t candidate = it->type;
                 if (is_compressed_tar_type(candidate)) original = candidate;
             }
             xx_list_destroy(handles);
@@ -1841,9 +1851,9 @@ layers:
             return 2;
         }
         if (partial) {
-            if (request->handle_type != XX_HANDLE_TYPE_UNKNOWN) {
+            if (request->handle.type != XX_FILE_TYPE_UNKNOWN) {
                 emit(request, true, "%s: selected unpack handle %s could not be opened through its outer layers",
-                     archive_path, xx_format_handle_type_to_string(request->handle_type));
+                     archive_path, xx_format_unpack_handle_to_string(request->handle));
                 if (preopened) xx_io_close(preopened);
                 return 2;
             }
@@ -1868,7 +1878,7 @@ layers:
     }
     freearc_sfx_base = xfu_freearc_sfx_payload_offset(device);
     if (freearc_sfx_base >= 0 &&
-        handle_matches_device(device, request->handle_type) &&
+        handle_matches_device(device, request->handle) &&
         ((!request->reader_name && (request->file_type == XX_FILE_TYPE_UNKNOWN ||
                                    request->file_type == XX_FILE_TYPE_FREEARC)) ||
          (request->reader_name && request->file_type == XX_FILE_TYPE_UNKNOWN &&
@@ -1952,8 +1962,8 @@ layers:
          * follows that order independently from the physical file identity. */
         if (handles)
             for (i = 0; i < handles->count; ++i) {
-                xx_handle_type_t handle = *(const xx_handle_type_t *)xx_list_at(handles, i);
-                xx_file_type_t candidate = xx_format_handle_type_file_type(handle);
+                const xx_unpack_handle_t *it = (const xx_unpack_handle_t *)xx_list_at(handles, i);
+                xx_file_type_t candidate = it->type;
                 if (candidate != XX_FILE_TYPE_UNKNOWN) {
                     size_t known_count = xx_format_get_file_type_chain(detected, types,
                                                                         XX_FILE_TYPE_CHAIN_MAX);
@@ -1969,13 +1979,13 @@ layers:
                         detected = candidate;
                 }
             }
-        if (request->handle_type != XX_HANDLE_TYPE_UNKNOWN)
-            type_matches = handle_contains(handles, request->handle_type);
+        if (request->handle.type != XX_FILE_TYPE_UNKNOWN)
+            type_matches = handle_contains(handles, request->handle);
         xx_list_destroy(handles);
     }
     type_count = xx_format_get_file_type_chain(detected, types, XX_FILE_TYPE_CHAIN_MAX);
     selected = request->file_type == XX_FILE_TYPE_UNKNOWN ? detected : request->file_type;
-    if (request->handle_type == XX_HANDLE_TYPE_UNKNOWN)
+    if (request->handle.type == XX_FILE_TYPE_UNKNOWN)
         for (type_index = 0; type_index < type_count; ++type_index)
             if (types[type_index] == selected) type_matches = true;
     /* The File type list of a nested read offers the inner interpretations
@@ -2010,9 +2020,9 @@ layers:
             damaged_stream(request, damaged, hint);
         } else
             emit(request, true, "%s: selected type %s does not match this file", archive_path,
-                 request->handle_type == XX_HANDLE_TYPE_UNKNOWN
+                 request->handle.type == XX_FILE_TYPE_UNKNOWN
                      ? xx_format_file_type_to_string(selected)
-                     : xx_format_handle_type_to_string(request->handle_type));
+                     : xx_format_unpack_handle_to_string(request->handle));
         if (extension_opened) xxfc_close(&opened);
         xx_io_close(device); return 2;
     }
@@ -2174,7 +2184,7 @@ reader_opened:
 #endif
     }
 #endif
-    if (!handle_matches_device(device, request->handle_type) ||
+    if (!handle_matches_device(device, request->handle) ||
         !(request->reader_name ? xxfc_open_named(&opened, device, 0, request->reader_name) :
                                 xxfc_open_type(&opened, device, 0, selected))) {
         emit(request, true, "%s: unavailable reader, invalid archive or unpack handle selection", archive_path);
@@ -2330,7 +2340,7 @@ reader_opened:
         xfu_request report = *request;
         report.callbacks.file_types = NULL;
         report_types_with_handle(&report, outer, types, type_count, opened.type, device,
-                                  xx_format_get_handle_type(opened.format));
+                                 xx_format_get_unpack_handle(opened.format));
     }
     emit(request, false, "%s: %s", archive_path,
          xx_format_file_type_to_string(opened.type));
@@ -2369,6 +2379,20 @@ reader_opened:
             emit(request, true, "%s: members could not be read", archive_path);
             status = 2;
             goto done;
+        }
+        /* --force: a reader that can keeps the readable part of a damaged
+         * member (xx_io_extract_salvaged). Absent otherwise, so that a run
+         * without it gives every reader the options it always had. */
+        if (request->force) {
+            xx_meta_init(&meta, XX_META_ID_OPT_FORCE);
+            xx_var_set_bool(&meta.var, true);
+            if (!xx_list_append(&options, &meta)) {
+                xx_meta_cleanup(&meta);
+                xx_list_cleanup(&options);
+                emit(request, true, "%s: members could not be read", archive_path);
+                status = 2;
+                goto done;
+            }
         }
     }
     state = xx_format_create_archive_records_reading(
@@ -2506,6 +2530,9 @@ reader_opened:
         ++total;
         if (unpack_to || testing) {
             bool success, cut, unsafe, itself, root_folder, password_failure = false;
+            bool salvaged = false;
+            uint64_t salvage_written = 0;
+            int64_t salvage_declared = -1;
             bool encrypted = entry.is_encrypted;
             char *destination = NULL;
             char *output_name = unpack_to ? mapped_extract_name(opened.type, entry.name, (size_t)visited) : NULL;
@@ -2591,6 +2618,17 @@ reader_opened:
                 entry.failure = "cut";
 #endif
 
+            /* Extract, and nothing tells why the member failed: a defect of
+             * its data. With --force the reader may have kept the part that
+             * decoded (never for a refused path, a filesystem failure or an
+             * encrypted member: those have a reason above); without it the
+             * line names the flag. */
+            if (!success && !cut && unpack_to && !entry.failure) {
+                if (!request->force) entry.failure = "stream damaged; try --force to recover what is readable";
+                else if (!(salvaged = xx_io_extract_salvage(&salvage_written, &salvage_declared)))
+                    entry.failure = "stream damaged; no readable part was recovered";
+            }
+
             free(destination);
             xx_str_free(output_name);
             if (cut) {
@@ -2604,12 +2642,19 @@ reader_opened:
                 emit(request, false, "  %s -- replaced an existing file", entry.name);
             else if (success)
                 emit(request, false, testing ? "  %s -- OK" : "  %s", entry.name);
+            else if (salvaged && salvage_declared >= 0 && salvage_written < (uint64_t)salvage_declared)
+                emit(request, true, "  %s -- PARTIAL (%llu of %lld bytes; stream damaged)", entry.name,
+                     (unsigned long long)salvage_written, (long long)salvage_declared);
+            else if (salvaged)
+                emit(request, true, "  %s -- PARTIAL (%llu bytes kept; stream damaged)", entry.name,
+                     (unsigned long long)salvage_written);
             else if (entry.failure)
                 emit(request, true, "  %s -- FAILED (%s)", entry.name, entry.failure);
             else
                 emit(request, true, "  %s -- FAILED", entry.name);
             if (!success && !cut) {
-                ++failed;
+                if (salvaged) ++salvaged_members;
+                else ++failed;
             }
         }
         progress(request, total, known_total, entry.name);
@@ -2655,7 +2700,11 @@ next_record:
         if (!xx_pd_is_stopped(pd) && !status && !partial && !xxfc_is_incomplete(&opened) &&
             (!known_total || total == known_total)) test_percent(&monitor, 100);
     }
-    if (failed)
+    if (salvaged_members)
+        emit(request, testing, "%llu member(s), %llu failed, %llu partial",
+             (unsigned long long)(total - interrupted), (unsigned long long)failed,
+             (unsigned long long)salvaged_members);
+    else if (failed)
         emit(request, testing, "%llu member(s), %llu failed",
              (unsigned long long)(total - interrupted), (unsigned long long)failed);
     else
@@ -2664,7 +2713,7 @@ next_record:
         emit(request, true, unverified ?
              "%s: incomplete archive; members before the cut were read without a checksum" :
              "%s: incomplete archive; showing recovered members", archive_path);
-    if (failed || xx_pd_is_stopped(pd)) status = 1;
+    if (failed || salvaged_members || xx_pd_is_stopped(pd)) status = 1;
     if (!status && request->extract_selected && selected_cursor != request->selected_record_count) {
         emit(request, true, "selected members are no longer present in the archive");
         status = 1;
@@ -3223,10 +3272,11 @@ int xfu_run(const xfu_request *request) {
     xx_pd_struct *pd;
     size_t i;
     if (!request) return 2;
-    if (request->handle_type != XX_HANDLE_TYPE_UNKNOWN) {
-        xx_file_type_t interpretation = xx_format_handle_type_file_type(request->handle_type);
+    if (request->handle.type != XX_FILE_TYPE_UNKNOWN) {
+        xx_file_type_t interpretation = request->handle.type;
         if (interpretation == XX_FILE_TYPE_UNKNOWN ||
-            (request->file_type != XX_FILE_TYPE_UNKNOWN && request->file_type != interpretation)) {
+            (request->file_type != XX_FILE_TYPE_UNKNOWN && request->file_type != interpretation) ||
+            strcmp(xx_format_unpack_handle_to_string(request->handle), "UNKNOWN") == 0) {
             emit(request, true, "invalid or conflicting unpack handle selection");
             return 2;
         }

@@ -98,6 +98,9 @@ bool xx_deflate_decompress_stream_with_dictionary(xx_bit_reader *reader, xx_io_d
                                                   xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size);
 bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
                                                size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size);
+/* flags: XX_DEFLATE_UNPACK_* of xx_deflate.h; zero is the function above. */
+bool xx_deflate_decompress_stream_with_flags(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                             size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size, unsigned flags);
 
 /* Compressor engine internal entry point */
 /* Internal Huffman service: at most 286 symbols, a 1..15 bit limit, and

@@ -382,7 +382,7 @@ void xx_tar_zstd_init(xx_tar_zstd *tar_zstd, xx_io_device *dev,
     xx_format_init(&tar_zstd->format, dev, base_address);
     tar_zstd->format.endian = XX_ENDIAN_LITTLE;
     tar_zstd->format.file_type = XX_FILE_TYPE_TAR_ZSTD;
-    tar_zstd->format.handle_type = XX_HANDLE_TYPE_TAR_ZSTD;
+    tar_zstd->format.handle_type = XX_FILE_TYPE_TAR_ZSTD;
     tar_zstd->format.format_type = XX_TYPE_ARCHIVE;
     tar_zstd->format.is_archive = true;
     xx_format_set_mime_type(&tar_zstd->format,

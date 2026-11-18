@@ -5,6 +5,11 @@ include("${CMAKE_CURRENT_LIST_DIR}/../xxfclib_family_console.cmake")
 xxfclib_add_family_console(makeself
     FORMATS MAKESELF
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/bzip2/xx_bzip2.c
         src/algo/bzip2/xx_bzip2_bwt.c
         src/algo/bzip2/xx_bzip2_dec.c

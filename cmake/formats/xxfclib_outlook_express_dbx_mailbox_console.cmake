@@ -6,5 +6,4 @@ xxfclib_add_family_console(outlook_express_dbx_mailbox
     FORMATS OUTLOOK_EXPRESS_DBX_MAILBOX
     SOURCES
         src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox.c
-        src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c
-        src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_reader_adapters.c)
+        src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c)

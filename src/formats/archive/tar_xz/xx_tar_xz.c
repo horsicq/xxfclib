@@ -228,7 +228,7 @@ void xx_tar_xz_init(xx_tar_xz *tar_xz, xx_io_device *dev, int64_t base_address)
     xx_format_init(&tar_xz->format, dev, base_address);
     tar_xz->format.endian = XX_ENDIAN_LITTLE;
     tar_xz->format.file_type = XX_FILE_TYPE_TAR_XZ;
-    tar_xz->format.handle_type = XX_HANDLE_TYPE_TAR_XZ;
+    tar_xz->format.handle_type = XX_FILE_TYPE_TAR_XZ;
     tar_xz->format.format_type = XX_TYPE_ARCHIVE;
     tar_xz->format.is_archive = true;
     xx_format_set_mime_type(&tar_xz->format, "application/x-xz-compressed-tar");

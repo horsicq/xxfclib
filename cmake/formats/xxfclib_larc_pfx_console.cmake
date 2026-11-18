@@ -7,5 +7,4 @@ xxfclib_add_family_console(larc_pfx
     SOURCES
         src/algo/lzh/xx_lzh.c
         src/formats/archive/larc_pfx/xx_larc_pfx.c
-        src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c
-        src/formats/archive/larc_pfx/xx_larc_pfx_reader_adapters.c)
+        src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c)

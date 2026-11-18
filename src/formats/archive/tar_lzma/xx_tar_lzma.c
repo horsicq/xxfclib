@@ -72,7 +72,7 @@ void xx_tar_lzma_init(xx_tar_lzma *archive, xx_io_device *device, int64_t base_a
     xx_format_init(&archive->format, device, base_address);
     archive->format.endian = XX_ENDIAN_LITTLE;
     archive->format.file_type = XX_FILE_TYPE_TAR_LZMA;
-    archive->format.handle_type = XX_HANDLE_TYPE_TAR_LZMA;
+    archive->format.handle_type = XX_FILE_TYPE_TAR_LZMA;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-lzma");

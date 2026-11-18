@@ -18,5 +18,4 @@ xxfclib_add_family_console(superdat
         src/algo/crc/xx_crc8.c
         src/algo/lzh/xx_lzh.c
         src/formats/installer/superdat/xx_superdat.c
-        src/formats/installer/superdat/xx_superdat_extractor.c
-        src/formats/installer/superdat/xx_superdat_reader_adapters.c)
+        src/formats/installer/superdat/xx_superdat_extractor.c)

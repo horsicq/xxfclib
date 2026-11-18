@@ -2566,15 +2566,19 @@ typedef enum xx_file_type_e {
 
 #define BZIP1 XX_FILE_TYPE_BZIP1
 #define FILE_TYPE_BZIP1 XX_FILE_TYPE_BZIP1
-/** Unpacking interpretations are independent of file identity. Values occupy
- * a separate numeric domain so passing a file enum cannot select a handle. */
-typedef enum xx_handle_type_e {
-    XX_HANDLE_TYPE_UNKNOWN = 0,
-#define XX_UNPACK_HANDLE(name, value, file_type, carrier) XX_HANDLE_TYPE_##name = value,
-#include "xxfclib/formats/xx_format_unpack_handle_rows.inc"
-#undef XX_UNPACK_HANDLE
-} xx_handle_type_t;
-typedef xx_handle_type_t xx_handle_type;
+/** The executable that carries an unpackable payload. */
+typedef enum xx_unpack_carrier_e {
+    XX_UNPACK_CARRIER_NONE = 0,
+    XX_UNPACK_CARRIER_PE = 1,
+    XX_UNPACK_CARRIER_MSDOS = 2,
+    XX_UNPACK_CARRIER_COM = 3
+} xx_unpack_carrier_t;
+
+/** An unpacking interpretation: a file type and the carrier it was found in. */
+typedef struct xx_unpack_handle_s {
+    xx_file_type_t type;
+    xx_unpack_carrier_t carrier;
+} xx_unpack_handle_t;
 
 typedef xx_file_type_t xx_file_type;
 typedef xx_file_type_t FILE_TYPE;

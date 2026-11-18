@@ -6,6 +6,11 @@ xxfclib_add_family_console(smart_install_maker
     FORMATS SMART_INSTALL_MAKER
     CODEPAGES
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/crc/platforms/xx_crc32_arm.c
         src/algo/crc/platforms/xx_crc32_arm_pmull.c
         src/algo/crc/platforms/xx_crc32c_sse42.c
@@ -26,5 +31,4 @@ xxfclib_add_family_console(smart_install_maker
         src/algo/lzx/xx_lzx.c
         src/algo/quantum/xx_quantum.c
         src/formats/installer/smart_install_maker/xx_smart_install_maker.c
-        src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c
-        src/formats/installer/smart_install_maker/xx_smart_install_maker_reader_adapters.c)
+        src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c)

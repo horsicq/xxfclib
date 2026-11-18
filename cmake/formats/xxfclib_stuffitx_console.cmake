@@ -19,5 +19,4 @@ xxfclib_add_family_console(stuffitx
         src/algo/crc/xx_crc64.c
         src/algo/crc/xx_crc8.c
         src/formats/archive/stuffitx/xx_stuffitx.c
-        src/formats/archive/stuffitx/xx_stuffitx_extractor.c
-        src/formats/archive/stuffitx/xx_stuffitx_reader_adapters.c)
+        src/formats/archive/stuffitx/xx_stuffitx_extractor.c)

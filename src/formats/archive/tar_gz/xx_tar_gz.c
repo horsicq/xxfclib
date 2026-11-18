@@ -143,7 +143,7 @@ void xx_tar_gz_init(xx_tar_gz *tar_gz, xx_io_device *dev, int64_t base_address)
     xx_format_init(&tar_gz->format, dev, base_address);
     tar_gz->format.endian = XX_ENDIAN_UNKNOWN;
     tar_gz->format.file_type = XX_FILE_TYPE_TAR_GZ;
-    tar_gz->format.handle_type = XX_HANDLE_TYPE_TAR_GZ;
+    tar_gz->format.handle_type = XX_FILE_TYPE_TAR_GZ;
     tar_gz->format.format_type = XX_TYPE_ARCHIVE;
     tar_gz->format.is_archive = true;
     xx_format_set_mime_type(&tar_gz->format, "application/gzip");

@@ -1230,10 +1230,34 @@ static bool xx_dec_huffman_block(const uint32_t *lit_table, unsigned lit_max, co
     }
 }
 
-bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
-                                               size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size)
+/* XX_DEFLATE_UNPACK_ZLIB_STRICT: whether zlib's inflate_table() takes a
+ * code length set. An over-subscribed set never passes. An incomplete one
+ * passes only outside the code length code and only when its longest code
+ * has one bit (a single code of one bit). A set without any code passes
+ * (every lookup in it is an invalid code); the caller decides about the code
+ * length code, where that cannot end well. Lengths are at most 15. Called
+ * once or three times per dynamic block, in strict mode only. */
+static bool xx_dec_zlib_takes_set(const uint8_t *lengths, unsigned num_symbols, bool code_length_code)
+{
+    uint16_t count[XX_DEFLATE_MAX_BITS + 1];
+    unsigned i, len, max_bits = 0U;
+    int left = 1;
+    xx_rt_memset(count, 0, sizeof(count));
+    for (i = 0U; i < num_symbols; ++i) count[lengths[i] & 15U]++;
+    for (len = 1U; len <= XX_DEFLATE_MAX_BITS; ++len) {
+        left = (left << 1) - (int)count[len];
+        if (left < 0) return false;
+        if (count[len] != 0U) max_bits = len;
+    }
+    if (max_bits == 0U) return true;
+    return left == 0 || (!code_length_code && max_bits == 1U);
+}
+
+bool xx_deflate_decompress_stream_with_flags(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                             size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size, unsigned flags)
 {
     size_t win_size = xx_deflate_resolve_window(is_deflate64, window_size);
+    const bool strict = (flags & XX_DEFLATE_UNPACK_ZLIB_STRICT) != 0U;
     xx_out_lin out;
     xx_dec_state *st;
     xx_dec_fast_pair fast;
@@ -1243,6 +1267,7 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
     bool stopped;
 
     if (!reader || win_size == 0U || (dictionary_size != 0U && !dictionary) || dictionary_size > win_size) return false;
+    if ((flags & ~XX_DEFLATE_UNPACK_ZLIB_STRICT) != 0U) return false;
     if (!xx_out_lin_init(&out, dst_dev, mem_dst, mem_cap, win_size, dictionary, dictionary_size)) return false;
     st = (xx_dec_state *)xx_mem_alloc(sizeof(*st));
     if (!st) {
@@ -1329,6 +1354,15 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                 for (i = 0; i < hclen; ++i) {
                     clen_lens[g_cll_order[i]] = (uint8_t)xx_br_read(reader, 3);
                 }
+                /* zlib: "invalid code lengths set" for a code length code
+                 * that is over-subscribed or incomplete. One without any
+                 * code makes zlib read every length as 0 and stop at the
+                 * missing end-of-block code (or at the end of the input);
+                 * here it fails at the first length, strict or not. */
+                if (strict && !xx_dec_zlib_takes_set(clen_lens, XX_DEFLATE_MAX_CLEN_CODES, true)) {
+                    success = false;
+                    break;
+                }
                 if (!xx_htab_build(st->clen, XX_ARRAYSIZE_DEC(st->clen), XX_DEC_CLEN_BITS, clen_lens, XX_DEFLATE_MAX_CLEN_CODES, st->clen_info, 0U, &st->clen_max)) {
                     success = false;
                     break;
@@ -1376,6 +1410,17 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
                     }
                 }
                 if (!success) break;
+
+                /* zlib: "invalid code -- missing end-of-block", "invalid
+                 * literal/lengths set", "invalid distances set". The limits
+                 * of HLIT and HDIST ("too many length or distance symbols":
+                 * 286 and 30; 32 distance codes in Deflate64, as in zlib's
+                 * inflateBack9) are checked above in every mode. */
+                if (strict && (lit_dist_lens[256] == 0U || !xx_dec_zlib_takes_set(lit_dist_lens, hlit, false) ||
+                               !xx_dec_zlib_takes_set(lit_dist_lens + hlit, hdist, false))) {
+                    success = false;
+                    break;
+                }
 
                 spec = xx_dec_speculate(lit_dist_lens);
                 if (!xx_htab_build(st->lit, XX_ARRAYSIZE_DEC(st->lit), XX_DEC_LIT_BITS, lit_dist_lens, hlit, st->lit_info, spec ? XX_DEC_SPEC_BITS : 0U,
@@ -1427,6 +1472,12 @@ bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_devi
     xx_mem_free(st);
     xx_out_lin_free(&out);
     return success;
+}
+
+bool xx_deflate_decompress_stream_with_options(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,
+                                               size_t window_size, xx_pd_struct *pd, const uint8_t *dictionary, size_t dictionary_size)
+{
+    return xx_deflate_decompress_stream_with_flags(reader, dst_dev, mem_dst, mem_cap, out_written, is_deflate64, window_size, pd, dictionary, dictionary_size, 0U);
 }
 
 bool xx_deflate_decompress_stream_with_dictionary(xx_bit_reader *reader, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, bool is_deflate64,

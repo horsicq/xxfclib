@@ -56,6 +56,7 @@
 #include "xxfclib/algo/wavpack/xx_wavpack.h"
 #include "xxfclib/algo/winzipjpeg/xx_winzipjpeg.h"
 #endif
+#include "../../xx_archive_salvage.h"
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
@@ -108,7 +109,7 @@ void xx_zip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address)
     /* Setup default ZIP format attributes */
     zip->format.endian = XX_ENDIAN_LITTLE;
     zip->format.file_type = XX_FILE_TYPE_ZIP;
-    zip->format.handle_type = XX_HANDLE_TYPE_ZIP;
+    zip->format.handle_type = XX_FILE_TYPE_ZIP;
     zip->format.format_type = XX_TYPE_ARCHIVE;
     zip->format.is_archive = true;
     zip->format.is_executable = false;
@@ -3205,6 +3206,14 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
             if (success && xx_pd_is_stopped(pd)) success = false;
             if (success) {
                 success = xx_io_file_replace_a(stage_path, dest_path_utf8, overwrite);
+            } else if (stage_path && destination && !is_encrypted && crc_sink.position > 0 &&
+                       xx_archive_salvage_wanted(&state->options, pd)) {
+                /* A damaged member under XX_META_ID_OPT_FORCE: the staged
+                 * bytes are what the decoder produced before it failed, or a
+                 * whole member whose size or CRC does not match. They are
+                 * published as they are; the member still fails. */
+                (void)xx_archive_salvage_publish(stage_path, dest_path_utf8, overwrite, (uint64_t)crc_sink.position,
+                                                 uncomp_size <= (uint64_t)INT64_MAX ? (int64_t)uncomp_size : -1);
             }
             if (stage_path) {
                 /* A successful replace has already moved the stage file. */

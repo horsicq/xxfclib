@@ -6,6 +6,11 @@ xxfclib_add_family_console(bitrock
     FORMATS BITROCK
     SORT
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/bzip2/xx_bzip2.c
         src/algo/bzip2/xx_bzip2_bwt.c
         src/algo/bzip2/xx_bzip2_dec.c
@@ -42,5 +47,4 @@ xxfclib_add_family_console(bitrock
         src/algo/sha/xx_sha.c
         src/algo/sha/xx_sha_simd.c
         src/formats/installer/bitrock/xx_bitrock.c
-        src/formats/installer/bitrock/xx_bitrock_extractor.c
-        src/formats/installer/bitrock/xx_bitrock_reader_adapters.c)
+        src/formats/installer/bitrock/xx_bitrock_extractor.c)

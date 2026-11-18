@@ -1385,7 +1385,7 @@ void xx_tar_init(xx_tar *tar, xx_io_device *dev, int64_t base_address)
     xx_format_init(&tar->format, dev, base_address);
     tar->format.endian = XX_ENDIAN_UNKNOWN;
     tar->format.file_type = XX_FILE_TYPE_TAR;
-    tar->format.handle_type = XX_HANDLE_TYPE_TAR;
+    tar->format.handle_type = XX_FILE_TYPE_TAR;
     tar->format.format_type = XX_TYPE_ARCHIVE;
     tar->format.is_archive = true;
     xx_format_set_mime_type(&tar->format, "application/x-tar");

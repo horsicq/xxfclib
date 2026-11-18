@@ -1753,7 +1753,7 @@ void xx_7zip_init(xx_7zip *archive, xx_io_device *dev, int64_t base_address)
     xx_format_init(&archive->format, dev, base_address);
     archive->format.endian = XX_ENDIAN_LITTLE;
     archive->format.file_type = XX_FILE_TYPE_7ZIP;
-    archive->format.handle_type = XX_HANDLE_TYPE_7ZIP;
+    archive->format.handle_type = XX_FILE_TYPE_7ZIP;
     archive->format.format_type = XX_TYPE_ARCHIVE;
     archive->format.is_archive = true;
     xx_format_set_mime_type(&archive->format, "application/x-7z-compressed");

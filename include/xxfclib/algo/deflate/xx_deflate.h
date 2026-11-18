@@ -135,6 +135,39 @@ XXFC_API bool xx_deflate_decompress_memory(const void *src_buf, size_t src_size,
 XXFC_API bool xx_deflate_decompress_memory_with_dictionary(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
                                                            const void *dictionary, size_t dictionary_size, bool is_deflate64);
 
+/** Decoding flags of the *_flags entry points below. Zero gives exactly the
+ * entry points without flags; a bit that is not defined here fails the call.
+ *
+ * XX_DEFLATE_UNPACK_ZLIB_STRICT: a dynamic block's header is accepted only
+ * where zlib's inflate accepts it. Without the flag a code length set may
+ * leave codes unused (the block fails only when the data uses one); with it
+ * the block fails, as in zlib, when
+ *   - the code length code is not complete ("invalid code lengths set"; one
+ *     without any code fails in both modes),
+ *   - the end-of-block code 256 has no code ("invalid code -- missing
+ *     end-of-block"),
+ *   - the literal/length set is incomplete and is not a single code of one
+ *     bit ("invalid literal/lengths set"),
+ *   - the distance set is incomplete and is neither empty nor a single code
+ *     of one bit ("invalid distances set").
+ * Over-subscribed sets and more than 286 literal/length or 30 distance codes
+ * (32 in Deflate64) fail in both modes. With the flag, a stream is decoded
+ * successfully exactly when zlib's raw inflate reaches its end without an
+ * error, and the bytes are the same. The flag costs nothing outside block
+ * headers. */
+#define XX_DEFLATE_UNPACK_ZLIB_STRICT 0x1U
+
+/** xx_deflate_unpack_device_ex() with decoding flags. */
+XXFC_API bool xx_deflate_unpack_device_flags(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, bool is_deflate64,
+                                             size_t window_size, const void *dictionary, size_t dictionary_size, int64_t *out_consumed, unsigned flags,
+                                             xx_pd_struct *pd);
+/** xx_deflate_unpack_memory_to_device_ex() with decoding flags. */
+XXFC_API bool xx_deflate_unpack_memory_to_device_flags(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, size_t *out_consumed, bool is_deflate64,
+                                                       unsigned flags, xx_pd_struct *pd);
+/** xx_deflate_decompress_memory() with decoding flags. */
+XXFC_API bool xx_deflate_decompress_memory_flags(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, bool is_deflate64,
+                                                 unsigned flags);
+
 /* ========================================================================= */
 /* --- Deflate / Deflate64 Compression (Packing)                         --- */
 /* ========================================================================= */

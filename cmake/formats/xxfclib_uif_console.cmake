@@ -40,5 +40,4 @@ xxfclib_add_family_console(uif
         src/algo/sha/xx_sha.c
         src/algo/sha/xx_sha_simd.c
         src/formats/filesystem/uif/xx_uif.c
-        src/formats/filesystem/uif/xx_uif_extractor.c
-        src/formats/filesystem/uif/xx_uif_reader_adapters.c)
+        src/formats/filesystem/uif/xx_uif_extractor.c)

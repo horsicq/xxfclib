@@ -48,6 +48,7 @@ typedef struct xx_gz_sink_s {
 } xx_gz_sink;
 
 #include "../../xx_single_stream_writer.h"
+#include "../../xx_archive_salvage.h"
 
 static void xx_gz_vtable_destroy(Abstractformat *self);
 
@@ -556,7 +557,7 @@ void xx_gz_init(xx_gz *gz, xx_io_device *dev, int64_t base_address)
     xx_format_init(&gz->format, dev, base_address);
     gz->format.endian = XX_ENDIAN_LITTLE;
     gz->format.file_type = XX_FILE_TYPE_GZ;
-    gz->format.handle_type = XX_HANDLE_TYPE_GZ;
+    gz->format.handle_type = XX_FILE_TYPE_GZ;
     gz->format.format_type = XX_TYPE_ARCHIVE;
     gz->format.is_archive = true;
     xx_format_set_mime_type(&gz->format, "application/gzip");
@@ -1010,9 +1011,20 @@ bool xx_gz_unpack_current_archive_record(Abstractformat *self, xx_archive_record
     created = output != NULL;
     if (!output) goto cleanup;
     result = xx_gz_extract_member(self, member, output, pd);
-    if (xx_io_close(output) != 0) result = false;
-    output = NULL;
-    if (!result && created) xx_rt_remove(destination);
+    {
+        /* A member that inflated part of the way: under XX_META_ID_OPT_FORCE
+         * what the decoder wrote stays (xx_archive_salvage.h). */
+        int64_t kept = result ? 0 : xx_io_tell(output);
+        if (xx_io_close(output) != 0) {
+            result = false;
+            kept = 0;
+        }
+        output = NULL;
+        if (!result && created &&
+            !(kept > 0 && xx_archive_salvage_wanted(&state->options, pd) &&
+              xx_archive_salvage_keep((uint64_t)kept, member->uncompressed_size <= (uint64_t)INT64_MAX ? (int64_t)member->uncompressed_size : -1)))
+            xx_rt_remove(destination);
+    }
 
 cleanup:
     if (output) xx_io_close(output);

@@ -7,5 +7,4 @@ xxfclib_add_family_console(rpg_maker_rgssad
     SORT
     SOURCES
         src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad.c
-        src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c
-        src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_reader_adapters.c)
+        src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c)

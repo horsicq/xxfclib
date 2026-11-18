@@ -61,6 +61,7 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 #include "../../xx_archive_output_name.h"
+#include "../../xx_archive_salvage.h"
 
 #include <stdio.h>
 #include "xxfclib/data/xx_data.h"
@@ -241,8 +242,11 @@ static bool xx_ibmpack_lzw_expand(xx_ibmpack_lzw *lzw, uint16_t code, uint32_t *
  * Returns false on a malformed stream.  Reaching the end of the input without
  * seeing code 0 is NOT an error: the container ends a member at a byte
  * boundary and several corpus members simply stop there.
+ *
+ * clean, when given, receives the bytes decoded before the stream ended or
+ * broke, whatever the result: the prefix a salvage may keep.
  */
-static bool xx_ibmpack_lzw_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced)
+static bool xx_ibmpack_lzw_run_clean(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced, size_t *clean)
 {
     xx_ibmpack_lzw *lzw;
     size_t position = 0U;
@@ -250,6 +254,7 @@ static bool xx_ibmpack_lzw_run(const uint8_t *input, size_t input_size, uint8_t 
     bool ok = true;
 
     *produced = 0U;
+    if (clean) *clean = 0U;
     lzw = (xx_ibmpack_lzw *)xx_mem_alloc(sizeof(*lzw));
     if (!lzw) return false;
     xx_ibmpack_lzw_reset(lzw);
@@ -289,7 +294,13 @@ static bool xx_ibmpack_lzw_run(const uint8_t *input, size_t input_size, uint8_t 
     }
     xx_mem_free(lzw);
     if (ok) *produced = written;
+    if (clean) *clean = written;
     return ok;
+}
+
+static bool xx_ibmpack_lzw_run(const uint8_t *input, size_t input_size, uint8_t *output, size_t limit, size_t *produced)
+{
+    return xx_ibmpack_lzw_run_clean(input, input_size, output, limit, produced, NULL);
 }
 
 /* -------------------------------------------------------------- reader -- */
@@ -646,6 +657,54 @@ static bool xx_ibmpack_decode(Abstractformat *self, const xx_ibmpack_member *mem
     return true;
 }
 
+/* Salvage (XX_META_ID_OPT_FORCE) for a member xx_ibmpack_decode refused: the
+ * bytes its stream decodes to before it ends or breaks, at most the declared
+ * length. Nothing is padded and nothing follows the first decoder error. */
+static bool xx_ibmpack_decode_prefix(Abstractformat *self, const xx_ibmpack_member *member, uint8_t **plain, size_t *plain_size, xx_pd_struct *pd)
+{
+    uint8_t *input;
+    uint8_t *output;
+    int64_t ceiling = XX_IBMPACK_MAX_DECODED;
+    size_t produced = 0U;
+    size_t clean = 0U;
+    size_t again = 0U;
+
+    *plain = NULL;
+    *plain_size = 0U;
+    if (!self || !member || member->compressed_size <= 0 || member->compressed_size > XX_IBMPACK_MAX_DECODED) return false;
+    if (pd && xx_pd_is_stopped(pd)) return false;
+    if (member->compressed_size < ceiling / XX_IBMPACK_MAX_EXPANSION) ceiling = member->compressed_size * XX_IBMPACK_MAX_EXPANSION;
+    if (member->uncompressed_size >= 0 && member->uncompressed_size < ceiling) ceiling = member->uncompressed_size;
+    if (ceiling <= 0 || (uint64_t)ceiling > SIZE_MAX) return false;
+    input = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
+    if (!input) return false;
+    if (!xx_ibmpack_read_at(self, member->data_offset, input, (size_t)member->compressed_size)) {
+        xx_mem_free(input);
+        return false;
+    }
+    (void)xx_ibmpack_lzw_run_clean(input, (size_t)member->compressed_size, NULL, (size_t)ceiling, &produced, &clean);
+    if (clean == 0U || (pd && xx_pd_is_stopped(pd))) {
+        xx_mem_free(input);
+        return false;
+    }
+    output = (uint8_t *)xx_mem_alloc(clean);
+    if (!output) {
+        xx_mem_free(input);
+        return false;
+    }
+    /* The decoder is deterministic: bounded by the measured prefix it stops
+     * at the same phrase boundary. */
+    (void)xx_ibmpack_lzw_run_clean(input, (size_t)member->compressed_size, output, clean, &produced, &again);
+    xx_mem_free(input);
+    if (again != clean) {
+        xx_mem_free(output);
+        return false;
+    }
+    *plain = output;
+    *plain_size = clean;
+    return true;
+}
+
 /* ---------------------------------------------------------- lifecycle --- */
 
 void xx_ibmpack_init(xx_ibmpack *archive, xx_io_device *device, int64_t base_address)
@@ -895,7 +954,17 @@ bool xx_ibmpack_unpack_current_archive_record(Abstractformat *self, xx_archive_r
     xx_mem_free(relative);
     xx_str_free(converted);
     if (!target) return false;
-    if (!xx_store_create_dirs_a(target, false) || !xx_ibmpack_decode(self, member, &plain, &plain_size, pd)) {
+    if (!xx_store_create_dirs_a(target, false)) {
+        xx_str_free(target);
+        return false;
+    }
+    if (!xx_ibmpack_decode(self, member, &plain, &plain_size, pd)) {
+        /* A damaged stream under XX_META_ID_OPT_FORCE: keep what decoded.
+         * The member still fails. */
+        if (xx_archive_salvage_wanted(&state->options, pd) && xx_ibmpack_decode_prefix(self, member, &plain, &plain_size, pd)) {
+            (void)xx_archive_salvage_buffer(target, plain, plain_size, member->uncompressed_size);
+            xx_mem_free(plain);
+        }
         xx_str_free(target);
         return false;
     }

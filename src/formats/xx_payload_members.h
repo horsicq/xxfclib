@@ -10,6 +10,7 @@
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/rt/xx_rt.h"
+#include "xx_archive_salvage.h"
 #include <stdio.h>
 #include <limits.h>
 
@@ -344,8 +345,8 @@ static bool pm_unpack(Abstractformat *f, xx_archive_record_state *st, xx_pd_stru
     const xx_var *v;
     char *path = NULL, *owned = NULL, *stage = NULL;
     const char *base = NULL;
-    bool result = false, overwrite = false;
-    int64_t cursor;
+    bool result = false, overwrite = false, salvaged = false;
+    int64_t cursor, kept = 0;
     xx_io_device *output = NULL;
     pm_option_scope scope;
     if (!f || !st || st->format != f || !st->has_record || (pd && xx_pd_is_stopped(pd))) return false;
@@ -443,15 +444,23 @@ static bool pm_unpack(Abstractformat *f, xx_archive_record_state *st, xx_pd_stru
     }
     (void)xx_io_seek64(f->device, cursor, SEEK_SET);
 done:
-    if (output && xx_io_close(output) != 0) result = false;
+    /* What a failed member's reader had written when it stopped: under
+     * XX_META_ID_OPT_FORCE that prefix is kept (xx_archive_salvage.h). */
+    if (output && !result) kept = xx_io_tell(output);
+    if (output && xx_io_close(output) != 0) {
+        result = false;
+        kept = 0;
+    }
     if (result && stage) {
         if (pd && xx_pd_is_stopped(pd)) result = false;
         else result = xx_io_file_replace_a(stage, path, overwrite);
+    } else if (!result && kept > 0 && path && !m->source_encrypted && xx_archive_salvage_wanted(&st->options, pd)) {
+        salvaged = stage ? xx_archive_salvage_publish(stage, path, overwrite, (uint64_t)kept, m->size) : xx_archive_salvage_keep((uint64_t)kept, m->size);
     }
     if (stage) {
-        if (!result) (void)xx_io_file_remove_a(stage);
+        if (!result && !salvaged) (void)xx_io_file_remove_a(stage);
         xx_str_free(stage);
-    } else if (!result && path && overwrite) {
+    } else if (!result && !salvaged && path && overwrite) {
         (void)xx_io_file_remove_a(path);
     }
     if (path) {

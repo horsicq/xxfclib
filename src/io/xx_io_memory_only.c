@@ -302,6 +302,9 @@ typedef struct xx_io_extract_context {
     char *root;
     int error;
     unsigned long files;
+    bool salvaged;
+    uint64_t salvage_written;
+    int64_t salvage_declared;
 } xx_io_extract_context;
 static xx_tls_key xx_io_extract_key;
 bool xx_io_extract_begin(xx_io_extract_scope *scope, const char *root)
@@ -339,7 +342,27 @@ void xx_io_extract_clear(void)
     if (context) {
         context->error = 0;
         context->files = 0U;
+        context->salvaged = false;
+        context->salvage_written = 0U;
+        context->salvage_declared = -1;
     }
+}
+void xx_io_extract_salvaged(uint64_t written, int64_t declared)
+{
+    xx_io_extract_context *context = (xx_io_extract_context *)xx_tls_get(&xx_io_extract_key);
+    if (context) {
+        context->salvaged = true;
+        context->salvage_written = written;
+        context->salvage_declared = declared;
+    }
+}
+bool xx_io_extract_salvage(uint64_t *written, int64_t *declared)
+{
+    xx_io_extract_context *context = (xx_io_extract_context *)xx_tls_get(&xx_io_extract_key);
+    if (!context || !context->salvaged) return false;
+    if (written) *written = context->salvage_written;
+    if (declared) *declared = context->salvage_declared;
+    return true;
 }
 unsigned long xx_io_extract_files(void)
 {

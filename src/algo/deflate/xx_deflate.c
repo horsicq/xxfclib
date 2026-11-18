@@ -57,15 +57,23 @@ bool xx_deflate_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t
 bool xx_deflate_unpack_device_ex(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, bool is_deflate64, size_t window_size,
                                  const void *dictionary, size_t dictionary_size, int64_t *out_consumed, xx_pd_struct *pd)
 {
+    return xx_deflate_unpack_device_flags(src_dev, src_offset, comp_size, dst_dev, is_deflate64, window_size, dictionary, dictionary_size, out_consumed, 0U, pd);
+}
+
+bool xx_deflate_unpack_device_flags(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, bool is_deflate64, size_t window_size,
+                                    const void *dictionary, size_t dictionary_size, int64_t *out_consumed, unsigned flags, xx_pd_struct *pd)
+{
     xx_bit_reader reader;
     bool success;
     int64_t fetched, pending, consumed = 0;
     size_t window = xx_deflate_resolve_window(is_deflate64, window_size);
     if (out_consumed) *out_consumed = 0;
     if (!src_dev || !dst_dev || comp_size <= 0 || window == 0U || dictionary_size > window || (dictionary_size != 0U && !dictionary)) return false;
+    if ((flags & ~XX_DEFLATE_UNPACK_ZLIB_STRICT) != 0U) return false;
     if (src_offset >= 0 && xx_io_seek64(src_dev, src_offset, SEEK_SET) != 0) return false;
     if (!xx_br_init(&reader, src_dev, NULL, 0, comp_size)) return false;
-    success = xx_deflate_decompress_stream_with_options(&reader, dst_dev, NULL, 0U, NULL, is_deflate64, window, pd, (const uint8_t *)dictionary, dictionary_size);
+    success = xx_deflate_decompress_stream_with_flags(&reader, dst_dev, NULL, 0U, NULL, is_deflate64, window, pd, (const uint8_t *)dictionary, dictionary_size,
+                                                      flags);
     if (success) {
         /* Reader buffers and bit look-ahead may include following bytes.
          * Only full unused bytes are excluded; final padding stays consumed. */
@@ -168,17 +176,23 @@ bool xx_deflate_unpack_memory_to_device(const void *src_buf, size_t comp_size, x
 
 bool xx_deflate_unpack_memory_to_device_ex(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, size_t *out_consumed, bool is_deflate64, xx_pd_struct *pd)
 {
+    return xx_deflate_unpack_memory_to_device_flags(src_buf, comp_size, dst_dev, out_consumed, is_deflate64, 0U, pd);
+}
+
+bool xx_deflate_unpack_memory_to_device_flags(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, size_t *out_consumed, bool is_deflate64, unsigned flags,
+                                              xx_pd_struct *pd)
+{
     xx_bit_reader reader;
     bool success;
     size_t consumed_bits;
     if (out_consumed) *out_consumed = 0U;
-    if (!src_buf || !dst_dev || !out_consumed || comp_size == 0U) {
+    if (!src_buf || !dst_dev || !out_consumed || comp_size == 0U || (flags & ~XX_DEFLATE_UNPACK_ZLIB_STRICT) != 0U) {
         return false;
     }
     if (!xx_br_init(&reader, NULL, (const uint8_t *)src_buf, comp_size, (int64_t)comp_size)) {
         return false;
     }
-    success = xx_deflate_decompress_stream(&reader, dst_dev, NULL, 0, NULL, is_deflate64, pd);
+    success = xx_deflate_decompress_stream_with_flags(&reader, dst_dev, NULL, 0, NULL, is_deflate64, 0U, pd, NULL, 0U, flags);
     if (success && (reader.mem_pos > SIZE_MAX / 8U || reader.bit_count < 0 || (size_t)reader.bit_count > reader.mem_pos * 8U)) {
         success = false;
     }
@@ -203,17 +217,20 @@ bool xx_deflate_decompress_memory(const void *src_buf, size_t src_size, void *ds
     return xx_deflate_decompress_memory_with_dictionary(src_buf, src_size, dst_buf, dst_buf_size, out_written, NULL, 0U, is_deflate64);
 }
 
-bool xx_deflate_decompress_memory_with_dictionary(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, const void *dictionary,
-                                                  size_t dictionary_size, bool is_deflate64)
+/* The body of the in-memory entry points. */
+static bool xx_deflate_decompress_memory_impl(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, const void *dictionary,
+                                              size_t dictionary_size, bool is_deflate64, unsigned flags)
 {
     if (!src_buf || (!dst_buf && dst_buf_size > 0)) {
         return false;
     }
     if (dictionary_size != 0U && !dictionary) return false;
+    if ((flags & ~XX_DEFLATE_UNPACK_ZLIB_STRICT) != 0U) return false;
 
     if (src_size == 0) {
         if (out_written) *out_written = 0;
-        return true;
+        /* No stream at all: zlib waits for input and never reports an end. */
+        return (flags & XX_DEFLATE_UNPACK_ZLIB_STRICT) == 0U;
     }
 
     xx_bit_reader reader;
@@ -221,10 +238,22 @@ bool xx_deflate_decompress_memory_with_dictionary(const void *src_buf, size_t sr
         return false;
     }
 
-    bool success = xx_deflate_decompress_stream_with_dictionary(&reader, NULL, (uint8_t *)dst_buf, dst_buf_size, out_written, is_deflate64, NULL,
-                                                                (const uint8_t *)dictionary, dictionary_size);
+    bool success = xx_deflate_decompress_stream_with_flags(&reader, NULL, (uint8_t *)dst_buf, dst_buf_size, out_written, is_deflate64, 0U, NULL,
+                                                           (const uint8_t *)dictionary, dictionary_size, flags);
     xx_br_free(&reader);
     return success;
+}
+
+bool xx_deflate_decompress_memory_with_dictionary(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, const void *dictionary,
+                                                  size_t dictionary_size, bool is_deflate64)
+{
+    return xx_deflate_decompress_memory_impl(src_buf, src_size, dst_buf, dst_buf_size, out_written, dictionary, dictionary_size, is_deflate64, 0U);
+}
+
+bool xx_deflate_decompress_memory_flags(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, bool is_deflate64,
+                                        unsigned flags)
+{
+    return xx_deflate_decompress_memory_impl(src_buf, src_size, dst_buf, dst_buf_size, out_written, NULL, 0U, is_deflate64, flags);
 }
 
 /* ========================================================================= */

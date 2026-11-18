@@ -6,5 +6,4 @@ xxfclib_add_family_console(vmdk_cowd_sparse
     FORMATS VMDK_COWD_SPARSE
     SOURCES
         src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse.c
-        src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c
-        src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_reader_adapters.c)
+        src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c)

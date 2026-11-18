@@ -95,6 +95,7 @@
 typedef struct xx_pp20_context_s {
     uint64_t uncompressed_size;
     int64_t stream_size;
+    size_t unconsumed; /* source bytes the backward decoder never reached */
     uint32_t variant;
     uint8_t offset_widths[4];
     uint8_t skip_bits;
@@ -329,6 +330,7 @@ static bool xx_pp20_decode_stream(Abstractformat *self, xx_io_device *destinatio
     uint8_t *input = NULL;
     uint8_t *output = NULL;
     xx_pp20_context parsed;
+    size_t unconsumed = 0U;
     bool result = false;
     if (!self || !self->device || self->base_address < 0 || !context || (pd && xx_pd_is_stopped(pd))) {
         return false;
@@ -354,11 +356,12 @@ static bool xx_pp20_decode_stream(Abstractformat *self, xx_io_device *destinatio
     output = (uint8_t *)xx_mem_alloc((size_t)parsed.uncompressed_size);
     if (!output ||
         !xx_pp20_decrunch(input, header_size, (size_t)input_size - XX_PP20_TRAILER_SIZE, parsed.offset_widths, parsed.skip_bits, output, (size_t)parsed.uncompressed_size,
-                          pd, NULL) ||
+                          pd, &unconsumed) ||
         (pd && xx_pd_is_stopped(pd)) || (destination && !xx_pp20_write_all(destination, output, (size_t)parsed.uncompressed_size, pd))) {
         goto cleanup;
     }
     *context = parsed;
+    context->unconsumed = unconsumed;
     result = true;
 cleanup:
     xx_mem_free(output);
@@ -520,6 +523,15 @@ bool xx_pp20_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         }
         if (saved >= 0) (void)xx_io_seek64(self->device, saved, SEEK_SET);
         return false;
+    }
+    /* The decoder walks back from the trailer and stops when the output is
+     * full, so a library whose size happens to be a multiple of four reads as
+     * its LAST stream alone, with all the others left over in front of it.
+     * Enough unread source for a whole stream means the strict library
+     * reading gets its say; it wins only if every item of the file checks. */
+    if (context.variant == XX_PP20_VARIANT_PP20 && context.unconsumed >= PP20_LIBRARY_MIN_STREAM && pp20_library_info(self, pd)) {
+        if (saved >= 0) (void)xx_io_seek64(self->device, saved, SEEK_SET);
+        return true;
     }
     archive = (xx_pp20 *)self;
     archive->uncompressed_size = context.uncompressed_size;

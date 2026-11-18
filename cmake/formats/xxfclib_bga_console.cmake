@@ -6,6 +6,11 @@ xxfclib_add_family_console(bga
     FORMATS BGA
     SORT
     SOURCES
+        src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+        src/algo/adler32/platforms/xx_adler32_avx2.c
+        src/algo/adler32/platforms/xx_adler32_neon.c
+        src/algo/adler32/platforms/xx_adler32_sse2.c
+        src/algo/adler32/xx_adler32.c
         src/algo/bzip2/xx_bzip2.c
         src/algo/bzip2/xx_bzip2_bwt.c
         src/algo/bzip2/xx_bzip2_dec.c
@@ -30,5 +35,4 @@ xxfclib_add_family_console(bga
         src/algo/deflate/xx_deflate_dec.c
         src/algo/deflate/xx_deflate_enc.c
         src/formats/archive/bga/xx_bga.c
-        src/formats/archive/bga/xx_bga_extractor.c
-        src/formats/archive/bga/xx_bga_reader_adapters.c)
+        src/formats/archive/bga/xx_bga_extractor.c)

@@ -6,5 +6,4 @@ xxfclib_add_family_console(lpak
     FORMATS LPAK
     SOURCES
         src/formats/archive/lpak/xx_lpak.c
-        src/formats/archive/lpak/xx_lpak_extractor.c
-        src/formats/archive/lpak/xx_lpak_reader_adapters.c)
+        src/formats/archive/lpak/xx_lpak_extractor.c)

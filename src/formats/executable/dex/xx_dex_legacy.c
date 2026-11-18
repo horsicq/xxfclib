@@ -148,6 +148,11 @@ bool xx_dex_legacy_analyze(const uint8_t *data, size_t size, xx_dex_legacy *resu
 
     /* String IDs */
     if (!xx_dex_legacy_fits(&dex, string_ids_offset, (uint64_t)string_ids_size * 4)) return true;
+    /* Twelve bytes and a flag are kept for every string ID. Where size_t
+       cannot count them (a 32-bit build and a table of 2 GiB or more) they
+       cannot be allocated either. */
+    size_t string_bytes = (size_t)string_ids_size * sizeof(int64_t);
+    if (string_bytes / sizeof(int64_t) != string_ids_size) return false;
     dex.string_count = string_ids_size;
     dex.string_offset = (int64_t *)xx_rt_malloc((string_ids_size ? string_ids_size : 1) * sizeof(int64_t));
     dex.string_value_size = (uint32_t *)xx_rt_malloc((string_ids_size ? string_ids_size : 1) * sizeof(uint32_t));

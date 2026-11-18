@@ -245,7 +245,7 @@ void xx_bz2_init(xx_bz2 *bz2, xx_io_device *dev, int64_t base_address)
     xx_format_init(&bz2->format, dev, base_address);
     bz2->format.endian = XX_ENDIAN_UNKNOWN;
     bz2->format.file_type = XX_FILE_TYPE_BZ2;
-    bz2->format.handle_type = XX_HANDLE_TYPE_BZ2;
+    bz2->format.handle_type = XX_FILE_TYPE_BZ2;
     bz2->format.format_type = XX_TYPE_ARCHIVE;
     bz2->format.is_archive = true;
     xx_format_set_mime_type(&bz2->format, "application/x-bzip2");

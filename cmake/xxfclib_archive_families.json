@@ -132,8 +132,9 @@
    "directory": "archive/7zip",
    "own_component": true,
    "sort": false,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "brotli",
     "bzip2",
@@ -151,6 +152,11 @@
     "archive/7zip"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/brotli/xx_brotli.c",
@@ -199,11 +205,9 @@
     "src/algo/zstd/xx_zstd_dec.c",
     "src/formats/archive/7zip/xx_7zip.c",
     "src/formats/archive/7zip/xx_7zip_branch.c",
-    "src/formats/archive/7zip/xx_7zip_datastructs.c",
     "src/formats/archive/7zip/xx_7zip_extractor.c",
     "src/formats/archive/7zip/xx_7zip_stream.c",
-    "src/formats/archive/7zip/xx_7zip_writer.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/7zip/xx_7zip_writer.c"
    ]
   },
   "ace": {
@@ -328,6 +332,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate"
@@ -336,6 +341,11 @@
     "archive/alz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -473,16 +483,14 @@
    "directory": "archive/ar",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [],
    "formats": [
     "archive/ar"
    ],
    "sources": [
     "src/formats/archive/ar/xx_ar.c",
-    "src/formats/archive/ar/xx_ar_datastructs.c",
-    "src/formats/archive/ar/xx_ar_extractor.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/ar/xx_ar_extractor.c"
    ]
   },
   "arc_cbm": {
@@ -501,8 +509,7 @@
    ],
    "sources": [
     "src/formats/archive/arc_cbm/xx_arc_cbm.c",
-    "src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c",
-    "src/formats/archive/arc_cbm/xx_arc_cbm_reader_adapters.c"
+    "src/formats/archive/arc_cbm/xx_arc_cbm_extractor.c"
    ]
   },
   "arcfs": {
@@ -849,6 +856,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate"
@@ -857,6 +865,11 @@
     "archive/bga"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -881,8 +894,7 @@
     "src/algo/deflate/xx_deflate_dec.c",
     "src/algo/deflate/xx_deflate_enc.c",
     "src/formats/archive/bga/xx_bga.c",
-    "src/formats/archive/bga/xx_bga_extractor.c",
-    "src/formats/archive/bga/xx_bga_reader_adapters.c"
+    "src/formats/archive/bga/xx_bga_extractor.c"
    ]
   },
   "bigaf": {
@@ -1158,8 +1170,9 @@
    "directory": "archive/bz2",
    "own_component": true,
    "sort": false,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -1171,6 +1184,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -1206,10 +1224,8 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/bz2/xx_bz2.c",
-    "src/formats/archive/bz2/xx_bz2_datastructs.c",
     "src/formats/archive/bz2/xx_bz2_extractor.c",
-    "src/formats/archive/xz/xx_xz_writer.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/xz/xx_xz_writer.c"
    ]
   },
   "bzip1": {
@@ -1242,8 +1258,7 @@
     "src/algo/crc/xx_crc8.c",
     "src/formats/archive/bzip1/xx_bzip1.c",
     "src/formats/archive/bzip1/xx_bzip1_codec.c",
-    "src/formats/archive/bzip1/xx_bzip1_extractor.c",
-    "src/formats/archive/bzip1/xx_bzip1_reader_adapters.c"
+    "src/formats/archive/bzip1/xx_bzip1_extractor.c"
    ]
   },
   "c64_sda": {
@@ -1317,6 +1332,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzx",
@@ -1326,6 +1342,11 @@
     "archive/cab"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -1614,8 +1635,7 @@
    ],
    "sources": [
     "src/formats/archive/chromium_pak/xx_chromium_pak.c",
-    "src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c",
-    "src/formats/archive/chromium_pak/xx_chromium_pak_reader_adapters.c"
+    "src/formats/archive/chromium_pak/xx_chromium_pak_extractor.c"
    ]
   },
   "claylz": {
@@ -1847,6 +1867,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -1860,6 +1881,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -2200,7 +2226,6 @@
     "src/formats/archive/dgca/xx_dgca_lzp.c",
     "src/formats/archive/dgca/xx_dgca_payload.c",
     "src/formats/archive/dgca/xx_dgca_range.c",
-    "src/formats/archive/dgca/xx_dgca_reader_adapters.c",
     "src/formats/archive/dgca/xx_dgca_transform.c",
     "src/formats/archive/legacy_archive_engine/xx_legacy_archive_engine.c",
     "src/formats/archive/sevenzip_backend/xx_sevenzip_backend.c",
@@ -2226,8 +2251,7 @@
    "sources": [
     "src/algo/dcl/xx_dcl.c",
     "src/formats/archive/dh/xx_dh.c",
-    "src/formats/archive/dh/xx_dh_extractor.c",
-    "src/formats/archive/dh/xx_dh_reader_adapters.c"
+    "src/formats/archive/dh/xx_dh_extractor.c"
    ]
   },
   "diskdoubler": {
@@ -2285,8 +2309,7 @@
    "sources": [
     "src/algo/softronics/xx_softronics.c",
     "src/formats/archive/djcomp/xx_djcomp.c",
-    "src/formats/archive/djcomp/xx_djcomp_extractor.c",
-    "src/formats/archive/djcomp/xx_djcomp_reader_adapters.c"
+    "src/formats/archive/djcomp/xx_djcomp_extractor.c"
    ]
   },
   "dmapacked": {
@@ -2373,8 +2396,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/archive/dpc/xx_dpc.c",
-    "src/formats/archive/dpc/xx_dpc_extractor.c",
-    "src/formats/archive/dpc/xx_dpc_reader_adapters.c"
+    "src/formats/archive/dpc/xx_dpc_extractor.c"
    ]
   },
   "dpk": {
@@ -2474,8 +2496,7 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/archive/dwc/xx_dwc.c",
-    "src/formats/archive/dwc/xx_dwc_extractor.c",
-    "src/formats/archive/dwc/xx_dwc_reader_adapters.c"
+    "src/formats/archive/dwc/xx_dwc_extractor.c"
    ]
   },
   "ealib": {
@@ -2913,8 +2934,7 @@
    "sources": [
     "src/formats/archive/freeze/xx_freeze.c",
     "src/formats/archive/freeze/xx_freeze_codec.c",
-    "src/formats/archive/freeze/xx_freeze_extractor.c",
-    "src/formats/archive/freeze/xx_freeze_reader_adapters.c"
+    "src/formats/archive/freeze/xx_freeze_extractor.c"
    ]
   },
   "ftcomp": {
@@ -2994,6 +3014,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -3025,6 +3046,11 @@
     "executable/pe"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -3183,8 +3209,9 @@
    "directory": "archive/gz",
    "own_component": true,
    "sort": false,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -3196,6 +3223,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -3231,10 +3263,8 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/gz/xx_gz.c",
-    "src/formats/archive/gz/xx_gz_datastructs.c",
     "src/formats/archive/gz/xx_gz_extractor.c",
-    "src/formats/archive/xz/xx_xz_writer.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/xz/xx_xz_writer.c"
    ]
   },
   "ha": {
@@ -3508,6 +3538,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzma",
@@ -3517,6 +3548,11 @@
     "archive/installjammer"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -3579,6 +3615,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -3586,6 +3623,11 @@
     "archive/inteduft"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -3623,8 +3665,7 @@
    ],
    "sources": [
     "src/formats/archive/is_stored/xx_is_stored.c",
-    "src/formats/archive/is_stored/xx_is_stored_extractor.c",
-    "src/formats/archive/is_stored/xx_is_stored_reader_adapters.c"
+    "src/formats/archive/is_stored/xx_is_stored_extractor.c"
    ]
   },
   "ixa": {
@@ -3843,8 +3884,7 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/kgb_archiver/xx_kgb_archiver.c",
-    "src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c",
-    "src/formats/archive/kgb_archiver/xx_kgb_archiver_reader_adapters.c"
+    "src/formats/archive/kgb_archiver/xx_kgb_archiver_extractor.c"
    ]
   },
   "kolibrikpack": {
@@ -3902,6 +3942,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -3909,6 +3950,11 @@
     "archive/kwaj"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -3949,8 +3995,7 @@
    "sources": [
     "src/algo/lzh/xx_lzh.c",
     "src/formats/archive/larc_pfx/xx_larc_pfx.c",
-    "src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c",
-    "src/formats/archive/larc_pfx/xx_larc_pfx_reader_adapters.c"
+    "src/formats/archive/larc_pfx/xx_larc_pfx_extractor.c"
    ]
   },
   "lbr": {
@@ -4168,8 +4213,7 @@
    ],
    "sources": [
     "src/formats/archive/lpak/xx_lpak.c",
-    "src/formats/archive/lpak/xx_lpak_extractor.c",
-    "src/formats/archive/lpak/xx_lpak_reader_adapters.c"
+    "src/formats/archive/lpak/xx_lpak_extractor.c"
    ]
   },
   "lpaq8": {
@@ -4202,6 +4246,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -4209,6 +4254,11 @@
     "archive/lspack10"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -5314,6 +5364,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzx",
@@ -5324,6 +5375,11 @@
     "archive/pftw_pkg"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -5359,6 +5415,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate"
@@ -5367,6 +5424,11 @@
     "archive/phar"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -5666,7 +5728,7 @@
    "directory": "archive/rar",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
     "aes",
     "blake2",
@@ -5705,11 +5767,9 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/rar/xx_rar.c",
-    "src/formats/archive/rar/xx_rar_datastructs.c",
     "src/formats/archive/rar/xx_rar_extractor.c",
     "src/formats/executable/pe/xx_pe.c",
-    "src/formats/executable/pe/xx_pe_stream_common.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/executable/pe/xx_pe_stream_common.c"
    ]
   },
   "raw_deflate_compressed_data": {
@@ -5723,6 +5783,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -5730,6 +5791,11 @@
     "archive/raw_deflate_compressed_data"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -6081,6 +6147,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "brotli",
     "bzip2",
@@ -6099,6 +6166,11 @@
     "archive/sfx_7zip"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/brotli/xx_brotli.c",
@@ -6306,6 +6378,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -6313,6 +6386,11 @@
     "archive/sfx_ardi_diskette_image"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -6491,6 +6569,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzx",
@@ -6501,6 +6580,11 @@
     "archive/sfx_cab"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -6652,6 +6736,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -6659,6 +6744,11 @@
     "archive/sfx_gzip"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -6778,6 +6868,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -6786,6 +6877,11 @@
     "archive/sfx_kwaj"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -6861,6 +6957,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -6868,6 +6965,11 @@
     "archive/sfx_localzip"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -7290,6 +7392,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -7318,6 +7421,11 @@
     "executable/pe"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -7927,8 +8035,7 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/archive/stuffitx/xx_stuffitx.c",
-    "src/formats/archive/stuffitx/xx_stuffitx_extractor.c",
-    "src/formats/archive/stuffitx/xx_stuffitx_reader_adapters.c"
+    "src/formats/archive/stuffitx/xx_stuffitx_extractor.c"
    ]
   },
   "swag": {
@@ -7993,16 +8100,14 @@
    "directory": "archive/tar",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [],
    "formats": [
     "archive/tar"
    ],
    "sources": [
     "src/formats/archive/tar/xx_tar.c",
-    "src/formats/archive/tar/xx_tar_datastructs.c",
-    "src/formats/archive/tar/xx_tar_extractor.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/tar/xx_tar_extractor.c"
    ]
   },
   "tar_bz2": {
@@ -8014,8 +8119,9 @@
    "directory": "archive/tar_bz2",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -8030,6 +8136,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -8066,14 +8177,10 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/bz2/xx_bz2.c",
     "src/formats/archive/tar/xx_tar.c",
-    "src/formats/archive/tar/xx_tar_datastructs.c",
     "src/formats/archive/tar_bz2/xx_tar_bz2.c",
-    "src/formats/archive/tar_bz2/xx_tar_bz2_datastructs.c",
     "src/formats/archive/tar_bz2/xx_tar_bz2_extractor.c",
     "src/formats/archive/tar_common/xx_tar_common.c",
-    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
-    "src/formats/archive/xz/xx_xz_writer.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/xz/xx_xz_writer.c"
    ]
   },
   "tar_compress": {
@@ -8111,8 +8218,9 @@
    "directory": "archive/tar_gz",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -8127,6 +8235,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -8163,14 +8276,10 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/gz/xx_gz.c",
     "src/formats/archive/tar/xx_tar.c",
-    "src/formats/archive/tar/xx_tar_datastructs.c",
     "src/formats/archive/tar_common/xx_tar_common.c",
-    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
     "src/formats/archive/tar_gz/xx_tar_gz.c",
-    "src/formats/archive/tar_gz/xx_tar_gz_datastructs.c",
     "src/formats/archive/tar_gz/xx_tar_gz_extractor.c",
-    "src/formats/archive/xz/xx_xz_writer.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/xz/xx_xz_writer.c"
    ]
   },
   "tar_lz4": {
@@ -8182,7 +8291,7 @@
    "directory": "archive/tar_lz4",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
     "lz4"
    ],
@@ -8194,13 +8303,9 @@
    "sources": [
     "src/algo/lz4/xx_lz4.c",
     "src/formats/archive/tar/xx_tar.c",
-    "src/formats/archive/tar/xx_tar_datastructs.c",
     "src/formats/archive/tar_common/xx_tar_common.c",
-    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
     "src/formats/archive/tar_lz4/xx_tar_lz4.c",
-    "src/formats/archive/tar_lz4/xx_tar_lz4_datastructs.c",
-    "src/formats/archive/tar_lz4/xx_tar_lz4_extractor.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/tar_lz4/xx_tar_lz4_extractor.c"
    ]
   },
   "tar_lzip": {
@@ -8373,8 +8478,9 @@
    "directory": "archive/tar_xz",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -8389,6 +8495,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -8426,15 +8537,11 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/7zip/xx_7zip_branch.c",
     "src/formats/archive/tar/xx_tar.c",
-    "src/formats/archive/tar/xx_tar_datastructs.c",
     "src/formats/archive/tar_common/xx_tar_common.c",
-    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
     "src/formats/archive/tar_xz/xx_tar_xz.c",
-    "src/formats/archive/tar_xz/xx_tar_xz_datastructs.c",
     "src/formats/archive/tar_xz/xx_tar_xz_extractor.c",
     "src/formats/archive/xz/xx_xz.c",
-    "src/formats/archive/xz/xx_xz_writer.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/xz/xx_xz_writer.c"
    ]
   },
   "tar_zstd": {
@@ -8446,7 +8553,7 @@
    "directory": "archive/tar_zstd",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
     "crc",
     "zstd"
@@ -8471,13 +8578,9 @@
     "src/algo/zstd/xx_zstd.c",
     "src/algo/zstd/xx_zstd_dec.c",
     "src/formats/archive/tar/xx_tar.c",
-    "src/formats/archive/tar/xx_tar_datastructs.c",
     "src/formats/archive/tar_common/xx_tar_common.c",
-    "src/formats/archive/tar_common/xx_tar_common_datastructs.c",
     "src/formats/archive/tar_zstd/xx_tar_zstd.c",
-    "src/formats/archive/tar_zstd/xx_tar_zstd_datastructs.c",
-    "src/formats/archive/tar_zstd/xx_tar_zstd_extractor.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/tar_zstd/xx_tar_zstd_extractor.c"
    ]
   },
   "tarx1": {
@@ -8529,6 +8632,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -8544,6 +8648,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -8949,6 +9058,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -8956,6 +9066,11 @@
     "archive/webexe"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -9213,6 +9328,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "arj",
@@ -9241,6 +9357,11 @@
     "archive/zip"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -9336,8 +9457,9 @@
    "directory": "archive/xz",
    "own_component": true,
    "sort": false,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -9349,6 +9471,11 @@
     "archive/xz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -9386,10 +9513,8 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/7zip/xx_7zip_branch.c",
     "src/formats/archive/xz/xx_xz.c",
-    "src/formats/archive/xz/xx_xz_datastructs.c",
     "src/formats/archive/xz/xx_xz_extractor.c",
-    "src/formats/archive/xz/xx_xz_writer.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/xz/xx_xz_writer.c"
    ]
   },
   "zap": {
@@ -9425,6 +9550,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "zcmp"
@@ -9433,6 +9559,11 @@
     "archive/zcmp"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -9506,8 +9637,9 @@
    "directory": "archive/zip",
    "own_component": true,
    "sort": true,
-   "codepages": true,
+   "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -9533,6 +9665,11 @@
     "archive/zip"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -9592,13 +9729,11 @@
     "src/formats/archive/xz/xx_xz.c",
     "src/formats/archive/xz/xx_xz_writer.c",
     "src/formats/archive/zip/xx_zip.c",
-    "src/formats/archive/zip/xx_zip_datastructs.c",
     "src/formats/archive/zip/xx_zip_extractor.c",
     "src/formats/archive/zip/xx_zip_inspect.c",
     "src/formats/archive/zip/xx_zip_legacy_encoder.c",
     "src/formats/archive/zip/xx_zip_py.c",
-    "src/formats/archive/zip/xx_zip_yx.c",
-    "src/formats/xx_stream_datastructs.c"
+    "src/formats/archive/zip/xx_zip_yx.c"
    ]
   },
   "zip_psc": {
@@ -9612,6 +9747,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -9638,6 +9774,11 @@
     "archive/zip_psc"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -10049,8 +10190,7 @@
    ],
    "sources": [
     "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank.c",
-    "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c",
-    "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_reader_adapters.c"
+    "src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c"
    ]
   },
   "sfark_compressed_soundfont": {
@@ -10096,8 +10236,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont.c",
-    "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c",
-    "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_reader_adapters.c"
+    "src/formats/audio/sfark_compressed_soundfont/xx_sfark_compressed_soundfont_extractor.c"
    ]
   },
   "sfpack": {
@@ -10133,6 +10272,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "compress",
     "crc",
     "deflate"
@@ -10141,6 +10281,11 @@
     "database/dbz"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/compress/xx_compress.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
@@ -10263,7 +10408,6 @@
     "src/formats/document/binder/xx_binder.c",
     "src/formats/document/cfbf/xx_cfbf.c",
     "src/formats/document/cfbf/xx_cfbf_extractor.c",
-    "src/formats/document/cfbf/xx_cfbf_reader_adapters.c",
     "src/formats/document/cfbf/xx_olecf_yx.c"
    ]
   },
@@ -10407,8 +10551,7 @@
    ],
    "sources": [
     "src/formats/document/microsoft_lit/xx_microsoft_lit.c",
-    "src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c",
-    "src/formats/document/microsoft_lit/xx_microsoft_lit_reader_adapters.c"
+    "src/formats/document/microsoft_lit/xx_microsoft_lit_extractor.c"
    ]
   },
   "mime_message": {
@@ -10466,8 +10609,7 @@
    ],
    "sources": [
     "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox.c",
-    "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c",
-    "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_reader_adapters.c"
+    "src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_extractor.c"
    ]
   },
   "pain": {
@@ -10593,6 +10735,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -10600,6 +10743,11 @@
     "document/sfx_ebook_compiler_executables"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -10863,6 +11011,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -10870,6 +11019,11 @@
     "executable/dotnet_bundle"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -10902,6 +11056,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -10911,6 +11066,11 @@
     "executable/pe"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -10967,8 +11127,7 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box.c",
-    "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c",
-    "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_reader_adapters.c"
+    "src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_extractor.c"
    ]
   },
   "executable_overlay": {
@@ -11020,6 +11179,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "md5"
@@ -11028,6 +11188,11 @@
     "executable/molebox"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -11047,8 +11212,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/md5/xx_md5.c",
     "src/formats/executable/molebox/xx_molebox.c",
-    "src/formats/executable/molebox/xx_molebox_extractor.c",
-    "src/formats/executable/molebox/xx_molebox_reader_adapters.c"
+    "src/formats/executable/molebox/xx_molebox_extractor.c"
    ]
   },
   "node_pkg": {
@@ -11062,6 +11226,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "brotli",
     "bzip2",
     "crc",
@@ -11075,6 +11240,11 @@
     "executable/node_pkg"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/brotli/xx_brotli.c",
     "src/algo/brotli/xx_brotli_data.c",
     "src/algo/bzip2/xx_bzip2.c",
@@ -11239,6 +11409,7 @@
    "sort": true,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -11246,6 +11417,11 @@
     "executable/sfx_flashjester_jugglor"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -11335,8 +11511,7 @@
     "src/formats/archive/sevenzip_engine/xx_sevenzip_engine.c",
     "src/formats/executable/pe/xx_pe.c",
     "src/formats/executable/upx_engine/xx_upx_engine.c",
-    "src/formats/executable/upx_engine/xx_upx_engine_extractor.c",
-    "src/formats/executable/upx_engine/xx_upx_engine_reader_adapters.c"
+    "src/formats/executable/upx_engine/xx_upx_engine_extractor.c"
    ]
   },
   "adf": {
@@ -11374,8 +11549,7 @@
    ],
    "sources": [
     "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf.c",
-    "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_extractor.c",
-    "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_reader_adapters.c"
+    "src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_extractor.c"
    ]
   },
   "amiga_old_ext_adf": {
@@ -11394,8 +11568,7 @@
    ],
    "sources": [
     "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf.c",
-    "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c",
-    "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_reader_adapters.c"
+    "src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf_extractor.c"
    ]
   },
   "amiga_ipf": {
@@ -11516,8 +11689,7 @@
    ],
    "sources": [
     "src/formats/filesystem/apridisk/xx_apridisk.c",
-    "src/formats/filesystem/apridisk/xx_apridisk_extractor.c",
-    "src/formats/filesystem/apridisk/xx_apridisk_reader_adapters.c"
+    "src/formats/filesystem/apridisk/xx_apridisk_extractor.c"
    ]
   },
   "ccd": {
@@ -11536,8 +11708,7 @@
    ],
    "sources": [
     "src/formats/filesystem/ccd/xx_ccd.c",
-    "src/formats/filesystem/ccd/xx_ccd_extractor.c",
-    "src/formats/filesystem/ccd/xx_ccd_reader_adapters.c"
+    "src/formats/filesystem/ccd/xx_ccd_extractor.c"
    ]
   },
   "cfd": {
@@ -11963,8 +12134,7 @@
    ],
    "sources": [
     "src/formats/filesystem/dfsee_imz/xx_dfsee_imz.c",
-    "src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c",
-    "src/formats/filesystem/dfsee_imz/xx_dfsee_imz_reader_adapters.c"
+    "src/formats/filesystem/dfsee_imz/xx_dfsee_imz_extractor.c"
    ]
   },
   "diskdupe": {
@@ -12194,8 +12364,7 @@
    ],
    "sources": [
     "src/formats/filesystem/ecm/xx_ecm.c",
-    "src/formats/filesystem/ecm/xx_ecm_extractor.c",
-    "src/formats/filesystem/ecm/xx_ecm_reader_adapters.c"
+    "src/formats/filesystem/ecm/xx_ecm_extractor.c"
    ]
   },
   "emt": {
@@ -12285,6 +12454,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzma",
@@ -12294,6 +12464,11 @@
     "filesystem/gbi"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -12323,8 +12498,7 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/filesystem/gbi/xx_gbi.c",
-    "src/formats/filesystem/gbi/xx_gbi_extractor.c",
-    "src/formats/filesystem/gbi/xx_gbi_reader_adapters.c"
+    "src/formats/filesystem/gbi/xx_gbi_extractor.c"
    ]
   },
   "hdcopy": {
@@ -12557,8 +12731,7 @@
    ],
    "sources": [
     "src/formats/filesystem/mds/xx_mds.c",
-    "src/formats/filesystem/mds/xx_mds_extractor.c",
-    "src/formats/filesystem/mds/xx_mds_reader_adapters.c"
+    "src/formats/filesystem/mds/xx_mds_extractor.c"
    ]
   },
   "nextstep_diskimage": {
@@ -12636,8 +12809,7 @@
    ],
    "sources": [
     "src/formats/filesystem/pce_anadisk/xx_pce_anadisk.c",
-    "src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c",
-    "src/formats/filesystem/pce_anadisk/xx_pce_anadisk_reader_adapters.c"
+    "src/formats/filesystem/pce_anadisk/xx_pce_anadisk_extractor.c"
    ]
   },
   "pmdiskcopy": {
@@ -12843,8 +13015,7 @@
     "src/algo/crc/xx_crc64.c",
     "src/algo/crc/xx_crc8.c",
     "src/formats/filesystem/sdi/xx_sdi.c",
-    "src/formats/filesystem/sdi/xx_sdi_extractor.c",
-    "src/formats/filesystem/sdi/xx_sdi_reader_adapters.c"
+    "src/formats/filesystem/sdi/xx_sdi_extractor.c"
    ]
   },
   "sfx_sydex_diskette_image": {
@@ -13145,8 +13316,7 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/filesystem/uif/xx_uif.c",
-    "src/formats/filesystem/uif/xx_uif_extractor.c",
-    "src/formats/filesystem/uif/xx_uif_reader_adapters.c"
+    "src/formats/filesystem/uif/xx_uif_extractor.c"
    ]
   },
   "vdi": {
@@ -13310,8 +13480,7 @@
    ],
    "sources": [
     "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse.c",
-    "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c",
-    "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_reader_adapters.c"
+    "src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_extractor.c"
    ]
   },
   "vmdk_sesparse": {
@@ -13330,8 +13499,7 @@
    ],
    "sources": [
     "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse.c",
-    "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c",
-    "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_reader_adapters.c"
+    "src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c"
    ]
   },
   "ziso": {
@@ -13501,8 +13669,7 @@
    ],
    "sources": [
     "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image.c",
-    "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c",
-    "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_reader_adapters.c"
+    "src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_extractor.c"
    ]
   },
   "mwave": {
@@ -13630,6 +13797,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -13647,6 +13815,11 @@
     "firmware/uimage"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -13735,7 +13908,6 @@
     "src/algo/deflate/xx_deflate.c",
     "src/algo/deflate/xx_deflate_dec.c",
     "src/algo/deflate/xx_deflate_enc.c",
-    "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/firmware/zbeos/xx_zbeos.c",
     "src/formats/firmware/zbeos/xx_zbeos_extractor.c"
    ]
@@ -14208,8 +14380,7 @@
    ],
    "sources": [
     "src/formats/game/gdi/xx_gdi.c",
-    "src/formats/game/gdi/xx_gdi_extractor.c",
-    "src/formats/game/gdi/xx_gdi_reader_adapters.c"
+    "src/formats/game/gdi/xx_gdi_extractor.c"
    ]
   },
   "gob": {
@@ -14288,8 +14459,7 @@
    ],
    "sources": [
     "src/formats/game/he_tlkb/xx_he_tlkb.c",
-    "src/formats/game/he_tlkb/xx_he_tlkb_extractor.c",
-    "src/formats/game/he_tlkb/xx_he_tlkb_reader_adapters.c"
+    "src/formats/game/he_tlkb/xx_he_tlkb_extractor.c"
    ]
   },
   "hog": {
@@ -14341,6 +14511,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -14348,6 +14519,11 @@
     "game/infogramesft"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -14529,8 +14705,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/game/livemaker/xx_livemaker.c",
-    "src/formats/game/livemaker/xx_livemaker_extractor.c",
-    "src/formats/game/livemaker/xx_livemaker_reader_adapters.c"
+    "src/formats/game/livemaker/xx_livemaker_extractor.c"
    ]
   },
   "mas_pack": {
@@ -15011,8 +15186,7 @@
    ],
    "sources": [
     "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad.c",
-    "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c",
-    "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_reader_adapters.c"
+    "src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_extractor.c"
    ]
   },
   "rsc": {
@@ -15140,6 +15314,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -15147,6 +15322,11 @@
     "game/sfx_clickteam_multimedia_fusion"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -15457,8 +15637,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/game/telltale_ttarch/xx_telltale_ttarch.c",
-    "src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c",
-    "src/formats/game/telltale_ttarch/xx_telltale_ttarch_reader_adapters.c"
+    "src/formats/game/telltale_ttarch/xx_telltale_ttarch_extractor.c"
    ]
   },
   "titan_quest": {
@@ -15893,8 +16072,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/game/ypf/xx_ypf.c",
-    "src/formats/game/ypf/xx_ypf_extractor.c",
-    "src/formats/game/ypf/xx_ypf_reader_adapters.c"
+    "src/formats/game/ypf/xx_ypf_extractor.c"
    ]
   },
   "evd": {
@@ -16184,8 +16362,7 @@
    ],
    "sources": [
     "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache.c",
-    "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c",
-    "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_reader_adapters.c"
+    "src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_extractor.c"
    ]
   },
   "advanced_installer_bootstrapper": {
@@ -16348,6 +16525,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -16355,6 +16533,11 @@
     "installer/ardi_installer"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -16512,6 +16695,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -16523,6 +16707,11 @@
     "installer/bitrock"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -16559,8 +16748,7 @@
     "src/algo/sha/xx_sha.c",
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/installer/bitrock/xx_bitrock.c",
-    "src/formats/installer/bitrock/xx_bitrock_extractor.c",
-    "src/formats/installer/bitrock/xx_bitrock_reader_adapters.c"
+    "src/formats/installer/bitrock/xx_bitrock_extractor.c"
    ]
   },
   "bnd": {
@@ -16596,6 +16784,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -16624,6 +16813,11 @@
     "installer/calibre_portable"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -16702,6 +16896,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "brotli",
     "bzip2",
@@ -16721,6 +16916,11 @@
     "installer/chromium_mini_installer"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/brotli/xx_brotli.c",
@@ -16867,8 +17067,7 @@
    ],
    "sources": [
     "src/formats/installer/cpoint/xx_cpoint.c",
-    "src/formats/installer/cpoint/xx_cpoint_extractor.c",
-    "src/formats/installer/cpoint/xx_cpoint_reader_adapters.c"
+    "src/formats/installer/cpoint/xx_cpoint_extractor.c"
    ]
   },
   "createinstall_instcrin_extractor": {
@@ -16904,6 +17103,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "asn1",
@@ -16941,6 +17141,11 @@
     "installer/crx"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -17056,8 +17261,7 @@
    "sources": [
     "src/algo/dcl/xx_dcl.c",
     "src/formats/installer/dsl1/xx_dsl1.c",
-    "src/formats/installer/dsl1/xx_dsl1_extractor.c",
-    "src/formats/installer/dsl1/xx_dsl1_reader_adapters.c"
+    "src/formats/installer/dsl1/xx_dsl1_extractor.c"
    ]
   },
   "dsl2": {
@@ -17183,8 +17387,7 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/archive/7zip/xx_7zip_branch.c",
     "src/formats/installer/excelsior/xx_excelsior.c",
-    "src/formats/installer/excelsior/xx_excelsior_extractor.c",
-    "src/formats/installer/excelsior/xx_excelsior_reader_adapters.c"
+    "src/formats/installer/excelsior/xx_excelsior_extractor.c"
    ]
   },
   "fead": {
@@ -17236,7 +17439,6 @@
     "src/formats/installer/fead/xx_fead.c",
     "src/formats/installer/fead/xx_fead_bcj2.c",
     "src/formats/installer/fead/xx_fead_extractor.c",
-    "src/formats/installer/fead/xx_fead_reader_adapters.c",
     "src/formats/installer/fead/xx_fead_restore.c",
     "src/formats/installer/fead/xx_fead_zlib_encoder.c"
    ]
@@ -17348,6 +17550,7 @@
    "sort": true,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzx",
@@ -17357,6 +17560,11 @@
     "installer/ghost_installer"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -17490,6 +17698,7 @@
    "sort": true,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -17497,6 +17706,11 @@
     "installer/ifah_installer"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -17643,6 +17857,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -17669,6 +17884,11 @@
     "installer/install4j"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -17918,6 +18138,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -17925,6 +18146,11 @@
     "installer/installshield_script_setup"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -18044,6 +18270,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -18051,6 +18278,11 @@
     "installer/is5"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -18237,6 +18469,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "bzip2",
     "crc",
     "deflate",
@@ -18250,6 +18483,11 @@
     "installer/makeself"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/bzip2/xx_bzip2.c",
     "src/algo/bzip2/xx_bzip2_bwt.c",
     "src/algo/bzip2/xx_bzip2_dec.c",
@@ -18506,6 +18744,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzma",
@@ -18515,6 +18754,11 @@
     "installer/nsis"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -18545,8 +18789,7 @@
     "src/algo/sha/xx_sha_simd.c",
     "src/formats/installer/nsis/nsis_bzip2.c",
     "src/formats/installer/nsis/xx_nsis.c",
-    "src/formats/installer/nsis/xx_nsis_extractor.c",
-    "src/formats/installer/nsis/xx_nsis_reader_adapters.c"
+    "src/formats/installer/nsis/xx_nsis_extractor.c"
    ]
   },
   "oberon": {
@@ -18601,6 +18844,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -18608,6 +18852,11 @@
     "installer/opc"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -18773,6 +19022,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -18780,6 +19030,11 @@
     "installer/qsetup_installation_suite"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -19111,6 +19366,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "zipcrypto"
@@ -19119,6 +19375,11 @@
     "installer/sfx_ad01"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -19280,6 +19541,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -19309,6 +19571,11 @@
     "installer/sfx_inftool"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -19436,6 +19703,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -19443,6 +19711,11 @@
     "installer/sfx_nullsoft_pimp"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -19668,8 +19941,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/installer/sis/xx_sis.c",
-    "src/formats/installer/sis/xx_sis_extractor.c",
-    "src/formats/installer/sis/xx_sis_reader_adapters.c"
+    "src/formats/installer/sis/xx_sis_extractor.c"
    ]
   },
   "smart_install_maker": {
@@ -19683,6 +19955,7 @@
    "sort": false,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate",
     "lzx",
@@ -19692,6 +19965,11 @@
     "installer/smart_install_maker"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -19712,8 +19990,7 @@
     "src/algo/lzx/xx_lzx.c",
     "src/algo/quantum/xx_quantum.c",
     "src/formats/installer/smart_install_maker/xx_smart_install_maker.c",
-    "src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c",
-    "src/formats/installer/smart_install_maker/xx_smart_install_maker_reader_adapters.c"
+    "src/formats/installer/smart_install_maker/xx_smart_install_maker_extractor.c"
    ]
   },
   "smsipak": {
@@ -19844,7 +20121,6 @@
     "src/algo/deflate/xx_deflate.c",
     "src/algo/deflate/xx_deflate_dec.c",
     "src/algo/deflate/xx_deflate_enc.c",
-    "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/installer/solarispkg_zip/xx_solarispkg_zip.c",
     "src/formats/installer/solarispkg_zip/xx_solarispkg_zip_extractor.c"
    ]
@@ -19940,6 +20216,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "aes",
     "aes_winzip",
     "bzip2",
@@ -19966,6 +20243,11 @@
     "installer/squirrel"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/aes/platforms/xx_aes_arm_crypto.c",
     "src/algo/aes/xx_aes.c",
     "src/algo/aes_winzip/xx_aes_winzip.c",
@@ -20150,8 +20432,7 @@
     "src/algo/crc/xx_crc8.c",
     "src/algo/lzh/xx_lzh.c",
     "src/formats/installer/superdat/xx_superdat.c",
-    "src/formats/installer/superdat/xx_superdat_extractor.c",
-    "src/formats/installer/superdat/xx_superdat_reader_adapters.c"
+    "src/formats/installer/superdat/xx_superdat_extractor.c"
    ]
   },
   "sw": {
@@ -20274,6 +20555,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "dcl",
     "deflate"
@@ -20282,6 +20564,11 @@
     "installer/twrx"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -20315,6 +20602,7 @@
    "sort": false,
    "codepages": false,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -20322,6 +20610,11 @@
     "installer/visualware"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -20392,6 +20685,7 @@
    "sort": true,
    "codepages": true,
    "codecs": [
+    "adler32",
     "crc",
     "deflate"
    ],
@@ -20399,6 +20693,11 @@
     "installer/wise_installation_system"
    ],
    "sources": [
+    "src/algo/adler32/platforms/xx_adler32_arm_dotprod.c",
+    "src/algo/adler32/platforms/xx_adler32_avx2.c",
+    "src/algo/adler32/platforms/xx_adler32_neon.c",
+    "src/algo/adler32/platforms/xx_adler32_sse2.c",
+    "src/algo/adler32/xx_adler32.c",
     "src/algo/crc/platforms/xx_crc32_arm.c",
     "src/algo/crc/platforms/xx_crc32_arm_pmull.c",
     "src/algo/crc/platforms/xx_crc32c_sse42.c",
@@ -20712,8 +21011,7 @@
     "src/algo/deflate/xx_deflate_enc.c",
     "src/algo/deflate/xx_zlib_stream.c",
     "src/formats/video/scummvm_dxa/xx_scummvm_dxa.c",
-    "src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c",
-    "src/formats/video/scummvm_dxa/xx_scummvm_dxa_reader_adapters.c"
+    "src/formats/video/scummvm_dxa/xx_scummvm_dxa_extractor.c"
    ]
   },
   "swf": {

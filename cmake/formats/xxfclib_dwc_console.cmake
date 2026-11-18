@@ -17,5 +17,4 @@ xxfclib_add_family_console(dwc
         src/algo/crc/xx_crc64.c
         src/algo/crc/xx_crc8.c
         src/formats/archive/dwc/xx_dwc.c
-        src/formats/archive/dwc/xx_dwc_extractor.c
-        src/formats/archive/dwc/xx_dwc_reader_adapters.c)
+        src/formats/archive/dwc/xx_dwc_extractor.c)

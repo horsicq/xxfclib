@@ -6,5 +6,4 @@ xxfclib_add_family_console(vmdk_sesparse
     FORMATS VMDK_SESPARSE
     SOURCES
         src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse.c
-        src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c
-        src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_reader_adapters.c)
+        src/formats/filesystem/vmdk_sesparse/xx_vmdk_sesparse_extractor.c)

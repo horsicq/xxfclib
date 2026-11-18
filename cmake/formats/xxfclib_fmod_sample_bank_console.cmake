@@ -6,5 +6,4 @@ xxfclib_add_family_console(fmod_sample_bank
     FORMATS FMOD_SAMPLE_BANK
     SOURCES
         src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank.c
-        src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c
-        src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_reader_adapters.c)
+        src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_extractor.c)

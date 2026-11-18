@@ -310,6 +310,14 @@ XXFC_API int xx_io_extract_errno(void);
  * clear (0 outside a scope): none for a member that a reader refused to
  * write, for example because a file is already at its path. */
 XXFC_API unsigned long xx_io_extract_files(void);
+/** Salvage under XX_META_ID_OPT_FORCE: a reader that failed a damaged member
+ * but left the bytes that decoded before the damage at the member's path says
+ * so here (written bytes kept; declared size, or -1 when the format records
+ * none). Kept by the innermost scope until the next xx_io_extract_clear();
+ * ignored outside a scope. The member is still reported as failed. */
+XXFC_API void xx_io_extract_salvaged(uint64_t written, int64_t declared);
+/** The salvage noted since begin or the last clear; false when none. */
+XXFC_API bool xx_io_extract_salvage(uint64_t *written, int64_t *declared);
 
 /**
  * Return the borrowed path used to open a file-backed device. Buffered devices

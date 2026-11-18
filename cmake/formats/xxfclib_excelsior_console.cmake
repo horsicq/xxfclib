@@ -29,5 +29,4 @@ xxfclib_add_family_console(excelsior
         src/algo/sha/xx_sha_simd.c
         src/formats/archive/7zip/xx_7zip_branch.c
         src/formats/installer/excelsior/xx_excelsior.c
-        src/formats/installer/excelsior/xx_excelsior_extractor.c
-        src/formats/installer/excelsior/xx_excelsior_reader_adapters.c)
+        src/formats/installer/excelsior/xx_excelsior_extractor.c)

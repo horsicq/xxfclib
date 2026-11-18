@@ -7,5 +7,4 @@ xxfclib_add_family_console(djcomp
     SOURCES
         src/algo/softronics/xx_softronics.c
         src/formats/archive/djcomp/xx_djcomp.c
-        src/formats/archive/djcomp/xx_djcomp_extractor.c
-        src/formats/archive/djcomp/xx_djcomp_reader_adapters.c)
+        src/formats/archive/djcomp/xx_djcomp_extractor.c)

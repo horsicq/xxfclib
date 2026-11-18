@@ -118,7 +118,7 @@ void xx_tar_bz2_init(xx_tar_bz2 *tar_bz2, xx_io_device *dev, int64_t base_addres
     xx_format_init(&tar_bz2->format, dev, base_address);
     tar_bz2->format.endian = XX_ENDIAN_UNKNOWN;
     tar_bz2->format.file_type = XX_FILE_TYPE_TAR_BZ2;
-    tar_bz2->format.handle_type = XX_HANDLE_TYPE_TAR_BZ2;
+    tar_bz2->format.handle_type = XX_FILE_TYPE_TAR_BZ2;
     tar_bz2->format.format_type = XX_TYPE_ARCHIVE;
     tar_bz2->format.is_archive = true;
     xx_format_set_mime_type(&tar_bz2->format, "application/x-bzip2");
