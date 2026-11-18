@@ -257,7 +257,11 @@ static bool gst_set_record(xx_archive_record *record, const gst_member *member)
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->stamp) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->stamp) &&
+           /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->stamp >> 16) & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->stamp & 0xFFFFU) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 

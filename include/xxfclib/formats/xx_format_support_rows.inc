@@ -762,6 +762,9 @@ XX_SUPPORTED_FORMAT(SFX_HAP, sfx_hap, "sfx hap")
 #ifdef XFU_SUPPORT_FORMAT_SFX_IMP
 XX_SUPPORTED_FORMAT(SFX_IMP, sfx_imp, "sfx imp")
 #endif
+#ifdef XFU_SUPPORT_FORMAT_SFX_ISEXPRESS_NE
+XX_SUPPORTED_FORMAT(SFX_ISEXPRESS_NE, sfx_isexpress_ne, "InstallShield Express one-file self-extractor (NE)")
+#endif
 #ifdef XFU_SUPPORT_FORMAT_SFX_KWAJ
 XX_SUPPORTED_FORMAT(SFX_KWAJ, sfx_kwaj, "sfx kwaj")
 #endif
@@ -1163,6 +1166,9 @@ XX_SUPPORTED_FORMAT(AMIGA_EXT_ADF, amiga_ext_adf, "amiga ext adf")
 #endif
 #ifdef XFU_SUPPORT_FORMAT_AMIGA_OLD_EXT_ADF
 XX_SUPPORTED_FORMAT(AMIGA_OLD_EXT_ADF, amiga_old_ext_adf, "amiga old ext adf")
+#endif
+#ifdef XFU_SUPPORT_FORMAT_AMIGA_IPF
+XX_SUPPORTED_FORMAT(AMIGA_IPF, amiga_ipf, "amiga ipf")
 #endif
 #ifdef XFU_SUPPORT_FORMAT_AODOS
 XX_SUPPORTED_FORMAT(AODOS, aodos, "AODOS")

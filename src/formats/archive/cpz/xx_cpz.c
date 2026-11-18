@@ -421,6 +421,11 @@ static bool xx_cpz_set_record(xx_archive_record *record, const xx_cpz_member *me
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_stamp) &&
+           /* Also the DOS words: the listing reads TIMESTAMP as Unix seconds. On real
+            * samples this stamp holds the TIME in the high half and the DATE in the
+            * low half (the reverse of the usual packing), so they are taken that way. */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_stamp & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, (member->dos_stamp >> 16) & 0xFFFFU) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }

@@ -556,6 +556,9 @@ static bool xx_cork_set_record(xx_archive_record *record, const xx_cork_member *
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_stamp) &&
+           /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->dos_stamp >> 16) & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_stamp & 0xFFFFU) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 

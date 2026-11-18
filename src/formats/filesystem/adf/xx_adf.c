@@ -727,11 +727,16 @@ static int64_t adf_timestamp(const uint8_t *field)
 }
 
 /* A header block of the tree: type 2, its own number as key, the expected
- * secondary type set, a matching checksum. */
+ * secondary type set, a matching checksum.  A directory may carry a stale
+ * key: disks whose directory blocks were moved by a copier keep the old
+ * number there (TOSEC "Amiga Disk Magazine 031": 21 directories, every
+ * parent and hash link correct, ADFlib reads all 103 files).  The caller
+ * still requires the parent field to name the directory being walked. */
 static bool adf_entry_ok(const uint8_t *block, uint32_t number)
 {
     uint32_t secondary = xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true);
-    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER && xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number &&
+    return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER &&
+           (xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number || secondary == ADF_ST_USERDIR) &&
            (secondary == ADF_ST_USERDIR || secondary == ADF_ST_FILE || secondary == ADF_ST_SOFTLINK || secondary == ADF_ST_LINKFILE || secondary == ADF_ST_LINKDIR) &&
            adf_checksum_ok(block);
 }
@@ -982,16 +987,28 @@ static bool adf_sink_put(adf_sink *sink, const uint8_t *data, size_t size)
 
 /* Copy the bytes of the file whose header is @p header, following the block
  * table of the header and then of each extension block.  Every data block
- * of an OFS file must name this header and the expected sequence number; an
- * FFS data block carries no tag, so only blocks that cannot hold data (the
- * root, the header, the table being read) are refused.  A revisited
- * extension block is found with Brent's cycle check and fails the copy. */
+ * of an OFS file must be a checksummed data block that names this header;
+ * an FFS data block carries no tag, so only blocks that cannot hold data
+ * (the root, the header, the table being read) are refused.  A revisited
+ * extension block is found with Brent's cycle check and fails the copy.
+ *
+ * The table is the authority on block order, as it is for AmigaDOS: the OFS
+ * sequence number and an extension block's parent field are redundant
+ * copies that real disks get wrong (a file whose last block is numbered 1
+ * and named by the header's first-data field; an extension block whose
+ * parent is the previous extension block or 0).  Both are therefore not
+ * compared.  Measured on TOSEC 2017-04-23: of 54 disks an independent
+ * structure walk found sound, 51 were refused only for these two fields,
+ * among them magazine cover disks (Amiga Format 107-112) that shipped this
+ * way.  The files have every block checksummed and owned and add up to the
+ * header's byte size.  Reference tools differ here: amitools refuses the
+ * sequence number, ADFlib follows the next links and writes an empty file. */
 static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t expected, adf_sink *sink, xx_pd_struct *pd)
 {
     uint8_t table[ADF_BSIZE];
     uint8_t data[ADF_BSIZE];
     uint64_t remaining;
-    uint32_t sequence = 1U, hops = 0U, current = header;
+    uint32_t hops = 0U, current = header;
     uint32_t tortoise = header, power = 1U, run = 0U;
     if (!adf_file_header_ok(volume, header, table)) return false;
     remaining = xx_data_get_u32(table + ADF_OFF_BYTE_SIZE, 4, 0, true);
@@ -1008,18 +1025,17 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t ex
                 if (!adf_sink_put(sink, data, take)) return false;
             } else {
                 uint32_t size = xx_data_get_u32(data + 12U, 4, 0, true);
-                if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA || xx_data_get_u32(data + 4U, 4, 0, true) != header ||
-                    xx_data_get_u32(data + 8U, 4, 0, true) != sequence || size == 0U || size > ADF_OFS_PAYLOAD || !adf_checksum_ok(data))
+                if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA || xx_data_get_u32(data + 4U, 4, 0, true) != header || size == 0U ||
+                    size > ADF_OFS_PAYLOAD || !adf_checksum_ok(data))
                     return false;
                 take = (uint64_t)size < remaining ? (size_t)size : (size_t)remaining;
                 if (!adf_sink_put(sink, data + ADF_OFS_HEADER, take)) return false;
             }
             remaining -= take;
-            ++sequence;
         }
         if (remaining == 0U) break;
         if (pd && xx_pd_is_stopped(pd)) return false;
-        /* Extension (list) block: type 16, its own key, parent = header. */
+        /* Extension (list) block: type 16, its own key, file secondary type. */
         current = xx_data_get_u32(table + ADF_OFF_EXTENSION, 4, 0, true);
         if (current == tortoise) return false;
         if (++run == power) {
@@ -1029,8 +1045,7 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t ex
         }
         if (++hops > volume->blocks || !adf_pointer_ok(volume, current) || !adf_read_block(volume, current, table) ||
             xx_data_get_u32(table + ADF_OFF_TYPE, 4, 0, true) != ADF_T_LIST || xx_data_get_u32(table + ADF_OFF_KEY, 4, 0, true) != current ||
-            xx_data_get_u32(table + ADF_OFF_PARENT, 4, 0, true) != header || xx_data_get_u32(table + ADF_OFF_SEC_TYPE, 4, 0, true) != ADF_ST_FILE ||
-            !adf_checksum_ok(table))
+            xx_data_get_u32(table + ADF_OFF_SEC_TYPE, 4, 0, true) != ADF_ST_FILE || !adf_checksum_ok(table))
             return false;
     }
     return adf_sink_flush(sink);

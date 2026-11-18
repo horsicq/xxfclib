@@ -314,7 +314,11 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header, int
                 goto fail;
             xx_mem_zero(&member, sizeof(member));
             member.unpacked_size = xx_data_get_u32(entry + 3U, 4, 0, false);
-            member.dos_time = xx_data_get_u32(entry + 15U, 4, 0, false);
+            /* MS-DOS timestamp stored as two words: date at +15, time at +17.
+             * The packed TIMESTAMP meta is (date << 16) | time (as CAB/ZOO). A
+             * plain u32 read here would place them in the wrong halves. */
+            member.dos_time = ((uint32_t)xx_data_get_u16(entry + 15U, 2, 0, false) << 16) |
+                              (uint32_t)xx_data_get_u16(entry + 17U, 2, 0, false);
             member.attributes = xx_data_get_u32(entry + 19U, 4, 0, false);
             member.volume = xx_data_get_u16(entry + 25U, 2, 0, false);
             member.wire_offset = xx_data_get_u32(entry + 11U, 4, 0, false);
@@ -485,6 +489,10 @@ static bool is3_set_record(xx_archive_record *record, const is3_member *member)
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_time) &&
+           /* Also expose the packed words so the listing shows a DOS date
+            * (the formatter reads TIMESTAMP as Unix seconds otherwise). */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->dos_time >> 16) & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time & 0xFFFFU) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_DISK_NUMBER_START, member->volume) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }

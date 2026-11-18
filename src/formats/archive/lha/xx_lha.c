@@ -104,6 +104,7 @@ typedef struct xx_lha_member_s {
     uint32_t method;
     uint16_t payload_crc;
     uint64_t timestamp;
+    bool dos_stamp; /* levels 0/1: timestamp is a packed MS-DOS date<<16|time */
     bool is_folder;
 } xx_lha_member;
 
@@ -717,6 +718,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd)
          * and 1 but a Unix time_t at levels 2 and 3, and the level is the
          * only thing that says which. */
         member.timestamp = (uint64_t)xx_data_get_u32(header + 15, 4, 0, false);
+        member.dos_stamp = level <= 1U;
         member.is_folder = is_dir;
         if (!xx_lha_add(stream, &member)) {
             xx_str_free(member.name);
@@ -1011,6 +1013,11 @@ static bool xx_lha_set_record(xx_archive_record *record, const xx_lha_member *me
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           /* Levels 0/1 only: also the packed DOS words, because the listing
+            * reads TIMESTAMP as Unix seconds (which it is at levels 2/3). */
+           (!member->dos_stamp ||
+            (xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->timestamp >> 16) & 0xFFFFU) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU))) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 

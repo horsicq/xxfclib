@@ -536,6 +536,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/algo/quantum/xx_quantum.h
     include/xxfclib/formats/archive/zip/xx_zip.h
     include/xxfclib/formats/archive/zip/xx_zip_yx.h
+    include/xxfclib/formats/archive/zip/xx_zip_py.h
     include/xxfclib/toml/xx_toml.h
     include/xxfclib/net/xx_domain_yx.h
     include/xxfclib/formats/executable/jar/xx_jar.h
@@ -880,6 +881,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/executable/lx/xx_lx.h
     include/xxfclib/formats/executable/dex/xx_dex.h
     include/xxfclib/formats/executable/dex/xx_dex_yx.h
+    include/xxfclib/formats/executable/dex/xx_dex_legacy.h
     # Readers already registered by xx_format and the public API.
     include/xxfclib/formats/installer/sfx_analogx_emucore_ffs/xx_sfx_analogx_emucore_ffs.h
     include/xxfclib/formats/installer/sfx_krzip/xx_sfx_krzip.h
@@ -2382,6 +2384,7 @@ set(XXFCLIB_SOURCES
     src/formats/xx_memory_map.c
     src/formats/archive/zip/xx_zip.c
     src/formats/archive/zip/xx_zip_yx.c
+    src/formats/archive/zip/xx_zip_py.c
     src/formats/archive/zip/xx_zip_legacy_encoder.c
     src/formats/archive/zip/xx_zip_extractor.c
     src/formats/executable/jar/xx_jar.c
@@ -3319,6 +3322,7 @@ set(XXFCLIB_SOURCES
     src/formats/executable/lx/xx_lx_extractor.c
     src/formats/executable/dex/xx_dex.c
     src/formats/executable/dex/xx_dex_yx.c
+    src/formats/executable/dex/xx_dex_legacy.c
     src/formats/executable/dex/xx_dex_extractor.c
     # Readers already registered by xx_format and the public API.
     src/formats/executable/xamarin_compressed_assembly/xx_xamarin_compressed_assembly.c

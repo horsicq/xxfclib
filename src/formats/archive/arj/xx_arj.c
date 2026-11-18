@@ -32,6 +32,7 @@ typedef struct xx_arj_member_s {
     uint8_t method;
     uint8_t flags;
     uint8_t file_type;
+    uint8_t host_os;
     char *name;
 } xx_arj_member;
 
@@ -159,6 +160,7 @@ static bool xx_arj_parse(Abstractformat *format, xx_arj_stream **result, int64_t
         member->method = body[5];
         member->flags = body[4];
         member->file_type = body[6];
+        member->host_os = body[3];
         ++stream->count;
         xx_mem_free(body);
         body = NULL;
@@ -239,6 +241,12 @@ static bool xx_arj_set_record(xx_archive_record *record, const xx_arj_member *me
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->packed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc32) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds.
+            * Host OS 2 (UNIX) and 8 (NeXT) store a Unix time here instead, so those
+            * keep TIMESTAMP alone. */
+           (member->host_os == 2U || member->host_os == 8U ||
+            (xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, ((uint32_t)member->timestamp >> 16) & 0xFFFFU) &&
+             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU))) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, folder) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, (member->flags & XX_ARJ_FLAG_GARBLED) != 0U);
 }

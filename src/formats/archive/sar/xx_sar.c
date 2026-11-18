@@ -11,6 +11,7 @@ typedef struct sar_member {
     uint32_t method;
     uint16_t crc;
     uint64_t timestamp;
+    uint64_t dos_date, dos_time; /* UINT64_MAX when the LHA record carries none */
     int64_t header_offset, header_size;
 } sar_member;
 static bool sar_safe_name(const char *name)
@@ -122,6 +123,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         context->method = (uint32_t)method;
         context->crc = (uint16_t)(crc[0] | ((uint16_t)crc[1] << 8));
         context->timestamp = xx_archive_record_get_meta_u64(r, XX_META_ID_TIMESTAMP, 0);
+        context->dos_date = xx_archive_record_get_meta_u64(r, XX_META_ID_LAST_MOD_DATE, UINT64_MAX);
+        context->dos_time = xx_archive_record_get_meta_u64(r, XX_META_ID_LAST_MOD_TIME, UINT64_MAX);
         context->header_offset = r->header_offset;
         context->header_size = r->header_size;
         m->context = context;
@@ -147,7 +150,11 @@ static bool sar_record(xx_archive_record_state *st)
     st->current_record.header_offset = m->header_offset;
     st->current_record.header_size = m->header_size;
     return xx_archive_record_set_meta_u64(&st->current_record, XX_META_ID_COMPRESSION_METHOD, m->method) &&
-           xx_archive_record_set_meta_u64(&st->current_record, XX_META_ID_TIMESTAMP, m->timestamp);
+           xx_archive_record_set_meta_u64(&st->current_record, XX_META_ID_TIMESTAMP, m->timestamp) &&
+           /* Carry the LHA reader's packed DOS words (levels 0/1) so the listing shows a DOS date. */
+           (m->dos_date == UINT64_MAX || m->dos_time == UINT64_MAX ||
+            (xx_archive_record_set_meta_u64(&st->current_record, XX_META_ID_LAST_MOD_DATE, m->dos_date) &&
+             xx_archive_record_set_meta_u64(&st->current_record, XX_META_ID_LAST_MOD_TIME, m->dos_time)));
 }
 static xx_archive_record_state *sar_records(Abstractformat *f, const xx_list_s *opts, xx_pd_struct *pd)
 {

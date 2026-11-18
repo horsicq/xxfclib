@@ -1312,6 +1312,9 @@ static bool gi_set_record(xx_archive_record *record, const gi_package *package, 
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attrs) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->date << 16U) | member->time) &&
+           /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->date & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->time & 0xFFFFU) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 

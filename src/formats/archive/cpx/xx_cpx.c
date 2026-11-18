@@ -546,7 +546,15 @@ static bool cpx_set_record(xx_archive_record *record, const cpx_member *member)
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->stored ? 0U : 1U) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           /* Also the DOS words: the listing reads TIMESTAMP as Unix seconds. v1
+            * records pack date-high/time-low; on real v4 archives the same dword
+            * holds the TIME in the high half and the DATE in the low half. */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE,
+                                          member->header_size == CPX_V4_RECORD_SIZE ? (member->timestamp & 0xFFFFU) : ((member->timestamp >> 16) & 0xFFFFU)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME,
+                                          member->header_size == CPX_V4_RECORD_SIZE ? ((member->timestamp >> 16) & 0xFFFFU) : (member->timestamp & 0xFFFFU)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 

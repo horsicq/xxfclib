@@ -417,6 +417,11 @@ static bool xx_pcsecure_set_record(xx_archive_record *record, const xx_pcsecure_
         if (stream->timestamp != 0U && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, stream->timestamp)) {
             return false;
         }
+        /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+        if (stream->timestamp != 0U && (!xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (stream->timestamp >> 16) & 0xFFFFU) ||
+                                        !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, stream->timestamp & 0xFFFFU))) {
+            return false;
+        }
     }
     return true;
 }

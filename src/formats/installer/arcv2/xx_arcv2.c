@@ -396,6 +396,9 @@ static bool arcv2_set_record(xx_archive_record *record, const arcv2_member *memb
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, method) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->flags) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->dos_datetime) &&
+           /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->dos_datetime >> 16) & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_datetime & 0xFFFFU) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->packed_crc32) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }

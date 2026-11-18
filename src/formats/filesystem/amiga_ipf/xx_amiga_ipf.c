@@ -1,5 +1,16 @@
 /* SPDX-License-Identifier: MIT. Independently implemented primary framing.
  * Inert encoded components only: no playback, emulation or filesystem recovery.
+ *
+ * The accepted shapes are the ones the 5,144 SPS releases of TOSEC 2017-04-23
+ * (Commodore Amiga, SPS sets) use, every payload byte accounted for:
+ * - track density 1..9 (1 = unformatted "noise" track: no blocks, an empty
+ *   DATA payload and zero bit counts; 3..9 = copy-protection track types),
+ *   track flag bit 0 (fuzzy bits);
+ * - data stream elements 1 sync, 2 data, 3 gap, 5 fuzzy (a length only, no
+ *   sample bytes); a sync counts its bits as cells, the others two cells a bit;
+ * - encoder 2 (SPS) block flags: bit 0 forward gap list, bit 1 backward gap
+ *   list (both at the block's gap offset, each ended by a zero byte; element
+ *   1 = repeat length, 2 = sample of that many bits), bit 2 sizes in bits.
  */
 #include "xxfclib/formats/filesystem/amiga_ipf/xx_amiga_ipf.h"
 #include "../../common/xx_retro_resource_components.h"
@@ -23,11 +34,11 @@ static bool ipf_stream(retro_resource_blob *b, uint32_t a, uint32_t end, uint32_
             *used = a - start;
             return true;
         }
-        if (!bytes || !param || kind > 3) {
+        if (!bytes || !param || kind > 5 || kind == 4) {
             return false;
         }
         amount = bits ? param : (uint64_t)param * 8;
-        n = (amount + 7) / 8;
+        n = kind == 5 ? 0 : (amount + 7) / 8; /* fuzzy bits carry no samples */
         if (kind != 1) {
             amount *= 2;
         }
@@ -37,22 +48,61 @@ static bool ipf_stream(retro_resource_blob *b, uint32_t a, uint32_t end, uint32_
     }
     return false;
 }
+/* One gap list of an SPS-encoder block: elements up to a zero byte. */
+static bool ipf_gap(retro_resource_blob *b, uint32_t a, uint32_t end, uint32_t *used)
+{
+    uint32_t start = a;
+    while (a < end) {
+        uint32_t v = b->p[a++], bytes = v >> 5, param = 0, i, kind = v & 31;
+        if (!retro_resource_work(b, 1) || bytes > 4 || bytes > end - a) return false;
+        for (i = 0; i < bytes; ++i) param = (param << 8) | b->p[a++];
+        if (!kind) {
+            if (v) return false;
+            *used = a - start;
+            return true;
+        }
+        if (!bytes || !param || kind > 2) return false;
+        if (kind == 2) {
+            uint64_t n = ((uint64_t)param + 7) / 8;
+            if (n > end - a) return false;
+            a += (uint32_t)n;
+        }
+    }
+    return false;
+}
 static bool ipf_data(retro_resource_blob *b, const ipf_track *t, uint32_t encoder)
 {
     const uint8_t *p = b->p;
     uint32_t n = xx_data_get_u32(p + t->imge + 52, 4, 0, true), i, table = n * 32, end = t->data + t->size, count = 0, maxend = t->data + table;
     uint64_t cells = 0, data = 0, gaps = 0;
-    retro_resource_extent ext[512];
-    if (!n || n > 256 || table > t->size || !retro_resource_claim(b, ext, &count, t->data, table, false)) return false;
+    retro_resource_extent ext[1024]; /* the table, then a data stream and a gap extent per block */
+    if (!n) /* unformatted track: no blocks, no payload, no cells */
+        return !t->size && !xx_data_get_u32(p + t->imge + 40, 4, 0, true) && !xx_data_get_u32(p + t->imge + 44, 4, 0, true) &&
+               !xx_data_get_u32(p + t->imge + 48, 4, 0, true);
+    if (n > 256 || table > t->size || !retro_resource_claim(b, ext, &count, t->data, table, false)) return false;
     for (i = 0; i < n; ++i) {
         uint32_t q = t->data + i * 32, dc = xx_data_get_u32(p + q, 4, 0, true), gc = xx_data_get_u32(p + q + 4, 4, 0, true),
-                 flags = xx_data_get_u32(p + q + 20, 4, 0, true), off = xx_data_get_u32(p + q + 28, 4, 0, true), used;
-        if (!dc || dc > 2000000 || gc > 2000000 || (gc && gc < 8) || xx_data_get_u32(p + q + 16, 4, 0, true) != 1 || (flags & ~4U) || (encoder == 1 && flags) ||
-            xx_data_get_u32(p + q + 24, 4, 0, true) > 255 || off < table || off >= t->size)
+                 gap = xx_data_get_u32(p + q + 8, 4, 0, true), flags = xx_data_get_u32(p + q + 20, 4, 0, true), off = xx_data_get_u32(p + q + 28, 4, 0, true), used;
+        /* Words 8 and 12 are byte counts for encoder 1, the gap offset and the cell type (1) for encoder 2. */
+        if (!dc || dc > 2000000 || gc > 2000000 || xx_data_get_u32(p + q + 16, 4, 0, true) != 1 ||
+            (encoder == 1 ? flags != 0 : ((flags & ~7U) || xx_data_get_u32(p + q + 12, 4, 0, true) != 1)) || off < table || off >= t->size)
             return false;
         if (!ipf_stream(b, t->data + off, end, dc, encoder == 2 && (flags & 4), &used) || !retro_resource_claim(b, ext, &count, t->data + off, used, false)) return false;
         if (t->data + off + used > maxend) {
             maxend = t->data + off + used;
+        }
+        if (encoder == 2) {
+            if (flags & 3U) {
+                uint32_t size = 0, part = 0;
+                if (gap < table || gap >= t->size) return false;
+                if ((flags & 1U) && !ipf_gap(b, t->data + gap, end, &size)) return false;
+                if ((flags & 2U) && !ipf_gap(b, t->data + gap + size, end, &part)) return false;
+                size += part;
+                if (!retro_resource_claim(b, ext, &count, t->data + gap, size, false)) return false;
+                if (t->data + gap + size > maxend) {
+                    maxend = t->data + gap + size;
+                }
+            } else if (gap) return false;
         }
         data += dc;
         gaps += gc;
@@ -93,14 +143,19 @@ static bool read_components(Abstractformat *f, pm_stream *s, retro_resource_blob
             if ((encoder != 1 && encoder != 2) || minc > maxc || maxc > 83 || minh > maxh || maxh > 1 || !retro_resource_emit(f, s, b, "ipf-info.bin", start, z))
                 return false;
         } else if (!xx_rt_memcmp(p + start, "IMGE", 4)) {
-            uint32_t key, c, h;
+            uint32_t key, c, h, density, start_bit, track_bits;
             if (!info || z != 80 || n == 170) return false;
             key = xx_data_get_u32(p + start + 64, 4, 0, true);
             c = xx_data_get_u32(p + start + 12, 4, 0, true);
             h = xx_data_get_u32(p + start + 16, 4, 0, true);
-            if (c < minc || c > maxc || h < minh || h > maxh || xx_data_get_u32(p + start + 20, 4, 0, true) != 2 || xx_data_get_u32(p + start + 24, 4, 0, true) != 1 ||
-                xx_data_get_u32(p + start + 56, 4, 0, true) || xx_data_get_u32(p + start + 60, 4, 0, true) || !retro_resource_zero(p + start + 68, 12) ||
-                xx_data_get_u32(p + start + 36, 4, 0, true) >= xx_data_get_u32(p + start + 48, 4, 0, true))
+            density = xx_data_get_u32(p + start + 20, 4, 0, true);
+            start_bit = xx_data_get_u32(p + start + 36, 4, 0, true);
+            track_bits = xx_data_get_u32(p + start + 48, 4, 0, true);
+            /* Density 1..9, signal 1 (2 us cells), no process word, flags: fuzzy bit only.  An unformatted
+             * track has no bits, so its start bit is 0 as well. */
+            if (c < minc || c > maxc || h < minh || h > maxh || density < 1 || density > 9 || xx_data_get_u32(p + start + 24, 4, 0, true) != 1 ||
+                xx_data_get_u32(p + start + 56, 4, 0, true) || (xx_data_get_u32(p + start + 60, 4, 0, true) & ~1U) || !retro_resource_zero(p + start + 68, 12) ||
+                (track_bits ? start_bit >= track_bits : start_bit != 0))
                 return false;
             for (i = 0; i < n; ++i)
                 if (tracks[i].key == key || (xx_data_get_u32(p + tracks[i].imge + 12, 4, 0, true) == c && xx_data_get_u32(p + tracks[i].imge + 16, 4, 0, true) == h))
@@ -118,7 +173,8 @@ static bool read_components(Abstractformat *f, pm_stream *s, retro_resource_blob
             for (i = 0; i < n; ++i) {
                 if (tracks[i].key == key) t = &tracks[i];
             }
-            if (!t || t->data || !size || !retro_resource_span(b, a, size) || bits != (uint64_t)size * 8 || !retro_resource_crc(b, a, size, false, &crc) ||
+            /* An unformatted track has an empty payload (CRC 0). */
+            if (!t || t->data || !retro_resource_span(b, a, size) || bits != (uint64_t)size * 8 || !retro_resource_crc(b, a, size, false, &crc) ||
                 crc != xx_data_get_u32(p + start + 20, 4, 0, true))
                 return false;
             t->data = a;
@@ -131,6 +187,7 @@ static bool read_components(Abstractformat *f, pm_stream *s, retro_resource_blob
         if (!tracks[i].data || !ipf_data(b, &tracks[i], encoder)) return false;
         xx_rt_snprintf(label, sizeof(label), "track-%03u-descriptor.bin", i);
         if (!retro_resource_emit(f, s, b, label, tracks[i].imge, 80)) return false;
+        if (!tracks[i].size) continue; /* unformatted track: descriptor only */
         xx_rt_snprintf(label, sizeof(label), "track-%03u-encoded-data.bin", i);
         if (!retro_resource_emit(f, s, b, label, tracks[i].data, tracks[i].size)) return false;
     }

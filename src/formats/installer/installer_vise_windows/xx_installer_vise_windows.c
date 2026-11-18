@@ -1659,6 +1659,9 @@ static bool vise_set_record(Abstractformat *format, xx_archive_record *record, c
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, VISE_METHOD_DEFLATE) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->dos_date << 16U) | (uint64_t)member->dos_time) &&
+           /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time & 0xFFFFU) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
            (!member->has_crc || xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc));
 }

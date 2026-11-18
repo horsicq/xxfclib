@@ -908,6 +908,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/sfx_ha
     src/formats/archive/sfx_hap
     src/formats/archive/sfx_imp
+    src/formats/archive/sfx_isexpress_ne
     src/formats/archive/sfx_kwaj
     src/formats/archive/sfx_lha
     src/formats/archive/sfx_localzip
@@ -1062,6 +1063,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/executable/upx_engine
     src/formats/filesystem/adf
     src/formats/filesystem/amiga_ext_adf
+    src/formats/filesystem/amiga_ipf
     src/formats/filesystem/amiga_old_ext_adf
     src/formats/filesystem/aodos
     src/formats/filesystem/apple_disk_copy_6_ndif_image
@@ -2880,6 +2882,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_imp
     src/formats/archive/sfx_imp/xx_sfx_imp.c
     src/formats/archive/sfx_imp/xx_sfx_imp_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_isexpress_ne
+    src/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne.c
+    src/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne_extractor.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_kwaj
     src/formats/archive/sfx_kwaj/xx_sfx_kwaj.c
     src/formats/archive/sfx_kwaj/xx_sfx_kwaj_extractor.c
@@ -3243,6 +3249,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zip
     src/formats/archive/zip/xx_zip_extractor.c
     src/formats/archive/zip/xx_zip_inspect.c
     src/formats/archive/zip/xx_zip_legacy_encoder.c
+    src/formats/archive/zip/xx_zip_py.c
     src/formats/archive/zip/xx_zip_yx.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_zip_psc
@@ -3538,6 +3545,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_amiga_ext_adf
     src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf.c
     src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_extractor.c
     src/formats/filesystem/amiga_ext_adf/xx_amiga_ext_adf_reader_adapters.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_amiga_ipf
+    src/formats/filesystem/amiga_ipf/xx_amiga_ipf.c
+    src/formats/filesystem/amiga_ipf/xx_amiga_ipf_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_filesystem_amiga_old_ext_adf
     src/formats/filesystem/amiga_old_ext_adf/xx_amiga_old_ext_adf.c

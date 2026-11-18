@@ -876,6 +876,9 @@ static bool sbx_set_record(Abstractformat *format, xx_archive_record *record, co
     /* The packed MS-DOS stamp, time in the low word and date in the high
      * one, as the ARJ reader publishes it.  A zero date is "no date". */
     if (member->dos_date != 0U && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->dos_date << 16U) | member->dos_time)) return false;
+    /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+    if (member->dos_date != 0U && (!xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date & 0xFFFFU) ||
+                                   !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time & 0xFFFFU))) return false;
     return true;
 }
 

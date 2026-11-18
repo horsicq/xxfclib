@@ -247,6 +247,9 @@ static bool cab_record(xx_archive_record *r, const cab_context *c, size_t i)
     return xx_archive_record_set_original_name(r, x->name) && xx_archive_record_set_meta_u64(r, XX_META_ID_UNCOMPRESSED_SIZE, x->size) &&
            xx_archive_record_set_meta_u64(r, XX_META_ID_COMPRESSION_METHOD, method) && xx_archive_record_set_meta_u64(r, XX_META_ID_ATTRIBUTES, x->attrs) &&
            xx_archive_record_set_meta_u64(r, XX_META_ID_TIMESTAMP, ((uint32_t)x->date << 16U) | x->time) &&
+           /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
+           xx_archive_record_set_meta_u64(r, XX_META_ID_LAST_MOD_DATE, x->date & 0xFFFFU) &&
+           xx_archive_record_set_meta_u64(r, XX_META_ID_LAST_MOD_TIME, x->time & 0xFFFFU) &&
            xx_archive_record_set_meta_bool(r, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(r, XX_META_ID_IS_ENCRYPTED, false);
 }
 

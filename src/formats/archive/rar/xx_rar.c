@@ -957,7 +957,13 @@ static bool xx_rar_populate_archive_record(xx_io_device *device, const xx_rar_fi
         !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)info->block.data_size) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, info->method) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, info->attributes) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, info->timestamp) || !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, info->block.flags) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, info->timestamp) ||
+        /* RAR 1.4-4.x store a packed MS-DOS date<<16|time (RAR5 a Unix time):
+         * also expose the words, because the listing reads TIMESTAMP as Unix seconds. */
+        (info->block.version != XX_RAR_VERSION_5 &&
+         (!xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (info->timestamp >> 16) & 0xFFFFU) ||
+          !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, info->timestamp & 0xFFFFU))) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, info->block.flags) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_INTERNAL_ATTRS, info->file_flags) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, info->is_folder) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, info->is_encrypted)) {
