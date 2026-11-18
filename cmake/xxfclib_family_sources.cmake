@@ -908,7 +908,6 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/archive/sfx_ha
     src/formats/archive/sfx_hap
     src/formats/archive/sfx_imp
-    src/formats/archive/sfx_isexpress_ne
     src/formats/archive/sfx_kwaj
     src/formats/archive/sfx_lha
     src/formats/archive/sfx_localzip
@@ -2881,10 +2880,6 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_hap
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_imp
     src/formats/archive/sfx_imp/xx_sfx_imp.c
     src/formats/archive/sfx_imp/xx_sfx_imp_extractor.c
-)
-set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_isexpress_ne
-    src/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne.c
-    src/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_sfx_kwaj
     src/formats/archive/sfx_kwaj/xx_sfx_kwaj.c

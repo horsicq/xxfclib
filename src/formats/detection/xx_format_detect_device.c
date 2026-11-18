@@ -1144,7 +1144,6 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
 #include "xxfclib/formats/archive/sfx_tar/xx_sfx_tar.h"
 #include "xxfclib/formats/archive/sfx_cab/xx_sfx_cab.h"
 #include "xxfclib/formats/archive/c64s/xx_c64s.h"
-#include "xxfclib/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne.h"
 #include "xxfclib/formats/archive/rar/xx_rar.h"
 #include "xxfclib/formats/archive/pmarc_sfx/xx_pmarc_sfx.h"
 #include "xxfclib/formats/archive/sfx_7zip/xx_sfx_7zip.h"
@@ -4181,16 +4180,7 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
         valid_ne = xx_ne_check_is_valid(&ne.format, NULL);
         xx_ne_destroy(&ne);
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-        if (valid_ne) {
-            /* A 16-bit stub with files appended to its image: claimed only
-             * when the record chain validates up to the end of the file. */
-            if (xx_sfx_isexpress_ne_fast_detect(dev, 0, false)) {
-                (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-                return XX_FILE_TYPE_SFX_ISEXPRESS_NE;
-            }
-            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
-            return XX_FILE_TYPE_NE;
-        }
+        if (valid_ne) return XX_FILE_TYPE_NE;
         xx_le_init(&le, dev, 0);
         valid_le = xx_le_check_is_valid(&le.format, NULL);
         xx_le_destroy(&le);

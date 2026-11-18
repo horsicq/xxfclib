@@ -1432,7 +1432,6 @@ extern xx_format_extractor xx_chasm_csid_extractor;
 extern xx_format_extractor xx_c64s_extractor;
 extern xx_format_extractor xx_createinstall_pak_extractor;
 extern xx_format_extractor xx_chieflz_v1_extractor;
-extern xx_format_extractor xx_sfx_isexpress_ne_extractor;
 extern xx_format_extractor xx_instalit_data_extractor;
 extern xx_format_extractor xx_sdi_extractor;
 extern xx_format_extractor xx_superdat_extractor;
@@ -2925,7 +2924,6 @@ static const struct {
     { XX_FILE_TYPE_C64S, &xx_c64s_extractor },
     { XX_FILE_TYPE_CREATEINSTALL_PAK, &xx_createinstall_pak_extractor },
     { XX_FILE_TYPE_CHIEFLZ_V1, &xx_chieflz_v1_extractor },
-    { XX_FILE_TYPE_SFX_ISEXPRESS_NE, &xx_sfx_isexpress_ne_extractor },
     { XX_FILE_TYPE_INSTALIT_DATA, &xx_instalit_data_extractor },
     { XX_FILE_TYPE_SDI, &xx_sdi_extractor },
     { XX_FILE_TYPE_SUPERDAT, &xx_superdat_extractor },

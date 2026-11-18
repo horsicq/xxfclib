@@ -6767,25 +6767,6 @@
     "src/formats/archive/sfx_imp/xx_sfx_imp_extractor.c"
    ]
   },
-  "sfx_isexpress_ne": {
-   "flag": "SFX_ISEXPRESS_NE",
-   "types": [
-    "SFX_ISEXPRESS_NE"
-   ],
-   "label": "InstallShield Express one-file self-extractor (NE)",
-   "directory": "archive/sfx_isexpress_ne",
-   "own_component": false,
-   "sort": false,
-   "codepages": false,
-   "codecs": [],
-   "formats": [
-    "archive/sfx_isexpress_ne"
-   ],
-   "sources": [
-    "src/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne.c",
-    "src/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne_extractor.c"
-   ]
-  },
   "sfx_kwaj": {
    "flag": "SFX_KWAJ",
    "types": [

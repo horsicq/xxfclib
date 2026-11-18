@@ -22,7 +22,6 @@
 #include "xxfclib/formats/archive/csd/xx_csd.h"
 #include "xxfclib/formats/installer/instalit_data/xx_instalit_data.h"
 #include "xxfclib/formats/archive/chieflz_v1/xx_chieflz_v1.h"
-#include "xxfclib/formats/archive/sfx_isexpress_ne/xx_sfx_isexpress_ne.h"
 #include "xxfclib/formats/archive/createinstall_pak/xx_createinstall_pak.h"
 #include "xxfclib/formats/archive/chasm_csid/xx_chasm_csid.h"
 #include "xxfclib/formats/archive/compaq_msgdata/xx_compaq_msgdata.h"
@@ -324,11 +323,6 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
     }
     if (prefix_size >= 0x3DU && !xx_rt_memcmp(prefix, "\x0a\x04\x0d" "ChfLZ\x05\x06\x08", 11U) && xx_chieflz_v1_fast_detect(device, 0, false)) {
         result = XX_FILE_TYPE_CHIEFLZ_V1; goto done;
-    }
-    /* InstallShield Express one-file self-extractor: an NE stub followed by
-     * a record chain that must validate up to the end of the file. */
-    if (prefix_size >= 64U && prefix[0] == 'M' && prefix[1] == 'Z' && xx_sfx_isexpress_ne_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_SFX_ISEXPRESS_NE; goto done;
     }
     /* Instalit volume: trailer + "[PVM]" directory (before the numbered-split
      * fallback claims *.001 files). */
