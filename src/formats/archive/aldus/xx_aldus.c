@@ -40,7 +40,7 @@ typedef struct aldus_stream {
     uint32_t block_count;
     uint32_t last_block_size;
     uint32_t original_size;
-    uint32_t timestamp;
+    uint64_t timestamp;
     int64_t header_size;
     int64_t data_offset;
     int64_t stream_size;
@@ -184,7 +184,24 @@ static bool parse(Abstractformat *format, aldus_stream **result)
     stream->block_count = block_count;
     stream->last_block_size = last_block;
     stream->original_size = original;
-    stream->timestamp = xx_data_get_u32(header + 0x36U, 4, 0, false);
+    /* Modification time, kept as Unix seconds.  The two Aldus generations
+     * hold the packer's C run-time time_t at 0x36, little endian: LZW 1.00
+     * files count from 1970, PKZP 2.00 files from 1899-12-31 (the epoch of
+     * the 16-bit run-time their packer was built with), 2209075200 seconds
+     * earlier.  The ranges cannot meet -- a 1970-based value that large is
+     * past 2040 -- so the value itself tells them apart.  ADOBE LZSH 3.00
+     * has the Win32 file attributes at 0x36 and a FILETIME at 0x3A. */
+    if (generation == ALDUS_GENERATION_LZSH) {
+        uint8_t stamp[8];
+        stream->timestamp = 0U;
+        if (read_at(format->device, format->base_address + 0x3A, stamp, sizeof(stamp))) {
+            uint64_t filetime = xx_data_get_u64(stamp, 8, 0, false);
+            if (filetime >= UINT64_C(116444736000000000)) stream->timestamp = filetime / UINT64_C(10000000) - UINT64_C(11644473600);
+        }
+    } else {
+        uint32_t seconds = xx_data_get_u32(header + 0x36U, 4, 0, false);
+        stream->timestamp = seconds >= 2209075200U ? seconds - 2209075200U : seconds;
+    }
     stream->header_size = xx_data_get_u16(header + 16U, 2, 0, true);
     stream->data_offset = data_offset;
     stream->stream_size = data_offset + packed_total - stream->header_size;

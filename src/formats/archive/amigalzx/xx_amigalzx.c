@@ -417,9 +417,8 @@ static xx_amigalzx_stream *xx_amigalzx_parse_raw(Abstractformat *self, xx_pd_str
          * It is the only end-to-end check the format offers and decode below
          * refuses a member whose bytes do not reproduce it. */
         member.crc32 = xx_data_get_u32(header + 22, 4, 0, false);
-        /* The packed Amiga date/time word is stored verbatim rather than
-         * converted: its field layout is not the UNIX epoch and re-deriving
-         * it here would invent precision the container does not have. */
+        /* The packed date/time word is kept as read; amigalzx_unix_time()
+         * decodes it when the member is reported. */
         member.timestamp = (uint64_t)xx_data_get_u32(header + 18, 4, 0, false);
         /* LZX normally stores directories only as the path prefix of a
          * member; some writers add explicit zero-size "dir/" records. */
@@ -1134,6 +1133,39 @@ uint64_t xx_amigalzx_get_number_of_archive_records(Abstractformat *self, xx_pd_s
 
 /* ------------------------------------------------------------- records -- */
 
+/* Unix seconds of a member's packed date word.  The four bytes at header
+ * offset 18 form a big-endian bit field -- day:5 month:4 year:6 hour:5
+ * minute:6 second:6 from the top bit down, the month counted from 0 and the
+ * year from 1970 -- and the reader keeps them as a little-endian word, so
+ * the bytes are swapped back first.  The six-bit year wraps: the original
+ * packer wrote 2000..2005 as 58..63 and a later patch wrote 2034..2041 as
+ * 0..7; 8..57 are 1978..2027 as they stand.  Amiga dates carry no time
+ * zone, so the wall-clock fields are taken as they are.  A word whose
+ * fields are out of range reports 0. */
+static uint64_t amigalzx_unix_time(uint64_t stored)
+{
+    uint32_t little = (uint32_t)stored;
+    uint32_t word = (little >> 24U) | ((little >> 8U) & 0x0000ff00U) | ((little << 8U) & 0x00ff0000U) | (little << 24U);
+    uint32_t day = (word >> 27U) & 0x1fU;
+    uint32_t month = ((word >> 23U) & 0x0fU) + 1U;
+    uint32_t year = ((word >> 17U) & 0x3fU) + 1970U;
+    uint32_t hour = (word >> 12U) & 0x1fU;
+    uint32_t minute = (word >> 6U) & 0x3fU;
+    uint32_t second = word & 0x3fU;
+    uint32_t days;
+    if (little == 0U || day < 1U || month > 12U || hour > 23U || minute > 59U || second > 59U) return 0U;
+    if (year >= 2028U) year -= 28U;
+    else if (year < 1978U) year += 64U;
+    /* Days since 1970-01-01 in the proleptic Gregorian calendar, counting
+     * the year from March so the leap day falls at its end. */
+    if (month <= 2U) {
+        year -= 1U;
+        month += 12U;
+    }
+    days = 365U * year + year / 4U - year / 100U + year / 400U + (153U * (month - 3U) + 2U) / 5U + day - 719469U;
+    return (uint64_t)days * 86400U + (uint64_t)hour * 3600U + (uint64_t)minute * 60U + second;
+}
+
 static bool xx_amigalzx_set_record(xx_archive_record *record, const xx_amigalzx_member *member)
 {
     xx_archive_record_cleanup(record);
@@ -1146,7 +1178,7 @@ static bool xx_amigalzx_set_record(xx_archive_record *record, const xx_amigalzx_
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, amigalzx_unix_time(member->timestamp)) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 

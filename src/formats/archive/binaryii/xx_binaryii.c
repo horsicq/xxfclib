@@ -166,6 +166,28 @@ static uint32_t b2_prodos_time(uint16_t date, uint16_t time)
     return (year << 20U) | (month << 16U) | (day << 11U) | (hour << 6U) | minute;
 }
 
+/* Unix seconds of a b2_prodos_time() value.  ProDOS has no time zone, so
+ * the wall-clock fields are taken as they stand.  No date, or a year the
+ * two-digit pivot puts before 1970, reports 0. */
+static uint64_t b2_unix_time(uint32_t packed)
+{
+    uint32_t year = packed >> 20U;
+    uint32_t month = (packed >> 16U) & 0x0fU;
+    uint32_t day = (packed >> 11U) & 0x1fU;
+    uint32_t hour = (packed >> 6U) & 0x1fU;
+    uint32_t minute = packed & 0x3fU;
+    uint32_t days;
+    if (packed == 0U || year < 1970U || month < 1U || month > 12U || day < 1U) return 0U;
+    /* Days since 1970-01-01 in the proleptic Gregorian calendar, counting
+     * the year from March so the leap day falls at its end. */
+    if (month <= 2U) {
+        year -= 1U;
+        month += 12U;
+    }
+    days = 365U * year + year / 4U - year / 100U + year / 400U + (153U * (month - 3U) + 2U) / 5U + day - 719469U;
+    return (uint64_t)days * 86400U + (uint64_t)hour * 3600U + (uint64_t)minute * 60U;
+}
+
 /* ProDOS names are 7-bit ASCII, but a writer may leave the Apple II high bit
  * set on every character (GUADCNL.DOX stores "USERS.GUIDE.BXY" as D5 D3 C5
  * ...).  Masking is what turns that member into a readable name instead of
@@ -379,7 +401,7 @@ static bool b2_set_record(xx_archive_record *record, const b2_member *member)
     return xx_archive_record_set_original_name(record, member->name) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->stored_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->stored_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->modified) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, b2_unix_time(member->modified)) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->access) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->file_type) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_EXTERNAL_ATTRS, member->aux_type) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);

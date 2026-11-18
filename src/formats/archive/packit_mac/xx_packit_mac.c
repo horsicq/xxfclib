@@ -858,7 +858,7 @@ static bool pit_set_record(xx_archive_record *record, const pit_stream *stream, 
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     if (encrypted) return true;
-    return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, length) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, m->modified) &&
+    return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, length) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, m->modified >= 2082844800U ? (uint64_t)(m->modified - 2082844800U) : 0U) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, m->finder_flags) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, m->type);
 }
 

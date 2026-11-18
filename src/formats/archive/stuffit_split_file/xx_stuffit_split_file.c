@@ -338,7 +338,7 @@ static bool ssf_set_record(xx_archive_record *record, const ssf_stream *stream, 
     record->compressed_size = member->data_size;
     return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->data_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, stream->modified) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, stream->modified >= 2082844800U ? (uint64_t)(stream->modified - 2082844800U) : 0U) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, stream->finder_flags) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, stream->type) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);

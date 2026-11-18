@@ -3,8 +3,8 @@
 #define XX_PP20_SLOT_IMAGE_H
 #define PP20_SLOT 6272U
 #define PP20_IMAGE_LIMIT (64U*1024U*1024U)
-typedef struct pp20_image_item { size_t start,size; xx_pp20_context context; } pp20_image_item;
-typedef struct pp20_image { uint8_t *data; pp20_image_item *items; size_t size,count; uint64_t raw; } pp20_image;
+typedef struct pp20_image_item { size_t start,size; xx_pp20_context context; uint32_t index; bool stored; } pp20_image_item;
+typedef struct pp20_image { uint8_t *data; pp20_image_item *items; size_t size,count; uint64_t raw; bool library; } pp20_image;
 static void pp20_image_free(void *opaque)
 {pp20_image *s=(pp20_image*)opaque;if(s){xx_mem_free(s->data);xx_mem_free(s->items);xx_mem_free(s);}}
 static bool pp20_image_decode(const pp20_image *s,size_t index,uint8_t **plain,xx_pd_struct *pd)
@@ -12,13 +12,14 @@ static bool pp20_image_decode(const pp20_image *s,size_t index,uint8_t **plain,x
     const pp20_image_item *m=&s->items[index];size_t unused=SIZE_MAX;
     uint8_t *out=(uint8_t*)xx_mem_alloc((size_t)m->context.uncompressed_size);
     if(!out)return false;
+    if(m->stored){xx_rt_memcpy(out,s->data+m->start,m->size);*plain=out;return true;}
     if(!xx_pp20_decrunch(s->data+m->start,8,m->size-4,m->context.offset_widths,m->context.skip_bits,out,
                         (size_t)m->context.uncompressed_size,pd,&unused)||unused||xx_pd_is_stopped(pd)) {
         xx_mem_free(out);return false;
     }
     *plain=out;return true;
 }
-static pp20_image *pp20_image_open(Abstractformat *f,xx_pd_struct *pd)
+static pp20_image *pp20_slot_open(Abstractformat *f,xx_pd_struct *pd)
 {
     pp20_image *s=NULL;int64_t n,saved;size_t at,i,count=0;bool ok=false;
     if(!f||!f->device||f->base_address<0||xx_pd_is_stopped(pd))return NULL;
@@ -47,10 +48,18 @@ done:
     (void)xx_io_seek64(f->device,saved,SEEK_SET);
     if(!ok){pp20_image_free(s);s=NULL;}return s;
 }
+#include "xx_pp20_library.h"
+static pp20_image *pp20_image_open(Abstractformat *f,xx_pd_struct *pd)
+{pp20_image *s=pp20_slot_open(f,pd);return s?s:pp20_library_open(f,pd);}
+static void pp20_image_name(const pp20_image *s,const pp20_image_item *m,char *name,size_t size)
+{
+    if(!s->library)xx_rt_snprintf(name,size,"block-%08x.bin",(unsigned)m->start);
+    else xx_rt_snprintf(name,size,m->stored?"%03u_stored.iff":"%03u.bin",(unsigned)m->index);
+}
 static bool pp20_image_info(Abstractformat *f,xx_pd_struct *pd)
 {
     pp20_image *s=pp20_image_open(f,pd);xx_pp20 *a=(xx_pp20*)f;if(!s)return false;
-    a->variant=XX_PP20_VARIANT_IMAGE;a->uncompressed_size=s->raw;a->stream_end=f->base_address+(int64_t)s->size;
+    a->variant=s->library?XX_PP20_VARIANT_LIBRARY:XX_PP20_VARIANT_IMAGE;a->uncompressed_size=s->raw;a->stream_end=f->base_address+(int64_t)s->size;
     a->skip_bits=0;xx_mem_zero(a->offset_widths,sizeof(a->offset_widths));
     f->format_size=(int64_t)s->size;f->number_of_archive_records=s->count;f->overlay_offset=-1;f->overlay_size=0;
     f->is_archive=true;f->is_crypted=false;f->is_executable=false;f->is_valid=true;f->base_info_handled=true;
@@ -60,13 +69,13 @@ static bool pp20_image_record(Abstractformat *f,xx_archive_record_state *state)
 {
     pp20_image *s=(pp20_image*)state->internal_state;const pp20_image_item *m;xx_archive_record *r=&state->current_record;char name[40];
     if(!s||state->current_index<0||(uint64_t)state->current_index>=s->count)return false;
-    m=&s->items[state->current_index];xx_rt_snprintf(name,sizeof(name),"block-%08x.bin",(unsigned)m->start);
-    xx_archive_record_cleanup(r);xx_archive_record_init(r);r->header_offset=f->base_address+(int64_t)m->start;r->header_size=8;
-    r->data_offset=r->header_offset+8;r->compressed_size=(int64_t)m->size-8;
+    m=&s->items[state->current_index];pp20_image_name(s,m,name,sizeof(name));
+    xx_archive_record_cleanup(r);xx_archive_record_init(r);r->header_offset=f->base_address+(int64_t)m->start;r->header_size=m->stored?0:8;
+    r->data_offset=r->header_offset+r->header_size;r->compressed_size=(int64_t)m->size-r->header_size;
     state->has_record=xx_archive_record_set_meta_str(r,XX_META_ID_ORIGINAL_NAME,name)&&
         xx_archive_record_set_meta_u64(r,XX_META_ID_UNCOMPRESSED_SIZE,m->context.uncompressed_size)&&
         xx_archive_record_set_meta_u64(r,XX_META_ID_COMPRESSED_SIZE,(uint64_t)r->compressed_size)&&
-        xx_archive_record_set_meta_u64(r,XX_META_ID_COMPRESSION_METHOD,1)&&
+        xx_archive_record_set_meta_u64(r,XX_META_ID_COMPRESSION_METHOD,m->stored?0U:1U)&&
         xx_archive_record_set_meta_bool(r,XX_META_ID_IS_FOLDER,false)&&xx_archive_record_set_meta_bool(r,XX_META_ID_IS_ENCRYPTED,false);
     return state->has_record;
 }
@@ -88,7 +97,7 @@ static bool pp20_image_unpack(Abstractformat *f,xx_archive_record_state *state,x
     if(option->type==XX_VAR_TYPE_STRING||option->type==XX_VAR_TYPE_STRING_VIEW)base=xx_var_get_str(option);
     else if(option->type==XX_VAR_TYPE_WSTRING||option->type==XX_VAR_TYPE_WSTRING_VIEW){owned=xx_str_unicode_to_utf8(xx_var_get_wstr(option));base=owned;}
     if(!base)goto done;
-    xx_rt_snprintf(name,sizeof(name),"block-%08x.bin",(unsigned)s->items[state->current_index].start);path=base[0]?xx_str_concat3(base,"/",name):xx_str_dup(name);
+    pp20_image_name(s,&s->items[state->current_index],name,sizeof(name));path=base[0]?xx_str_concat3(base,"/",name):xx_str_dup(name);
     if(!path||!xx_store_create_dirs_a(path,false))goto done;
     out=xx_io_file_open(path,"wb");created=out!=NULL;
     ok=out&&xx_pp20_write_all(out,plain,(size_t)s->items[state->current_index].context.uncompressed_size,pd);

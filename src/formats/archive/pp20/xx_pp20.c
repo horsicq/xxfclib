@@ -43,6 +43,11 @@
  *
  * Layout confirmed against 3269 real samples in F:\ARC\ARC\PP20.
  *
+ * Two multi-member layouts are read as well, only after the single-stream
+ * reading of the whole file has failed: the 6272-byte slot image
+ * (xx_pp20_slot_image.h) and the picture LIBRARY (xx_pp20_library.h), a file
+ * that is nothing but back-to-back "PP20" streams, each with its own trailer.
+ *
  * The file type is resolved through a shim so this reader compiles before the
  * enum exists; it picks up the real value as soon as PP20 is registered.
  */
@@ -84,6 +89,8 @@
 #define XX_PP20_VARIANT_PX20 3U
 #define XX_PP20_VARIANT_PPBK 4U
 #define XX_PP20_VARIANT_IMAGE 5U
+#define XX_PP20_VARIANT_LIBRARY 6U
+#define XX_PP20_IS_MULTI(variant) ((variant) == XX_PP20_VARIANT_IMAGE || (variant) == XX_PP20_VARIANT_LIBRARY)
 
 typedef struct xx_pp20_context_s {
     uint64_t uncompressed_size;
@@ -551,7 +558,7 @@ bool xx_pp20_unpack_to_device(xx_pp20 *archive, xx_io_device *destination, xx_pd
 {
     xx_pp20_context context;
     if (!archive || !destination || (!archive->format.base_info_handled && !xx_format_handle_base_info(&archive->format, pd)) || !archive->format.is_valid ||
-        xx_pp20_variant_is_crypted(archive->variant) || archive->variant == XX_PP20_VARIANT_IMAGE || !xx_pp20_decode_stream(&archive->format, destination, &context, pd)) {
+        xx_pp20_variant_is_crypted(archive->variant) || XX_PP20_IS_MULTI(archive->variant) || !xx_pp20_decode_stream(&archive->format, destination, &context, pd)) {
         return false;
     }
     return context.stream_size == archive->format.format_size && context.uncompressed_size == archive->uncompressed_size;
@@ -565,7 +572,7 @@ xx_archive_record_state *xx_pp20_create_archive_records_reading(Abstractformat *
     if (!self || !self->device || (!self->base_info_handled && !xx_format_handle_base_info(self, pd)) || !self->is_valid) {
         return NULL;
     }
-    if (((xx_pp20 *)self)->variant == XX_PP20_VARIANT_IMAGE) return pp20_image_records(self, options, pd);
+    if (XX_PP20_IS_MULTI(((xx_pp20 *)self)->variant)) return pp20_image_records(self, options, pd);
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) return NULL;
     xx_archive_record_state_init(state, self);
@@ -589,7 +596,7 @@ bool xx_pp20_archive_record_move_to_next(Abstractformat *self, xx_archive_record
     if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    if (((xx_pp20 *)self)->variant == XX_PP20_VARIANT_IMAGE) {
+    if (XX_PP20_IS_MULTI(((xx_pp20 *)self)->variant)) {
         if (++state->current_index < state->total_records) return pp20_image_record(self, state);
         state->has_record = false;
         return false;
@@ -612,7 +619,7 @@ bool xx_pp20_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
     if (!self || !state || state->format != self || !state->has_record || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
-    if (archive->variant == XX_PP20_VARIANT_IMAGE) return pp20_image_unpack(self, state, pd);
+    if (XX_PP20_IS_MULTI(archive->variant)) return pp20_image_unpack(self, state, pd);
     if (xx_pp20_variant_is_crypted(archive->variant)) return false;
     path_value = xx_pp20_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
