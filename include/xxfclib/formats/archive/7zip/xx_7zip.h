@@ -38,11 +38,35 @@ typedef struct xx_7zip xx_7zip;
 typedef struct xx_7zip xx_7zip_t;
 typedef struct xx_7zip X7Zip;
 
+/* The ids are defined by src/datastructs/7zip.xxds and must match it. */
 typedef enum xx_7zip_data_struct_id_e {
     XX_7ZIP_DS_UNKNOWN = 0,
     XX_7ZIP_DS_SIGNATURE_HEADER,
     XX_7ZIP_DS_PACKED_DATA,
-    XX_7ZIP_DS_NEXT_HEADER
+    XX_7ZIP_DS_NEXT_HEADER,
+    /* The property blocks of the next header (4..24) and the pack stream of a packed header. */
+    XX_7ZIP_DS_ARCHIVE_PROPERTIES,
+    XX_7ZIP_DS_ADDITIONAL_STREAMS_INFO,
+    XX_7ZIP_DS_MAIN_STREAMS_INFO,
+    XX_7ZIP_DS_PACK_INFO,
+    XX_7ZIP_DS_UNPACK_INFO,
+    XX_7ZIP_DS_FOLDER,
+    XX_7ZIP_DS_CODER,
+    XX_7ZIP_DS_SUBSTREAMS_INFO,
+    XX_7ZIP_DS_FILES_INFO,
+    XX_7ZIP_DS_EMPTY_STREAM,
+    XX_7ZIP_DS_EMPTY_FILE,
+    XX_7ZIP_DS_ANTI,
+    XX_7ZIP_DS_NAMES,
+    XX_7ZIP_DS_CTIME,
+    XX_7ZIP_DS_ATIME,
+    XX_7ZIP_DS_MTIME,
+    XX_7ZIP_DS_WIN_ATTRIBUTES,
+    XX_7ZIP_DS_COMMENT,
+    XX_7ZIP_DS_START_POS,
+    XX_7ZIP_DS_DUMMY,
+    XX_7ZIP_DS_FILE_PROPERTY,
+    XX_7ZIP_DS_PACKED_HEADER
 } xx_7zip_data_struct_id_t;
 
 /**
@@ -91,18 +115,6 @@ XXFC_API bool xx_7zip_pack_archive_record(Abstractformat *self, xx_archive_write
                                           xx_pd_struct *pd);
 XXFC_API bool xx_7zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_7zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
-
-XXFC_API const char *xx_7zip_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_7zip_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_7zip_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_7zip_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_7zip_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_7zip_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_7zip_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_7zip_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_7zip_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_7zip_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API uint64_t xx_7zip_get_number_of_records(const xx_7zip *archive);
 XXFC_API int64_t xx_7zip_get_next_header_offset(const xx_7zip *archive);
@@ -209,56 +221,6 @@ static inline bool X7Zip_finalize_archive_records_writing(xx_7zip *archive, xx_a
 static inline void X7Zip_free_archive_records_writing(xx_7zip *archive, xx_archive_write_state *state)
 {
     if (archive) xx_7zip_free_archive_records_writing(&archive->format, state);
-}
-
-static inline const char *X7Zip_data_struct_id_to_string(xx_7zip *archive, uint32_t id)
-{
-    return archive ? xx_7zip_data_struct_id_to_string(&archive->format, id) : "UNKNOWN";
-}
-
-static inline uint32_t X7Zip_data_struct_string_to_id(xx_7zip *archive, const char *name)
-{
-    return archive ? xx_7zip_data_struct_string_to_id(&archive->format, name) : XX_7ZIP_DS_UNKNOWN;
-}
-
-static inline xx_data_struct_state *X7Zip_create_data_structs_reading(xx_7zip *archive, xx_pd_struct *pd)
-{
-    return archive ? xx_7zip_create_data_structs_reading(&archive->format, pd) : NULL;
-}
-
-static inline const xx_data_struct *X7Zip_get_current_data_struct(xx_7zip *archive, xx_data_struct_state *state)
-{
-    return archive ? xx_7zip_get_current_data_struct(&archive->format, state) : NULL;
-}
-
-static inline bool X7Zip_data_struct_move_to_next(xx_7zip *archive, xx_data_struct_state *state, xx_pd_struct *pd)
-{
-    return archive ? xx_7zip_data_struct_move_to_next(&archive->format, state, pd) : false;
-}
-
-static inline void X7Zip_free_data_structs_reading(xx_7zip *archive, xx_data_struct_state *state)
-{
-    if (archive) xx_7zip_free_data_structs_reading(&archive->format, state);
-}
-
-static inline xx_data_struct_record_state *X7Zip_create_data_struct_records_reading(xx_7zip *archive, const xx_data_struct *ds, xx_pd_struct *pd)
-{
-    return archive ? xx_7zip_create_data_struct_records_reading(&archive->format, ds, pd) : NULL;
-}
-
-static inline const xx_data_struct_record *X7Zip_get_current_data_struct_record(xx_7zip *archive, xx_data_struct_record_state *state)
-{
-    return archive ? xx_7zip_get_current_data_struct_record(&archive->format, state) : NULL;
-}
-
-static inline bool X7Zip_data_struct_record_move_to_next(xx_7zip *archive, xx_data_struct_record_state *state, xx_pd_struct *pd)
-{
-    return archive ? xx_7zip_data_struct_record_move_to_next(&archive->format, state, pd) : false;
-}
-
-static inline void X7Zip_free_data_struct_records_reading(xx_7zip *archive, xx_data_struct_record_state *state)
-{
-    if (archive) xx_7zip_free_data_struct_records_reading(&archive->format, state);
 }
 
 #ifdef __cplusplus

@@ -20,7 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_7zip_datastructs_internal.h"
+#include "xx_7zip_private.h"
 #include "xxfclib/formats/archive/7zip/xx_7zip.h"
 #include "xx_7zip_defs.h"
 #include "xx_7zip_branch.h"

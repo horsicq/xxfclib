@@ -27,6 +27,7 @@ typedef struct xx_tar_xz xx_tar_xz;
 typedef struct xx_tar_xz xx_tar_xz_t;
 typedef struct xx_tar_xz XTarXz;
 
+/* The ids are defined by src/datastructs/tar.xxds and must match it. */
 /** TAR structure identifiers, expressed in decoded (logical) TAR offsets. */
 typedef xx_tar_data_struct_id_t xx_tar_xz_data_struct_id_t;
 
@@ -66,18 +67,6 @@ XXFC_API bool xx_tar_xz_pack_archive_record(Abstractformat *self, xx_archive_wri
                                             xx_pd_struct *pd);
 XXFC_API bool xx_tar_xz_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_tar_xz_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
-
-XXFC_API const char *xx_tar_xz_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_tar_xz_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_tar_xz_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_tar_xz_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_tar_xz_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tar_xz_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_tar_xz_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_tar_xz_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_tar_xz_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tar_xz_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API uint64_t xx_tar_xz_get_number_of_records(const xx_tar_xz *tar_xz);
 XXFC_API uint64_t xx_tar_xz_get_number_of_members(const xx_tar_xz *tar_xz);

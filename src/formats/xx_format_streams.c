@@ -50,9 +50,6 @@
 #ifndef XXFC_STREAM_HAS_ZIP
 #define XXFC_STREAM_HAS_ZIP 1
 #endif
-#ifndef XXFC_STREAM_HAS_DOTNET
-#define XXFC_STREAM_HAS_DOTNET 1
-#endif
 #ifndef XXFC_STREAM_HAS_ELF
 #define XXFC_STREAM_HAS_ELF 1
 #endif
@@ -86,87 +83,22 @@
 #ifndef XXFC_STREAM_HAS_SCHEMA
 #define XXFC_STREAM_HAS_SCHEMA 1
 #endif
-
-#if XXFC_ENABLE_STREAM_DATASTRUCTS && XXFC_STREAM_HAS_ZIP && XXFC_STREAM_HAS_XORARCHIVE
-/* XORARCHIVE embeds either ZIP or ARJ. Its native ZIP table describes the
- * decoded device already installed by the reader, without opening a cursor. */
-#include "xxfclib/formats/archive/xorarchive/xx_xorarchive.h"
+#ifndef XXFC_STREAM_HAS_XXDS
+#define XXFC_STREAM_HAS_XXDS 0
+#endif
+#if XXFC_ENABLE_STREAM_DATASTRUCTS && XXFC_STREAM_HAS_XXDS
+#include "xxfclib/datastructs/xx_xxds.h"
 #endif
 
-#if XXFC_STREAM_HAS_PE && (XXFC_ENABLE_STREAM_DATASTRUCTS || XXFC_ENABLE_STREAM_IMPORT || XXFC_ENABLE_STREAM_EXPORT || XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_METADATA || XXFC_ENABLE_STREAM_SYMBOLS)
+#if XXFC_STREAM_HAS_PE && (XXFC_ENABLE_STREAM_IMPORT || XXFC_ENABLE_STREAM_EXPORT || XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_METADATA || XXFC_ENABLE_STREAM_SYMBOLS)
 extern bool xx_pe_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 #endif
-#if XXFC_STREAM_HAS_ELF && (XXFC_ENABLE_STREAM_DATASTRUCTS || XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_SYMBOLS)
+#if XXFC_STREAM_HAS_ELF && (XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_SYMBOLS)
 extern bool xx_elf_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 #endif
-#if XXFC_STREAM_HAS_MACHO && (XXFC_ENABLE_STREAM_DATASTRUCTS)
-extern bool xx_macho_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
-#endif
-#if XXFC_STREAM_HAS_DOTNET && (XXFC_ENABLE_STREAM_DATASTRUCTS)
-extern bool xx_dotnet_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
-#endif
 
-#if XXFC_ENABLE_STREAM_DATASTRUCTS
-#if XXFC_STREAM_HAS_7ZIP
-extern const StreamDataStructs *xx_7zip_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_AR
-extern const StreamDataStructs *xx_ar_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_BZ2
-extern const StreamDataStructs *xx_bz2_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_GZ
-extern const StreamDataStructs *xx_gz_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_RAR
-extern const StreamDataStructs *xx_rar_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_TAR
-extern const StreamDataStructs *xx_tar_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_TAR_BZ2
-extern const StreamDataStructs *xx_tar_bz2_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_TAR_GZ
-extern const StreamDataStructs *xx_tar_gz_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_TAR_LZ4
-extern const StreamDataStructs *xx_tar_lz4_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_TAR_XZ
-extern const StreamDataStructs *xx_tar_xz_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_TAR_ZSTD
-extern const StreamDataStructs *xx_tar_zstd_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_XZ
-extern const StreamDataStructs *xx_xz_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_ZIP
-extern const StreamDataStructs *xx_zip_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_DOTNET
-extern const StreamDataStructs *xx_dotnet_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_ELF
-extern const StreamDataStructs *xx_elf_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_LE
-extern const StreamDataStructs *xx_le_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_MACHO
-extern const StreamDataStructs *xx_macho_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_NE
-extern const StreamDataStructs *xx_ne_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_PE
-extern const StreamDataStructs *xx_pe_get_stream_datastructs(void);
-#endif
-#if XXFC_STREAM_HAS_SCHEMA
+#if XXFC_ENABLE_STREAM_DATASTRUCTS && XXFC_STREAM_HAS_SCHEMA
 extern const StreamDataStructs *xx_format_schema_get_stream_datastructs(Abstractformat *format);
-#endif
 #endif
 
 #if XXFC_ENABLE_STREAM_IMPORT
@@ -248,118 +180,14 @@ const StreamDataStructs *xx_format_get_stream_datastructs(Abstractformat *format
 {
 #if XXFC_ENABLE_STREAM_DATASTRUCTS
     if (!format) return NULL;
-#if XXFC_STREAM_HAS_DOTNET
-    if (format->handle_base_info == xx_dotnet_handle_base_info) return xx_dotnet_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_PE
-    if (format->handle_base_info == xx_pe_handle_base_info) return xx_pe_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_ELF
-    if (format->handle_base_info == xx_elf_handle_base_info) return xx_elf_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_MACHO
-    if (format->handle_base_info == xx_macho_handle_base_info) return xx_macho_get_stream_datastructs();
-#endif
-    switch (format->file_type) {
-#if XXFC_STREAM_HAS_7ZIP
-    case XX_FILE_TYPE_7ZIP:
-        return xx_7zip_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_AR
-    case XX_FILE_TYPE_AR:
-        return xx_ar_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_BZ2
-    case XX_FILE_TYPE_BZ2:
-        return xx_bz2_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_GZ
-    case XX_FILE_TYPE_GZ:
-        return xx_gz_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_RAR
-    case XX_FILE_TYPE_RAR:
-        return xx_rar_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_TAR
-    case XX_FILE_TYPE_TAR:
-        return xx_tar_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_TAR_BZ2
-    case XX_FILE_TYPE_TAR_BZ2:
-        return xx_tar_bz2_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_TAR_GZ
-    case XX_FILE_TYPE_TAR_GZ:
-    case XX_FILE_TYPE_NPM:
-        return xx_tar_gz_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_TAR_LZ4
-    case XX_FILE_TYPE_TAR_LZ4:
-        return xx_tar_lz4_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_TAR_XZ
-    case XX_FILE_TYPE_TAR_XZ:
-        return xx_tar_xz_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_TAR_ZSTD
-    case XX_FILE_TYPE_TAR_ZSTD:
-        return xx_tar_zstd_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_XZ
-    case XX_FILE_TYPE_XZ:
-        return xx_xz_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_ZIP
-    case XX_FILE_TYPE_ZIP:
-    case XX_FILE_TYPE_ZIP64:
-    case XX_FILE_TYPE_JAR:
-    case XX_FILE_TYPE_APK:
-    case XX_FILE_TYPE_IPA:
-    case XX_FILE_TYPE_APKS:
-    case XX_FILE_TYPE_ZIP_PSC:
-    case XX_FILE_TYPE_CRX:
-        return xx_zip_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_DOTNET
-    case XX_FILE_TYPE_DOTNET:
-        return xx_dotnet_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_ELF
-    case XX_FILE_TYPE_ELF32:
-    case XX_FILE_TYPE_ELF64:
-        return xx_elf_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_LE
-    case XX_FILE_TYPE_LE:
-    case XX_FILE_TYPE_LX:
-        return xx_le_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_MACHO
-    case XX_FILE_TYPE_MACHO32:
-    case XX_FILE_TYPE_MACHO64:
-        return xx_macho_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_NE
-    case XX_FILE_TYPE_NE:
-        return xx_ne_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_PE
-    case XX_FILE_TYPE_PE32:
-    case XX_FILE_TYPE_PE64:
-        return xx_pe_get_stream_datastructs();
-#endif
-#if XXFC_STREAM_HAS_ZIP && XXFC_STREAM_HAS_XORARCHIVE
-    case XX_FILE_TYPE_XORARCHIVE:
-        /* A file-type tag alone does not guarantee a concrete reader allocation. */
-        if (format->handle_base_info == xx_xorarchive_handle_base_info &&
-            ((const xx_xorarchive *)format)->family == XX_XORARCHIVE_FAMILY_ZIP)
-            return xx_zip_get_stream_datastructs();
-        break;
-#endif
-    default:
-        break;
+#if XXFC_STREAM_HAS_XXDS
+    {
+        /* A DataStructs script (src/datastructs/<fmt>.xxds) serves the format;
+         * there is no per-format C provider. */
+        const StreamDataStructs *scripted = xx_xxds_get_stream_datastructs(format);
+        if (scripted) return scripted;
     }
+#endif
 #if XXFC_STREAM_HAS_SCHEMA
     return xx_format_schema_get_stream_datastructs(format);
 #else

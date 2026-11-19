@@ -2104,22 +2104,287 @@ static void xx_zip_py_lzma_flush(xx_zip_py_lzma *lz, xx_zip_py_ext *file)
     }
 }
 
+/* Room for the byte at lz->at: the dictionary's memory grows with the output,
+ * up to the dictionary's size. */
+static bool xx_zip_py_lzma_grow(xx_zip_py_lzma *lz)
+{
+    uint64_t larger = lz->capacity ? (uint64_t)lz->capacity * 2 : 65536;
+    if (larger > lz->dictionary_size) larger = lz->dictionary_size;
+    if (larger > SIZE_MAX) return false;
+    uint8_t *grown = (uint8_t *)xx_rt_realloc(lz->dictionary, (size_t)larger);
+    if (!grown) return false;
+    lz->dictionary = grown;
+    lz->capacity = (size_t)larger;
+    return true;
+}
+
 static bool xx_zip_py_lzma_put(xx_zip_py_lzma *lz, uint8_t byte)
 {
-    if (lz->at == lz->capacity) {
-        uint64_t larger = lz->capacity ? (uint64_t)lz->capacity * 2 : 65536;
-        if (larger > lz->dictionary_size) larger = lz->dictionary_size;
-        if (larger > SIZE_MAX) return false;
-        uint8_t *grown = (uint8_t *)xx_rt_realloc(lz->dictionary, (size_t)larger);
-        if (!grown) return false;
-        lz->dictionary = grown;
-        lz->capacity = (size_t)larger;
-    }
+    if (lz->at == lz->capacity && !xx_zip_py_lzma_grow(lz)) return false;
     lz->dictionary[lz->at] = byte;
     if (++lz->at == lz->dictionary_size) lz->at = 0;
     ++lz->total;
     return true;
 }
+
+/* ---- the fast path of the LZMA decoder
+ *
+ * xx_zip_py_lzma_decode() above decides everything that depends on where the
+ * input ends; it takes its input and writes its output a byte at a time. The
+ * loop below decodes the same symbols with the same arithmetic while neither
+ * end is near: at least XX_ZIP_PY_LZMA_FAST_INPUT bytes of input before each
+ * symbol (no symbol takes more than 49, see xx_zip_py_lzma_run()), and room
+ * in the dictionary's memory for the longest match (273 bytes) and one byte
+ * more, so that the loop never fills the memory: it does not wrap, grow or
+ * pass the size the caller allows. Under these
+ * conditions no bit can find the input ended, so the tests for that are left
+ * out, the coder's state lives in locals and a match is copied in one move.
+ * A symbol that is not plain output (the end marker, a match with a distance
+ * that is not valid) is decoded, probabilities included, exactly as the
+ * careful decoder does it and handed to the caller unapplied. */
+
+#define XX_ZIP_PY_LZMA_FAST_INPUT 64
+#define XX_ZIP_PY_LZMA_FAST_OUTPUT 274
+
+#define XX_ZIP_PY_FAST_NORMALIZE()      \
+    if (range < 0x1000000u) {           \
+        range <<= 8;                    \
+        code = (code << 8) | *in++;     \
+    }
+
+/* One bit: the bound, the comparison and the three updates as the careful
+ * decoder makes them, without a branch on the bit (which bit comes is what
+ * a processor predicts worst here). */
+#define XX_ZIP_PY_FAST_BIT(probability, bit)                                                                 \
+    do {                                                                                                     \
+        uint16_t *fast_p = (probability);                                                                    \
+        uint32_t fast_v = *fast_p, fast_bound, fast_mask;                                                    \
+        XX_ZIP_PY_FAST_NORMALIZE()                                                                           \
+        fast_bound = (range >> 11) * fast_v;                                                                 \
+        (bit) = code >= fast_bound;                                                                          \
+        fast_mask = 0u - (uint32_t)(bit);                                                                    \
+        range = fast_bound + ((range - 2 * fast_bound) & fast_mask);                                         \
+        code -= fast_bound & fast_mask;                                                                      \
+        *fast_p = (uint16_t)(fast_v + (((2048 - fast_v) >> 5) & ~fast_mask) - ((fast_v >> 5) & fast_mask));  \
+    } while (0)
+
+/* A bit tree of `count` levels: `result` gets the symbol with its top bit. */
+#define XX_ZIP_PY_FAST_TREE(probabilities, count, result)                \
+    do {                                                                 \
+        uint16_t *fast_tree = (probabilities);                           \
+        unsigned fast_symbol = 1, fast_bit;                              \
+        for (unsigned fast_i = 0; fast_i < (count); ++fast_i) {          \
+            XX_ZIP_PY_FAST_BIT(&fast_tree[fast_symbol], fast_bit);       \
+            fast_symbol = (fast_symbol << 1) | fast_bit;                 \
+        }                                                                \
+        (result) = fast_symbol;                                          \
+    } while (0)
+
+#define XX_ZIP_PY_FAST_LENGTH(coder, result)                                             \
+    do {                                                                                 \
+        xx_zip_py_lzma_length *fast_coder = (coder);                                     \
+        unsigned fast_choice, fast_value;                                                \
+        XX_ZIP_PY_FAST_BIT(&fast_coder->choice, fast_choice);                            \
+        if (!fast_choice) {                                                              \
+            XX_ZIP_PY_FAST_TREE(fast_coder->low[pos_state], 3, fast_value);              \
+            (result) = 2 + (fast_value - 8);                                             \
+        } else {                                                                         \
+            XX_ZIP_PY_FAST_BIT(&fast_coder->choice2, fast_choice);                       \
+            if (!fast_choice) {                                                          \
+                XX_ZIP_PY_FAST_TREE(fast_coder->mid[pos_state], 3, fast_value);          \
+                (result) = 10 + (fast_value - 8);                                        \
+            } else {                                                                     \
+                XX_ZIP_PY_FAST_TREE(fast_coder->high, 8, fast_value);                    \
+                (result) = 18 + (fast_value - 256);                                      \
+            }                                                                            \
+        }                                                                                \
+    } while (0)
+
+/* Whether the fast loop can take the next symbol: `left` is the number of
+ * bytes the caller still allows. */
+static bool xx_zip_py_lzma_fast_ready(const xx_zip_py_lzma *lz, const xx_zip_py_rc *rc, uint64_t left)
+{
+    /* at != 0: something has been produced and the byte before is in place */
+    return lz->at && lz->capacity - lz->at >= XX_ZIP_PY_LZMA_FAST_OUTPUT && left >= XX_ZIP_PY_LZMA_FAST_OUTPUT &&
+           rc->limit - rc->position >= XX_ZIP_PY_LZMA_FAST_INPUT;
+}
+
+/* Decode symbols into the dictionary while xx_zip_py_lzma_fast_ready() holds
+ * (the caller has seen that it does). lz->at and lz->total move on by the
+ * bytes produced, at most `left`. True: *out is a symbol the caller applies
+ * as if xx_zip_py_lzma_decode() had given it; false: stopped before a
+ * symbol. */
+static bool xx_zip_py_lzma_fast(xx_zip_py_lzma *lz, xx_zip_py_rc *rc, uint64_t left, xx_zip_py_lzma_symbol *out)
+{
+    size_t at = lz->at, room = lz->capacity - at;
+    if (left < room) room = (size_t)left;
+    const size_t at_first = at, at_last = at + room - XX_ZIP_PY_LZMA_FAST_OUTPUT;
+    const size_t dictionary_size = (size_t)lz->dictionary_size; /* capacity, and so this, fits a size_t once at != 0 */
+    const size_t bias = (size_t)lz->total - at;                 /* at + bias: the low bits of the total */
+    const uint8_t *in = rc->in + rc->position, *const in_last = rc->in + (rc->limit - XX_ZIP_PY_LZMA_FAST_INPUT);
+    uint8_t *const dictionary = lz->dictionary;
+    uint16_t *const literal = lz->literal;
+    const unsigned lc = lz->lc;
+    const size_t lp_mask = ((size_t)1 << lz->lp) - 1, pb_mask = ((size_t)1 << lz->pb) - 1;
+    uint32_t range = rc->range, code = rc->code;
+    uint32_t rep0 = lz->reps[0], rep1 = lz->reps[1], rep2 = lz->reps[2], rep3 = lz->reps[3];
+    unsigned state = lz->state;
+    bool special = false;
+
+    while (at <= at_last && in <= in_last) {
+        const unsigned pos_state = (unsigned)((at + bias) & pb_mask);
+        unsigned bit;
+        uint32_t length;
+        XX_ZIP_PY_FAST_BIT(&lz->is_match[state][pos_state], bit);
+        if (!bit) {
+            uint16_t *probabilities = literal + (size_t)0x300 * ((((at + bias) & lp_mask) << lc) + ((size_t)dictionary[at - 1] >> (8 - lc)));
+            unsigned symbol = 1;
+            if (state < 7) {
+                do {
+                    XX_ZIP_PY_FAST_BIT(&probabilities[symbol], bit);
+                    symbol = (symbol << 1) | bit;
+                } while (symbol < 0x100);
+            } else {
+                unsigned match = dictionary[rep0 < at ? at - rep0 - 1 : at + (dictionary_size - rep0) - 1], offset = 0x100;
+                do {
+                    match <<= 1;
+                    unsigned match_bit = match & offset;
+                    XX_ZIP_PY_FAST_BIT(&probabilities[offset + match_bit + symbol], bit);
+                    symbol = (symbol << 1) | bit;
+                    offset &= bit ? match_bit : ~match_bit;
+                } while (symbol < 0x100);
+            }
+            dictionary[at++] = (uint8_t)symbol;
+            state = state < 4 ? 0 : state < 10 ? state - 3 : state - 6;
+            continue;
+        }
+        XX_ZIP_PY_FAST_BIT(&lz->is_rep[state], bit);
+        if (!bit) {
+            unsigned slot;
+            uint32_t distance;
+            XX_ZIP_PY_FAST_LENGTH(&lz->match_length, length);
+            XX_ZIP_PY_FAST_TREE(lz->slot[length < 6 ? length - 2 : 3], 6, slot);
+            slot -= 64;
+            distance = slot;
+            if (slot >= 4) {
+                unsigned count = (slot >> 1) - 1, symbol = 1;
+                distance = (uint32_t)(2 | (slot & 1)) << count;
+                if (slot < 14) {
+                    uint16_t *probabilities = lz->special + (distance - slot);
+                    for (unsigned i = 0; i < count; ++i) {
+                        XX_ZIP_PY_FAST_BIT(&probabilities[symbol - 1], bit);
+                        symbol = (symbol << 1) | bit;
+                        distance += (uint32_t)bit << i;
+                    }
+                } else {
+                    uint32_t direct = 0;
+                    for (count -= 4; count; --count) {
+                        XX_ZIP_PY_FAST_NORMALIZE()
+                        range >>= 1;
+                        code -= range;
+                        uint32_t mask = 0u - (code >> 31);
+                        code += range & mask;
+                        direct = (direct << 1) + (mask + 1);
+                    }
+                    distance += direct << 4;
+                    for (unsigned i = 0; i < 4; ++i) {
+                        XX_ZIP_PY_FAST_BIT(&lz->align[symbol - 1], bit);
+                        symbol = (symbol << 1) | bit;
+                        distance += (uint32_t)bit << i;
+                    }
+                }
+            }
+            if (distance == 0xFFFFFFFFu) {
+                XX_ZIP_PY_FAST_NORMALIZE()
+                out->kind = XX_ZIP_PY_LZMA_MARKER;
+                out->whole = true;
+                out->length = length;
+                out->distance = distance;
+                special = true;
+                break;
+            }
+            if (distance >= lz->total + (at - at_first) || distance >= lz->dictionary_size) {
+                out->kind = XX_ZIP_PY_LZMA_MATCH;
+                out->length = length;
+                out->distance = distance;
+                special = true;
+                break;
+            }
+            rep3 = rep2;
+            rep2 = rep1;
+            rep1 = rep0;
+            rep0 = distance;
+            state = state < 7 ? 7 : 10;
+        } else {
+            XX_ZIP_PY_FAST_BIT(&lz->is_rep_g0[state], bit);
+            if (!bit) {
+                XX_ZIP_PY_FAST_BIT(&lz->is_rep0_long[state][pos_state], bit);
+                if (!bit) {
+                    dictionary[at] = dictionary[rep0 < at ? at - rep0 - 1 : at + (dictionary_size - rep0) - 1];
+                    ++at;
+                    state = state < 7 ? 9 : 11;
+                    continue;
+                }
+            } else {
+                uint32_t distance;
+                XX_ZIP_PY_FAST_BIT(&lz->is_rep_g1[state], bit);
+                if (!bit) {
+                    distance = rep1;
+                } else {
+                    XX_ZIP_PY_FAST_BIT(&lz->is_rep_g2[state], bit);
+                    if (!bit) {
+                        distance = rep2;
+                    } else {
+                        distance = rep3;
+                        rep3 = rep2;
+                    }
+                    rep2 = rep1;
+                }
+                rep1 = rep0;
+                rep0 = distance;
+            }
+            XX_ZIP_PY_FAST_LENGTH(&lz->rep_length, length);
+            state = state < 7 ? 8 : 11;
+        }
+        /* `length` bytes from rep0 + 1 back, each one as the careful decoder
+           would read it: a byte this copy has written can be its source */
+        if (rep0 < at) {
+            const uint8_t *from = dictionary + at - rep0 - 1;
+            uint8_t *to = dictionary + at;
+            if (rep0 + 1 >= length) {
+                memcpy(to, from, length);
+            } else if (!rep0) {
+                memset(to, *from, length);
+            } else {
+                for (uint32_t i = 0; i < length; ++i) to[i] = from[i];
+            }
+            at += length;
+        } else {
+            /* the source starts before the dictionary's wrap */
+            size_t from = at + (dictionary_size - rep0) - 1;
+            for (uint32_t i = 0; i < length; ++i) {
+                dictionary[at++] = dictionary[from];
+                if (++from == dictionary_size) from = 0;
+            }
+        }
+    }
+    rc->range = range;
+    rc->code = code;
+    rc->position = (size_t)(in - rc->in);
+    lz->state = state;
+    lz->reps[0] = rep0;
+    lz->reps[1] = rep1;
+    lz->reps[2] = rep2;
+    lz->reps[3] = rep3;
+    lz->total += at - at_first;
+    lz->at = at;
+    return special;
+}
+
+#undef XX_ZIP_PY_FAST_LENGTH
+#undef XX_ZIP_PY_FAST_TREE
+#undef XX_ZIP_PY_FAST_BIT
+#undef XX_ZIP_PY_FAST_NORMALIZE
 
 /* lzma_code() of the raw decoder over the input fed so far, with unlimited
  * room: every symbol the input holds completely. */
@@ -2137,29 +2402,46 @@ static xx_zip_py_step xx_zip_py_lzma_run(xx_zip_py_lzma *lz, xx_zip_py_ext *file
     for (;;) {
         xx_zip_py_lzma_symbol symbol = {0};
         xx_zip_py_rc rc = {lz->range, lz->code, in, lz->position, limit, false, false};
+        bool decoded = false;
         if (lz->total - lz->flushed >= 2048) xx_zip_py_lzma_flush(lz, file);
         /* The range coder takes at most one byte before each bit, and no
            symbol has more than 49 of those points (a match: 2 bits, 10 for
            the length, 6 for the slot, 26 direct ones, 4 aligned ones, and
            the end marker's last look). So 64 bytes always hold a whole
-           symbol; nearer the end of the input, see first whether the symbol
-           is all there: if not, liblzma waits, with nothing changed that
-           shows. */
-        if (limit - lz->position < 64) {
-            xx_zip_py_lzma_decode(lz, &rc, &symbol);
-            if (rc.starved) {
-                step = XX_ZIP_PY_STEP_INPUT;
-                break;
-            }
-            rc.range = lz->range;
-            rc.code = lz->code;
-            rc.position = lz->position;
+           symbol: the fast loop takes symbols while there are that many.
+           Nearer the end of the input, see first whether the symbol is all
+           there: if not, liblzma waits, with nothing changed that shows. */
+        if (xx_zip_py_lzma_fast_ready(lz, &rc, UINT64_MAX)) {
+            /* The loop can fill the dictionary's memory up to its end: what
+               is waiting there from before the last wrap goes out first, and
+               what the loop gives goes out before a symbol from the careful
+               decoder can wrap again. */
+            xx_zip_py_lzma_flush(lz, file);
+            rc.update = true;
+            decoded = xx_zip_py_lzma_fast(lz, &rc, UINT64_MAX, &symbol);
+            lz->range = rc.range;
+            lz->code = rc.code;
+            lz->position = rc.position;
+            xx_zip_py_lzma_flush(lz, file);
         }
-        rc.update = true;
-        xx_zip_py_lzma_decode(lz, &rc, &symbol);
-        lz->range = rc.range;
-        lz->code = rc.code;
-        lz->position = rc.position;
+        if (!decoded) {
+            rc.update = false;
+            if (limit - lz->position < 64) {
+                xx_zip_py_lzma_decode(lz, &rc, &symbol);
+                if (rc.starved) {
+                    step = XX_ZIP_PY_STEP_INPUT;
+                    break;
+                }
+                rc.range = lz->range;
+                rc.code = lz->code;
+                rc.position = lz->position;
+            }
+            rc.update = true;
+            xx_zip_py_lzma_decode(lz, &rc, &symbol);
+            lz->range = rc.range;
+            lz->code = rc.code;
+            lz->position = rc.position;
+        }
         step = XX_ZIP_PY_STEP_ERROR;
         if (rc.starved || symbol.kind == XX_ZIP_PY_LZMA_BAD) break;
         if (symbol.kind == XX_ZIP_PY_LZMA_MARKER) {
@@ -2478,22 +2760,10 @@ static xx_zip_py_status xx_zip_py_read_steps(const xx_zip_py *zip, const xx_zip_
        zlib rejects and give zlib's message. The fast decoder runs in its
        zlib-strict mode, which fails the block headers zlib fails (a code
        length set that leaves codes unused, no end-of-block code); whatever
-       else zlib rejects fails in the fast decoder in every mode. The
-       member's first chunk goes through the steps first in any case: for
-       read() alone as a trial read(1) whose failure leaves the fast decoder
-       out. */
+       else zlib rejects fails in the fast decoder in every mode. So
+       read() alone needs no trial of the first chunk through the steps. */
     if (status == XX_ZIP_PY_OK && rest && !file.eof && deflated && input_size && info->compress_size <= available) {
-        bool sound = true;
-        if (!limit) {
-            uint8_t *trial = NULL;
-            size_t trial_size = 0;
-            bool trial_complete = false;
-            xx_zip_py_owner trial_owner = XX_ZIP_PY_OWNED;
-            sound = xx_zip_py_read_steps(zip, info, data_offset, 1, false, &trial, &trial_size, &trial_complete, &trial_owner,
-                                         NULL) == XX_ZIP_PY_OK;
-            xx_zip_py_free(trial, trial_owner);
-        }
-        if (sound) {
+        {
             xx_zip_py_sink whole;
             size_t consumed = 0;
             xx_zip_py_sink_prepare(&whole, target, input_size);
@@ -2593,15 +2863,48 @@ static const char xx_zip_py_xz_memory[] = "Cannot allocate memory";
 typedef enum xx_zip_py_xz_step {
     XX_ZIP_PY_XZ_END,  /* decoded to its end */
     XX_ZIP_PY_XZ_MORE, /* the data ends first: liblzma waits for more */
-    XX_ZIP_PY_XZ_FAIL  /* liblzma's error, or the unit's (message, filter) */
+    XX_ZIP_PY_XZ_FAIL  /* liblzma's error (message) */
 } xx_zip_py_xz_step;
+
+/* A filter before LZMA2 in a block's chain, as liblzma's decoder holds it:
+ * the delta filter's history, or a BCJ filter ("simple" coder) with the
+ * bytes it could not convert yet. */
+#define XX_ZIP_PY_XZ_FILTER_DELTA 0x03
+#define XX_ZIP_PY_XZ_FILTER_X86 0x04
+#define XX_ZIP_PY_XZ_FILTER_POWERPC 0x05
+#define XX_ZIP_PY_XZ_FILTER_IA64 0x06
+#define XX_ZIP_PY_XZ_FILTER_ARM 0x07
+#define XX_ZIP_PY_XZ_FILTER_ARMTHUMB 0x08
+#define XX_ZIP_PY_XZ_FILTER_SPARC 0x09
+
+typedef struct xx_zip_py_xz_filter {
+    unsigned id;
+    /* delta */
+    unsigned distance;
+    uint8_t delta_pos;
+    uint8_t history[256];
+    /* BCJ: lzma_simple_coder */
+    uint32_t now_pos;             /* the stream position of the next byte to convert */
+    uint32_t prev_mask, prev_pos; /* x86 */
+    bool end_was_reached;
+    size_t pos, filtered, size, allocated; /* buffer[pos .. filtered) is converted, [filtered .. size) is not */
+    uint8_t buffer[32];
+} xx_zip_py_xz_filter;
 
 typedef struct xx_zip_py_xz {
     xx_zip_py_lzma lz;
     xx_buf_t *out;
     const char *message;  /* of a failure */
-    bool filter_unknown;  /* the failure is a filter this unit does not have */
-    uint64_t filter;
+    /* the block's filters before LZMA2, and what LZMA2 gave for them */
+    unsigned filter_count;
+    xx_zip_py_xz_filter filters[3];
+    size_t raw_at, raw_end; /* LZMA2's bytes not yet taken by the filters: positions in the stream's output */
+    bool raw_ended;         /* LZMA2 reached its end marker */
+    bool raw_starved;       /* a filter asked for more than LZMA2 has: liblzma has used all its input */
+    /* CPython's output buffer for the stream being decoded */
+    size_t stream_start;  /* where the stream's output starts in out */
+    unsigned py_block;    /* the index of the buffer's last block */
+    size_t py_end;        /* the end of that block, from stream_start */
     size_t pending_size;
     uint8_t pending[4096]; /* decoded bytes on their way to out */
 } xx_zip_py_xz;
@@ -2625,6 +2928,26 @@ static bool xx_zip_py_xz_put(xx_zip_py_xz *xz, uint8_t byte)
     if (!xx_zip_py_lzma_put(&xz->lz, byte)) return false;
     xz->pending[xz->pending_size++] = byte;
     return xz->pending_size < sizeof(xz->pending) || xx_zip_py_xz_flush(xz);
+}
+
+/* `count` bytes that are not coded (an uncompressed chunk): into the
+ * dictionary and on to the output. */
+static bool xx_zip_py_xz_put_bytes(xx_zip_py_xz *xz, const uint8_t *bytes, size_t count)
+{
+    xx_zip_py_lzma *lz = &xz->lz;
+    if (!xx_zip_py_xz_flush(xz) || (count && !xx_buf_append(xz->out, bytes, count))) return false;
+    while (count) {
+        if (lz->at == lz->capacity && !xx_zip_py_lzma_grow(lz)) return false;
+        size_t part = lz->capacity - lz->at;
+        if (part > count) part = count;
+        memcpy(lz->dictionary + lz->at, bytes, part);
+        lz->at += part;
+        if (lz->at == lz->dictionary_size) lz->at = 0;
+        lz->total += part;
+        bytes += part;
+        count -= part;
+    }
+    return true;
 }
 
 /* The dictionary liblzma keeps for a declared size: at least 4096 bytes, a
@@ -2664,7 +2987,19 @@ static xx_zip_py_xz_step xx_zip_py_xz_lzma(xx_zip_py_xz *xz, const uint8_t *data
             *position = rc.position;
             return rc.code ? xx_zip_py_xz_fail(xz, xx_zip_py_xz_data) : XX_ZIP_PY_XZ_END;
         }
-        xx_zip_py_lzma_decode(lz, &rc, &symbol);
+        /* far from both ends: many symbols at once (XX_ZIP_PY_XZ_UNKNOWN is
+           the largest number, so it allows any amount) */
+        bool decoded = false;
+        if (xx_zip_py_lzma_fast_ready(lz, &rc, left)) {
+            if (!xx_zip_py_xz_flush(xz)) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_memory);
+            size_t from = lz->at;
+            decoded = xx_zip_py_lzma_fast(lz, &rc, left, &symbol);
+            size_t produced = lz->at - from;
+            if (produced && !xx_buf_append(xz->out, lz->dictionary + from, produced)) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_memory);
+            if (left != XX_ZIP_PY_XZ_UNKNOWN) left -= produced;
+            if (!decoded) continue;
+        }
+        if (!decoded) xx_zip_py_lzma_decode(lz, &rc, &symbol);
         if (symbol.kind == XX_ZIP_PY_LZMA_MARKER && symbol.whole && left != XX_ZIP_PY_XZ_UNKNOWN)
             return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
         if (rc.starved) return XX_ZIP_PY_XZ_MORE;
@@ -2735,9 +3070,10 @@ static xx_zip_py_xz_step xx_zip_py_xz_lzma2(xx_zip_py_xz *xz, const uint8_t *dat
             if (size - at < 2) return XX_ZIP_PY_XZ_MORE;
             size_t count = ((size_t)data[at] << 8 | data[at + 1]) + 1;
             at += 2;
-            for (; count && at < size; --count, ++at)
-                if (!xx_zip_py_xz_put(xz, data[at])) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_memory);
-            if (count) return XX_ZIP_PY_XZ_MORE;
+            size_t have = count < size - at ? count : size - at;
+            if (!xx_zip_py_xz_put_bytes(xz, data + at, have)) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_memory);
+            at += have;
+            if (have != count) return XX_ZIP_PY_XZ_MORE;
             continue;
         }
         if (size - at < 4) return XX_ZIP_PY_XZ_MORE;
@@ -2813,20 +3149,364 @@ static bool xx_zip_py_xz_verify_check(unsigned check, const uint8_t *data, size_
     }
 }
 
+/* ---- the filters before LZMA2: liblzma's delta and BCJ decoders
+ *
+ * A BCJ filter keeps the bytes it cannot convert yet, so when the input ends
+ * less has come out of the chain than LZMA2 gave; and with a declared
+ * uncompressed size liblzma faults as soon as more than that has come out.
+ * To count as liblzma counts, the chain below is liblzma's (simple_coder.c,
+ * delta_decoder.c), run over the bytes LZMA2 gave with the output buffers
+ * CPython gives liblzma. */
+
+/* x86: the operand of CALL and JMP (E8, E9) from absolute to relative. */
+static size_t xx_zip_py_xz_bcj_x86(xx_zip_py_xz_filter *f, uint8_t *buffer, size_t size)
+{
+    static const uint8_t allowed[8] = {1, 1, 1, 0, 1, 0, 0, 0}, bit_number[8] = {0, 1, 2, 2, 3, 3, 3, 3};
+    uint32_t prev_mask = f->prev_mask, prev_pos = f->prev_pos, now_pos = f->now_pos;
+    size_t at = 0;
+    if (size < 5) return 0;
+    if (now_pos - prev_pos > 5) prev_pos = now_pos - 5;
+    const size_t limit = size - 5;
+    while (at <= limit) {
+        uint8_t b = buffer[at];
+        if (b != 0xE8 && b != 0xE9) {
+            ++at;
+            continue;
+        }
+        const uint32_t offset = now_pos + (uint32_t)at - prev_pos;
+        prev_pos = now_pos + (uint32_t)at;
+        if (offset > 5) {
+            prev_mask = 0;
+        } else {
+            for (uint32_t i = 0; i < offset; ++i) {
+                prev_mask &= 0x77;
+                prev_mask <<= 1;
+            }
+        }
+        b = buffer[at + 4];
+        if ((b == 0 || b == 0xFF) && allowed[(prev_mask >> 1) & 0x7] && (prev_mask >> 1) < 0x10) {
+            uint32_t src = ((uint32_t)b << 24) | ((uint32_t)buffer[at + 3] << 16) | ((uint32_t)buffer[at + 2] << 8) | buffer[at + 1];
+            uint32_t dest;
+            for (;;) {
+                dest = src - (now_pos + (uint32_t)at + 5);
+                if (prev_mask == 0) break;
+                const uint32_t i = bit_number[(prev_mask >> 1) & 0x7];
+                b = (uint8_t)(dest >> (24 - i * 8));
+                if (!(b == 0 || b == 0xFF)) break;
+                src = dest ^ (((uint32_t)1 << (32 - i * 8)) - 1);
+            }
+            buffer[at + 4] = (uint8_t)(~(((dest >> 24) & 1) - 1));
+            buffer[at + 3] = (uint8_t)(dest >> 16);
+            buffer[at + 2] = (uint8_t)(dest >> 8);
+            buffer[at + 1] = (uint8_t)dest;
+            at += 5;
+            prev_mask = 0;
+        } else {
+            ++at;
+            prev_mask |= 1;
+            if (b == 0 || b == 0xFF) prev_mask |= 0x10;
+        }
+    }
+    f->prev_mask = prev_mask;
+    f->prev_pos = prev_pos;
+    return at;
+}
+
+/* PowerPC: bl (opcode 18 with AA = 0, LK = 1), big endian. */
+static size_t xx_zip_py_xz_bcj_powerpc(uint32_t now_pos, uint8_t *buffer, size_t size)
+{
+    size_t i;
+    for (i = 0; i + 4 <= size; i += 4) {
+        if ((buffer[i] >> 2) == 0x12 && (buffer[i + 3] & 3) == 1) {
+            const uint32_t src = (((uint32_t)buffer[i] & 3) << 24) | ((uint32_t)buffer[i + 1] << 16) | ((uint32_t)buffer[i + 2] << 8) |
+                                 ((uint32_t)buffer[i + 3] & ~(uint32_t)3);
+            const uint32_t dest = src - (now_pos + (uint32_t)i);
+            buffer[i] = (uint8_t)(0x48 | ((dest >> 24) & 0x03));
+            buffer[i + 1] = (uint8_t)(dest >> 16);
+            buffer[i + 2] = (uint8_t)(dest >> 8);
+            buffer[i + 3] = (uint8_t)((buffer[i + 3] & 0x03) | (uint8_t)dest);
+        }
+    }
+    return i;
+}
+
+/* IA-64: the branch slots of a 16-byte instruction bundle. */
+static size_t xx_zip_py_xz_bcj_ia64(uint32_t now_pos, uint8_t *buffer, size_t size)
+{
+    static const uint8_t branch_table[32] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                             4, 4, 6, 6, 0, 0, 7, 7, 4, 4, 0, 0, 4, 4, 0, 0};
+    size_t i;
+    for (i = 0; i + 16 <= size; i += 16) {
+        const uint32_t mask = branch_table[buffer[i] & 0x1F];
+        uint32_t bit_pos = 5;
+        for (unsigned slot = 0; slot < 3; ++slot, bit_pos += 41) {
+            if (((mask >> slot) & 1) == 0) continue;
+            const size_t byte_pos = bit_pos >> 3;
+            const uint32_t bit_res = bit_pos & 0x7;
+            uint64_t instruction = 0;
+            for (unsigned j = 0; j < 6; ++j) instruction += (uint64_t)buffer[i + j + byte_pos] << (8 * j);
+            uint64_t inst_norm = instruction >> bit_res;
+            if (((inst_norm >> 37) & 0xF) == 0x5 && ((inst_norm >> 9) & 0x7) == 0) {
+                uint32_t src = (uint32_t)((inst_norm >> 13) & 0xFFFFF);
+                src |= (uint32_t)((inst_norm >> 36) & 1) << 20;
+                src <<= 4;
+                uint32_t dest = src - (now_pos + (uint32_t)i);
+                dest >>= 4;
+                inst_norm &= ~((uint64_t)0x8FFFFF << 13);
+                inst_norm |= (uint64_t)(dest & 0xFFFFF) << 13;
+                inst_norm |= (uint64_t)(dest & 0x100000) << (36 - 20);
+                instruction &= ((uint64_t)1 << bit_res) - 1;
+                instruction |= inst_norm << bit_res;
+                for (unsigned j = 0; j < 6; ++j) buffer[i + j + byte_pos] = (uint8_t)(instruction >> (8 * j));
+            }
+        }
+    }
+    return i;
+}
+
+/* ARM: BL (condition "always"), little endian. */
+static size_t xx_zip_py_xz_bcj_arm(uint32_t now_pos, uint8_t *buffer, size_t size)
+{
+    size_t i;
+    for (i = 0; i + 4 <= size; i += 4) {
+        if (buffer[i + 3] == 0xEB) {
+            uint32_t src = ((uint32_t)buffer[i + 2] << 16) | ((uint32_t)buffer[i + 1] << 8) | (uint32_t)buffer[i];
+            src <<= 2;
+            uint32_t dest = src - (now_pos + (uint32_t)i + 8);
+            dest >>= 2;
+            buffer[i + 2] = (uint8_t)(dest >> 16);
+            buffer[i + 1] = (uint8_t)(dest >> 8);
+            buffer[i] = (uint8_t)dest;
+        }
+    }
+    return i;
+}
+
+/* ARM-Thumb: the two halves of BL. */
+static size_t xx_zip_py_xz_bcj_armthumb(uint32_t now_pos, uint8_t *buffer, size_t size)
+{
+    size_t i;
+    for (i = 0; i + 4 <= size; i += 2) {
+        if ((buffer[i + 1] & 0xF8) == 0xF0 && (buffer[i + 3] & 0xF8) == 0xF8) {
+            uint32_t src = (((uint32_t)buffer[i + 1] & 7) << 19) | ((uint32_t)buffer[i] << 11) | (((uint32_t)buffer[i + 3] & 7) << 8) |
+                           (uint32_t)buffer[i + 2];
+            src <<= 1;
+            uint32_t dest = src - (now_pos + (uint32_t)i + 4);
+            dest >>= 1;
+            buffer[i + 1] = (uint8_t)(0xF0 | ((dest >> 19) & 0x7));
+            buffer[i] = (uint8_t)(dest >> 11);
+            buffer[i + 3] = (uint8_t)(0xF8 | ((dest >> 8) & 0x7));
+            buffer[i + 2] = (uint8_t)dest;
+            i += 2;
+        }
+    }
+    return i;
+}
+
+/* SPARC: CALL, big endian. */
+static size_t xx_zip_py_xz_bcj_sparc(uint32_t now_pos, uint8_t *buffer, size_t size)
+{
+    size_t i;
+    for (i = 0; i + 4 <= size; i += 4) {
+        if ((buffer[i] == 0x40 && (buffer[i + 1] & 0xC0) == 0x00) || (buffer[i] == 0x7F && (buffer[i + 1] & 0xC0) == 0xC0)) {
+            uint32_t src = ((uint32_t)buffer[i] << 24) | ((uint32_t)buffer[i + 1] << 16) | ((uint32_t)buffer[i + 2] << 8) | (uint32_t)buffer[i + 3];
+            src <<= 2;
+            uint32_t dest = src - (now_pos + (uint32_t)i);
+            dest >>= 2;
+            dest = ((((uint32_t)0 - ((dest >> 22) & 1)) << 22) & 0x3FFFFFFF) | (dest & 0x3FFFFF) | 0x40000000;
+            buffer[i] = (uint8_t)(dest >> 24);
+            buffer[i + 1] = (uint8_t)(dest >> 16);
+            buffer[i + 2] = (uint8_t)(dest >> 8);
+            buffer[i + 3] = (uint8_t)dest;
+        }
+    }
+    return i;
+}
+
+/* call_filter(): convert what can be converted of buffer[0 .. size); the
+ * number of bytes done with. */
+static size_t xx_zip_py_xz_bcj(xx_zip_py_xz_filter *f, uint8_t *buffer, size_t size)
+{
+    size_t done;
+    switch (f->id) {
+    case XX_ZIP_PY_XZ_FILTER_X86:
+        done = xx_zip_py_xz_bcj_x86(f, buffer, size);
+        break;
+    case XX_ZIP_PY_XZ_FILTER_POWERPC:
+        done = xx_zip_py_xz_bcj_powerpc(f->now_pos, buffer, size);
+        break;
+    case XX_ZIP_PY_XZ_FILTER_IA64:
+        done = xx_zip_py_xz_bcj_ia64(f->now_pos, buffer, size);
+        break;
+    case XX_ZIP_PY_XZ_FILTER_ARM:
+        done = xx_zip_py_xz_bcj_arm(f->now_pos, buffer, size);
+        break;
+    case XX_ZIP_PY_XZ_FILTER_ARMTHUMB:
+        done = xx_zip_py_xz_bcj_armthumb(f->now_pos, buffer, size);
+        break;
+    default:
+        done = xx_zip_py_xz_bcj_sparc(f->now_pos, buffer, size);
+        break;
+    }
+    f->now_pos += (uint32_t)done;
+    return done;
+}
+
+/* A filter of a block's chain as it starts: `offset` is a BCJ filter's
+ * start offset, `distance` the delta filter's. */
+static void xx_zip_py_xz_filter_start(xx_zip_py_xz_filter *f, unsigned id, uint32_t offset, unsigned distance)
+{
+    memset(f, 0, sizeof(*f));
+    f->id = id;
+    f->distance = distance;
+    f->now_pos = offset;
+    f->prev_pos = (uint32_t)0 - 5;
+    /* twice the most a filter leaves unconverted */
+    f->allocated = id == XX_ZIP_PY_XZ_FILTER_X86 ? 10 : id == XX_ZIP_PY_XZ_FILTER_IA64 ? 32 : 8;
+}
+
+/* lzma_bufcpy() from a filter's buffer. */
+static void xx_zip_py_xz_filter_flush(xx_zip_py_xz_filter *f, uint8_t *out, size_t *out_pos, size_t out_size)
+{
+    size_t count = f->filtered - f->pos;
+    if (count > out_size - *out_pos) count = out_size - *out_pos;
+    if (count) memmove(out + *out_pos, f->buffer + f->pos, count);
+    f->pos += count;
+    *out_pos += count;
+}
+
+/* The code() function of the chain's coder number `level` (the last one is
+ * LZMA2) with room at out[*out_pos .. out_size): true is LZMA_STREAM_END.
+ * `stream` is the stream's output, where LZMA2's bytes lie from raw_at on:
+ * a filter never has more bytes in its buffers and in the output than it
+ * took from there, so out may be that same memory. */
+static bool xx_zip_py_xz_chain_code(xx_zip_py_xz *xz, unsigned level, const uint8_t *stream, uint8_t *out, size_t *out_pos, size_t out_size)
+{
+    if (level == xz->filter_count) {
+        /* LZMA2 fills the room it gets while it has input, and reports its
+           end with the last byte */
+        size_t count = xz->raw_end - xz->raw_at, room = out_size - *out_pos;
+        if (count > room) count = room;
+        if (count) memmove(out + *out_pos, stream + xz->raw_at, count);
+        xz->raw_at += count;
+        *out_pos += count;
+        if (xz->raw_at == xz->raw_end && xz->raw_ended) return true;
+        if (count < room) xz->raw_starved = true;
+        return false;
+    }
+    xx_zip_py_xz_filter *f = &xz->filters[level];
+    if (f->id == XX_ZIP_PY_XZ_FILTER_DELTA) {
+        /* delta_decode(): each byte plus the byte `distance` before it */
+        const size_t start = *out_pos;
+        bool end = xx_zip_py_xz_chain_code(xz, level + 1, stream, out, out_pos, out_size);
+        for (size_t i = start; i < *out_pos; ++i) {
+            out[i] = (uint8_t)(out[i] + f->history[(f->distance + f->delta_pos) & 0xFF]);
+            f->history[f->delta_pos--] = out[i];
+        }
+        return end;
+    }
+
+    /* simple_code() */
+    if (f->pos < f->filtered) {
+        xx_zip_py_xz_filter_flush(f, out, out_pos, out_size);
+        if (f->pos < f->filtered) return false;
+        if (f->end_was_reached) return true;
+    }
+    f->filtered = 0;
+    {
+        const size_t out_avail = out_size - *out_pos, buf_avail = f->size - f->pos;
+        if (out_avail > buf_avail || buf_avail == 0) {
+            /* the kept bytes go to the output, more is decoded behind them,
+               and all of it is converted there */
+            const size_t out_start = *out_pos;
+            if (buf_avail) memmove(out + *out_pos, f->buffer + f->pos, buf_avail);
+            *out_pos += buf_avail;
+            if (xx_zip_py_xz_chain_code(xz, level + 1, stream, out, out_pos, out_size)) f->end_was_reached = true;
+            const size_t size = *out_pos - out_start, unfiltered = size - xx_zip_py_xz_bcj(f, out + out_start, size);
+            f->pos = 0;
+            f->size = unfiltered;
+            if (f->end_was_reached) {
+                f->size = 0;
+            } else if (unfiltered) {
+                *out_pos -= unfiltered;
+                memcpy(f->buffer, out + *out_pos, unfiltered);
+            }
+        } else if (f->pos > 0) {
+            memmove(f->buffer, f->buffer + f->pos, buf_avail);
+            f->size -= f->pos;
+            f->pos = 0;
+        }
+    }
+    if (f->size > 0) {
+        /* the kept bytes stay in the buffer: fill it, convert, and give
+           what was converted */
+        if (xx_zip_py_xz_chain_code(xz, level + 1, stream, f->buffer, &f->size, f->allocated)) f->end_was_reached = true;
+        f->filtered = xx_zip_py_xz_bcj(f, f->buffer, f->size);
+        if (f->end_was_reached) f->filtered = f->size;
+        xx_zip_py_xz_filter_flush(f, out, out_pos, out_size);
+    }
+    return f->end_was_reached && f->pos == f->size;
+}
+
+/* The next block of CPython's output buffer. */
+static void xx_zip_py_xz_py_grow(xx_zip_py_xz *xz)
+{
+    uint64_t block = xx_zip_py_buffer_block(++xz->py_block);
+    xz->py_end = block > SIZE_MAX - xz->py_end ? SIZE_MAX : xz->py_end + (size_t)block;
+}
+
+/* The bytes out[first ..] that LZMA2 gave for a block, through the block's
+ * filters, in place, in the calls CPython makes: lzma_code() with the room
+ * its output buffer has, a larger buffer when that is full, until liblzma
+ * has taken all the input and leaves room. `ended`: LZMA2 reached its end;
+ * otherwise the input ended first. Returns the number of bytes the chain has
+ * given by then, which is all of them when LZMA2 ended. */
+static size_t xx_zip_py_xz_chain_run(xx_zip_py_xz *xz, size_t first, bool ended)
+{
+    uint8_t *stream = (uint8_t *)xz->out->data + xz->stream_start;
+    size_t start = first - xz->stream_start, position = start;
+    xz->raw_at = start;
+    xz->raw_end = xz->out->size - xz->stream_start;
+    xz->raw_ended = ended;
+    xz->raw_starved = false;
+    for (unsigned idle = 0;;) {
+        size_t before = position, raw_before = xz->raw_at;
+        if (xx_zip_py_xz_chain_code(xz, 0, stream, stream, &position, xz->py_end)) break;
+        if (position == xz->py_end) {
+            xx_zip_py_xz_py_grow(xz);
+        } else if (xz->raw_starved) {
+            break;
+        }
+        /* liblzma gives up (LZMA_BUF_ERROR) after two calls that do nothing;
+           a chain always does something while LZMA2 has bytes */
+        idle = position == before && xz->raw_at == raw_before ? idle + 1 : 0;
+        if (idle > 4) break;
+    }
+    return position - start;
+}
+
 typedef struct xx_zip_py_xz_record {
     uint64_t unpadded;
     uint64_t uncompressed;
 } xx_zip_py_xz_record;
 
 /* A block header of `header_size` bytes, all there, as
- * lzma_block_header_decode() and the filter chain's validation take it. */
+ * lzma_block_header_decode() and the start of the filter chain take it: the
+ * filters one after the other (a number that is not one, an ID from 2^62 on
+ * or properties longer than the header: data; an ID liblzma does not have
+ * or properties of the wrong size or value: options), the padding, the
+ * chain's rules (at most four filters come from the header's two bits;
+ * LZMA2 last and only last), and then each filter's own start, where a BCJ
+ * start offset that is not a multiple of the filter's alignment is refused.
+ * The filters before LZMA2 are left in xz->filters. */
 static xx_zip_py_xz_step xx_zip_py_xz_block_header(xx_zip_py_xz *xz, const uint8_t *header, size_t header_size, size_t check_size,
                                                    uint64_t *declared_compressed, uint64_t *declared_uncompressed, unsigned *lzma2)
 {
     size_t end = header_size - 4, cursor = 2;
     uint8_t flags = header[1];
     unsigned filters = (flags & 0x03) + 1;
-    bool other = false, chain = true;
+    bool chain = true, aligned = true;
+    xz->filter_count = 0;
     if (xx_crc32_calc(0, header, end) != xx_zip_py_rd32(header + end)) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
     if (flags & 0x3C) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
     *declared_compressed = *declared_uncompressed = XX_ZIP_PY_XZ_UNKNOWN;
@@ -2843,34 +3523,34 @@ static xx_zip_py_xz_step xx_zip_py_xz_block_header(xx_zip_py_xz *xz, const uint8
         if (xx_zip_py_xz_vli(header, end, &cursor, &id) != XX_ZIP_PY_XZ_END || id >= ((uint64_t)1 << 62) ||
             xx_zip_py_xz_vli(header, end, &cursor, &size) != XX_ZIP_PY_XZ_END || size > end - cursor)
             return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
-        /* the filters liblzma has: LZMA2, which ends a chain, and delta and
-           the six BCJ filters, which do not */
+        /* the filters liblzma (5.2, as CPython 3.13 has it) knows: LZMA2,
+           which ends a chain, and delta and the six BCJ filters, which do
+           not; ARM64 (0x0A) and RISC-V (0x0B) came later */
         if (id == XX_ZIP_PY_XZ_FILTER_LZMA2) {
             if (size != 1 || header[cursor] > 40) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
             *lzma2 = header[cursor];
             if (i + 1 != filters) chain = false;
-        } else if (id == 0x03) {
+        } else if (id == XX_ZIP_PY_XZ_FILTER_DELTA) {
+            /* one byte: the distance less one */
             if (size != 1) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
-        } else if (id >= 0x04 && id <= 0x09) {
+            if (i + 1 == filters) chain = false;
+            if (chain) xx_zip_py_xz_filter_start(&xz->filters[xz->filter_count++], (unsigned)id, 0, (unsigned)header[cursor] + 1);
+        } else if (id >= XX_ZIP_PY_XZ_FILTER_X86 && id <= XX_ZIP_PY_XZ_FILTER_SPARC) {
+            /* nothing, or the start offset in four bytes */
+            static const uint8_t alignment[6] = {1, 4, 16, 4, 2, 4};
             if (size != 0 && size != 4) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
+            uint32_t offset = size ? xx_zip_py_rd32(header + cursor) : 0;
+            if (offset & (alignment[id - XX_ZIP_PY_XZ_FILTER_X86] - 1u)) aligned = false;
+            if (i + 1 == filters) chain = false;
+            if (chain) xx_zip_py_xz_filter_start(&xz->filters[xz->filter_count++], (unsigned)id, offset, 0);
         } else {
             return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
-        }
-        if (id != XX_ZIP_PY_XZ_FILTER_LZMA2) {
-            if (i + 1 == filters) chain = false;
-            if (!other) xz->filter = id;
-            other = true;
         }
         cursor += (size_t)size;
     }
     for (; cursor < end; ++cursor)
         if (header[cursor]) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
-    if (!chain) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
-    if (other) {
-        /* liblzma decodes this chain; the unit has LZMA2 alone */
-        xz->filter_unknown = true;
-        return XX_ZIP_PY_XZ_FAIL;
-    }
+    if (!chain || !aligned) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
     return XX_ZIP_PY_XZ_END;
 }
 
@@ -2891,6 +3571,10 @@ static xx_zip_py_xz_step xx_zip_py_xz_stream(xx_zip_py_xz *xz, const uint8_t *da
     unsigned check = data[7] & 0x0F;
     size_t check_size = xx_zip_py_xz_check_size(check), position = 12;
     uint64_t blocks_size = 0, blocks_uncompressed = 0, blocks_list = 0;
+    /* a decompressor of CPython's starts with an output buffer of one block */
+    xz->stream_start = xz->out->size;
+    xz->py_block = 0;
+    xz->py_end = (size_t)xx_zip_py_buffer_block(0);
 
     for (;;) {
         if (position == size) goto done;
@@ -2909,10 +3593,17 @@ static xx_zip_py_xz_step xx_zip_py_xz_stream(xx_zip_py_xz *xz, const uint8_t *da
         step = xx_zip_py_xz_lzma2(xz, data, size, &position);
         if (!xx_zip_py_xz_flush(xz)) step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_memory);
         if (step == XX_ZIP_PY_XZ_FAIL) goto done;
-        /* The block decoder counts what the LZMA2 decoder took and gave:
-           more than the header declares is a fault at once, less is one at
-           the end of the data. */
+        /* The block decoder counts what the LZMA2 decoder took and what
+           the chain gave: more than the header declares is a fault at once,
+           less is one at the end of the data. Filters before LZMA2 hold
+           bytes back, so the count is theirs. */
         uint64_t compressed = (step == XX_ZIP_PY_XZ_MORE ? size : position) - start, uncompressed = xz->out->size - first;
+        if (xz->filter_count) {
+            uncompressed = xx_zip_py_xz_chain_run(xz, first, step == XX_ZIP_PY_XZ_END);
+        } else {
+            /* the buffer grows when liblzma has filled it and has not ended the block */
+            while (xz->out->size - xz->stream_start > xz->py_end) xx_zip_py_xz_py_grow(xz);
+        }
         uint64_t limit = declared_compressed != XX_ZIP_PY_XZ_UNKNOWN ? declared_compressed
                                                                      : (XX_ZIP_PY_XZ_VLI_MAX & ~(uint64_t)3) - header_size - check_size;
         if (compressed > limit || (declared_uncompressed != XX_ZIP_PY_XZ_UNKNOWN && uncompressed > declared_uncompressed)) {
@@ -3098,19 +3789,6 @@ bool xx_zip_py_xz_decompress(const uint8_t *data, size_t size, uint8_t **out, si
                 if (!first) {
                     result.size = before;
                     result.data[before] = '\0';
-                } else if (xz->filter_unknown) {
-                    /* "unsupported XZ filter 0x<id in lower-case hex>" */
-                    static const char hex[] = "0123456789abcdef";
-                    char digits[17];
-                    size_t count = 0;
-                    uint64_t id = xz->filter;
-                    do {
-                        digits[16 - ++count] = hex[id & 0x0F];
-                        id >>= 4;
-                    } while (id);
-                    digits[16] = '\0';
-                    if (error) *error = xx_zip_py_concat("unsupported XZ filter 0x", digits + 16 - count, "");
-                    message = "";
                 } else {
                     message = xz->message;
                 }

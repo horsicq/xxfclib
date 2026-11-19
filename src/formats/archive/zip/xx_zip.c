@@ -20,7 +20,7 @@
  */
 
 #include "xxfclib/codepages/xx_codepage.h"
-#include "xx_zip_datastructs_internal.h"
+#include "xx_zip_private.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/formats/archive/zip/xx_zip.h"
 #include "xx_zip_defs.h"

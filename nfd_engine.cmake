@@ -16,6 +16,8 @@ endif()
 set(XXFC_NFD_ENGINE_SOURCES ${XXFC_DIE_ENGINE_SOURCES})
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/die_engine/")
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/js/")
+# The DataStructs script host needs the JS engine removed above.
+list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/datastructs/")
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/regex/xx_regex_(die|js)")
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/sort/xx_sort_scan\\.c$")
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/formats/xx_format_datastructs\\.c$")

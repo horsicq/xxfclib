@@ -477,8 +477,8 @@ xx_format_extractor *xx_format_extractor_at(size_t index, xx_file_type_t *type)
  * Use the legacy pointer as the key: entries such as PE32/PE64 and ZIP/ZIP64
  * that share one search implementation also share their abstract adapters. */
 #if XFU_FORMAT_SUPPORT_FULL
-#include "xx_format_abstract_extractor_list.inc"
-#include "xx_format_reader_only_decls.inc"
+/* Public headers first: they carry XXFC_API, and a shared build rejects a
+ * dllexport declaration that follows the plain extern in the lists below. */
 #include "xxfclib/formats/document/zxml/xx_zxml.h"
 #include "xxfclib/formats/filesystem/zisofs/xx_zisofs.h"
 #include "xxfclib/formats/other/nvp/xx_nvp.h"
@@ -523,6 +523,8 @@ xx_format_extractor *xx_format_extractor_at(size_t index, xx_file_type_t *type)
 #include "xxfclib/formats/archive/lds/xx_lds.h"
 #include "xxfclib/formats/filesystem/dcp_disk/xx_dcp_disk.h"
 #include "xxfclib/formats/firmware/sony_image/xx_sony_image.h"
+#include "xx_format_abstract_extractor_list.inc"
+#include "xx_format_reader_only_decls.inc"
 
 static const struct {
     xx_file_type_t type;

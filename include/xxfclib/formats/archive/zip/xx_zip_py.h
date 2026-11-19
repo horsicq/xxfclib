@@ -48,7 +48,7 @@
  * an LZMA member declares (the dictionary grows with the output here), and
  * what libbz2 does with code tables that no encoder writes and that make it
  * read memory it never set.
- * tests/formats/zip_py compares this unit with CPython 3.13 on 60 archives.
+ * tests/formats/zip_py compares this unit with CPython 3.13 on 62 archives.
  *
  * The unit is self-contained: it uses the Deflate (for whole members whose
  * stream is sound, in its zlib-strict mode), CRC and SHA-256 codecs, never
@@ -204,9 +204,10 @@ XXFC_API void xx_zip_py_free_text(char *text);
  * header. */
 XXFC_API bool xx_zip_py_raw_data(const xx_zip_py *zip, const xx_zip_py_info *info, const uint8_t **data, size_t *size);
 
-/** lzma.decompress(data) with the default FORMAT_AUTO: .xz streams whose
- * filter chain is LZMA2 and .lzma (LZMA_Alone) data, one stream after the
- * other. The data is decoded in liblzma's order, so the result is CPython's
+/** lzma.decompress(data) with the default FORMAT_AUTO: .xz streams (LZMA2,
+ * alone or after the delta and BCJ filters of liblzma 5.2: x86, PowerPC,
+ * IA-64, ARM, ARM-Thumb, SPARC) and .lzma (LZMA_Alone) data, one stream after
+ * the other. The data is decoded in liblzma's order, so the result is CPython's
  * also for data that is cut or damaged: the texts of LZMAError ("Corrupt
  * input data", "Input format not supported by decoder", "Invalid or
  * unsupported options"), and "Compressed data ended before the end-of-stream
@@ -214,10 +215,10 @@ XXFC_API bool xx_zip_py_raw_data(const xx_zip_py *zip, const xx_zip_py_info *inf
  * all there when the data ends without a fault (no data at all, and a few
  * zeros after a stream, included). A fault in a later stream ends the
  * decoding and what was decoded before is returned.
- * Deliberate difference: a block whose filter chain liblzma decodes but that
- * holds a delta or BCJ filter before LZMA2 fails here with "unsupported XZ
- * filter 0x<id>". Not reproduced: MemoryError for a dictionary liblzma
- * cannot allocate (the dictionary grows with the output here).
+ * Filters CPython 3.13's liblzma does not have (ARM64, RISC-V) are "Invalid
+ * or unsupported options", as there. Not reproduced: MemoryError for a
+ * dictionary liblzma cannot allocate (the dictionary grows with the output
+ * here).
  * On success *out (owned, release with xx_zip_py_free(*out,
  * XX_ZIP_PY_OWNED)) holds *out_size bytes. */
 XXFC_API bool xx_zip_py_xz_decompress(const uint8_t *data, size_t size, uint8_t **out, size_t *out_size, char **error);

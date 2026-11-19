@@ -19,16 +19,16 @@ set(XXFC_EMUL_FORMAT_SOURCES
     src/formats/archive/zip/xx_zip.c src/formats/archive/zip/xx_zip_inspect.c
     src/formats/installer/apk/xx_apk.c src/formats/installer/apk/xx_apk_inspect.c
     src/formats/executable/dex/xx_dex.c src/formats/executable/dex/xx_dex_inspect.c
-    src/formats/executable/elf/xx_elf.c src/formats/executable/elf/xx_elf_datastructs.c
+    src/formats/executable/elf/xx_elf.c
     src/formats/executable/elf/xx_elf_inspect.c src/formats/executable/elf/xx_elf_symbols.c
     src/formats/executable/elf/xx_elf_yx.c
-    src/formats/executable/pe/xx_pe.c src/formats/executable/pe/xx_pe_datastructs.c
+    src/formats/executable/pe/xx_pe.c
     src/formats/executable/pe/xx_pe_inspect.c
     src/formats/executable/pe/xx_pe_unwind_validate.c
     src/formats/executable/pe/xx_pe_stream_common.c src/formats/executable/pe/xx_pe_export.c
     src/formats/executable/pe/xx_pe_metadata.c src/formats/executable/pe/xx_pe_import.c
     src/formats/executable/pe/xx_pe_yx.c    src/formats/executable/pe/xx_pe_yx_authenticode.c
-    src/formats/executable/dotnet/xx_dotnet.c src/formats/executable/dotnet/xx_dotnet_datastructs.c
+    src/formats/executable/dotnet/xx_dotnet.c
     src/formats/executable/dotnet/platforms/xx_dotnet_us_simd.h
     src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c
     src/formats/executable/dotnet/platforms/xx_dotnet_us_avx2.c

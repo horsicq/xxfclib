@@ -55,6 +55,7 @@ typedef enum xx_zip_encryption_method_e {
 } xx_zip_encryption_method_t;
 typedef xx_zip_encryption_method_t xx_zip_encryption_method;
 
+/* The ids are defined by src/datastructs/zip.xxds and must match it. */
 /**
  * @brief Identifiers for ZIP-specific binary data structures (used with xx_data_struct.id).
  */
@@ -218,22 +219,6 @@ XXFC_API bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_
 XXFC_API bool xx_zip_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_zip_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
 
-/* --- Data Struct Id <-> String Conversion --- */
-XXFC_API const char *xx_zip_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_zip_data_struct_string_to_id(Abstractformat *self, const char *name);
-
-/* --- Stream Data Structs Reading (headers/tables of the ZIP format) --- */
-XXFC_API xx_data_struct_state *xx_zip_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_zip_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_zip_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_zip_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-/* --- Stream Data Struct Records Reading (named fields of a single STRUCT-type data struct) --- */
-XXFC_API xx_data_struct_record_state *xx_zip_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_zip_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_zip_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_zip_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
-
 /* --- ZIP Getters & Properties --- */
 XXFC_API bool xx_zip_is_zip64(const xx_zip *zip);
 XXFC_API uint64_t xx_zip_get_number_of_records(const xx_zip *zip);
@@ -272,16 +257,6 @@ static inline const xx_archive_record *XZip_get_current_archive_record(xx_zip *z
 static inline bool XZip_unpack_current_archive_record(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd) { return xx_zip_unpack_current_archive_record(xx_zip_to_format(zip), state, pd); }
 static inline bool XZip_archive_record_move_to_next(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd) { return xx_zip_archive_record_move_to_next(xx_zip_to_format(zip), state, pd); }
 static inline void XZip_free_archive_records_reading(xx_zip *zip, xx_archive_record_state *state) { xx_zip_free_archive_records_reading(xx_zip_to_format(zip), state); }
-static inline const char *XZip_data_struct_id_to_string(xx_zip *zip, uint32_t id) { return xx_zip_data_struct_id_to_string(xx_zip_to_format(zip), id); }
-static inline uint32_t XZip_data_struct_string_to_id(xx_zip *zip, const char *name) { return xx_zip_data_struct_string_to_id(xx_zip_to_format(zip), name); }
-static inline xx_data_struct_state *XZip_create_data_structs_reading(xx_zip *zip, xx_pd_struct *pd) { return xx_zip_create_data_structs_reading(xx_zip_to_format(zip), pd); }
-static inline const xx_data_struct *XZip_get_current_data_struct(xx_zip *zip, xx_data_struct_state *state) { return xx_zip_get_current_data_struct(xx_zip_to_format(zip), state); }
-static inline bool XZip_data_struct_move_to_next(xx_zip *zip, xx_data_struct_state *state, xx_pd_struct *pd) { return xx_zip_data_struct_move_to_next(xx_zip_to_format(zip), state, pd); }
-static inline void XZip_free_data_structs_reading(xx_zip *zip, xx_data_struct_state *state) { xx_zip_free_data_structs_reading(xx_zip_to_format(zip), state); }
-static inline xx_data_struct_record_state *XZip_create_data_struct_records_reading(xx_zip *zip, const xx_data_struct *ds, xx_pd_struct *pd) { return xx_zip_create_data_struct_records_reading(xx_zip_to_format(zip), ds, pd); }
-static inline const xx_data_struct_record *XZip_get_current_data_struct_record(xx_zip *zip, xx_data_struct_record_state *state) { return xx_zip_get_current_data_struct_record(xx_zip_to_format(zip), state); }
-static inline bool XZip_data_struct_record_move_to_next(xx_zip *zip, xx_data_struct_record_state *state, xx_pd_struct *pd) { return xx_zip_data_struct_record_move_to_next(xx_zip_to_format(zip), state, pd); }
-static inline void XZip_free_data_struct_records_reading(xx_zip *zip, xx_data_struct_record_state *state) { xx_zip_free_data_struct_records_reading(xx_zip_to_format(zip), state); }
 
 
 

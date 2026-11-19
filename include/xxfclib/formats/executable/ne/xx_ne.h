@@ -13,6 +13,7 @@ extern "C" {
 
 #define XX_NE_SIGNATURE UINT16_C(0x454e)
 
+/* The ids are defined by src/datastructs/ne.xxds and must match it. */
 typedef enum xx_ne_data_struct_id_e {
     XX_NE_DATA_STRUCT_UNKNOWN = 0,
     XX_NE_DATA_STRUCT_DOS_HEADER,

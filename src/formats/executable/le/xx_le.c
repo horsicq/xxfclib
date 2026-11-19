@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_le_datastructs_internal.h"
+#include "xx_le_private.h"
 #include "xxfclib/formats/executable/le/xx_le.h"
 #include "xx_linear_internal.h"
 #include "xx_le_defs.h"

@@ -20,7 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_ar_datastructs_internal.h"
+#include "xx_ar_private.h"
 #include "xxfclib/formats/archive/ar/xx_ar.h"
 #include "xx_ar_defs.h"
 #include "xxfclib/algo/store/xx_store.h"

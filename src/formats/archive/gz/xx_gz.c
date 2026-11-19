@@ -20,7 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_gz_datastructs_internal.h"
+#include "xx_gz_private.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/archive/gz/xx_gz.h"
 #include "xx_gz_defs.h"

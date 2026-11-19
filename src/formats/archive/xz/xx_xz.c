@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_xz_datastructs_internal.h"
+#include "xx_xz_private.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/archive/xz/xx_xz.h"
 #include "xx_xz_defs.h"

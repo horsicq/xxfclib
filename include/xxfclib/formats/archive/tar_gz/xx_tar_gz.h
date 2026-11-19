@@ -48,18 +48,6 @@ XXFC_API bool xx_tar_gz_pack_archive_record(Abstractformat *self, xx_archive_wri
 XXFC_API bool xx_tar_gz_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_tar_gz_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
 
-XXFC_API const char *xx_tar_gz_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_tar_gz_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_tar_gz_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_tar_gz_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_tar_gz_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tar_gz_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_tar_gz_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_tar_gz_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_tar_gz_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tar_gz_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
-
 XXFC_API uint64_t xx_tar_gz_get_number_of_records(const xx_tar_gz *tar_gz);
 XXFC_API uint64_t xx_tar_gz_get_number_of_members(const xx_tar_gz *tar_gz);
 XXFC_API int64_t xx_tar_gz_get_compressed_size(const xx_tar_gz *tar_gz);

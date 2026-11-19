@@ -133,6 +133,9 @@ void xx_data_struct_record_cleanup(xx_data_struct_record *rec)
     if (rec->comment) {
         xx_str_wfree(rec->comment);
     }
+    if (rec->description) {
+        xx_str_wfree(rec->description);
+    }
     xx_var_cleanup(&rec->value);
     xx_mem_zero(rec, sizeof(xx_data_struct_record));
     rec->offset = -1;
@@ -223,19 +226,37 @@ bool xx_data_struct_record_set_raw_uint(xx_data_struct_record *rec, uint64_t val
     return xx_data_struct_record_set_raw_value(rec, raw);
 }
 
+/* Bytes shown at each end of a byte string that is too long to show whole. */
+#define XX_DATA_STRUCT_RAW_EDGE_BYTES 16U
+
+static bool g_xx_data_struct_raw_bytes_full;
+
+void xx_data_struct_set_raw_bytes_full(bool full)
+{
+    g_xx_data_struct_raw_bytes_full = full;
+}
+
+/* A byte string is not a number: it is shown as its bytes in file order,
+ * without a 0x prefix ("2E74657874000000"), and one longer than two edges
+ * keeps only its first and last bytes ("AAAA....AAAA"). */
 bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx_io_device *device, int64_t offset, int64_t size)
 {
     static const wchar_t digits[] = L"0123456789ABCDEF";
     wchar_t *raw;
     size_t byte_count;
     size_t char_count;
+    size_t head, tail, position = 0U;
     size_t index;
+    bool full = g_xx_data_struct_raw_bytes_full;
     if (!rec || !device || offset < 0 || size < 0 || !xx_io_check(device, offset, size) ||
         (uint64_t)size > (uint64_t)(SIZE_MAX - 3U) / 2U) {
         return false;
     }
     byte_count = (size_t)size;
-    char_count = byte_count * 2U + 3U;
+    head = byte_count;
+    tail = 0U;
+    if (!full && byte_count > 2U * XX_DATA_STRUCT_RAW_EDGE_BYTES) head = tail = XX_DATA_STRUCT_RAW_EDGE_BYTES;
+    char_count = (head + tail) * 2U + (tail ? 4U : 0U) + (full ? 2U : 0U) + 1U;
     if (char_count > SIZE_MAX / sizeof(*raw)) {
         return false;
     }
@@ -243,14 +264,24 @@ bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx_io_devic
     if (!raw) {
         return false;
     }
-    raw[0] = L'0';
-    raw[1] = L'x';
-    for (index = 0U; index < byte_count; ++index) {
-        uint8_t byte = xx_io_get_u8(device, offset + (int64_t)index);
-        raw[index * 2U + 2U] = digits[byte >> 4U];
-        raw[index * 2U + 3U] = digits[byte & 0x0FU];
+    if (full) {
+        raw[position++] = L'0';
+        raw[position++] = L'x';
     }
-    raw[char_count - 1U] = L'\0';
+    for (index = 0U; index < head; ++index) {
+        uint8_t byte = xx_io_get_u8(device, offset + (int64_t)index);
+        raw[position++] = digits[byte >> 4U];
+        raw[position++] = digits[byte & 0x0FU];
+    }
+    if (tail) {
+        for (index = 0U; index < 4U; ++index) raw[position++] = L'.';
+        for (index = byte_count - tail; index < byte_count; ++index) {
+            uint8_t byte = xx_io_get_u8(device, offset + (int64_t)index);
+            raw[position++] = digits[byte >> 4U];
+            raw[position++] = digits[byte & 0x0FU];
+        }
+    }
+    raw[position] = L'\0';
     if (rec->raw_value) {
         xx_str_wfree(rec->raw_value);
     }
@@ -613,6 +644,44 @@ void xx_format_free_data_struct_records_reading(Abstractformat *f, xx_data_struc
     } else {
         xx_data_struct_record_state_free(state);
     }
+}
+
+bool xx_data_struct_record_set_description(xx_data_struct_record *rec, const wchar_t *description)
+{
+    wchar_t *copy;
+    if (!rec) {
+        return false;
+    }
+    copy = description ? xx_str_wdup(description) : NULL;
+    if (description && !copy) {
+        return false;
+    }
+    if (rec->description) {
+        xx_str_wfree(rec->description);
+    }
+    rec->description = copy;
+    return true;
+}
+
+const char *xx_format_data_struct_description(Abstractformat *f, uint32_t id)
+{
+    const StreamDataStructs *stream = xx_format_get_stream_datastructs(f);
+    if (stream && stream->data_struct_description) {
+        return (stream->data_struct_description)(f, id);
+    }
+    return NULL;
+}
+
+xx_io_device *xx_format_get_data_struct_device(Abstractformat *f, xx_pd_struct *pd)
+{
+    const StreamDataStructs *stream = xx_format_get_stream_datastructs(f);
+    if (!f) {
+        return NULL;
+    }
+    if (stream && stream->data_struct_device) {
+        return (stream->data_struct_device)(f, pd);
+    }
+    return f->device;
 }
 
 const char *xx_format_data_struct_id_to_string(Abstractformat *f, uint32_t id)

@@ -18,6 +18,7 @@ typedef struct xx_tar xx_tar;
 typedef struct xx_tar xx_tar_t;
 typedef struct xx_tar XTar;
 
+/* The ids are defined by src/datastructs/tar.xxds and must match it. */
 typedef enum xx_tar_data_struct_id_e {
     XX_TAR_DS_UNKNOWN = 0,
     XX_TAR_DS_HEADER,
@@ -75,18 +76,6 @@ XXFC_API bool xx_tar_pack_archive_record(Abstractformat *self, xx_archive_write_
 XXFC_API bool xx_tar_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 /** @brief Release a TAR archive writing state. */
 XXFC_API void xx_tar_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
-
-XXFC_API const char *xx_tar_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_tar_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_tar_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_tar_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_tar_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tar_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_tar_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_tar_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_tar_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_tar_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API uint64_t xx_tar_get_number_of_records(const xx_tar *tar);
 XXFC_API uint64_t xx_tar_get_number_of_members(const xx_tar *tar);

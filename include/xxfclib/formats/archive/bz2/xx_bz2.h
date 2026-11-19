@@ -38,6 +38,7 @@ typedef struct xx_bz2 xx_bz2;
 typedef struct xx_bz2 xx_bz2_t;
 typedef struct xx_bz2 XBz2;
 
+/* The ids are defined by src/datastructs/bz2.xxds and must match it. */
 typedef enum xx_bz2_data_struct_id_e {
     XX_BZ2_DS_UNKNOWN = 0,
     XX_BZ2_DS_STREAM_HEADER,
@@ -92,18 +93,6 @@ XXFC_API xx_archive_write_state *xx_bz2_create_archive_records_writing(Abstractf
 XXFC_API bool xx_bz2_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd);
 XXFC_API bool xx_bz2_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_bz2_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
-
-XXFC_API const char *xx_bz2_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_bz2_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_bz2_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_bz2_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_bz2_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_bz2_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_bz2_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_bz2_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_bz2_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_bz2_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API uint8_t xx_bz2_get_block_size_100k(const xx_bz2 *bz2);
 XXFC_API uint64_t xx_bz2_get_uncompressed_size(const xx_bz2 *bz2);

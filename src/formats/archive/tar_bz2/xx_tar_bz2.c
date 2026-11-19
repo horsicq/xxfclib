@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/formats/archive/tar_bz2/xx_tar_bz2.h"
-#include "xx_tar_bz2_datastructs_internal.h"
+#include "xx_tar_bz2_private.h"
 
 #include "xxfclib/algo/bzip2/xx_bzip2.h"
 #include "xxfclib/formats/archive/bz2/xx_bz2.h"

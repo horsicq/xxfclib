@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/formats/archive/tar_lz4/xx_tar_lz4.h"
-#include "xx_tar_lz4_datastructs_internal.h"
+#include "xx_tar_lz4_private.h"
 
 #include "../tar_common/xx_tar_common.h"
 #include "xxfclib/algo/lz4/xx_lz4.h"

@@ -90,13 +90,13 @@ endif()
 set(XXFC_EMUL_NATIVE_FORMAT_SOURCES
     src/formats/executable/com/xx_com.c
     src/formats/executable/msdos/xx_msdos.c
-    src/formats/executable/pe/xx_pe.c src/formats/executable/pe/xx_pe_datastructs.c
+    src/formats/executable/pe/xx_pe.c
     src/formats/executable/pe/xx_pe_stream_common.c src/formats/executable/pe/xx_pe_export.c
     src/formats/executable/pe/xx_pe_metadata.c src/formats/executable/pe/xx_pe_import.c
     src/formats/executable/pe/xx_pe_yx.c    src/formats/executable/pe/xx_pe_yx_authenticode.c
-    src/formats/executable/elf/xx_elf.c src/formats/executable/elf/xx_elf_symbols.c src/formats/executable/elf/xx_elf_resources.c src/formats/executable/elf/xx_elf_datastructs.c
+    src/formats/executable/elf/xx_elf.c src/formats/executable/elf/xx_elf_symbols.c src/formats/executable/elf/xx_elf_resources.c
     src/formats/executable/elf/xx_elf_yx.c
-    src/formats/executable/macho/xx_macho.c src/formats/executable/macho/xx_macho_datastructs.c)
+    src/formats/executable/macho/xx_macho.c)
 set(XXFC_EMUL_SOURCES ${XXFC_EMUL_CORE_SOURCES}
     ${XXFC_EMUL_FORMAT_SOURCES} ${XXFC_EMUL_NATIVE_FORMAT_SOURCES})
 list(REMOVE_DUPLICATES XXFC_EMUL_SOURCES)

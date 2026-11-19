@@ -3036,7 +3036,6 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_tar_bz2
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_tar_common
     src/formats/archive/tar_common/xx_tar_common.c
-    src/formats/archive/tar_common/xx_tar_common_data.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_archive_tar_compress
     src/formats/archive/tar_compress/xx_tar_compress.c

@@ -107,7 +107,6 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_symbols.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_resources.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_datastructs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_yx.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/gz/xx_gz.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/archive/bz2/xx_bz2.c
@@ -122,7 +121,6 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/image/jpeg/xx_jpeg.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/macho/xx_macho_inspect.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/macho/xx_macho.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/macho/xx_macho_datastructs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/msdos/xx_msdos.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/ne/xx_ne.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/le/xx_le.c
@@ -137,7 +135,6 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_metadata.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_stream_common.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_datastructs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_yx.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_yx_authenticode.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet.c
@@ -147,7 +144,6 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_simd.h
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_sse2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/platforms/xx_dotnet_us_avx2.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_datastructs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_yx.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dotnet/xx_dotnet_yx_method.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/image/png/xx_png.c

@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_ne_datastructs_internal.h"
+#include "xx_ne_private.h"
 #include "xxfclib/formats/executable/ne/xx_ne.h"
 #include "xx_ne_defs.h"
 

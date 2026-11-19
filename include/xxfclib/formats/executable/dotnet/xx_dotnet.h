@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+/* The ids are defined by src/datastructs/dotnet.xxds and must match it. */
 typedef enum xx_dotnet_data_struct_id_e {
     XX_DOTNET_DATA_STRUCT_UNKNOWN = 0,
     XX_DOTNET_DATA_STRUCT_COR20_HEADER = 112,

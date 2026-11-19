@@ -452,6 +452,7 @@ struct xx_data_struct_record {
     xx_data_struct_record_property_t property; /**< Bit flags describing the record's semantic role */
     xx_var value;                              /**< Record value */
     wchar_t *comment;                          /**< Dynamic Unicode explanatory comment (owned, free with xx_str_wfree) */
+    wchar_t *description;                      /**< What the field is, from the format's script; NULL when it has none (owned) */
 };
 
 /**
@@ -2024,7 +2025,7 @@ XXFC_API void xx_data_struct_state_init(xx_data_struct_state *state, Abstractfor
 XXFC_API void xx_data_struct_state_cleanup(xx_data_struct_state *state);
 XXFC_API void xx_data_struct_state_free(xx_data_struct_state *state);
 
-/** True when native or registered on-disk schemas can enumerate structures. */
+/** True when a DataStructs script or a registered on-disk schema can enumerate structures. */
 XXFC_API bool xx_format_has_data_structs(Abstractformat *f);
 XXFC_API xx_data_struct_state *xx_format_create_data_structs_reading(Abstractformat *f, xx_pd_struct *pd);
 XXFC_API const xx_data_struct *xx_format_get_current_data_struct(Abstractformat *f, xx_data_struct_state *state);
@@ -2113,6 +2114,15 @@ XXFC_API bool xx_data_struct_record_set_raw_value(xx_data_struct_record *rec, co
 XXFC_API bool xx_data_struct_record_set_raw_uint(xx_data_struct_record *rec, uint64_t value, int64_t size);
 /** Store exactly @p size source bytes, in file order, as uppercase hexadecimal. */
 XXFC_API bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx_io_device *device, int64_t offset, int64_t size);
+/**
+ * @brief How the raw value of a byte string (array, text, explicit-order bytes) is written.
+ *
+ * Default (false): the bytes in file order without a prefix, "2E74657874000000";
+ * a string longer than 32 bytes keeps its first and last 16 bytes around "....".
+ * true: every byte with a "0x" prefix, the form comparison tools and older
+ * consumers expect. Process-wide; set it before reading records.
+ */
+XXFC_API void xx_data_struct_set_raw_bytes_full(bool full);
 /** Store display text. Non-NULL text for integer address, offset, and pointer
  *  fields is normalized to uppercase hexadecimal from rec->value. Set the
  *  record's property, type, size, and value first. Signed negatives retain a
@@ -2120,6 +2130,12 @@ XXFC_API bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx
  */
 XXFC_API bool xx_data_struct_record_set_display_value(xx_data_struct_record *rec, const wchar_t *display_value);
 XXFC_API bool xx_data_struct_record_set_comment(xx_data_struct_record *rec, const wchar_t *comment);
+XXFC_API bool xx_data_struct_record_set_description(xx_data_struct_record *rec, const wchar_t *description);
+/**
+ * @brief What a structure is, in one or two sentences ("The first structure in every PE file...").
+ * @return Text owned by the format's script host, valid while the library is loaded; NULL when the structure has none.
+ */
+XXFC_API const char *xx_format_data_struct_description(Abstractformat *f, uint32_t id);
 XXFC_API bool xx_data_struct_record_set_value(xx_data_struct_record *rec, const xx_var *value);
 
 XXFC_API bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *device, int64_t parent_offset, const xx_data_struct_field_desc *field,
@@ -2138,6 +2154,15 @@ XXFC_API void xx_data_struct_record_state_free(xx_data_struct_record_state *stat
 
 XXFC_API xx_data_struct_record_state *xx_format_create_data_struct_records_reading(Abstractformat *f, const xx_data_struct *ds, xx_pd_struct *pd);
 XXFC_API const xx_data_struct_record *xx_format_get_current_data_struct_record(Abstractformat *f, xx_data_struct_record_state *state);
+/**
+ * @brief The device a data structure's offsets refer to.
+ *
+ * Usually the format's own device. A wrapper type that reports the structures
+ * of the data it decodes to (a compressed TAR) answers the decoded device.
+ * Read the bytes of a structure, raw-data regions included, from this device.
+ * Owned by the format; NULL when it is not available.
+ */
+XXFC_API xx_io_device *xx_format_get_data_struct_device(Abstractformat *f, xx_pd_struct *pd);
 XXFC_API bool xx_format_data_struct_record_move_to_next(Abstractformat *f, xx_data_struct_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_format_free_data_struct_records_reading(Abstractformat *f, xx_data_struct_record_state *state);
 

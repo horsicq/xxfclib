@@ -163,6 +163,11 @@ typedef struct StreamDataStructs {
     const xx_data_struct_record *(*get_current_data_struct_record)(Abstractformat *self, xx_data_struct_record_state *state);
     bool (*data_struct_record_move_to_next)(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
     void (*free_data_struct_records_reading)(Abstractformat *self, xx_data_struct_record_state *state);
+    /* Optional: the device the structure offsets refer to when it is not the
+     * format's own (a compressed TAR reports structures of its decoded TAR). */
+    xx_io_device *(*data_struct_device)(Abstractformat *self, xx_pd_struct *pd);
+    /* Optional: what a structure is, NULL when it has no description. */
+    const char *(*data_struct_description)(Abstractformat *self, uint32_t id);
 } StreamDataStructs;
 
 typedef struct StreamImport {

@@ -20,7 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_rar_datastructs_internal.h"
+#include "xx_rar_private.h"
 #include "xxfclib/formats/archive/rar/xx_rar.h"
 #include "xx_rar_defs.h"
 

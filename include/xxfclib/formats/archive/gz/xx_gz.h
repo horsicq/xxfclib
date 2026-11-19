@@ -39,6 +39,7 @@ typedef struct xx_gz xx_gz;
 typedef struct xx_gz xx_gz_t;
 typedef struct xx_gz XGz;
 
+/* The ids are defined by src/datastructs/gz.xxds and must match it. */
 typedef enum xx_gz_data_struct_id_e {
     XX_GZ_DS_UNKNOWN = 0,
     XX_GZ_DS_MEMBER_HEADER,
@@ -103,18 +104,6 @@ XXFC_API xx_archive_write_state *xx_gz_create_archive_records_writing(Abstractfo
 XXFC_API bool xx_gz_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source, xx_pd_struct *pd);
 XXFC_API bool xx_gz_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd);
 XXFC_API void xx_gz_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state);
-
-XXFC_API const char *xx_gz_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_gz_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_gz_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_gz_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_gz_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_gz_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_gz_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_gz_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_gz_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_gz_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API uint64_t xx_gz_get_number_of_members(const xx_gz *gz);
 XXFC_API int64_t xx_gz_get_stream_end(const xx_gz *gz);

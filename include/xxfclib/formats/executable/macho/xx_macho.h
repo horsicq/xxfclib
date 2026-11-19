@@ -91,6 +91,7 @@ extern "C" {
 #define XX_MACHO_LOAD_TARGET_TRIPLE UINT32_C(0x00000039)
 #define XX_MACHO_LOAD_LAZY_LOAD_DYLIB_INFO UINT32_C(0x0000003a)
 
+/* The ids are defined by src/datastructs/macho.xxds and must match it. */
 /** Mach-O structures exposed through Abstractformat's data-structure stream. */
 typedef enum xx_macho_data_struct_id_e {
     XX_MACHO_DATA_STRUCT_UNKNOWN = 0,

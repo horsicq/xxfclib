@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_tar_datastructs_internal.h"
+#include "xx_tar_private.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/formats/archive/tar/xx_tar.h"
 #include "xx_tar_defs.h"

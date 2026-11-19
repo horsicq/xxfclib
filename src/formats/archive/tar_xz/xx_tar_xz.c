@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/formats/archive/tar_xz/xx_tar_xz.h"
-#include "xx_tar_xz_datastructs_internal.h"
+#include "xx_tar_xz_private.h"
 
 #include "../tar_common/xx_tar_common.h"
 #include "xxfclib/algo/crc/xx_crc.h"

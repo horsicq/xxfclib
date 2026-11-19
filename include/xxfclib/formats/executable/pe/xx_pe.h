@@ -15,6 +15,7 @@ extern "C" {
 #define XX_PE_MAGIC_32 UINT16_C(0x010b)
 #define XX_PE_MAGIC_64 UINT16_C(0x020b)
 
+/* The ids are defined by src/datastructs/pe.xxds and must match it. */
 typedef enum xx_pe_data_struct_id_e {
     XX_PE_DATA_STRUCT_UNKNOWN = 0,
     XX_PE_DATA_STRUCT_DOS_HEADER,

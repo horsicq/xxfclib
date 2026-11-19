@@ -41,6 +41,7 @@ typedef struct xx_ar xx_ar;
 typedef struct xx_ar xx_ar_t;
 typedef struct xx_ar XAr;
 
+/* The ids are defined by src/datastructs/ar.xxds and must match it. */
 typedef enum xx_ar_data_struct_id_e {
     XX_AR_DS_UNKNOWN = 0,
     XX_AR_DS_GLOBAL_HEADER,
@@ -73,18 +74,6 @@ XXFC_API const xx_archive_record *xx_ar_get_current_archive_record(Abstractforma
 XXFC_API bool xx_ar_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API bool xx_ar_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_ar_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
-
-XXFC_API const char *xx_ar_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_ar_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_ar_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_ar_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_ar_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ar_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_ar_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_ar_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_ar_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_ar_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API uint64_t xx_ar_get_number_of_records(const xx_ar *ar);
 XXFC_API uint64_t xx_ar_get_number_of_members(const xx_ar *ar);

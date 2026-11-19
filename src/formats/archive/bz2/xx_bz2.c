@@ -20,7 +20,7 @@
  */
 
 #include "xxfclib/rt/xx_rt.h"
-#include "xx_bz2_datastructs_internal.h"
+#include "xx_bz2_private.h"
 #include "xxfclib/formats/archive/bz2/xx_bz2.h"
 #include "xx_bz2_defs.h"
 #include "xx_bzip2_internal.h"

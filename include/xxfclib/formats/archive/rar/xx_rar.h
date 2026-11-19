@@ -65,6 +65,7 @@ typedef enum xx_rar_version_e {
     XX_RAR_VERSION_14 = 14
 } xx_rar_version_t;
 
+/* The ids are defined by src/datastructs/rar.xxds and must match it. */
 typedef enum xx_rar_data_struct_id_e {
     XX_RAR_DS_UNKNOWN = 0,
     XX_RAR_DS_SIGNATURE,
@@ -117,18 +118,6 @@ XXFC_API const xx_archive_record *xx_rar_get_current_archive_record(Abstractform
 XXFC_API bool xx_rar_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API bool xx_rar_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_rar_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
-
-XXFC_API const char *xx_rar_data_struct_id_to_string(Abstractformat *self, uint32_t id);
-XXFC_API uint32_t xx_rar_data_struct_string_to_id(Abstractformat *self, const char *name);
-XXFC_API xx_data_struct_state *xx_rar_create_data_structs_reading(Abstractformat *self, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_rar_get_current_data_struct(Abstractformat *self, xx_data_struct_state *state);
-XXFC_API bool xx_rar_data_struct_move_to_next(Abstractformat *self, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rar_free_data_structs_reading(Abstractformat *self, xx_data_struct_state *state);
-
-XXFC_API xx_data_struct_record_state *xx_rar_create_data_struct_records_reading(Abstractformat *self, const xx_data_struct *ds, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_rar_get_current_data_struct_record(Abstractformat *self, xx_data_struct_record_state *state);
-XXFC_API bool xx_rar_data_struct_record_move_to_next(Abstractformat *self, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_rar_free_data_struct_records_reading(Abstractformat *self, xx_data_struct_record_state *state);
 
 XXFC_API xx_rar_version_t xx_rar_get_version(const xx_rar *rar);
 XXFC_API int64_t xx_rar_get_signature_offset(const xx_rar *rar);

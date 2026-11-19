@@ -14,6 +14,7 @@ extern "C" {
 #define XX_LE_SIGNATURE UINT16_C(0x454c)
 #define XX_LX_SIGNATURE UINT16_C(0x584c)
 
+/* The ids are defined by src/datastructs/le.xxds (LE and LX) and must match it. */
 typedef enum xx_linear_data_struct_id_e {
     XX_LINEAR_DATA_STRUCT_UNKNOWN = 0,
     XX_LINEAR_DATA_STRUCT_DOS_HEADER,

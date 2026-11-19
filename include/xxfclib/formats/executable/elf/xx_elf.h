@@ -70,6 +70,7 @@ extern "C" {
 #define XX_ELF_SECTION_FLAG_ALLOC UINT64_C(0x2)
 #define XX_ELF_SECTION_FLAG_COMPRESSED UINT64_C(0x800)
 
+/* The ids are defined by src/datastructs/elf.xxds and must match it. */
 /** Fixed and bounded variable ELF structures exposed by the data stream. */
 typedef enum xx_elf_data_struct_id_e {
     XX_ELF_DATA_STRUCT_UNKNOWN = 0,
@@ -244,17 +245,6 @@ XXFC_API xx_resource_state *xx_elf_create_resources_reading(Abstractformat *form
 XXFC_API const xx_resource_record *xx_elf_get_current_resource(Abstractformat *format, xx_resource_state *state);
 XXFC_API bool xx_elf_resource_move_to_next(Abstractformat *format, xx_resource_state *state, xx_pd_struct *pd);
 XXFC_API void xx_elf_free_resources_reading(Abstractformat *format, xx_resource_state *state);
-
-XXFC_API const char *xx_elf_data_struct_id_to_string(Abstractformat *format, uint32_t id);
-XXFC_API uint32_t xx_elf_data_struct_string_to_id(Abstractformat *format, const char *name);
-XXFC_API xx_data_struct_state *xx_elf_create_data_structs_reading(Abstractformat *format, xx_pd_struct *pd);
-XXFC_API const xx_data_struct *xx_elf_get_current_data_struct(Abstractformat *format, xx_data_struct_state *state);
-XXFC_API bool xx_elf_data_struct_move_to_next(Abstractformat *format, xx_data_struct_state *state, xx_pd_struct *pd);
-XXFC_API void xx_elf_free_data_structs_reading(Abstractformat *format, xx_data_struct_state *state);
-XXFC_API xx_data_struct_record_state *xx_elf_create_data_struct_records_reading(Abstractformat *format, const xx_data_struct *data_struct, xx_pd_struct *pd);
-XXFC_API const xx_data_struct_record *xx_elf_get_current_data_struct_record(Abstractformat *format, xx_data_struct_record_state *state);
-XXFC_API bool xx_elf_data_struct_record_move_to_next(Abstractformat *format, xx_data_struct_record_state *state, xx_pd_struct *pd);
-XXFC_API void xx_elf_free_data_struct_records_reading(Abstractformat *format, xx_data_struct_record_state *state);
 
 static inline Abstractformat *xx_elf_to_format(xx_elf *elf)
 {

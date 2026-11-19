@@ -3,7 +3,7 @@
  */
 
 #include "xxfclib/formats/archive/tar_zstd/xx_tar_zstd.h"
-#include "xx_tar_zstd_datastructs_internal.h"
+#include "xx_tar_zstd_private.h"
 
 #include "../tar_common/xx_tar_common.h"
 #include "../../../algo/zstd/xx_zstd_dec.h"
