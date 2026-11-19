@@ -2025,7 +2025,7 @@ XXFC_API void xx_data_struct_state_init(xx_data_struct_state *state, Abstractfor
 XXFC_API void xx_data_struct_state_cleanup(xx_data_struct_state *state);
 XXFC_API void xx_data_struct_state_free(xx_data_struct_state *state);
 
-/** True when a DataStructs script or a registered on-disk schema can enumerate structures. */
+/** True when a DataStructs script (src/datastructs) can enumerate structures. */
 XXFC_API bool xx_format_has_data_structs(Abstractformat *f);
 XXFC_API xx_data_struct_state *xx_format_create_data_structs_reading(Abstractformat *f, xx_pd_struct *pd);
 XXFC_API const xx_data_struct *xx_format_get_current_data_struct(Abstractformat *f, xx_data_struct_state *state);

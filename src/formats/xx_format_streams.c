@@ -80,9 +80,6 @@
 #ifndef XXFC_STREAM_HAS_VXWORKS
 #define XXFC_STREAM_HAS_VXWORKS 1
 #endif
-#ifndef XXFC_STREAM_HAS_SCHEMA
-#define XXFC_STREAM_HAS_SCHEMA 1
-#endif
 #ifndef XXFC_STREAM_HAS_XXDS
 #define XXFC_STREAM_HAS_XXDS 0
 #endif
@@ -97,9 +94,6 @@ extern bool xx_pe_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 extern bool xx_elf_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 #endif
 
-#if XXFC_ENABLE_STREAM_DATASTRUCTS && XXFC_STREAM_HAS_SCHEMA
-extern const StreamDataStructs *xx_format_schema_get_stream_datastructs(Abstractformat *format);
-#endif
 
 #if XXFC_ENABLE_STREAM_IMPORT
 #if XXFC_STREAM_HAS_LE
@@ -188,11 +182,7 @@ const StreamDataStructs *xx_format_get_stream_datastructs(Abstractformat *format
         if (scripted) return scripted;
     }
 #endif
-#if XXFC_STREAM_HAS_SCHEMA
-    return xx_format_schema_get_stream_datastructs(format);
-#else
     return NULL;
-#endif
 #else
     (void)format;
     return NULL;

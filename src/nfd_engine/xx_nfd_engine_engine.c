@@ -14,12 +14,6 @@
 #error "The NFD sources must be built through the focused nfd_engine target"
 #endif
 
-#if !defined(XXFC_STREAM_HAS_SCHEMA)
-#error "The focused NFD target must declare its schema closure"
-#elif XXFC_STREAM_HAS_SCHEMA
-#error "The NFD engine must remain independent of the generic schema catalog"
-#endif
-
 #if defined(XXFC_NFD_ENGINE_CRT_FREE) && defined(_MSC_VER) && defined(_DLL)
 #error "The CRT-free NFD profile must not use the dynamic MSVC runtime"
 #endif

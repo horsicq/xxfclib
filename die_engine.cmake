@@ -162,7 +162,6 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_data_signature.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_memory_map.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_base.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_datastructs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_handle_types.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_names.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/xx_format_streams.c

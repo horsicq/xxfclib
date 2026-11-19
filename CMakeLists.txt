@@ -2373,7 +2373,6 @@ set(XXFCLIB_SOURCES
     src/algo/quantum/xx_quantum.c
     src/formats/xx_format.c
     src/formats/xx_format_base.c
-    src/formats/xx_format_datastructs.c
     src/formats/xx_format_handle_types.c
     src/formats/xx_format_unpack_handles.c
     src/formats/xx_format_streams.c

@@ -41,20 +41,20 @@ static bool sx_size_comment(xx_data_struct_record *r,uint64_t v)
     return xx_data_struct_record_set_comment(r,w);
 }
 
-#include "../formats/xx_format_schema_field_endian.inc"
-#include "../formats/xx_format_schema_legacy_integer.inc"
-#include "../formats/xx_format_schema_cpio_integer.inc"
-#include "../formats/xx_format_schema_ascii_scalar.inc"
-#include "../formats/xx_format_schema_nastran_real.inc"
-#include "../formats/xx_format_schema_fortran_real.inc"
-#include "../formats/xx_format_schema_utf8_field.inc"
-#include "../formats/xx_format_schema_ones_complement.inc"
-#include "../formats/xx_format_schema_msb_bits.inc"
-#include "../formats/xx_format_schema_stuffitx_bits.inc"
-#include "../formats/xx_format_schema_bias33.inc"
-#include "../formats/xx_format_schema_uleb64.inc"
-#include "../formats/xx_format_schema_freearc_uint.inc"
-#include "../formats/xx_format_schema_zigzag.inc"
+#include "xx_xxds_field_endian.inc"
+#include "xx_xxds_field_legacy_integer.inc"
+#include "xx_xxds_field_cpio_integer.inc"
+#include "xx_xxds_field_ascii_scalar.inc"
+#include "xx_xxds_field_nastran_real.inc"
+#include "xx_xxds_field_fortran_real.inc"
+#include "xx_xxds_field_utf8.inc"
+#include "xx_xxds_field_ones_complement.inc"
+#include "xx_xxds_field_msb_bits.inc"
+#include "xx_xxds_field_stuffitx_bits.inc"
+#include "xx_xxds_field_bias33.inc"
+#include "xx_xxds_field_uleb64.inc"
+#include "xx_xxds_field_freearc_uint.inc"
+#include "xx_xxds_field_zigzag.inc"
 
 static bool sx_decode_ascii_integer(xx_data_struct_record_state *s,const xx_data_struct_field_desc *field)
 {

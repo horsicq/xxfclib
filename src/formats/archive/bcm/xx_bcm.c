@@ -185,7 +185,13 @@ static void bcm_model_init(bcm_model *m, bool legacy)
             for (k = 0; k < 17; ++k) m->sse[i][j][k] = k == 16 ? top : (uint16_t)(k << 12);
     m->prev1 = 0U;
     m->prev2 = 0U;
-    m->run = 0U;
+    /* bcm compares the two previous symbols BEFORE coding each symbol, so the
+     * equal initial contexts (0, 0) already count as one repeat when the
+     * first symbol is coded.  bcm_decode_symbol() does that comparison after
+     * the symbol instead, hence the run starts at 1: with 0, a stream whose
+     * first two symbols are zero bytes -- every "BCM1" block length below
+     * 64 KiB -- selects the wrong SSE table for the third symbol. */
+    m->run = 1U;
     m->legacy = legacy;
 }
 

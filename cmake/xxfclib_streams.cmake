@@ -11,9 +11,9 @@ unset(_xxfc_stream)
 
 # Every optional native provider has a core reader with the same stem. The
 # explicit list also defines availability for bounded emulator/DIE profiles.
-# DataStructs has no per-reader C provider: a reader is served by its script
-# in src/datastructs (which needs the JS engine in the profile), everything
-# else by the schema engine (xx_format_datastructs.c, reader name "format").
+# DataStructs has no C provider at all: every file type is served by a script
+# in src/datastructs (which needs the JS engine in the profile). A profile
+# without the JS engine has no DataStructs.
 set(_XXFC_STREAM_NATIVE_READERS
     7zip ar bz2 gz rar tar tar_bz2 tar_gz tar_lz4 tar_xz tar_zstd xz zip
     dotnet elf le lx macho ne omf pe pef vxworks xtac xorarchive)
@@ -28,9 +28,6 @@ function(xxfclib_select_stream_sources source_list)
            _source MATCHES "^src/formats/executable/pe/xx_pe_stream_(symbols|coff|metadata)\\.c$")
             continue()
         endif()
-        if(_source MATCHES "(^|/)xx_format_schema\\.c$")
-            string(REPLACE "xx_format_schema.c" "xx_format_datastructs.c" _source "${_source}")
-        endif()
         if(IS_ABSOLUTE "${_source}")
             set(_absolute "${_source}")
         else()
@@ -38,15 +35,13 @@ function(xxfclib_select_stream_sources source_list)
                 BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
         endif()
         get_filename_component(_name "${_source}" NAME)
-        # Broad format globs also see former schema-family files and their
-        # per-format data sidecars. They belong to the optional data stream,
-        # unlike core readers whose actual format name happens to end in data.
+        # A reader source named *_data.c that only sets up data-struct callbacks
+        # belongs to the optional data stream, unlike core readers whose actual
+        # format name happens to end in data.
         if(NOT XXFC_ENABLE_STREAM_DATASTRUCTS AND _absolute MATCHES "/src/formats/")
-            if(_name MATCHES "^xx_format_schema_.+\\.c$")
-                continue()
-            elseif(_name MATCHES "_data\\.c$")
+            if(_name MATCHES "_data\\.c$")
                 file(STRINGS "${_absolute}" _data_provider_markers
-                    REGEX "xx_format_schema|setup_data_struct_callbacks")
+                    REGEX "setup_data_struct_callbacks")
                 if(_data_provider_markers)
                     continue()
                 endif()
@@ -178,14 +173,6 @@ function(xxfclib_configure_streams target)
         target_compile_definitions(${target} PRIVATE
             XXFC_STREAM_HAS_${_upper}=${_value})
     endforeach()
-    set(_value 0)
-    foreach(_source IN LISTS _sources)
-        if(_source MATCHES "(^|/)xx_format_datastructs\\.c$")
-            set(_value 1)
-            break()
-        endif()
-    endforeach()
-    target_compile_definitions(${target} PRIVATE XXFC_STREAM_HAS_SCHEMA=${_value})
     set(_value 0)
     foreach(_source IN LISTS _sources)
         if(_source MATCHES "(^|/)xx_xxds\\.c$")

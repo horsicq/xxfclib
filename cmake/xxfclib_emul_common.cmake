@@ -60,7 +60,6 @@ set(XXFC_EMUL_CORE_SOURCES
     src/algo/crc/platforms/xx_crc64_avx2.c
     src/algo/crc/platforms/xx_crc64_vpclmul.c
     src/formats/xx_format_base.c
-    src/formats/xx_format_datastructs.c
     src/formats/xx_format_handle_types.c
     src/formats/xx_format_streams.c
     src/formats/xx_memory_map.c

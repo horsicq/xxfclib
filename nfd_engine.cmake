@@ -20,7 +20,6 @@ list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/js/")
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/datastructs/")
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/regex/xx_regex_(die|js)")
 list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/sort/xx_sort_scan\\.c$")
-list(FILTER XXFC_NFD_ENGINE_SOURCES EXCLUDE REGEX "/src/formats/xx_format_datastructs\\.c$")
 list(APPEND XXFC_NFD_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/nfd_engine/xx_nfd_engine_engine.c
     ${CMAKE_CURRENT_LIST_DIR}/src/nfd_engine/xx_nfd_engine_tables.c
