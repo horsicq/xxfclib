@@ -1168,6 +1168,7 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/game/he_tlkb
     src/formats/game/hog
     src/formats/game/hog2
+    src/formats/game/impressions_res
     src/formats/game/infogramesft
     src/formats/game/kirikiri_xp3
     src/formats/game/krml
@@ -3913,6 +3914,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_hog
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_hog2
     src/formats/game/hog2/xx_hog2.c
     src/formats/game/hog2/xx_hog2_extractor.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_impressions_res
+    src/formats/game/impressions_res/xx_impressions_res.c
+    src/formats/game/impressions_res/xx_impressions_res_extractor.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_game_infogramesft
     src/formats/game/infogramesft/xx_infogramesft.c

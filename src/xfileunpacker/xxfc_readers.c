@@ -90,6 +90,7 @@ static const xxfc_reader_alias aliases[] = {
     {"c64s", XX_FILE_TYPE_C64S},
     {"createinstall_pak", XX_FILE_TYPE_CREATEINSTALL_PAK},
     {"chieflz_v1", XX_FILE_TYPE_CHIEFLZ_V1},
+    {"impressions_res", XX_FILE_TYPE_IMPRESSIONS_RES},
     {"cork", XX_FILE_TYPE_CORK},
     {"cvrb", XX_FILE_TYPE_CVRB},
     {"caere", XX_FILE_TYPE_CVRB},

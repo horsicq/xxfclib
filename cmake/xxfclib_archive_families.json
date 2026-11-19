@@ -21072,6 +21072,25 @@
     "src/formats/video/swf/xx_swf.c",
     "src/formats/video/swf/xx_swf_extractor.c"
    ]
+  },
+  "impressions_res": {
+   "flag": "IMPRESSIONS_RES",
+   "types": [
+    "IMPRESSIONS_RES"
+   ],
+   "label": "Impressions resource (.gob)",
+   "directory": "game/impressions_res",
+   "own_component": false,
+   "sort": false,
+   "codepages": false,
+   "codecs": [],
+   "formats": [
+    "game/impressions_res"
+   ],
+   "sources": [
+    "src/formats/game/impressions_res/xx_impressions_res.c",
+    "src/formats/game/impressions_res/xx_impressions_res_extractor.c"
+   ]
   }
  }
 }

@@ -2055,3 +2055,6 @@ XX_SUPPORTED_FORMAT(SCUMMVM_DXA, scummvm_dxa, "ScummVM DXA video")
 #ifdef XFU_SUPPORT_FORMAT_SWF
 XX_SUPPORTED_FORMAT(SWF, swf, "swf")
 #endif
+#ifdef XFU_SUPPORT_FORMAT_IMPRESSIONS_RES
+XX_SUPPORTED_FORMAT(IMPRESSIONS_RES, impressions_res, "Impressions resource (.gob)")
+#endif

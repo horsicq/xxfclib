@@ -1369,6 +1369,7 @@ const char *xx_format_file_type_to_string(xx_file_type_t type)
         case XX_FILE_TYPE_C64S: return "C64S emulator DOS self-extractor";
         case XX_FILE_TYPE_CREATEINSTALL_PAK: return "CreateInstall package (DISK1.PAK)";
         case XX_FILE_TYPE_CHIEFLZ_V1: return "ChiefLZ multiple-file archive (version 1)";
+        case XX_FILE_TYPE_IMPRESSIONS_RES: return "Impressions resource (.gob)";
         case XX_FILE_TYPE_PE_RAWFILE: return "PE RAWFILE resource container";
         case XX_FILE_TYPE_PKLITE: return "PKLITE compressed DOS executable";
         case XX_FILE_TYPE_DFSEE_IMZ: return "DFSee compressed sector image";

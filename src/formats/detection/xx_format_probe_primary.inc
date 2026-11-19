@@ -108,8 +108,10 @@ XX_FORMAT_READER_PROBE(spoon_installer, XX_FILE_TYPE_SPOON_INSTALLER,
     (is_mz))
 XX_FORMAT_READER_PROBE(tarma_installer, XX_FILE_TYPE_TARMA_INSTALLER,
     (is_mz))
+/* An exact DD/HD floppy is probed whatever its boot tag: the reader then
+ * requires a checksummed root block, so custom-loader disks stay closed. */
 XX_FORMAT_READER_PROBE(adf, XX_FILE_TYPE_ADF,
-    (header_size >= 4U && ((header[0] == 0x44U && header[1] == 0x4FU && header[2] == 0x53U && header[3] <= 7U) || ((total_size == 901120 || total_size == 1802240) && header[0] == 0U && header[1] == 0U && header[2] == 0U && header[3] == 0U))))
+    (header_size >= 4U && ((header[0] == 0x44U && header[1] == 0x4FU && header[2] == 0x53U && header[3] <= 7U) || total_size == 901120 || total_size == 1802240)))
 XX_FORMAT_READER_PROBE(apm, XX_FILE_TYPE_APM,
     (header_size >= 4U && header[0] == 0x45U && header[1] == 0x52U && (header[2] == 2U || header[2] == 4U || header[2] == 8U || header[2] == 16U) && header[3] == 0U))
 XX_FORMAT_READER_PROBE(vhdx, XX_FILE_TYPE_VHDX,

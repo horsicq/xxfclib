@@ -1435,6 +1435,7 @@ extern Abstractextractor *xx_chasm_csid_get_abstract_extractor(void);
 extern Abstractextractor *xx_c64s_get_abstract_extractor(void);
 extern Abstractextractor *xx_createinstall_pak_get_abstract_extractor(void);
 extern Abstractextractor *xx_chieflz_v1_get_abstract_extractor(void);
+extern Abstractextractor *xx_impressions_res_get_abstract_extractor(void);
 extern Abstractextractor *xx_instalit_data_get_abstract_extractor(void);
 extern Abstractextractor *xx_sdi_get_abstract_extractor(void);
 extern Abstractextractor *xx_superdat_get_abstract_extractor(void);
@@ -2916,6 +2917,7 @@ extern Abstractdetector *xx_chasm_csid_get_abstract_detector(void);
 extern Abstractdetector *xx_c64s_get_abstract_detector(void);
 extern Abstractdetector *xx_createinstall_pak_get_abstract_detector(void);
 extern Abstractdetector *xx_chieflz_v1_get_abstract_detector(void);
+extern Abstractdetector *xx_impressions_res_get_abstract_detector(void);
 extern Abstractdetector *xx_instalit_data_get_abstract_detector(void);
 extern Abstractdetector *xx_sdi_get_abstract_detector(void);
 extern Abstractdetector *xx_superdat_get_abstract_detector(void);
@@ -5221,6 +5223,7 @@ static const struct {
     { &xx_c64s_extractor, xx_c64s_get_abstract_extractor, xx_c64s_get_abstract_detector },
     { &xx_createinstall_pak_extractor, xx_createinstall_pak_get_abstract_extractor, xx_createinstall_pak_get_abstract_detector },
     { &xx_chieflz_v1_extractor, xx_chieflz_v1_get_abstract_extractor, xx_chieflz_v1_get_abstract_detector },
+    { &xx_impressions_res_extractor, xx_impressions_res_get_abstract_extractor, xx_impressions_res_get_abstract_detector },
     { &xx_instalit_data_extractor, xx_instalit_data_get_abstract_extractor, xx_instalit_data_get_abstract_detector },
     { &xx_sdi_extractor, xx_sdi_get_abstract_extractor, xx_sdi_get_abstract_detector },
     { &xx_superdat_extractor, xx_superdat_get_abstract_extractor, xx_superdat_get_abstract_detector },

@@ -58,6 +58,7 @@
 #include "xxfclib/formats/archive/c64s/xx_c64s.h"
 #include "xxfclib/formats/archive/createinstall_pak/xx_createinstall_pak.h"
 #include "xxfclib/formats/archive/chieflz_v1/xx_chieflz_v1.h"
+#include "xxfclib/formats/game/impressions_res/xx_impressions_res.h"
 #include "xxfclib/formats/archive/cork/xx_cork.h"
 #include "xxfclib/formats/archive/cvrb/xx_cvrb.h"
 #include "xxfclib/formats/archive/cpz/xx_cpz.h"

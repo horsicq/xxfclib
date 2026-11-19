@@ -243,6 +243,7 @@
     defined(XFU_SUPPORT_FORMAT_IGF2) || \
     defined(XFU_SUPPORT_FORMAT_IMD) || \
     defined(XFU_SUPPORT_FORMAT_IMP) || \
+    defined(XFU_SUPPORT_FORMAT_IMPRESSIONS_RES) || \
     defined(XFU_SUPPORT_FORMAT_INFOGRAMESFT) || \
     defined(XFU_SUPPORT_FORMAT_INNO_SETUP) || \
     defined(XFU_SUPPORT_FORMAT_INSA) || \
